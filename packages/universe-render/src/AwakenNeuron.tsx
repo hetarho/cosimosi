@@ -11,17 +11,19 @@ import {
   type LatentField,
 } from '@cosimosi/universe'
 
-// Awaken animation vocabulary — motion/look is code, never values.yaml [E7a]. A fixed pool of
-// concurrent flares (one launch rarely births more than a few new neurons); each flares in place
-// with a sin(πp) grow-then-hand-off envelope and is gone as the real cell-star takes over. The pool
-// ceiling is the one tunable here (a resource cap, so it lives in config).
+import {
+  advanceAwakenFlares,
+  createAwakenFlarePool,
+  freeAwakenSlot,
+  igniteAwakenFlare,
+} from './awaken-flare-pool.ts'
+
+// A fixed pool of concurrent flares (one launch rarely births more than a few new neurons); each
+// flares in place and is gone as the real cell-star takes over. The pool ceiling is the one tunable
+// here (a resource cap, so it lives in config); the motion itself is code [E7a], in the pool module.
 const AWAKEN_BODY_ID = 'awaken-pulse'
 const AWAKEN_CAPACITY = VALUES.rendering.awakenCapacity
-const AWAKEN_DURATION_S = 1.1
-const AWAKEN_PEAK_SIZE = 0.9
 const AWAKEN_PULSE_COLOR = '#fff1d6'
-// Cap the per-frame step so a large delta (a backgrounded tab resuming) can't skip a whole flare.
-const AWAKEN_MAX_STEP_S = 0.05
 
 export interface AwakenNeuronProps {
   /** The latent field the flare picks its seed from (from entities/latent-star). */
@@ -44,13 +46,17 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
   )
   const consume = useLatentConsumedStore((state) => state.consume)
 
-  // Fixed-capacity flare pool: a slot's seed lives in `positions`, its 0→1 life in `progress`,
-  // its rendered size in `scales` (mutated in place, read by the layer each frame).
-  const positions = useRef<Float32Array>(new Float32Array(AWAKEN_CAPACITY * 3))
-  const scales = useMemo(() => new Float32Array(AWAKEN_CAPACITY), [])
-  const channels = useMemo(() => ({ scales }), [scales])
-  const progress = useRef<Float32Array>(new Float32Array(AWAKEN_CAPACITY))
-  const active = useRef<boolean[]>(Array.from({ length: AWAKEN_CAPACITY }, () => false))
+  const pool = useMemo(() => createAwakenFlarePool(AWAKEN_CAPACITY), [])
+  const channels = useMemo(() => ({ scales: pool.scales }), [pool])
+  // A slot's seed position. It carries its own version because the layer's clean-frame skip reads
+  // one off the buffer seam, and this pool is not the sim's buffer.
+  const positions = useMemo(
+    () => ({ current: new Float32Array(AWAKEN_CAPACITY * 3), version: 0 }),
+    [],
+  )
+  // Bumped only by a frame that actually moved a scale, so an idle pool leaves the layer's matrices
+  // exactly as composed instead of re-uploading its full capacity in zeroes.
+  const animationRevision = useRef(0)
 
   useEffect(() => {
     // Idempotency comes from the module-level registry (survives remounts), never a component ref.
@@ -59,7 +65,7 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
     if (fresh.length === 0) return
     // Only take what the pool can flare THIS pass — a star is consumed only if it also flares, and
     // an id is claimed only once handled, so an overflowing burst is not lost (the rest retry).
-    const freeSlots = active.current.reduce((total, slot) => (slot ? total : total + 1), 0)
+    const freeSlots = pool.active.length - pool.activeCount
     if (freeSlots === 0) return
     const batch = fresh.slice(0, freeSlots)
 
@@ -77,37 +83,21 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
     if (picks.length === 0) return
     consume(picks)
     for (const index of picks) {
-      const slot = active.current.indexOf(false)
-      active.current[slot] = true
-      progress.current[slot] = 0
+      const slot = freeAwakenSlot(pool)
+      igniteAwakenFlare(pool, slot)
       positions.current[slot * 3] = field.positions[index * 3] ?? 0
       positions.current[slot * 3 + 1] = field.positions[index * 3 + 1] ?? 0
       positions.current[slot * 3 + 2] = field.positions[index * 3 + 2] ?? 0
-      scales[slot] = 0
     }
+    positions.version++
     registry.claim(batch)
-  }, [newNeuronIds, field, resolveAnchors, consume, scales])
+  }, [newNeuronIds, field, resolveAnchors, consume, pool, positions])
 
   const onFrame = useCallback(
     (dt: number) => {
-      const step = Math.min(dt, AWAKEN_MAX_STEP_S) / AWAKEN_DURATION_S
-      for (let slot = 0; slot < AWAKEN_CAPACITY; slot++) {
-        if (!active.current[slot]) {
-          scales[slot] = 0
-          continue
-        }
-        const next = progress.current[slot] + step
-        if (next >= 1) {
-          active.current[slot] = false
-          progress.current[slot] = 0
-          scales[slot] = 0
-          continue
-        }
-        progress.current[slot] = next
-        scales[slot] = Math.sin(next * Math.PI) * AWAKEN_PEAK_SIZE
-      }
+      if (advanceAwakenFlares(pool, dt)) animationRevision.current++
     },
-    [scales],
+    [pool],
   )
 
   return (
@@ -122,6 +112,7 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
         count={AWAKEN_CAPACITY}
         positions={positions}
         channels={channels}
+        animationRevision={animationRevision}
       />
     </>
   )

@@ -75,11 +75,20 @@ export {
   COORDINATE_STRIDE,
   InstancedNodeLayer,
   type CoordinateBufferRef,
+  type InstanceAnimationRevisionRef,
   type InstanceAttributeChannel,
   type InstanceChannels,
   type InstancedNodeLayerProps,
   type InstancePositionMapper,
 } from './layers/InstancedNodeLayer.tsx'
+export { AdaptiveDprLayer, type AdaptiveDprLayerProps } from './layers/AdaptiveDprLayer.tsx'
+export {
+  ADAPTIVE_DPR_FLOOR,
+  createAdaptiveDprSampler,
+  sampleAdaptiveDpr,
+  type AdaptiveDprSampler,
+  type AdaptiveDprThresholds,
+} from './layers/adaptive-dpr.ts'
 export { BandFog, type BandFogProps } from './layers/BandFog.tsx'
 export { EdgeLineLayer, type EdgeLineLayerProps } from './layers/EdgeLineLayer.tsx'
 export { FatLineLayer, type FatLineLayerProps } from './layers/FatLineLayer.tsx'

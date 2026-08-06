@@ -25,6 +25,12 @@ export const VALUES = {
   rendering: {
     activeSkin: "emotion",
     maxPixelRatio: 2,
+    adaptiveDprWindowSeconds: 1.5,
+    adaptiveDprDownFps: 45,
+    adaptiveDprUpFps: 57,
+    adaptiveDprStep: 0.25,
+    adaptiveDprMaxFlipflops: 2,
+    coordinatePublicationEpsilon: 0.002,
     toneMapping: "neutral",
     toneMappingExposure: 1,
     emotionSkyExposure: 0.62,

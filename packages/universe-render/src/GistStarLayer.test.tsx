@@ -151,6 +151,46 @@ describe('gist render snapshot', () => {
     ])
   })
 
+  it('indexes rise entries against the committed order, and settles the index with the map', () => {
+    const riseState = createGistRiseState()
+    const riseBuffer = buffer.slice()
+    reconcileGistRiseState(riseState, createGistRenderSnapshot([alpha], slots), true)
+
+    const risenBeta = instance('beta', 2)
+    const advanced = createGistRenderSnapshot([alpha, risenBeta], slots)
+    reconcileGistRiseState(riseState, advanced, true)
+    expect(riseState.indexed).toBe(advanced)
+    expect(riseState.byInstance).toHaveLength(2)
+
+    const out = new Float32Array(3)
+    // Mid-rise: the indexed entry is the live {start, startZ} record, not the settled sentinel.
+    expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 0)).toBe(true)
+    expect(out[2]).not.toBe(risenBeta.z)
+    expect(riseState.byInstance[1]).not.toBe(riseState.byInstance[0])
+
+    // Past the rise: both the map and its index settle, so later frames skip the ease math.
+    expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 100)).toBe(true)
+    expect(out[2]).toBe(risenBeta.z)
+    expect(riseState.byInstance[1]).toBe(riseState.seen.get(risenBeta.nodeId))
+  })
+
+  it('falls back to the id map for a snapshot the index has not caught up with', () => {
+    // The reconcile runs in a passive effect, so a frame can land between the commit that published
+    // a new snapshot and the effect that indexes it. Reading the stale index by position there
+    // would hand an instance another instance's rise state.
+    const riseState = createGistRiseState()
+    const committed = createGistRenderSnapshot([alpha, beta], slots)
+    reconcileGistRiseState(riseState, committed, true)
+
+    const reordered = createGistRenderSnapshot([beta, alpha], slots)
+    expect(riseState.indexed).toBe(committed)
+
+    const out = new Float32Array(3)
+    expect(mapGistInstancePosition(reordered, riseState, 0, buffer, out, 0)).toBe(true)
+    // Index 0 of the un-indexed snapshot is beta, whose slot is 0 → buffer x,y = (20, 21).
+    expect(Array.from(out)).toEqual([20, 21, beta.z])
+  })
+
   it('hides instances with no committed sim-slot source without disturbing neighboring picks', () => {
     const snapshot = createGistRenderSnapshot([alpha, beta], { alpha: 1 })
     const riseState = createGistRiseState()

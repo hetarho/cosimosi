@@ -1,7 +1,7 @@
 import type { ReconcilerRoot, RootState } from '@react-three/fiber'
 import { createRoot, events, extend, unmountComponentAtNode } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { PixelRatio } from 'react-native'
+import { AppState, PixelRatio, type AppStateStatus } from 'react-native'
 import { Canvas, type CanvasRef } from 'react-native-webgpu'
 import * as THREE from 'three/webgpu'
 
@@ -28,6 +28,20 @@ function resolvePixelRatio(dpr: number | [number, number]): number {
   if (!Array.isArray(dpr)) return dpr
   const [min, max] = dpr
   return Math.min(Math.max(min, PixelRatio.get()), max)
+}
+
+/**
+ * Whether the render loop should be running for a given app state.
+ *
+ * The web host inherits rAF's hidden-tab pause for free; React Native has no such thing, so a
+ * backgrounded app would keep paying for the full scene — every layer, the post chain, and the
+ * inline sim pump that rides the same loop (`FrameTick`) — with nothing on screen.
+ *
+ * `currentState` reads `null` before RN has resolved it (Android cold start). That is a not-yet,
+ * not a background: pausing on it would leave a cold-started app blank until the first change event.
+ */
+function frameloopFor(status: AppStateStatus | null): 'always' | 'never' {
+  return status === null || status === 'active' ? 'always' : 'never'
 }
 
 /** The live values the device effect must not re-key on — see the effect split below. */
@@ -164,6 +178,9 @@ export function UniverseCanvas({
       onCreated: (state) => {
         r3fState.current = state
         applyLiveConfig.current()
+        // A device brought up while the app is already backgrounded must not start rendering; the
+        // subscription below only sees CHANGES, so the initial state is read here.
+        state.setFrameloop(frameloopFor(AppState.currentState))
       },
     })
 
@@ -189,6 +206,16 @@ export function UniverseCanvas({
   useEffect(() => {
     applyLiveConfig.current()
   }, [dpr, fov, far, clearColor, toneMapping, exposure])
+
+  // Mount-scoped and imperative: pausing goes straight to the running root, so backgrounding costs
+  // no React render and cannot reach the device effect. Keyed on nothing, so a device rebuilt
+  // mid-session (a backend switch) is picked up through the ref rather than by re-subscribing.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      r3fState.current?.setFrameloop(frameloopFor(status))
+    })
+    return () => subscription.remove()
+  }, [])
 
   return <Canvas ref={canvasRef} style={styles.fill} />
 }

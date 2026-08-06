@@ -22,6 +22,10 @@ export const EdgeLineLayer = Noop
 export const FatLineLayer = Noop
 export const NavigationRig = Noop
 export const FrameTick = Noop
+export const AdaptiveDprLayer = Noop
+// The floor the shell's `dpr` range starts at — a real number, because the shell passes it to the
+// canvas host and a test reading that prop should see what ships.
+export const ADAPTIVE_DPR_FLOOR = 1
 export const createPrimitiveBodySource = () => ({ resolve: () => ({}) })
 export const DEFAULT_STAR_SHAPE = 'orb'
 export const createStarShapeBodySource = () => ({ resolve: () => ({}) })

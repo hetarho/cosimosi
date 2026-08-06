@@ -1,5 +1,6 @@
 import { VALUES } from '@cosimosi/config'
 import {
+  AdaptiveDprLayer,
   BandFog,
   FrameTick,
   LATENT_FIELD_SEGMENTS,
@@ -51,6 +52,13 @@ export interface UniverseSceneLayersProps {
   readonly nebulaResolution?: number
   /** Pointer hover — web only. Touch has no hover, so native passes nothing. */
   readonly onMemoryHover?: (index: number | null) => void
+  /**
+   * Where adaptive quality's pixel-ratio steps land. Required, not optional: both hosts resolve
+   * their `dpr` PROP into the R3F store, so a shell that forgot this would silently render at a
+   * fixed ratio and the adaptive walk would look like it was working (see `AdaptiveDprLayer`).
+   * The shell holds the value in state; must be stable across renders.
+   */
+  readonly onPixelRatio: (pixelRatio: number) => void
 }
 
 /**
@@ -71,6 +79,7 @@ export function UniverseSceneLayers({
   reducedMotion,
   nebulaResolution,
   onMemoryHover,
+  onPixelRatio,
 }: UniverseSceneLayersProps) {
   const {
     bridge,
@@ -156,6 +165,7 @@ export function UniverseSceneLayers({
       />
       <NavigationRig getPose={getPose} onArrived={onArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
+      <AdaptiveDprLayer onPixelRatio={onPixelRatio} />
       <PostFX bloom={bloom} />
     </>
   )

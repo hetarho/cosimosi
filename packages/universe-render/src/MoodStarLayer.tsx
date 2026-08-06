@@ -37,7 +37,9 @@ export function MoodStarLayer({ colors, reducedMotion = false, onSelect }: MoodS
       zMax: VALUES.forceSim.hippocampusZMax,
       radius: VALUES.palette.onboardingFieldRadius,
     })
-    return { current: field.positions }
+    // Generated once and never mutated, so its version never moves either — which is what tells the
+    // layer this bench is a clean frame and its matrices can stay as composed.
+    return { current: field.positions, version: 1 }
   }, [])
   const channels = useMemo<InstanceChannels>(() => {
     const scales = new Float32Array(MOODS.length)

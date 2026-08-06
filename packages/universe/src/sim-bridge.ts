@@ -9,9 +9,20 @@ import {
   type ForceSimNodeIndex,
   type ForceSimulation,
 } from '@cosimosi/force-sim'
+import { VALUES } from '@cosimosi/config'
+
+const PUBLICATION_EPSILON = VALUES.rendering.coordinatePublicationEpsilon
 
 export interface MutableCoordinateBufferRef {
   current: Float32Array | null
+  /**
+   * Monotonic version of what `current` is SHOWING. It moves when the presented contents change —
+   * on start/remap, and on a tick whose coordinates moved past the publication epsilon — and it
+   * does not move merely because the sim produced another buffer. That is the whole contract the
+   * renderer's per-frame skip rests on: an unchanged version means an unchanged picture, so the
+   * instanced layers may leave last frame's matrices on the GPU.
+   */
+  version: number
 }
 
 // The widget's seam onto the force-sim host (its coordinate contract): start() hands
@@ -22,6 +33,23 @@ export interface UniverseSimBridge {
   start(graph: ForceSimGraph): void
   pump(dt: number): void
   dispose(): void
+}
+
+/**
+ * Whether a candidate buffer has moved far enough from the presented one to be worth showing.
+ * Compare against the last PRESENTED buffer rather than the last candidate, so a drift that stays
+ * under the epsilon every tick still publishes once it accumulates past it.
+ */
+export function coordinatesMovedBeyond(
+  presented: Float32Array | null,
+  candidate: Float32Array,
+  epsilon: number,
+): boolean {
+  if (!presented || presented.length !== candidate.length) return true
+  for (let i = 0; i < candidate.length; i++) {
+    if (Math.abs((candidate[i] as number) - (presented[i] as number)) > epsilon) return true
+  }
+  return false
 }
 
 // Narrow structural worker type so this file typechecks on hosts without DOM lib types;
@@ -48,7 +76,7 @@ export function createUniverseSimBridge(spawner: SimWorkerSpawner | null): Unive
 }
 
 function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
-  const coordinates: MutableCoordinateBufferRef = { current: null }
+  const coordinates: MutableCoordinateBufferRef = { current: null, version: 0 }
   let worker: SimWorkerLike | null = null
   let spareBuffers: ArrayBuffer[] = []
   let inFlight = false
@@ -69,6 +97,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
     runningGraph = null
     if (clearCoordinates) {
       coordinates.current = null
+      coordinates.version++
       displayedIndex = null
     }
   }
@@ -97,6 +126,9 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
         coordinates.current = remapCoordinateBuffer(nextIndex, previous, displayedIndex)
         seededGraph = carryPreviousPositions(graph, previous, displayedIndex)
       }
+      // A start relaid the buffer even when the remap kept every surviving coordinate: slots moved,
+      // so the layers' contiguous slot reads must recompose whatever the coordinates now say.
+      coordinates.version++
       displayedIndex = nextIndex
       const spawned = spawner()
       spawned.onmessage = (event) => {
@@ -109,9 +141,17 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
           return
         }
         if (message.type !== 'coords') return
-        const previous = coordinates.current
-        coordinates.current = new Float32Array(message.buffer)
-        if (previous) spareBuffers.push(previous.buffer as ArrayBuffer)
+        const presented = coordinates.current
+        const candidate = new Float32Array(message.buffer)
+        if (coordinatesMovedBeyond(presented, candidate, PUBLICATION_EPSILON)) {
+          coordinates.current = candidate
+          coordinates.version++
+          if (presented) spareBuffers.push(presented.buffer as ArrayBuffer)
+        } else {
+          // A converged tick: keep the presented buffer on screen (so its version stays stable and
+          // the layers skip) and hand the candidate straight back as the next tick's spare.
+          spareBuffers.push(candidate.buffer as ArrayBuffer)
+        }
         inFlight = false
       }
       spawned.onerror = () => {
@@ -140,11 +180,16 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   }
 }
 
-// Same contract on the JS thread, for hosts without a worker primitive. tick(dt) without
-// an output buffer returns the module-owned snapshot, sanctioned for direct reads.
+// Same contract on the JS thread, for hosts without a worker primitive. It ping-pongs two OWNED
+// output buffers through `tick(dt, output)` rather than presenting the simulation's own
+// `sim.coordinates`: that array is rewritten in place by every tick, so presenting it would make
+// the version claim ("unchanged version = unchanged picture") false — the version would hold still
+// while the pixels underneath it moved.
 function createInlineSimBridge(): UniverseSimBridge {
-  const coordinates: MutableCoordinateBufferRef = { current: null }
+  const coordinates: MutableCoordinateBufferRef = { current: null, version: 0 }
   let sim: ForceSimulation | null = null
+  // The buffer NOT currently presented, handed to the next tick as its output target.
+  let spare: Float32Array | null = null
   // The node index of the currently displayed buffer, so a refetch carries coordinates by id —
   // the same continuity the worker branch gives, so web and mobile don't diverge on refetch.
   let displayedIndex: ForceSimNodeIndex | null = null
@@ -162,17 +207,26 @@ function createInlineSimBridge(): UniverseSimBridge {
       sim = createForceSimulation(seededGraph)
       // Seeded from prior positions, the first frame already lands survivors where they were —
       // no async swap window here (the sim is synchronous), so no separate display remap is needed.
-      coordinates.current = sim.coordinates
+      coordinates.current = Float32Array.from(sim.coordinates)
+      coordinates.version++
+      spare = new Float32Array(sim.coordinates.length)
       displayedIndex = sim.nodeIndex
       runningGraph = graph
     },
     pump(dt) {
-      if (!sim) return
-      coordinates.current = sim.tick(dt)
+      const presented = coordinates.current
+      if (!sim || !spare || !presented) return
+      const candidate = sim.tick(dt, spare)
+      if (!coordinatesMovedBeyond(presented, candidate, PUBLICATION_EPSILON)) return
+      coordinates.current = candidate
+      coordinates.version++
+      spare = presented
     },
     dispose() {
       sim = null
+      spare = null
       coordinates.current = null
+      coordinates.version++
       displayedIndex = null
       runningGraph = null
     },

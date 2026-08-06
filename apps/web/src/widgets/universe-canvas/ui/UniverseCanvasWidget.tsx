@@ -1,7 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
-import { SkinProvider, UniverseCanvas, resolveActiveSkin, useSkin } from '@cosimosi/3d-renderer'
+import {
+  ADAPTIVE_DPR_FLOOR,
+  SkinProvider,
+  UniverseCanvas,
+  resolveActiveSkin,
+  useSkin,
+} from '@cosimosi/3d-renderer'
+import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { useReducedMotion } from '@cosimosi/ui'
 import {
   UNIVERSE_BACKDROP,
@@ -10,13 +17,11 @@ import {
   type UniverseNavigationActorRef,
 } from '@cosimosi/universe-render'
 
+import { diagnosticsSurfaceFlag } from '../../../shared/config/index.ts'
 import { setHoveredMemoryIndex } from '../model/hovered-memory-store.ts'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 import { HoverGlimpse } from './HoverGlimpse.tsx'
-
-// Hoisted so the canvas host sees one stable array identity: an inline `[1, max]` is a new object
-// every render, and the host keys effects on this prop.
-const CANVAS_DPR: [number, number] = [1, VALUES.rendering.maxPixelRatio]
+import { PERF_HUD_AVAILABLE, UniversePerfHud } from './UniversePerfHud.tsx'
 
 // The web shell around the shared universe scene. Everything the scene needs is computed by
 // `useUniverseScene` — out here, because React context does not cross the R3F reconciler — and this
@@ -29,6 +34,7 @@ function UniverseCanvasHost({
 }) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
+  const observability = useObservabilityFacade()
   // Memoized because the bridge is keyed on this identity: a fresh spawner per render would rebuild
   // the sim on every render.
   const simSpawner = useMemo(() => createSimWorkerSpawner(), [])
@@ -37,17 +43,32 @@ function UniverseCanvasHost({
     latentStarCount: VALUES.rendering.latentStarCount,
     navigationActorRef,
   })
+  // Read out here, not in the HUD: the flag lives in app context, and React context does not cross
+  // the R3F reconciler.
+  const perfHudEnabled =
+    PERF_HUD_AVAILABLE && (observability.getFeatureFlag(diagnosticsSurfaceFlag) ?? false)
+
+  // The shell's half of the adaptive-DPR bridge, identical to mobile's. It has to live out here:
+  // R3F re-runs `configure` on every `<Canvas>` render and resets the store whenever `viewport.dpr`
+  // disagrees with what this prop resolves to, so a `setDpr` from inside the scene would be undone
+  // by the next host re-render. Only a closed sustained-fps window lands here (§3.2).
+  const [pixelRatioCap, setPixelRatioCap] = useState<number>(VALUES.rendering.maxPixelRatio)
+  // One stable array identity per cap: an inline `[1, max]` is a new object every render, and both
+  // hosts key effects on this prop.
+  const dpr = useMemo<[number, number]>(() => [ADAPTIVE_DPR_FLOOR, pixelRatioCap], [pixelRatioCap])
 
   return (
     <div className="relative h-full w-full">
-      <UniverseCanvas dpr={CANVAS_DPR} fov={skin.camera.fov} clearColor={skin.sky.night}>
+      <UniverseCanvas dpr={dpr} fov={skin.camera.fov} clearColor={skin.sky.night}>
         <UniverseSceneLayers
           scene={scene}
           bloom={skin.bloom}
           backdrop={UNIVERSE_BACKDROP.web}
           reducedMotion={reducedMotion}
           onMemoryHover={setHoveredMemoryIndex}
+          onPixelRatio={setPixelRatioCap}
         />
+        {perfHudEnabled && <UniversePerfHud />}
       </UniverseCanvas>
       {/* Shown plainly, no decay warning ([R8a]) — and outside the canvas host so a hover
           never re-renders the scene tree. */}

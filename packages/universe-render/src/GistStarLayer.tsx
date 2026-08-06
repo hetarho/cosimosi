@@ -48,7 +48,19 @@ type RiseEntry = { start: number | null; startZ: number } | typeof SETTLED
 // gates on the episodic STORE being non-empty, not the gist projection: a universe with memories
 // but no risen gists still counts as loaded, so its first-ever gist rise animates instead of
 // being mistaken for an initial-load body.
-export type GistRiseState = { readonly seen: Map<string, RiseEntry>; hydrated: boolean }
+//
+// `byInstance` is the same entries laid out in one snapshot's committed instance order, so the
+// per-frame mapper indexes an array instead of hashing a node-id string per instance per frame.
+// It is a cache, not a second source of truth: `indexed` names the snapshot it was built for, and
+// a mapper call against any other snapshot falls back to `seen`. That fallback is reachable — the
+// reconcile runs in a passive effect, so a frame can land between the commit that published a new
+// snapshot and the effect that indexes it.
+export type GistRiseState = {
+  readonly seen: Map<string, RiseEntry>
+  hydrated: boolean
+  byInstance: RiseEntry[]
+  indexed: GistRenderSnapshot | null
+}
 
 export interface GistRenderSnapshot {
   readonly count: number
@@ -95,7 +107,7 @@ export function createGistRenderSnapshot(
 }
 
 export function createGistRiseState(): GistRiseState {
-  return { seen: new Map(), hydrated: false }
+  return { seen: new Map(), hydrated: false, byInstance: [], indexed: null }
 }
 
 export function reconcileGistRiseState(
@@ -119,6 +131,10 @@ export function reconcileGistRiseState(
     if (!alive.has(key)) state.seen.delete(key)
   }
   if (hasMemories) state.hydrated = true
+  state.byInstance = snapshot.instances.map(
+    (instance) => state.seen.get(instance.nodeId) ?? SETTLED,
+  )
+  state.indexed = snapshot
   return risen
 }
 
@@ -137,7 +153,8 @@ export function mapGistInstancePosition(
   const offset = slot * COORDINATE_STRIDE
   if (offset < 0 || offset + 2 >= buffer.length) return false
 
-  const entry = riseState.seen.get(instance.nodeId)
+  const indexed = riseState.indexed === snapshot
+  const entry = indexed ? riseState.byInstance[index] : riseState.seen.get(instance.nodeId)
   if (entry === undefined) return false
   out[0] = buffer[offset] ?? 0
   out[1] = buffer[offset + 1] ?? 0
@@ -157,6 +174,9 @@ export function mapGistInstancePosition(
   )
   if (progress >= 1) {
     riseState.seen.set(instance.nodeId, SETTLED)
+    // The index is a projection of `seen`, so it settles with it — otherwise every later frame
+    // would keep re-reading the finished {start, startZ} record and redo the ease math forever.
+    if (indexed) riseState.byInstance[index] = SETTLED
     out[2] = instance.z
     return true
   }

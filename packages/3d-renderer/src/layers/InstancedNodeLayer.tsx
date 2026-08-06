@@ -1,8 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
 
 import type { VisualBodyKind, VisualBodySource } from '../asset-source.ts'
+import {
+  createInstanceFrameKey,
+  recordInstanceFrame,
+  resetInstanceFrame,
+  sameInstanceFrame,
+} from './instance-frame-gate.ts'
 import { syncVertexScale } from './instance-visibility.ts'
 
 /**
@@ -12,6 +18,17 @@ import { syncVertexScale } from './instance-visibility.ts'
  */
 export interface CoordinateBufferRef {
   readonly current: Float32Array | null
+  /**
+   * Monotonic version of the buffer's PRESENTED contents, if the producer publishes one (the sim
+   * bridge does). Stable across a frame means the picture is unchanged, which is what lets this
+   * layer skip recomposing. Omit it and every frame recomposes — the safe, pre-existing behavior.
+   */
+  readonly version?: number
+}
+
+/** A per-frame counter a layer bumps when it animates instances through its own arrays. */
+export interface InstanceAnimationRevisionRef {
+  readonly current: number
 }
 
 /** The buffer's xyz interleave — slot n's coordinates start at n * COORDINATE_STRIDE. */
@@ -72,6 +89,13 @@ export interface InstancedNodeLayerProps {
   /** Per-frame derived positions; when absent, instances read contiguous buffer slots. */
   readonly getInstancePosition?: InstancePositionMapper
   /**
+   * For a layer that animates its instances through arrays this layer cannot see (`channels.scales`
+   * mutated in place, say): bump it on every frame those arrays change and hold it still otherwise,
+   * and the clean-frame skip works for that layer too. A ref, not a prop value — a 60 fps counter
+   * must never travel through React state (§3.2).
+   */
+  readonly animationRevision?: InstanceAnimationRevisionRef
+  /**
    * Activates after pointer release so sibling DOM camera controls can finish their gesture
    * before selection/focus changes disable them.
    */
@@ -98,12 +122,20 @@ export function InstancedNodeLayer({
   scale = 1,
   channels,
   getInstancePosition,
+  animationRevision,
   onNodeClick,
   onNodeDoubleClick,
   onNodeHover,
 }: InstancedNodeLayerProps) {
   const [body, setBody] = useState<THREE.Mesh | null>(null)
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
+  // The vertex-scale attribute, resolved when it is attached instead of looked up by name every
+  // frame; `null` until the layout effect below attaches one.
+  const vertexScaleRef = useRef<THREE.InstancedBufferAttribute | null>(null)
+  // What the matrices currently on the GPU were composed from, and this frame's candidate. Both
+  // are stable scratch objects: the hot loop compares and records field-wise, never allocating.
+  const composedFrame = useMemo(createInstanceFrameKey, [])
+  const frame = useMemo(createInstanceFrameKey, [])
   const matrix = useMemo(() => new THREE.Matrix4(), [])
   const derivedPosition = useMemo(() => new Float32Array(3), [])
   // A zero-scale matrix hides an instance whose coordinate isn't in the live buffer yet, keeping its
@@ -113,6 +145,27 @@ export function InstancedNodeLayer({
   // InstancedMesh needs a fixed instance capacity at construction; size it to the active
   // count (min 1) and recreate via `key` when the count changes — graphs refetch rarely.
   const instanceCount = Math.max(1, count)
+
+  // A STABLE ref callback, not an inline arrow: React re-attaches an inline function ref on every
+  // render (old ref with null, new ref with the instance), which would drop both caches below —
+  // and the vertex-scale one has no effect to rebuild it unless `channels`/`count` also moved.
+  // Stable, it runs only when the mesh object itself is replaced, which is exactly when the caches
+  // go stale: a fresh InstancedMesh has all-zero matrices and may carry a different attribute
+  // object, so a kept skip would leave it permanently invisible and a kept attribute would upload
+  // into a buffer nothing draws from.
+  const attachMesh = useCallback(
+    (mesh: THREE.InstancedMesh | null) => {
+      meshRef.current = mesh
+      resetInstanceFrame(composedFrame)
+      vertexScaleRef.current = null
+      if (mesh) {
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+        mesh.count = 0
+        mesh.visible = false
+      }
+    },
+    [composedFrame],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -177,6 +230,12 @@ export function InstancedNodeLayer({
     // shader the node builder may already have compiled against the prior set, so it recompiles
     // against the now-complete geometry (belt-and-suspenders alongside the layout-effect ordering).
     if (added && !Array.isArray(mesh.material)) mesh.material.needsUpdate = true
+    // Resolve the attribute here, where it was just (re)attached, rather than by name per frame.
+    vertexScaleRef.current = channels?.vertexScaleAttribute
+      ? ((mesh.geometry.getAttribute(
+          channels.vertexScaleAttribute,
+        ) as THREE.InstancedBufferAttribute | null) ?? null)
+      : null
   }, [body, channels, instanceCount, count])
 
   useFrame((state) => {
@@ -187,14 +246,29 @@ export function InstancedNodeLayer({
       // Hide rather than draw 0 instances — a 0-instance InstancedMesh trips the WebGPU
       // backend; an invisible mesh is skipped by the render pass entirely.
       mesh.visible = false
+      // Whatever is in the matrices now was composed for a buffer that is gone; the frame that
+      // brings coordinates back must recompose even if every other input reads unchanged.
+      resetInstanceFrame(composedFrame)
       return
     }
+    // Projection layers (the gist rise) derive positions from the clock, so nothing outside the
+    // clock says whether they moved — they always recompose. Everyone else skips a clean frame.
+    frame.bufferVersion = getInstancePosition ? Number.NaN : (positions.version ?? Number.NaN)
+    frame.buffer = buffer
+    frame.channels = channels ?? null
+    frame.count = count
+    frame.firstNodeIndex = firstNodeIndex
+    frame.scale = scale
+    frame.animationRevision = animationRevision?.current ?? 0
+    if (sameInstanceFrame(composedFrame, frame)) {
+      mesh.count = count
+      mesh.visible = true
+      return
+    }
+    recordInstanceFrame(composedFrame, frame)
+
     const scales = channels?.scales ?? null
-    const vertexScaleAttribute = channels?.vertexScaleAttribute
-      ? (mesh.geometry.getAttribute(
-          channels.vertexScaleAttribute,
-        ) as THREE.InstancedBufferAttribute | null)
-      : null
+    const vertexScaleAttribute = vertexScaleRef.current
     const vertexScales = (vertexScaleAttribute?.array as Float32Array | undefined) ?? null
     let vertexScalesChanged = false
     // Uniform-scale path (e.g. cell-stars): compose the scale once, then only the translation
@@ -255,14 +329,7 @@ export function InstancedNodeLayer({
   return (
     <instancedMesh
       key={instanceCount}
-      ref={(mesh: THREE.InstancedMesh | null) => {
-        meshRef.current = mesh
-        if (mesh) {
-          mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-          mesh.count = 0
-          mesh.visible = false
-        }
-      }}
+      ref={attachMesh}
       args={[body.geometry, body.material, instanceCount]}
       frustumCulled={false}
       onClick={

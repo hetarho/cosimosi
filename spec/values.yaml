@@ -44,8 +44,41 @@ rendering:
   # Active universe ambiance skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS).
   # The retired flat presets are gone; `emotion` is the shared web/mobile sky-sphere skin.
   active_skin: emotion
-  # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget.
+  # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget. It is the CEILING the
+  # adaptive sampler below steps up to, never the ratio a struggling device is held at.
   max_pixel_ratio: 2
+  # Adaptive quality. The scene animates continuously (the ambient sky and twinkle are the product),
+  # so `frameloop="demand"` is not available as a lever and pixel ratio is: shading cost scales with
+  # its square, and a phone that cannot hold the frame budget at 2 usually can at 1. A sampler
+  # averages fps over a window and steps the ratio one notch per closed window.
+  #
+  # The window is long enough that a single stutter (a shader compile, a GC pause) cannot move the
+  # ratio, and short enough that a device entering a heavy scene recovers within about a second.
+  adaptive_dpr_window_seconds: 1.5
+  # Below down_fps a window steps down, above up_fps it steps up, and in between nothing moves.
+  # up_fps sits near the 60 Hz ceiling so the ratio climbs only when there is genuine headroom.
+  adaptive_dpr_down_fps: 45
+  adaptive_dpr_up_fps: 57
+  # One step's change in pixel ratio. Small enough that a step is not visible as a resolution jump,
+  # large enough that the walk from the cap to the floor takes a few windows, not a minute.
+  adaptive_dpr_step: 0.25
+  # Direction reversals the walk may make before it settles and stops adapting for the rest of the
+  # scene's life. The dead band alone does NOT prevent oscillation, because dropping the ratio is
+  # what raises the frame rate: a device sitting at 44 fps at ratio 2 reaches 58 at 1.75, which is
+  # above up_fps, so it climbs back to 2 and falls to 44 again — a visible resize every window,
+  # forever. Nothing measurable distinguishes that device from one with real headroom, because
+  # vsync caps both at 60. So the walk instead LEARNS: after this many reversals it settles, always
+  # on the lower of the two ratios (never leave a device at one it could not hold). 2 allows one
+  # recover-and-retry — a genuine transient gets a second chance — and costs at most two extra
+  # resizes before the picture is stable for good.
+  adaptive_dpr_max_flipflops: 2
+  # World-unit motion below which a candidate coordinate buffer is NOT published to the renderer, so
+  # the instanced layers can skip recomposing matrices for a converged universe. Sub-pixel at the
+  # closest framing the camera allows: at UNIVERSE_CAMERA_RIG's min distance (8) and fov 55, one
+  # screen pixel spans ~0.008 world units on a 1000px-tall viewport, so 0.002 is a quarter of the
+  # nearest pixel and the drift it withholds cannot be seen. Compared against the last PRESENTED
+  # buffer, never the last candidate, so drift that stays under it still publishes once it adds up.
+  coordinate_publication_epsilon: 0.002
   # The curve that lands accumulated light on the display (key in @cosimosi/3d-renderer
   # tone-mapping.ts). Every layer here ADDS light — the sky, the colour field, the bodies, the bloom
   # pass — so a dense region sums past 1 in every channel, and with no curve the framebuffer clips

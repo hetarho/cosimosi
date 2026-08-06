@@ -165,6 +165,44 @@ Everything else hot-applies to the running renderer: `toneMapping`/`toneMappingE
 Both hosts carry lifecycle tests beside them (§3.5). They mock the platform modules rather than a GPU, because what
 needs pinning is which effect re-runs on what — the regression that hides behind a working screenshot.
 
+### Frame loop & adaptive quality
+
+The loop runs **`always`** whenever the scene is visible, and that is a decision, not an omission: the ambient sky and
+the twinkle animation ARE the product, so `frameloop="demand"` would render a still image of it. The levers are
+therefore (a) do less per frame, and (b) render fewer pixels.
+
+- **Nothing renders that nobody is looking at.** Web inherits rAF's hidden-tab pause. React Native has none, so
+  `UniverseCanvas.native.tsx` subscribes to `AppState` and sets the root's frameloop to `never` while the app is
+  backgrounded or inactive — which also stops the inline sim, since `FrameTick` pumps it from the same loop. It is
+  imperative (straight to the running root, keyed on nothing) so backgrounding costs no React render and can never
+  reach the device effect. `AppState.currentState` reads `null` before RN resolves it on an Android cold start; that
+  counts as running, or a cold-started app would sit on a blank canvas.
+- **Pixel ratio adapts to sustained fps.** `AdaptiveDprLayer` (shared, mounted by `UniverseSceneLayers`) averages
+  frame time over `adaptive_dpr_window_seconds` and steps the ratio by `adaptive_dpr_step` between
+  `ADAPTIVE_DPR_FLOOR` (1) and `max_pixel_ratio`: down below `adaptive_dpr_down_fps`, up above `adaptive_dpr_up_fps`,
+  nothing in between. The decision is a pure function (`adaptive-dpr.ts`), unit-tested; only the closed-window STEP
+  may reach React, never a per-frame sample (§3.2). drei's `PerformanceMonitor`/`AdaptiveDpr` are the stock answer
+  and are not adoptable — drei's WebGPU line is unfinished.
+  - **The fps dead band alone does NOT stop oscillation**, and that is the non-obvious part. Dropping the ratio is
+    what raises the frame rate, so a device reading 44 fps at ratio 2 reads 58 at 1.75, climbs back to 2, falls to 44,
+    and resizes every window forever — every measurement honest, every threshold respected. Nothing measurable
+    separates it from a device with real headroom, because vsync caps both at 60. So the walk counts direction
+    REVERSALS and settles after `adaptive_dpr_max_flipflops`, always on the lower of the two ratios (refuse the
+    reversing step up, take the reversing step down) — drei's flip-flop idea, kept. A step swallowed by a bound is not
+    a direction taken, so it cannot spend a flip-flop. Settling lasts the sampler's life; a scene remount starts over.
+  - **Both hosts take the step through their `dpr` prop**, not through R3F's `setDpr`. R3F re-runs `configure` on every
+    `<Canvas>` render and resets the store whenever `viewport.dpr` disagrees with what that prop resolves to, and the
+    native host's live-config pass does the same — so a `setDpr` from inside the scene is undone by the next host
+    re-render. Each shell owns the ceiling in state and injects a step callback (`onPixelRatio`, required, not
+    optional) into the scene; the step travels up and re-enters as a prop, reaching the renderer through the in-place
+    resize path and never the device effect.
+  - The step is computed from the ratio **actually in force** (`viewport.dpr`), not from a remembered one, so a
+    host-side clamp is never argued with — a sampler holding its own idea would drift above the clamp and spend
+    windows walking back down to a step the device could see.
+- **A dev-only measurement HUD** (`r3f-webgpu-perf`, the one maintained R3F panel that reads a WebGPU renderer) mounts
+  in the web shell behind the diagnostics flag. It is a `devDependency`, so the import sits behind `import.meta.env.DEV`
+  — a build-time constant, which eliminates it from production bundles rather than merely never taking the branch.
+
 ## Consumers
 
 - **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (emotion sky + stars +
@@ -246,6 +284,19 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   the universe scene composes the plan-24 star/cell-star/filament bodies over them (below). `instance_bucket_size`
   bucketing for graphs beyond one InstancedMesh is still future — each body kind renders as one InstancedMesh / one
   batched ribbon.
+- **A clean frame recomposes nothing.** `InstancedNodeLayer` keys each frame on everything that can move an instance —
+  the published coordinate version, the channels' identity, the slot window (`count` + `firstNodeIndex`), the flat
+  scale, and an optional `animationRevision` ref a layer bumps when it animates through its own arrays — and when none
+  moved it leaves last frame's matrices on the GPU instead of rewriting `count` of them and flagging an upload. The
+  comparison is a pure function (`instance-frame-gate.ts`). Two rules keep it honest: a layer supplying
+  `getInstancePosition` **opts out entirely** (a projection mapper derives from the clock, so nothing outside the clock
+  says whether it moved — the gist rise), and a `CoordinateBufferRef` with **no** version writes NaN, which matches
+  nothing and so always recomposes. Fail-open is deliberate: a wrongly skipped frame is a frozen scene with nothing on
+  screen to say why. The cache is dropped whenever the matrices it vouches for are gone — a fresh `InstancedMesh`
+  (which is why the mesh ref callback is stable, not an inline arrow: React re-attaches an inline ref every render) or
+  a frame that hid the mesh for want of coordinates. `AwakenNeuron` is the animation-revision consumer: its flare pool
+  early-outs while idle rather than rewriting its full `awaken_capacity` in zeroes every frame, and bumps the revision
+  only on a frame that moved a scale.
 - **The sim runs off the render thread**: `packages/force-sim` in a module Web Worker behind a `UniverseSimBridge`
   (`@cosimosi/universe`), two buffers ping-ponging as transferables; `FrameTick` pumps it once per frame. React Native
   has no standard Worker, so its per-app spawner returns null and the bridge runs the sim inline on the JS thread — the
@@ -257,6 +308,16 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   **empty** universe (never a zero-stacked one); the shared graph builder coerces out-of-range **and non-finite**
   stored magnitudes into the sim's finite domain so a skewed or corrupt row cannot kill the scene, and structurally
   emits neuron↔neuron edges only [I4][I6] from connectivity alone [I3].
+- **The coordinate seam publishes a version, and the version means the picture.** `bridge.coordinates` carries a
+  monotonic `version` alongside `current`. It moves on start/remap and on a tick whose coordinates moved past
+  `coordinate_publication_epsilon` — and NOT merely because the worker's `onmessage` fired or the inline `pump`
+  ticked. So an unchanged version means an unchanged picture, which is the contract `InstancedNodeLayer`'s clean-frame
+  skip rests on (below). A candidate is compared against the last **presented** buffer, never the last candidate, so
+  drift that stays under the epsilon every tick still publishes once it accumulates past it. The inline arm ping-pongs
+  two buffers it OWNS through `tick(dt, output)` rather than presenting `sim.coordinates`: that array is rewritten in
+  place by every tick, so presenting it would make the version's claim false. The epsilon is sub-pixel at the closest
+  framing the camera rig allows, so what it withholds cannot be seen. It does not silence a settled universe outright
+  — `force_sim.min_alpha` deliberately keeps a little residual motion — it roughly halves how often one publishes.
 - **Navigation** is the product `NavigationRig` (zoom · rotate · pan via `TrackballControls` where a DOM canvas exists
   — inert on native for the MVP — plus machine-driven focus/fly glides). Trackball, so free rotation is unbounded in
   every direction (no polar clamp, no pole stall); glides disable the controls and drive the camera directly. It replaces the demo `CameraControls` for the
@@ -449,8 +510,11 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 
 ## Config
 
-`spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
-(instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
+`spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (the DPR CEILING the adaptive walk
+climbs to, not a fixed ratio), `adaptive_dpr_window_seconds`/`adaptive_dpr_down_fps`/`adaptive_dpr_up_fps`/
+`adaptive_dpr_step`/`adaptive_dpr_max_flipflops` (the adaptive-quality walk, below),
+`coordinate_publication_epsilon` (the published-coordinate threshold, below),
+`instance_bucket_size` (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
 `latent_star_count`, `latent_star_count_mobile`, `latent_star_segments`, `latent_star_segments_mobile`,

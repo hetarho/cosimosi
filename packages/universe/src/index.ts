@@ -7,6 +7,7 @@
 export { buildUniverseGraph, buildSynapseEndpointIndexPairs } from './build-graph.ts'
 export {
   createUniverseSimBridge,
+  coordinatesMovedBeyond,
   type UniverseSimBridge,
   type MutableCoordinateBufferRef,
   type SimWorkerLike,
