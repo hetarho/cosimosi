@@ -48,12 +48,19 @@ api의 dev verifier는 **오직 그 id의** 베어러만 신뢰한다(임의 유
 `COSIMOSI_DEV_USER_ID`를 따른다 — 모바일 dev 시작 때 `dev-user.gen.ts`로 자동 생성되므로(기본 `dev-user`)
 세 클라이언트가 손수 맞출 필요 없이 한 id로 묶인다. 셋 다 비우면 실제 Supabase 인증.
 CI 빌드는 `VITE_DEV_USER_ID`가 있으면 **빌드 타임에** 에러로 막는다(dev-auth 번들은 배포 불가) — 로컬은 `pnpm dev`용으로 그대로 두고 런타임 assert가 백스톱이다.
-그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
+그 유저의 우주를 채우려면:
 
 ```bash
-psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql   # dev-user 에 샘플 별/뉴런/시냅스 시드
+psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql   # dev-user 에 샘플 우주 시드
 # 또는 Docker: docker exec -i cosimosi-postgres psql -U cosimosi -d cosimosi < scripts/seed-dev-universe.sql
 ```
+
+시드는 **우주 시계를 오늘−30일에** 심고 모든 날짜를 `CURRENT_DATE` 기준 상대값으로 넣으므로 시간이
+지나도 낡지 않는다. 망각 단계 1–4 · 요지 단계 1–4 · 회고 이력 · 놓아주기 봉인 · 복구 대기 중인 삭제
+일기 · 별가루 원장이 모두 들어 있어, 별을 클릭하면 각 상태를 바로 볼 수 있다. **오늘 날짜로 일기 한
+편을 쓰면** 시계가 +30 우주일 전진하면서 요지 별 10개가 새로 뜨고, 일부 별의 단어가 한 단계 더
+`xxxx`로 지워지고, 전체가 조금 어두워진다(파일 헤더에 무엇이 어떻게 바뀌는지 표로 적혀 있다).
+teardown은 `dev-` 접두사 행만 지우므로, **dev 앱에서 손으로 쓴 일기는 재시드해도 보존된다.**
 
 **빌드:** `pnpm build:web` → `apps/web/dist` · `pnpm build:blog` → `apps/blog/dist` ·
 `pnpm build:api` → `go build ./...` in `apps/api` (host Go when present, otherwise Docker `golang:1.26`).
