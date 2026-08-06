@@ -887,9 +887,10 @@ type EpisodicMemoryDto struct {
 	// whole text when no stage string is yet persisted. It is the memory's text, not a
 	// pre-rendered decay text — the erosion is derived client-side [I5][R8a].
 	CurrentText string `protobuf:"bytes,12,opt,name=current_text,json=currentText,proto3" json:"current_text,omitempty"`
-	// How far the memory has risen on the gist ladder [C6][C7] — the client renders one
-	// neocortical gist body per risen stage at a client-derived coordinate (copy x,y, raise z
-	// [I5][V9]); 0..4 and monotone (a stage never un-rises).
+	// How far the memory has risen on the gist ladder [C6][C7] — the client renders ONE
+	// neocortical gist body per risen memory, at a client-derived coordinate whose z reads this
+	// stage (copy x,y, raise z [I5][V9]). The trace transforms; it does not accumulate a body per
+	// rung. 0..4 and monotone (a stage never un-rises), so the one body rises with it.
 	SemanticStage int32 `protobuf:"varint,13,opt,name=semantic_stage,json=semanticStage,proto3" json:"semantic_stage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1413,10 +1414,13 @@ func (x *RecallDiaryStarsRequest) GetSyncConsent() bool {
 // client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
 // operation_id carries the paid-action idempotency contract (A2/A3); a view advances no clock,
 // so it needs no sync_consent.
+// The client names the MEMORY, never a depth: the server derives which gist rung the memory has
+// risen to and what that read costs, so no request can address or price a stage the memory has not
+// reached. Tag 2 held the client-supplied stage and stays reserved so a released client's value can
+// never be silently read as a different field.
 type ViewSemanticRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	EpisodicMemoryId string                 `protobuf:"bytes,1,opt,name=episodic_memory_id,json=episodicMemoryId,proto3" json:"episodic_memory_id,omitempty"`
-	Stage            int32                  `protobuf:"varint,2,opt,name=stage,proto3" json:"stage,omitempty"`
 	OperationId      string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1459,13 +1463,6 @@ func (x *ViewSemanticRequest) GetEpisodicMemoryId() string {
 	return ""
 }
 
-func (x *ViewSemanticRequest) GetStage() int32 {
-	if x != nil {
-		return x.Stage
-	}
-	return 0
-}
-
 func (x *ViewSemanticRequest) GetOperationId() string {
 	if x != nil {
 		return x.OperationId
@@ -1479,9 +1476,7 @@ type ViewSemanticResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Pregenerated semantic_stages text for the viewed stage (read-only) [R8][R8a].
 	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	// The stage that was viewed.
-	Stage int32 `protobuf:"varint,2,opt,name=stage,proto3" json:"stage,omitempty"`
-	// memory.semantic_stage — how far it has risen [C6][V9].
+	// memory.semantic_stage — how far it has risen, and therefore what was read [C6][V9].
 	ReachedStage  int32 `protobuf:"varint,3,opt,name=reached_stage,json=reachedStage,proto3" json:"reached_stage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1522,13 +1517,6 @@ func (x *ViewSemanticResponse) GetText() string {
 		return x.Text
 	}
 	return ""
-}
-
-func (x *ViewSemanticResponse) GetStage() int32 {
-	if x != nil {
-		return x.Stage
-	}
-	return 0
 }
 
 func (x *ViewSemanticResponse) GetReachedStage() int32 {
@@ -3096,15 +3084,13 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x17RecallDiaryStarsRequest\x12\x19\n" +
 	"\bdiary_id\x18\x01 \x01(\tR\adiaryId\x12!\n" +
 	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12!\n" +
-	"\fsync_consent\x18\x03 \x01(\bR\vsyncConsent\"|\n" +
+	"\fsync_consent\x18\x03 \x01(\bR\vsyncConsent\"l\n" +
 	"\x13ViewSemanticRequest\x12,\n" +
-	"\x12episodic_memory_id\x18\x01 \x01(\tR\x10episodicMemoryId\x12\x14\n" +
-	"\x05stage\x18\x02 \x01(\x05R\x05stage\x12!\n" +
-	"\foperation_id\x18\x03 \x01(\tR\voperationId\"e\n" +
+	"\x12episodic_memory_id\x18\x01 \x01(\tR\x10episodicMemoryId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationIdJ\x04\b\x02\x10\x03\"U\n" +
 	"\x14ViewSemanticResponse\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
-	"\x05stage\x18\x02 \x01(\x05R\x05stage\x12#\n" +
-	"\rreached_stage\x18\x03 \x01(\x05R\freachedStage\"\xc0\x01\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12#\n" +
+	"\rreached_stage\x18\x03 \x01(\x05R\freachedStageJ\x04\b\x02\x10\x03\"\xc0\x01\n" +
 	"\x18RecallDiaryStarsResponse\x12\x19\n" +
 	"\bdiary_id\x18\x01 \x01(\tR\adiaryId\x12.\n" +
 	"\x13episodic_memory_ids\x18\x02 \x03(\tR\x11episodicMemoryIds\x124\n" +

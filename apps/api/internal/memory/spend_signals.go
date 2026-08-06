@@ -83,17 +83,7 @@ func (s *Service) ViewableGistStage(ctx context.Context, scope platform.UserScop
 	if err != nil {
 		return 0, err
 	}
-	if gist.SemanticStages == nil {
-		return 0, ErrViewSemanticStageNotRisen
-	}
-	reached := int(gist.SemanticStage)
-	if reached > len(gist.SemanticStages) {
-		reached = len(gist.SemanticStages)
-	}
-	if reached < 1 {
-		return 0, ErrViewSemanticStageNotRisen
-	}
-	return reached, nil
+	return viewableGistStage(gist)
 }
 
 // signalUniverseTime is the universe time a spend-signal derives against: the clock

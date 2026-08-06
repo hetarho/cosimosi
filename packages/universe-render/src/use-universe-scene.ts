@@ -76,7 +76,7 @@ export interface UniverseSceneState {
   readonly flyToNeuron: (index: number) => void
   readonly focusMemory: (index: number) => void
   readonly flyToMemory: (index: number) => void
-  readonly selectGist: (memoryId: string, stage: number) => void
+  readonly selectGist: (memoryId: string) => void
   readonly resolveAnchors: (excludeIds: ReadonlySet<string>) => readonly AwakenAnchor[]
 }
 
@@ -191,8 +191,7 @@ export function useUniverseScene({
   // A gist pick is a SELECT only (read-only routing to the paid view, [R8]) — gist bodies are
   // not sim nodes, so there is no coordinate for the camera to glide to.
   const selectGist = useCallback(
-    (memoryId: string, stage: number) =>
-      actorRef.send({ type: 'SELECT', nodeId: gistNodeId(memoryId, stage) }),
+    (memoryId: string) => actorRef.send({ type: 'SELECT', nodeId: gistNodeId(memoryId) }),
     [actorRef],
   )
 

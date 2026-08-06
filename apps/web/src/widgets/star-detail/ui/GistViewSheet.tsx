@@ -29,11 +29,9 @@ import { useErrorToast } from '../../../shared/model/index.ts'
 // shortfall opens the charge sheet rather than dead-ending (A4).
 export function GistViewSheet({
   episodicMemoryId,
-  stage,
   onClose,
 }: {
   episodicMemoryId: string
-  stage: number
   onClose: () => void
 }) {
   const showError = useErrorToast()
@@ -51,7 +49,9 @@ export function GistViewSheet({
   if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
   const paidSession = sessionRef.current
   const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
-  const targetKey = `${episodicMemoryId}:${stage}`
+  // The memory alone. The stage is not part of the target any more — the server picks which rung a
+  // read reaches, so keying the attempt on one would invent a distinction the wire no longer has.
+  const targetKey = episodicMemoryId
 
   // One operation id per view intent; reset (with the view state) when the target gist changes, so
   // a retarget never replays the previous gist's receipt under a stale id.
@@ -73,7 +73,6 @@ export function GistViewSheet({
     try {
       const response = await requestViewSemantic(transport, {
         episodicMemoryId,
-        stage,
         operationId: activeAttempt.operationId,
       })
       if (!paidSession.isActive(activeAttempt)) return
@@ -108,7 +107,6 @@ export function GistViewSheet({
     paidSession,
     transport,
     episodicMemoryId,
-    stage,
     invalidateBalance,
     invalidateAchievements,
     requestEarnGuide,
@@ -158,7 +156,7 @@ export function GistViewSheet({
           </div>
         ) : (
           <SpendCostDisplay
-            pending={gistViewSpend(episodicMemoryId, stage)}
+            pending={gistViewSpend(episodicMemoryId)}
             onProceed={proceed}
             onCancel={close}
             onEarn={requestEarnGuide}

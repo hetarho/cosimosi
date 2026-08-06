@@ -32,26 +32,52 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
 const { rendering, forceSim } = VALUES
 
 describe('gistStarInstances', () => {
-  it('emits one instance per risen stage — risen stages persist [C6][C7]', () => {
-    const instances = gistStarInstances([memory({ semanticStage: 3 })])
-    expect(instances.map((instance) => instance.stage)).toEqual([1, 2, 3])
-    expect(new Set(instances.map((instance) => instance.nodeId)).size).toBe(3)
+  // The trace TRANSFORMS: one body per risen memory, at its current rung. The as-is emitted a
+  // stack of 1, 2, 3, 4 bodies at these stages, which is the regression this pins.
+  it('emits exactly one instance per risen memory, whatever the stage [C6][C7]', () => {
+    for (let stage = 1; stage <= SEMANTIC_MAX_STAGE; stage++) {
+      const instances = gistStarInstances([memory({ semanticStage: stage })])
+      expect(instances).toHaveLength(1)
+      expect(instances[0]!.stage).toBe(stage)
+      expect(instances[0]!.nodeId).toBe(gistNodeId('memory-1'))
+    }
+  })
+
+  it('counts one body per risen memory across a mixed universe', () => {
+    const instances = gistStarInstances([
+      memory({ id: 'a', semanticStage: 0 }),
+      memory({ id: 'b', semanticStage: 1 }),
+      memory({ id: 'c', semanticStage: 4 }),
+      memory({ id: 'd', semanticStage: 2 }),
+    ])
+    expect(instances.map((instance) => instance.memoryId)).toEqual(['b', 'c', 'd'])
   })
 
   it('emits nothing for an unrisen memory and clamps past the ladder ceiling', () => {
     expect(gistStarInstances([memory({ semanticStage: 0 })])).toEqual([])
     const clamped = gistStarInstances([memory({ semanticStage: 99 })])
-    expect(clamped).toHaveLength(SEMANTIC_MAX_STAGE)
+    expect(clamped).toHaveLength(1)
+    expect(clamped[0]!.stage).toBe(SEMANTIC_MAX_STAGE)
     // A corrupt stage floors to no body rather than NaN instances.
     expect(gistStarInstances([memory({ semanticStage: Number.NaN })])).toEqual([])
   })
 
   it('takes z from the golden-parity gistCoordinate inside the neocortex band [I5][V9]', () => {
-    const instances = gistStarInstances([memory({ semanticStage: SEMANTIC_MAX_STAGE })])
-    for (const instance of instances) {
-      expect(instance.z).toBe(gistCoordinate(0, 0, instance.stage).z)
-      expect(instance.z).toBeGreaterThanOrEqual(forceSim.neocortexZMin)
-      expect(instance.z).toBeLessThanOrEqual(forceSim.neocortexZMax)
+    for (let stage = 1; stage <= SEMANTIC_MAX_STAGE; stage++) {
+      const [instance] = gistStarInstances([memory({ semanticStage: stage })])
+      expect(instance!.z).toBe(gistCoordinate(0, 0, stage).z)
+      expect(instance!.z).toBeGreaterThanOrEqual(forceSim.neocortexZMin)
+      expect(instance!.z).toBeLessThanOrEqual(forceSim.neocortexZMax)
+    }
+  })
+
+  it('rises: a deeper stage puts the one body higher [A2]', () => {
+    const zByStage = Array.from(
+      { length: SEMANTIC_MAX_STAGE },
+      (_, i) => gistStarInstances([memory({ semanticStage: i + 1 })])[0]!.z,
+    )
+    for (let i = 1; i < zByStage.length; i++) {
+      expect(zByStage[i]!).toBeGreaterThan(zByStage[i - 1]!)
     }
   })
 
@@ -68,27 +94,34 @@ describe('gistStarInstances', () => {
   })
 
   it('reads progressively more diffuse with stage, from the base softness [V5]', () => {
-    const instances = gistStarInstances([memory({ semanticStage: SEMANTIC_MAX_STAGE })])
-    expect(instances[0]!.softness).toBeCloseTo(rendering.gistStarDiffuse, 12)
-    expect(instances[instances.length - 1]!.softness).toBeCloseTo(1, 12)
-    for (let i = 1; i < instances.length; i++) {
-      expect(instances[i]!.softness).toBeGreaterThan(instances[i - 1]!.softness)
+    // Softness now reads the memory's CURRENT stage, so the ladder is walked across memories
+    // rather than down one memory's stack.
+    const softnessByStage = Array.from(
+      { length: SEMANTIC_MAX_STAGE },
+      (_, i) => gistStarInstances([memory({ semanticStage: i + 1 })])[0]!.softness,
+    )
+    expect(softnessByStage[0]!).toBeCloseTo(rendering.gistStarDiffuse, 12)
+    expect(softnessByStage[softnessByStage.length - 1]!).toBeCloseTo(1, 12)
+    for (let i = 1; i < softnessByStage.length; i++) {
+      expect(softnessByStage[i]!).toBeGreaterThan(softnessByStage[i - 1]!)
     }
   })
 })
 
 describe('gistNodeId / parseGistNodeId', () => {
   it('round-trips, memory ids with colons included', () => {
-    const id = gistNodeId('mem:with:colons', 2)
-    expect(parseGistNodeId(id)).toEqual({ episodicMemoryId: 'mem:with:colons', stage: 2 })
+    const id = gistNodeId('mem:with:colons')
+    expect(parseGistNodeId(id)).toEqual({ episodicMemoryId: 'mem:with:colons' })
+  })
+
+  it('is stable across a rise — the id names the memory, never the depth', () => {
+    const first = gistStarInstances([memory({ semanticStage: 1 })])[0]!
+    const risen = gistStarInstances([memory({ semanticStage: 4 })])[0]!
+    expect(risen.nodeId).toBe(first.nodeId)
   })
 
   it('recognizes nothing else — episodic/neuron ids and malformed gist ids resolve null', () => {
     expect(parseGistNodeId('memory-1')).toBeNull()
     expect(parseGistNodeId('gist:')).toBeNull()
-    expect(parseGistNodeId('gist:x:memory-1')).toBeNull()
-    expect(parseGistNodeId('gist:0:memory-1')).toBeNull()
-    expect(parseGistNodeId(`gist:${SEMANTIC_MAX_STAGE + 1}:memory-1`)).toBeNull()
-    expect(parseGistNodeId('gist:2:')).toBeNull()
   })
 })

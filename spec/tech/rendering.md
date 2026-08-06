@@ -83,7 +83,8 @@ The active skin is read with `useSkin()` at the app composition boundary; the ho
 ### Camera (demo trackball)
 
 `CameraControls` is the test-harness inspection rig: three's `TrackballControls` (drag = rotate, wheel/pinch = zoom,
-inertial damping; pan off; distance clamped). Trackball rather than `OrbitControls` so rotation never blocks: it holds
+inertial damping; pan off; min/max distance **required as props**, fed `UNIVERSE_CAMERA_ENVELOPE` at every mount so the
+inspection surfaces and the product share one zoom envelope). Trackball rather than `OrbitControls` so rotation never blocks: it holds
 no fixed up-vector, so the view tumbles past the poles and keeps spinning in any direction. Pointer motion is mapped
 through the element's on-screen size, so canvas resizes are announced via `handleResize()` (the shared
 `observeElementResize` seam in `layers/dom-controls.ts`). It updates before `PostFX`'s priority-1 render. Product
@@ -99,8 +100,9 @@ Each `<` is load-bearing. A camera that outruns the star shell sees the field as
 frame instead of a sky around it; a camera that leaves the sky sphere loses the background entirely (it is painted on the
 sphere's inner face); and a sky beyond the far plane is clipped into a growing hole straight ahead as you pull back.
 The far plane is therefore set explicitly on the canvas — R3F's own default (1000) is too near for an enclosing sky —
-and the zoom-out limits live with the rigs (`UNIVERSE_CAMERA_RIG.maxDistance` for the product, the demo
-`CameraControls`'s own clamp for `/test`). The four numbers live in four packages, so the ordering is **tested**, not
+and the zoom-out limit lives with the rig — one `UNIVERSE_CAMERA_ENVELOPE` (`packages/universe/src/camera-rig.ts`)
+that both the product `NavigationRig` and the demo/design `CameraControls` wear, the latter through required props so
+no second copy can drift. The four numbers live in four packages, so the ordering is **tested**, not
 just documented: `SKY_SPHERE_RADIUS` (700) and `UNIVERSE_CANVAS_FAR` (1400) are named in
 `3d-renderer/src/backdrop-scale.ts` — one far plane for the web host and its `.native` sibling — and
 `universe-render/src/backdrop-scale.test.ts` walks `UNIVERSE_CAMERA_RIG.maxDistance` (420) → the profile's shell radius
@@ -476,12 +478,19 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
   exported by the renderer as the coordinate-buffer contract's owner. A memoized `GistRenderSnapshot` owns the
   committed instance order, count, appearance arrays, and precomputed hippocampal slots; frame and pick callbacks close
   over that object. No render-phase ref publication can expose a work-in-progress ordering to the committed mesh.
-- **One instance per risen stage.** `gist-star-channels.ts` (`@cosimosi/universe`, pure, shared web+mobile) emits N
-  instances for `semanticStage = N` (risen stages persist [C7]): color = `moodColor(mood)` through the single palette
-  seam and nothing else ([M3][I3]); size = `EffectiveStrength` lerped into `rendering.gist_star_size_*` (a quieter
-  echo of the episodic range [V3]); softness = `rendering.gist_star_diffuse` at stage 1 deepening to fully diffuse at
-  the ladder top ([V5]). The `GetUniverse` DTO carries `semantic_stage` (the plan-40 read premise, realized here —
-  the server facts always had it; the wire field was added, no new RPC).
+- **One instance per risen MEMORY — the trace transforms, it does not stack.** `gist-star-channels.ts`
+  (`@cosimosi/universe`, pure, shared web+mobile) emits exactly one instance for any `semanticStage ≥ 1`, whose z and
+  softness read that current stage; a rise moves that one body upward rather than adding a rung beside it (CLS: one
+  gradually-consolidated neocortical representation). Color = `moodColor(mood)` through the single palette seam and
+  nothing else ([M3][I3]); size = `EffectiveStrength` lerped into `rendering.gist_star_size_*` (a quieter echo of the
+  episodic range [V3]); softness = `rendering.gist_star_diffuse` at stage 1 deepening to fully diffuse at the ladder
+  top ([V5]). The body's selection id is `gist:<memoryId>` — a function of the memory alone, stable across every rise,
+  so no pick can address a rung the memory has already left. Because the id no longer changes when a stage does, the
+  rise choreography diffs the **stage** per body (`GistRiseState.stageSeen`), not the presence of a new id. The
+  `GetUniverse` DTO carries `semantic_stage` (the plan-40 read premise, realized here — the server facts always had
+  it; the wire field was added, no new RPC). The four pregenerated `semantic_stages` texts and every `memory_provenance`
+  row are untouched: 변천사 still lists one entry per crossed rung, free — what changed is how many bodies the sky
+  shows, not what is remembered [I1].
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.

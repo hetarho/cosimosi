@@ -45,22 +45,23 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 	fixture.launches.clock = &previous
 	fixture.seedGist("m1", 3, fourStages())
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 2)
+	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
 
-	// A1: exactly the pregenerated stage text + meta (1-based ladder → index stage-1).
-	if result.Text != "gist two" || result.Stage != 2 || result.ReachedStage != 3 {
-		t.Fatalf("result = %+v, want stage 2's pregenerated text + meta", result)
+	// A4: the memory has risen to 3 and nobody asked for a stage, so 3 is what is served —
+	// the pregenerated text at the 1-based ladder's index stage-1.
+	if result.Text != "gist three" || result.ReachedStage != 3 {
+		t.Fatalf("result = %+v, want the current rung's pregenerated text + meta", result)
 	}
 	// A4: one spend, kind view_gist, carrying the gist-depth signal — never a price.
 	if len(fixture.spendGate.intents) != 1 {
 		t.Fatalf("spend intents = %d, want 1", len(fixture.spendGate.intents))
 	}
 	intent := fixture.spendGate.intents[0]
-	if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || intent.Stage != 2 {
-		t.Fatalf("spend intent = %+v, want {view_gist m1 2}", intent)
+	if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || intent.Stage != 3 {
+		t.Fatalf("spend intent = %+v, want {view_gist m1 3} — the DERIVED depth, not a request's", intent)
 	}
 	// The paid view now runs in its own transaction (A3): the gate receives that transaction
 	// handle so the debit + the receipt commit together.
@@ -89,21 +90,18 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 func TestViewSemanticRefusesUnrisenOrUnpregeneratedStages(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	fixture.seedGist("no-stages", 0, nil)
-	fixture.seedGist("risen-2", 2, fourStages())
-	fixture.seedGist("risen-4", 4, fourStages())
+	fixture.seedGist("no-stages", 3, nil)
+	fixture.seedGist("unrisen", 0, fourStages())
 
 	cases := []struct {
 		name     string
 		memoryID string
-		stage    int
 	}{
-		{"semantic_stages not pregenerated", "no-stages", 1},
-		{"stage above the risen semantic_stage", "risen-2", 3},
-		{"stage above the derived ladder length", "risen-4", 5},
+		{"semantic_stages not pregenerated", "no-stages"},
+		{"nothing has risen (stage 0 is the concrete memory)", "unrisen"},
 	}
 	for _, tc := range cases {
-		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", tc.memoryID, tc.stage); !errors.Is(err, ErrViewSemanticStageNotRisen) {
+		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", tc.memoryID); !errors.Is(err, ErrViewSemanticStageNotRisen) {
 			t.Fatalf("%s: err = %v, want ErrViewSemanticStageNotRisen", tc.name, err)
 		}
 	}
@@ -113,25 +111,61 @@ func TestViewSemanticRefusesUnrisenOrUnpregeneratedStages(t *testing.T) {
 	}
 }
 
+func TestViewSemanticServesTheMemorysCurrentRung(t *testing.T) {
+	t.Parallel()
+
+	// A2/A4: every risen depth reads its OWN rung without being asked, and the spend is priced
+	// at that same derived number — the one place a client could previously name a cheaper one.
+	for stage := int16(1); stage <= 4; stage++ {
+		fixture := newFixture(t)
+		fixture.seedGist("m1", stage, fourStages())
+
+		result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+		if err != nil {
+			t.Fatalf("stage %d: ViewSemantic failed: %v", stage, err)
+		}
+		if result.ReachedStage != stage || result.Text != (*fourStages())[stage-1] {
+			t.Fatalf("stage %d: result = %+v, want that stage's text", stage, result)
+		}
+		if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0].Stage != stage {
+			t.Fatalf("stage %d: intents = %+v, want one priced at the derived stage", stage, fixture.spendGate.intents)
+		}
+	}
+}
+
+func TestViewSemanticClampsAStageAboveTheLadder(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// The ladder is a fixed four rungs, so a semantic_stage above it can only be corruption. It
+	// serves the deepest real rung rather than indexing past the end.
+	fixture.seedGist("m1", 9, fourStages())
+
+	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+	if err != nil {
+		t.Fatalf("ViewSemantic failed: %v", err)
+	}
+	if result.ReachedStage != 4 || result.Text != "gist four" {
+		t.Fatalf("result = %+v, want the deepest rung", result)
+	}
+	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0].Stage != 4 {
+		t.Fatalf("intents = %+v, want the clamped depth priced", fixture.spendGate.intents)
+	}
+}
+
 func TestViewSemanticValidatesInput(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	fixture.seedGist("m1", 2, fourStages())
 
-	// Stage 0 is the concrete episodic memory, not a gist; negatives and an empty id
-	// are plain bad input. None may reach the gist read or the gate.
-	for _, stage := range []int{0, -1} {
-		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", stage); !errors.Is(err, ErrViewSemanticInputRequired) {
-			t.Fatalf("stage %d err = %v, want ErrViewSemanticInputRequired", stage, err)
-		}
-	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "", 1); !errors.Is(err, ErrViewSemanticInputRequired) {
+	// The only bad input left is an empty id — there is no client stage to be out of range.
+	// None of these may reach the gist read or the gate.
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", ""); !errors.Is(err, ErrViewSemanticInputRequired) {
 		t.Fatalf("empty id err = %v, want ErrViewSemanticInputRequired", err)
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "", "m1", 1); !errors.Is(err, ErrOperationIDRequired) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "", "m1"); !errors.Is(err, ErrOperationIDRequired) {
 		t.Fatalf("empty operation id err = %v, want ErrOperationIDRequired", err)
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), platform.UserScope{}, "op-1", "m1", 1); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), platform.UserScope{}, "op-1", "m1"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("missing scope err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.gists.calls) != 0 || len(fixture.spendGate.intents) != 0 {
@@ -145,7 +179,7 @@ func TestViewSemanticMemoryNotFoundIsCanonical(t *testing.T) {
 
 	// A9 at the unit level: the reader returns the canonical not-found for a row that
 	// is not the caller's (the per-user WHERE is the pg integration test's proof).
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "someone-elses", 1); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "someone-elses"); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 	if len(fixture.spendGate.intents) != 0 {
@@ -159,12 +193,12 @@ func TestViewSemanticSpendIsAPreconditionOfTheRead(t *testing.T) {
 	fixture.seedGist("m1", 4, fourStages())
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 4)
+	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle surfaced verbatim", err)
 	}
 	// A4: a gate refusal returns no text.
-	if result.Text != "" || result.Stage != 0 {
+	if result.Text != "" || result.ReachedStage != 0 {
 		t.Fatalf("result = %+v, want zero value on a denied spend", result)
 	}
 	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0].Stage != 4 {

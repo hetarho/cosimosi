@@ -1393,19 +1393,19 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 
 	// The full use-case over the real store returns the stored stage text…
 	service := newRecallService(t, store, store, store, store)
-	result, err := service.ViewSemantic(ctx, scope, "op-view-1", risen.ID, 2)
+	result, err := service.ViewSemantic(ctx, scope, "op-view-1", risen.ID)
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
-	if result.Text != "stage two" || result.Stage != 2 || result.ReachedStage != 2 {
-		t.Fatalf("result = %s, want stage two's text + meta", diagnosticValue(result))
+	if result.Text != "stage two" || result.ReachedStage != 2 {
+		t.Fatalf("result = %s, want the current rung's text + meta", diagnosticValue(result))
 	}
-	// …refuses the unrisen stage server-authoritatively (A3)…
-	if _, err := service.ViewSemantic(ctx, scope, "op-view-2", risen.ID, 3); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
-		t.Fatalf("stage 3 err = %v, want ErrViewSemanticStageNotRisen", err)
+	// …refuses a memory that has risen to nothing, server-authoritatively (A5)…
+	if _, err := service.ViewSemantic(ctx, scope, "op-view-2", unrisen.ID); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
+		t.Fatalf("unrisen err = %v, want ErrViewSemanticStageNotRisen", err)
 	}
 	// …and is invisible to another user (A9).
-	if _, err := service.ViewSemantic(ctx, intruderScope, "op-view-3", risen.ID, 1); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
+	if _, err := service.ViewSemantic(ctx, intruderScope, "op-view-3", risen.ID); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("intruder err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 

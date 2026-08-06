@@ -24,7 +24,7 @@ function instance(
   return {
     memoryId,
     stage,
-    nodeId: gistNodeId(memoryId, stage),
+    nodeId: gistNodeId(memoryId),
     z: 15 + stage,
     color: [stage / 10, stage / 5, stage / 4],
     size: 0.5 + stage / 10,
@@ -116,29 +116,49 @@ describe('gist render snapshot', () => {
     expect(committed.channels.scales?.[0]).toBeCloseTo(alpha.size, 6)
   })
 
-  it('settles initial hydration silently, delays a new body until the post-commit diff, and rises once', () => {
+  it('settles initial hydration silently, then rises the SAME body once when its stage deepens', () => {
     const riseState = createGistRiseState()
     const riseBuffer = buffer.slice()
     const hydrated = createGistRenderSnapshot([alpha], slots)
     expect(reconcileGistRiseState(riseState, hydrated, true)).toEqual([])
 
+    // A memory has ONE body, so a rise is the same node id at a deeper stage — not a second
+    // instance appearing beside the first. Detecting it by id alone would leave the body
+    // teleporting to the new band with no ease at all.
     const risenAlpha = instance('alpha', 2)
-    const advanced = createGistRenderSnapshot([alpha, risenAlpha], slots)
+    expect(risenAlpha.nodeId).toBe(alpha.nodeId)
+    const advanced = createGistRenderSnapshot([risenAlpha], slots)
     const out = new Float32Array(3)
-    expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 4)).toBe(false)
     expect(reconcileGistRiseState(riseState, advanced, true)).toEqual([
       { memoryId: 'alpha', stage: 2 },
     ])
+    // Re-reconciling the same stage is not another rise — an ordinary refetch replays nothing.
     expect(reconcileGistRiseState(riseState, advanced, true)).toEqual([])
 
-    expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 4)).toBe(true)
+    // The ease starts from where the body actually is and lands on the new band's z.
+    expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 4)).toBe(true)
     expect(Array.from(out)).toEqual([10, 11, 12])
     riseBuffer[5] = -40
-    expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 100)).toBe(true)
+    expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 100)).toBe(true)
     expect(Array.from(out)).toEqual([10, 11, risenAlpha.z])
 
-    reconcileGistRiseState(riseState, hydrated, true)
+    // A memory that leaves the projection drops both records, so its next appearance is new again.
+    reconcileGistRiseState(riseState, createGistRenderSnapshot([], slots), true)
     expect(riseState.seen.has(risenAlpha.nodeId)).toBe(false)
+    expect(riseState.stageSeen.has(risenAlpha.nodeId)).toBe(false)
+  })
+
+  it('does not rise a body whose stage did not move, however often it is reconciled', () => {
+    const riseState = createGistRiseState()
+    reconcileGistRiseState(riseState, createGistRenderSnapshot([alpha], slots), true)
+    const beta = instance('beta', 1)
+    expect(
+      reconcileGistRiseState(riseState, createGistRenderSnapshot([alpha, beta], slots), true),
+    ).toEqual([{ memoryId: 'beta', stage: 1 }])
+    // alpha was present and unchanged through both passes: no event, ever.
+    expect(
+      reconcileGistRiseState(riseState, createGistRenderSnapshot([alpha, beta], slots), true),
+    ).toEqual([])
   })
 
   it('marks an initially empty gist projection as hydrated when memories are already loaded', () => {

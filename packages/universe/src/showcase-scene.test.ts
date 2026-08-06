@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { VALUES } from '@cosimosi/config'
+
 import { MOODS } from '@cosimosi/emotion'
 
 import {
@@ -74,12 +76,16 @@ describe('gist pair', () => {
     }
   })
 
-  it('softens the deeper stage rather than resizing it arbitrarily', () => {
+  it('shows one body for the risen memory, softened by its own depth', () => {
     const scene = gistShowcaseScene()
-    const softness = Array.from(scene.gistSoftness.slice(0, scene.gistCount))
 
-    expect(softness.length).toBeGreaterThan(1)
-    expect(softness[softness.length - 1]).toBeGreaterThan(softness[0])
+    // The specimen is a PAIR — one unrisen memory and one risen — so the risen one contributes
+    // exactly one gist body, not a rung per stage.
+    expect(scene.gistCount).toBe(1)
+    // Softened past the base gist look because it sits mid-ladder, and never resized for depth
+    // (size is EffectiveStrength's alone [V3]).
+    expect(scene.gistSoftness[0]!).toBeGreaterThan(VALUES.rendering.gistStarDiffuse)
+    expect(scene.gistSoftness[0]!).toBeLessThanOrEqual(1)
   })
 })
 

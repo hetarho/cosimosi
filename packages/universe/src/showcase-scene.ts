@@ -201,7 +201,7 @@ export interface GistShowcaseScene {
   readonly memories: readonly EpisodicMemory[]
   /** Episodic coordinates for both columns (interleaved xyz). */
   readonly positions: Float32Array
-  /** Gist body coordinates: its memory's x, y with the stage's own neocortical z. */
+  /** Gist body coordinates: its memory's x, y with its current stage's neocortical z. */
   readonly gistPositions: Float32Array
   readonly gistTints: Float32Array
   readonly gistSoftness: Float32Array
@@ -211,7 +211,8 @@ export interface GistShowcaseScene {
 
 const GIST_COLUMN_X = 7
 const GIST_MOOD = 'GRATITUDE' as const
-/** How far the pair has climbed the ladder — two stages read as a ladder, one as an accident. */
+/** How far the risen half has climbed. Mid-ladder rather than stage 1, so the specimen shows a
+ *  body that has clearly travelled — the pair reads as remembered vs abstracted, not as a stack. */
 const GIST_RISEN_STAGE = 2
 
 export function gistShowcaseScene(): GistShowcaseScene {

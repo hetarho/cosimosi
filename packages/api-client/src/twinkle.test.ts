@@ -13,11 +13,11 @@ import {
 
 describe('twinkle transport facade', () => {
   it('calls TwinkleService.GetBalance and QuoteSpend through an in-memory transport', async () => {
-    let quotedStage = 0
+    let quotedTarget = ''
     const transport = createTwinkleMockTransport({
       getBalance: () => ({ basic: 100n, additional: 40n, total: 140n }),
       quoteSpend: (request) => {
-        quotedStage = request.semanticStage
+        quotedTarget = request.episodicMemoryId
         return {
           cost: request.kind === SpendKind.RECALL ? 15n : 3n,
           covered: true,
@@ -34,12 +34,10 @@ describe('twinkle transport facade', () => {
     expect(quote.cost).toBe(15n)
     expect(quote.covered).toBe(true)
 
-    await client.quoteSpend({
-      kind: SpendKind.GIST_VIEW,
-      episodicMemoryId: 'memory-1',
-      semanticStage: 2,
-    })
-    expect(quotedStage).toBe(2)
+    // A gist quote names the memory and nothing else: the depth it is priced at is the memory's
+    // own, derived server-side, so there is no stage on the wire to send.
+    await client.quoteSpend({ kind: SpendKind.GIST_VIEW, episodicMemoryId: 'memory-1' })
+    expect(quotedTarget).toBe('memory-1')
   })
 
   it('marks every method NO_SIDE_EFFECTS — the contract is read-only by design', () => {
@@ -65,17 +63,9 @@ describe('twinkle transport facade', () => {
         .serviceName,
     ).toContain('TwinkleService')
     expect(
-      createQuoteSpendQueryKey({
-        kind: SpendKind.GIST_VIEW,
-        episodicMemoryId: 'memory-1',
-        semanticStage: 2,
-      }),
+      createQuoteSpendQueryKey({ kind: SpendKind.GIST_VIEW, episodicMemoryId: 'memory-1' }),
     ).not.toEqual(
-      createQuoteSpendQueryKey({
-        kind: SpendKind.GIST_VIEW,
-        episodicMemoryId: 'memory-1',
-        semanticStage: 3,
-      }),
+      createQuoteSpendQueryKey({ kind: SpendKind.GIST_VIEW, episodicMemoryId: 'memory-2' }),
     )
   })
 })

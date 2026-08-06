@@ -593,21 +593,22 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	fixture.signals.diary["d1"] = []float64{1, float64(values.ForgettingCostWeightCap)}
 	writesBefore := fixture.ledger.writes
 
-	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindRecall, "m1", 0)
+	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindRecall, "m1")
 	if err != nil {
 		t.Fatalf("QuoteSpend(recall) failed: %v", err)
 	}
 	if recallQuote.Cost != RecallCost(float64(values.ForgettingCostWeightCap)) {
 		t.Fatalf("recall quote = %+v, want the gate's RecallCost", recallQuote)
 	}
-	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m2", 2)
+	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m2")
 	if err != nil {
 		t.Fatalf("QuoteSpend(gist) failed: %v", err)
 	}
-	if gistQuote.Cost != GistViewCost(2) {
-		t.Fatalf("gist quote = %+v, want selected-stage GistViewCost(2)", gistQuote)
+	// Priced at the memory's OWN reached stage (3), not at anything a caller could name.
+	if gistQuote.Cost != GistViewCost(3) {
+		t.Fatalf("gist quote = %+v, want the derived-stage GistViewCost(3)", gistQuote)
 	}
-	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
+	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1")
 	if err != nil {
 		t.Fatalf("QuoteSpend(diary) failed: %v", err)
 	}
@@ -624,17 +625,27 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	}
 }
 
-func TestQuoteSpendGistRequiresASelectedRisenStage(t *testing.T) {
+func TestQuoteSpendGistPricesTheMemorysOwnStage(t *testing.T) {
 	t.Parallel()
-	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
-	fixture.signals.gist["m1"] = 2
 
-	if _, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m1", 0); !errors.Is(err, ErrQuoteInputRequired) {
-		t.Fatalf("stage-zero quote err = %v, want ErrQuoteInputRequired", err)
-	}
-	if _, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m1", 3); !errors.Is(err, ErrQuoteTargetUnavailable) {
-		t.Fatalf("unrisen-stage quote err = %v, want ErrQuoteTargetUnavailable", err)
+	// A6: the price falls as the memory's own stage deepens, and no caller can choose which rung
+	// it is quoted at — the quote and the read derive the same number from the same memory.
+	previous := 0
+	for stage := 4; stage >= 1; stage-- {
+		fixture := newTwinkleFixture(t)
+		fixture.signals.gist["m1"] = stage
+		quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m1")
+		if err != nil {
+			t.Fatalf("stage %d quote failed: %v", stage, err)
+		}
+		if quote.Cost != GistViewCost(stage) {
+			t.Fatalf("stage %d quote = %d, want GistViewCost(%d)", stage, quote.Cost, stage)
+		}
+		if previous != 0 && quote.Cost <= previous {
+			t.Fatalf("stage %d cost %d did not rise as the ladder got shallower", stage, quote.Cost)
+		}
+		previous = quote.Cost
 	}
 }
 
@@ -648,7 +659,7 @@ func TestQuoteSpendReportsShortfall(t *testing.T) {
 	}
 	fixture.signals.diary["d1"] = []float64{1, 1, 1}
 
-	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
+	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1")
 	if err != nil {
 		t.Fatalf("QuoteSpend failed: %v", err)
 	}
@@ -669,7 +680,7 @@ func TestQuoteSpendShortfallIsKindAwareAndUnquotableKindsAreRefused(t *testing.T
 	}
 	fixture.signals.diary["d1"] = []float64{1, 1, 1, 1, 1}
 
-	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
+	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1")
 	if err != nil {
 		t.Fatalf("QuoteSpend failed: %v", err)
 	}
@@ -680,7 +691,7 @@ func TestQuoteSpendShortfallIsKindAwareAndUnquotableKindsAreRefused(t *testing.T
 	// A10: a purpose SMALL may not pay for is not quotable at all — the recall pricer has no
 	// purchase arm, so no quote can ever report a purchase as covered by the recall allowance.
 	for _, kind := range []SpendKind{SpendKindPurchase, SpendKind("a_future_kind")} {
-		if _, err := fixture.service.QuoteSpend(context.Background(), scope, kind, "d1", 0); !errors.Is(err, ErrQuoteInputRequired) {
+		if _, err := fixture.service.QuoteSpend(context.Background(), scope, kind, "d1"); !errors.Is(err, ErrQuoteInputRequired) {
 			t.Fatalf("QuoteSpend(%q) err = %v, want ErrQuoteInputRequired", kind, err)
 		}
 	}
@@ -1009,7 +1020,7 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	if _, err := fixture.service.GetLedger(ctx, none, 0, ""); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("GetLedger err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.QuoteSpend(ctx, none, SpendKindRecall, "m1", 0); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.QuoteSpend(ctx, none, SpendKindRecall, "m1"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("QuoteSpend err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.ledger.entries) != 0 || fixture.ledger.writes != 0 {

@@ -101,13 +101,7 @@ export function DetailPanel({
   // A gist body opens the priced gist-view over the canvas (A5); closing clears the canvas
   // selection so re-selecting the same body reopens it.
   if (selection.kind === 'gist') {
-    return (
-      <GistViewSheet
-        episodicMemoryId={selection.episodicMemoryId}
-        stage={selection.stage}
-        onClose={clearSelection}
-      />
-    )
+    return <GistViewSheet episodicMemoryId={selection.episodicMemoryId} onClose={clearSelection} />
   }
 
   const content = open ? (

@@ -68,7 +68,7 @@ describe('SpendCostDisplay (mobile)', () => {
     expect(onProceed).not.toHaveBeenCalled()
   })
 
-  it('passes the selected gist stage through the shared quote surface', () => {
+  it('passes a gist target through the shared quote surface, naming no depth', () => {
     mockUseSpendQuote.mockReturnValue({
       data: { cost: 3n, covered: true, shortfall: 0n },
       isError: false,
@@ -76,17 +76,18 @@ describe('SpendCostDisplay (mobile)', () => {
 
     render(
       <SpendCostDisplay
-        pending={gistViewSpend('memory-1', 2)}
+        pending={gistViewSpend('memory-1')}
         onProceed={jest.fn()}
         onCancel={jest.fn()}
         onEarn={jest.fn()}
       />,
     )
 
+    // The target and nothing else — the rung it is priced at is the memory's own, derived by the
+    // server for the quote and the read alike, so the client cannot ask to be quoted cheaper.
     expect(mockUseSpendQuote).toHaveBeenCalledWith({
       kind: expect.anything(),
       episodicMemoryId: 'memory-1',
-      semanticStage: 2,
     })
   })
 })

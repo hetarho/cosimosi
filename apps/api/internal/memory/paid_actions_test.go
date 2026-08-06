@@ -217,23 +217,41 @@ func TestViewSemanticReplaysCommittedReceipt(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.seedGist("m1", 3, fourStages())
 
-	first, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 2)
+	first, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if err != nil {
 		t.Fatalf("view failed: %v", err)
 	}
-	second, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 2)
+	second, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if err != nil {
 		t.Fatalf("view replay failed: %v", err)
 	}
-	if second.Text != first.Text || second.Stage != first.Stage || second.ReachedStage != first.ReachedStage {
+	if second.Text != first.Text || second.ReachedStage != first.ReachedStage {
 		t.Fatalf("view replay = %+v, want the committed first result %+v", second, first)
 	}
 	if len(fixture.spendGate.intents) != 1 {
 		t.Fatalf("view spend intents = %d, want 1 (the replay does not re-spend)", len(fixture.spendGate.intents))
 	}
-	// Same operation id, different stage → conflict.
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 3); !errors.Is(err, ErrOperationConflict) {
-		t.Fatalf("mismatched-stage replay err = %v, want ErrOperationConflict", err)
+
+	// The stage is server-derived, so a memory can rise between the lost response and the retry.
+	// The replay must still return what was PAID for — folding the derived stage into the
+	// fingerprint would turn a legitimate retry into a conflict and charge the user twice or not
+	// at all.
+	fixture.seedGist("m1", 4, fourStages())
+	afterRise, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+	if err != nil {
+		t.Fatalf("replay after a stage rise failed: %v", err)
+	}
+	if afterRise.Text != first.Text || afterRise.ReachedStage != first.ReachedStage {
+		t.Fatalf("replay after rise = %+v, want the committed read %+v", afterRise, first)
+	}
+	if len(fixture.spendGate.intents) != 1 {
+		t.Fatalf("view spend intents = %d, want 1 — a rise must not re-charge a replay", len(fixture.spendGate.intents))
+	}
+
+	// Same operation id, different memory → still a conflict: the fingerprint keys on the target.
+	fixture.seedGist("m2", 2, fourStages())
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m2"); !errors.Is(err, ErrOperationConflict) {
+		t.Fatalf("mismatched-target replay err = %v, want ErrOperationConflict", err)
 	}
 }
 

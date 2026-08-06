@@ -201,9 +201,10 @@ message EpisodicMemoryDto {
   // whole text when no stage string is yet persisted. It is the memory's text, not a
   // pre-rendered decay text — the erosion is derived client-side [I5][R8a].
   string current_text = 12;
-  // How far the memory has risen on the gist ladder [C6][C7] — the client renders one
-  // neocortical gist body per risen stage at a client-derived coordinate (copy x,y, raise z
-  // [I5][V9]); 0..4 and monotone (a stage never un-rises).
+  // How far the memory has risen on the gist ladder [C6][C7] — the client renders ONE
+  // neocortical gist body per risen memory, at a client-derived coordinate whose z reads this
+  // stage (copy x,y, raise z [I5][V9]). The trace transforms; it does not accumulate a body per
+  // rung. 0..4 and monotone (a stage never un-rises), so the one body rises with it.
   int32 semantic_stage = 13;
 }
 
@@ -271,9 +272,13 @@ message RecallDiaryStarsRequest {
 // client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
 // operation_id carries the paid-action idempotency contract (A2/A3); a view advances no clock,
 // so it needs no sync_consent.
+// The client names the MEMORY, never a depth: the server derives which gist rung the memory has
+// risen to and what that read costs, so no request can address or price a stage the memory has not
+// reached. Tag 2 held the client-supplied stage and stays reserved so a released client's value can
+// never be silently read as a different field.
 message ViewSemanticRequest {
   string episodic_memory_id = 1;
-  int32 stage = 2;
+  reserved 2;
   string operation_id = 3;
 }
 
@@ -282,9 +287,10 @@ message ViewSemanticRequest {
 message ViewSemanticResponse {
   // Pregenerated semantic_stages text for the viewed stage (read-only) [R8][R8a].
   string text = 1;
-  // The stage that was viewed.
-  int32 stage = 2;
-  // memory.semantic_stage — how far it has risen [C6][V9].
+  // Tag 2 held the viewed stage, which can only ever equal reached_stage now that the server picks
+  // it; reserved rather than reused.
+  reserved 2;
+  // memory.semantic_stage — how far it has risen, and therefore what was read [C6][V9].
   int32 reached_stage = 3;
 }
 

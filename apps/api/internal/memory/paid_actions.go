@@ -92,8 +92,10 @@ func diaryRecallFingerprint(diaryID string) string {
 	return actionFingerprint(string(PaidActionDiaryRecall), diaryID)
 }
 
-func viewSemanticFingerprint(memoryID string, stage int) string {
-	return actionFingerprint(string(PaidActionViewSemantic), memoryID, strconv.Itoa(stage))
+// No stage part: the server derives the depth from the memory, so a replay issued after the memory
+// rose a rung must still hash to the committed read rather than conflict with it.
+func viewSemanticFingerprint(memoryID string) string {
+	return actionFingerprint(string(PaidActionViewSemantic), memoryID)
 }
 
 // actionFingerprint hashes length-prefixed parts so no field boundary is ambiguous ("ab"+"c" and

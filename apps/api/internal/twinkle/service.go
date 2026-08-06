@@ -523,14 +523,14 @@ func isCanonicalClaimID(value string) bool {
 // depth signal server-side, price with the same curves, derive the same balance,
 // plan the same draw — and write nothing: no ledger row, no window roll, no clock
 // advance. A stale quote is simply refused later by the authoritative spend.
-func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string, semanticStage int) (Quote, error) {
+func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string) (Quote, error) {
 	if scope.UserID() == "" {
 		return Quote{}, ErrScopeRequired
 	}
 	if strings.TrimSpace(targetID) == "" {
 		return Quote{}, ErrQuoteInputRequired
 	}
-	cost, err := s.quoteCost(ctx, scope, kind, targetID, semanticStage)
+	cost, err := s.quoteCost(ctx, scope, kind, targetID)
 	if err != nil {
 		return Quote{}, err
 	}
@@ -553,7 +553,7 @@ func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind
 	}, nil
 }
 
-func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string, semanticStage int) (int, error) {
+func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string) (int, error) {
 	switch kind {
 	case SpendKindRecall:
 		weight, err := s.signals.RecallAccessibility(ctx, scope, targetID)
@@ -562,17 +562,14 @@ func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind 
 		}
 		return RecallCost(weight), nil
 	case SpendKindGistView:
-		if semanticStage < 1 {
-			return 0, fmt.Errorf("%w: gist semantic stage", ErrQuoteInputRequired)
-		}
+		// The depth is the memory's own, never the caller's: the quote prices the same rung
+		// ViewSemantic will serve, from the same derivation, so a client cannot ask to be
+		// quoted at a cheaper depth than the one it is then charged and shown.
 		reachedStage, err := s.signals.ViewableGistStage(ctx, scope, targetID)
 		if err != nil {
 			return 0, err
 		}
-		if semanticStage > reachedStage {
-			return 0, ErrQuoteTargetUnavailable
-		}
-		return GistViewCost(semanticStage), nil
+		return GistViewCost(reachedStage), nil
 	case SpendKindDiaryRecall:
 		weights, err := s.signals.DiaryRecallAccessibilities(ctx, scope, targetID)
 		if err != nil {

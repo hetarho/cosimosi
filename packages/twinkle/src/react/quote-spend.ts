@@ -16,7 +16,6 @@ export function useSpendQuote(pending: PendingSpend | null) {
     kind: pending?.kind ?? SpendKind.UNSPECIFIED,
     episodicMemoryId: pending?.episodicMemoryId ?? '',
     diaryId: pending?.diaryId ?? '',
-    semanticStage: pending?.semanticStage ?? 0,
   }
   return useQuery({
     ...createQuoteSpendQueryOptions(input, transport),

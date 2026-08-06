@@ -165,11 +165,11 @@ func TestGistAndDiaryReceiptsReplayAgainstRealStore(t *testing.T) {
 	}
 	service := newRecallService(t, store, store, store, store)
 
-	firstView, err := service.ViewSemantic(ctx, scope, base+"-view-op", base+"-m1", 2)
+	firstView, err := service.ViewSemantic(ctx, scope, base+"-view-op", base+"-m1")
 	if err != nil {
 		t.Fatalf("first ViewSemantic failed: %v", err)
 	}
-	replayedView, err := service.ViewSemantic(ctx, scope, base+"-view-op", base+"-m1", 2)
+	replayedView, err := service.ViewSemantic(ctx, scope, base+"-view-op", base+"-m1")
 	if err != nil {
 		t.Fatalf("replayed ViewSemantic failed: %v", err)
 	}

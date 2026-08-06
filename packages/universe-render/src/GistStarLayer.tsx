@@ -28,8 +28,9 @@ export interface GistStarLayerProps {
   readonly positions: CoordinateBufferRef
   /** Engram id → sim node slot (the node index's episodic map) — the x, y source per frame. */
   readonly memoryIndexById: Readonly<Record<string, number>>
-  /** A gist pick: read-only, routes to the ViewSemantic surface ([R8]) — never 회고하기. */
-  readonly onSelect?: (memoryId: string, stage: number) => void
+  /** A gist pick: read-only, routes to the ViewSemantic surface ([R8]) — never 회고하기. It names
+   *  the memory alone; the server decides which rung that read reaches and what it costs. */
+  readonly onSelect?: (memoryId: string) => void
   /** The reserved [V8] hook: newly risen stages, one event per body. */
   readonly onStageRise?: (events: readonly GistRiseEvent[]) => void
 }
@@ -57,6 +58,12 @@ type RiseEntry = { start: number | null; startZ: number } | typeof SETTLED
 // snapshot and the effect that indexes it.
 export type GistRiseState = {
   readonly seen: Map<string, RiseEntry>
+  /**
+   * The stage each live body was last seen at. A body's node id is now stable across its whole
+   * life (one id per memory), so a rise is a STAGE CHANGE, not a new id — without this the one
+   * transforming body would silently teleport to each new band instead of easing up to it.
+   */
+  readonly stageSeen: Map<string, number>
   hydrated: boolean
   byInstance: RiseEntry[]
   indexed: GistRenderSnapshot | null
@@ -107,7 +114,7 @@ export function createGistRenderSnapshot(
 }
 
 export function createGistRiseState(): GistRiseState {
-  return { seen: new Map(), hydrated: false, byInstance: [], indexed: null }
+  return { seen: new Map(), stageSeen: new Map(), hydrated: false, byInstance: [], indexed: null }
 }
 
 export function reconcileGistRiseState(
@@ -119,7 +126,14 @@ export function reconcileGistRiseState(
   const risen: GistRiseEvent[] = []
   for (const instance of snapshot.instances) {
     alive.add(instance.nodeId)
-    if (state.seen.has(instance.nodeId)) continue
+    const previousStage = state.stageSeen.get(instance.nodeId)
+    state.stageSeen.set(instance.nodeId, instance.stage)
+    // Two ways a rise happens now: a memory's first gist appears, or the body already on screen
+    // moves to a deeper rung. Both re-arm the ease; a stage that did not move leaves the body
+    // wherever it already is (settled or mid-rise), so nothing replays on an ordinary refetch.
+    const isNew = previousStage === undefined
+    const rose = !isNew && instance.stage > previousStage
+    if (!isNew && !rose) continue
     if (state.hydrated) {
       state.seen.set(instance.nodeId, { start: null, startZ: 0 })
       risen.push({ memoryId: instance.memoryId, stage: instance.stage })
@@ -129,6 +143,9 @@ export function reconcileGistRiseState(
   }
   for (const key of state.seen.keys()) {
     if (!alive.has(key)) state.seen.delete(key)
+  }
+  for (const key of state.stageSeen.keys()) {
+    if (!alive.has(key)) state.stageSeen.delete(key)
   }
   if (hasMemories) state.hydrated = true
   state.byInstance = snapshot.instances.map(
@@ -190,13 +207,13 @@ export function gistSelectionAt(snapshot: GistRenderSnapshot, index: number): Gi
   return instance ? { memoryId: instance.memoryId, stage: instance.stage } : null
 }
 
-// The instanced R3F binding for the neocortical gist body ([V9]): it projects each memory's
-// risen stages to instances (model — gistStarInstances), feeds tint/softness as per-instance
-// attributes, and derives positions per frame — x, y copied live from the memory's hippocampal
-// sim slot, z the stage's gistCoordinate band position ([C6][I5]; the neocortex runs no sim).
-// A newly risen stage plays a one-way ease from the memory's hippocampal z up into the band
-// ([I10] — the rise never reverses); the bodies present at first hydration seed silently so a
-// page load never mass-animates, and an empty advance adds no instance so nothing plays (A8).
+// The instanced R3F binding for the neocortical gist body ([V9]): it projects each risen memory to
+// ONE instance (model — gistStarInstances), feeds tint/softness as per-instance attributes, and
+// derives positions per frame — x, y copied live from the memory's hippocampal sim slot, z the
+// current stage's gistCoordinate band position ([C6][I5]; the neocortex runs no sim). A stage rise
+// moves that one body upward on a one-way ease ([I10] — the rise never reverses); the bodies
+// present at first hydration seed silently so a page load never mass-animates, and an empty advance
+// moves no instance so nothing plays (A8).
 export function GistStarLayer({
   positions,
   memoryIndexById,
@@ -239,7 +256,7 @@ export function GistStarLayer({
   const handleSelect = useCallback(
     (index: number) => {
       const selection = gistSelectionAt(snapshot, index)
-      if (selection) onSelect?.(selection.memoryId, selection.stage)
+      if (selection) onSelect?.(selection.memoryId)
     },
     [snapshot, onSelect],
   )

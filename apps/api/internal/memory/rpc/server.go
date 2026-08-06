@@ -134,13 +134,12 @@ func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetEpisodicMemoryId(), int(req.Msg.GetStage()))
+	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetEpisodicMemoryId())
 	if err != nil {
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(&memoryv1.ViewSemanticResponse{
 		Text:         result.Text,
-		Stage:        int32(result.Stage),
 		ReachedStage: int32(result.ReachedStage),
 	}), nil
 }

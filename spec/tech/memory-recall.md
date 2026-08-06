@@ -149,15 +149,20 @@ shared-semantic counts, live diary memories) and writes (anchors, `current_text`
 
 ## 8. The gist view (`ViewSemantic`) — the read-only counterpart ([R8])
 
-`ViewSemantic(scope, operationID, memoryID, stage)` (`view_semantic.go`) is the semantic half of the recall/view
-asymmetry: it returns the pregenerated `semantic_stages` text for one gist stage and **writes nothing but its debit +
-receipt** — no anchors, no provenance, no LLM, no clock advance ([I2][I8][I10]). It runs in a memory-owned transaction
-(`ViewSemanticRepo.InViewSemanticTx` → the narrow `ViewSemanticTx` = graph lock + gist read + receipt store) so the
-target read, the receipt lookup/insert, and the Twinkle spend commit together (A3): a response-loss retry with the same
-`operation_id` replays the committed gist text with no second debit, and a same-id/different-stage reuse is
-`ErrOperationConflict`. Stages are the 1-based ladder ([C6a]: `semantic_stage` 0 = concrete, nothing viewable; 1..4 =
-the pregenerated texts, stage _k_'s text at array index _k−1_); the valid upper bound is the **derived** stage-array
-length, never a declared count.
+`ViewSemantic(scope, operationID, memoryID)` (`view_semantic.go`) is the semantic half of the recall/view asymmetry:
+it returns the pregenerated `semantic_stages` text for the memory's **current** gist rung and **writes nothing but its
+debit + receipt** — no anchors, no provenance, no LLM, no clock advance ([I2][I8][I10]). It runs in a memory-owned
+transaction (`ViewSemanticRepo.InViewSemanticTx` → the narrow `ViewSemanticTx` = graph lock + gist read + receipt
+store) so the target read, the receipt lookup/insert, and the Twinkle spend commit together (A3): a response-loss retry
+with the same `operation_id` replays the committed gist text with no second debit, and a same-id/different-target reuse
+is `ErrOperationConflict`. Stages are the 1-based ladder ([C6a]: `semantic_stage` 0 = concrete, nothing viewable; 1..4
+= the pregenerated texts, stage _k_'s text at array index _k−1_).
+
+**The depth is not client input.** The request names the memory; `viewableGistStage` derives which rung the read
+reaches — the risen `semantic_stage` bounded by the pregenerated ladder — and that ONE function is also what the quote
+prices from, so a caller can neither read nor be quoted at a depth the memory has not reached, nor pick a shallower
+(cheaper) one. A memory has one gist body and one current gist text; a past rung is not a separately readable
+artifact (변천사 keeps the per-stage log, free, §`GetProvenance`).
 
 |                      | trigger                | acts on                       | mutation                                                                      | cost direction                             | owner        |
 | -------------------- | ---------------------- | ----------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
@@ -168,29 +173,32 @@ Ordered flow (inside `InViewSemanticTx`) — lock + receipt replay first, then e
 after a successful spend no error path remains before the text:
 
 0. **Lock + receipt replay** — `LockGraphMutation` then `GetPaidActionReceipt(operationID)`; a matching
-   `view_semantic` receipt (fingerprint = memory id + stage) replays the stored text with no debit, a same-id/different
-   input is `ErrOperationConflict` (A2/A3). An empty operation id is `ErrOperationIDRequired`.
-1. **Validate input** — empty id / `stage < 1` → `ErrViewSemanticInputRequired` (`InvalidArgument`).
+   `view_semantic` receipt (fingerprint = memory id, **no stage**) replays the stored text with no debit, a
+   same-id/different target is `ErrOperationConflict` (A2/A3). The fingerprint deliberately excludes the derived stage:
+   a memory can rise between a lost response and its retry, and that retry must return what was paid for rather than
+   conflict with it. An empty operation id is `ErrOperationIDRequired`.
+1. **Validate input** — empty id → `ErrViewSemanticInputRequired` (`InvalidArgument`). There is no stage range to
+   validate.
 2. **Load** — `tx.EpisodicMemoryGist(scope, memoryID) → MemoryGist{SemanticStage, SemanticStages}` on the transaction.
    The pg concrete (`memory/pg/view_semantic.go` + `db/queries/memory/view_semantic.sql`) is a pure user-scoped
    SELECT excluding soft-deleted rows; missing/other-user/soft-deleted → `ErrViewSemanticMemoryNotFound` (`NotFound`).
    (Full-delete hides the whole row from the universe; release semantics beyond that are the deletion epic's.) The
    quote path (`ViewableGistStage`) reads the same columns standalone via the `GistReader` port bound to the pool.
-   `QuoteSpend(kind=GIST_VIEW, semantic_stage=stage)` uses that reached stage as the upper-bound check and prices the
-   exact selected stage, so the displayed quote and this spend share one depth signal.
-3. **Server-authoritative stage check** (§2.9#8) — `semantic_stages` non-NULL **and** `stage ≤ len(stages)` **and**
-   `stage ≤ semantic_stage`, else the canonical `ErrViewSemanticStageNotRisen` (`FailedPrecondition`): the unit never
-   fabricates a text for an unreached stage.
+   `QuoteSpend(kind=GIST_VIEW)` derives its depth from that read through the same `viewableGistStage`, so the displayed
+   quote and this spend are the same number by construction rather than by agreement.
+3. **Derive the stage** (§2.9#8) — `viewableGistStage(gist)`: `semantic_stages` non-NULL **and** the risen
+   `semantic_stage` (bounded by the ladder length) ≥ 1, else the canonical `ErrViewSemanticStageNotRisen`
+   (`FailedPrecondition`). The unit never fabricates a text for an unreached stage.
 4. **Spend** — `SpendGate.CheckAndSpend(scope, tx, GistViewSpendIntent(operationID, memoryID, stage))`, the **same port
    and the same bound instance** as recall (§5); the spend joins this transaction. Kind `view_gist`, carrying the
-   requested `stage` as the gist-depth signal (a monotone "how abstracted" measure) — never a price; the economy's
+   **derived** `stage` as the gist-depth signal (a monotone "how abstracted" measure) — never a price; the economy's
    curve maps a deeper signal to a **cheaper** price, the inverse of recall's decay-cost direction ([G4]). The spend is
    a **precondition of the read**: `ErrInsufficientTwinkle` (`ResourceExhausted`) returns no text. The allow-all no-op
    default charges nothing.
-5. **Receipt commit + return** — `InsertPaidActionReceipt` in the same transaction, then `{memoryID, text, stage,
-reachedStage}`; the RPC `ViewSemantic(ViewSemanticRequest{episodic_memory_id, stage, operation_id}) →
-ViewSemanticResponse{text, stage, reached_stage}` is unary and **not** `NO_SIDE_EFFECTS` (it spends), with a thin
-   handler mapping proto↔domain only.
+5. **Receipt commit + return** — `InsertPaidActionReceipt` in the same transaction, then `{text, reachedStage}`; the
+   RPC `ViewSemantic(ViewSemanticRequest{episodic_memory_id, operation_id}) → ViewSemanticResponse{text,
+reached_stage}` is unary and **not** `NO_SIDE_EFFECTS` (it spends), with a thin handler mapping proto↔domain only.
+   Both messages **reserve tag 2**, where the client-supplied / echoed stage used to sit.
 
 Not golden-parity: a server-only read+spend — the client renders the returned text and never recomputes the signal or
 the reached stage.
