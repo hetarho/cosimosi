@@ -3,6 +3,8 @@
 // host jest env doesn't transform. Stub the surface the nav tree imports.
 import * as React from 'react'
 
+import { VALUES } from '@cosimosi/config'
+
 const Passthrough = ({ children }: { children?: React.ReactNode }) =>
   React.createElement(React.Fragment, null, children)
 const Noop = () => null
@@ -27,6 +29,19 @@ export const createCellStarBodySource = () => ({ resolve: () => ({}) })
 export const createFilamentBodySource = () => ({ resolve: () => ({}) })
 export const createGistStarBodySource = () => ({ resolve: () => ({}) })
 export const COORDINATE_STRIDE = 3
+// Real numbers, not stand-ins: a shell test asserting the mobile budget must fail when the mobile
+// budget moves, and these ARE just the generated scalars.
+export const STAR_FIELD_PROFILE = {
+  web: { count: VALUES.rendering.starFieldCount, radius: VALUES.rendering.starFieldRadius },
+  mobile: {
+    count: VALUES.rendering.starFieldCountMobile,
+    radius: VALUES.rendering.starFieldRadiusMobile,
+  },
+}
+export const LATENT_FIELD_SEGMENTS = {
+  web: VALUES.rendering.latentStarSegments,
+  mobile: VALUES.rendering.latentStarSegmentsMobile,
+}
 export const STAR_INSTANCE_TINT = 'aStarTint'
 export const STAR_INSTANCE_BRIGHTNESS = 'aStarBrightness'
 export const STAR_INSTANCE_SEED = 'aStarSeed'

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
-import { LATENT_INSTANCE_SEED, createLatentGeometry, createLatentMaterial } from './LatentField.tsx'
+import {
+  LATENT_FIELD_SEGMENTS,
+  LATENT_INSTANCE_SEED,
+  createLatentGeometry,
+  createLatentMaterial,
+} from './LatentField.tsx'
 
 // The dust's SHADER-STAGE contract, not its look. A TSL graph that reads a stage-contextual node from
 // the wrong stage constructs without complaint, compiles to an invalid shader, and shows up only as an
@@ -63,7 +68,7 @@ describe('latent field material', () => {
   })
 
   it('hands the wander the seed it reads, one per mote and spread across the field', () => {
-    const geometry = createLatentGeometry(1800)
+    const geometry = createLatentGeometry(1800, LATENT_FIELD_SEGMENTS.web)
     const seed = geometry.getAttribute(LATENT_INSTANCE_SEED)
     expect(seed).toBeDefined()
     expect(seed.count).toBe(1800)
@@ -81,5 +86,23 @@ describe('latent field material', () => {
     // A guard nobody has seen fail is a guard nobody knows is wired. The twinkle graph IS an offender
     // by the wander's rule, walked through the same helper the assertions above use.
     expect(kindsIn(createLatentMaterial(OPTIONS).opacityNode)).toContain('IndexNode')
+  })
+})
+
+// Both platform tessellations are shipped topology, so both must actually build a mote — the mobile
+// arm has no renderer in CI, and a segment count that produced a degenerate shell would otherwise
+// only show up as an empty sky on a device.
+describe('latent mote tessellation', () => {
+  it('builds a closed shell at every platform segment count', () => {
+    for (const [platform, segments] of Object.entries(LATENT_FIELD_SEGMENTS)) {
+      const geometry = createLatentGeometry(4, segments)
+      const index = geometry.getIndex()
+      expect(index, platform).not.toBeNull()
+      expect(index!.count % 3, platform).toBe(0)
+      expect(index!.count / 3, platform).toBe(segments * segments * 2 - segments * 2)
+      geometry.dispose()
+    }
+    // The mobile arm is the cheaper one — that is the whole point of the pair.
+    expect(LATENT_FIELD_SEGMENTS.mobile).toBeLessThan(LATENT_FIELD_SEGMENTS.web)
   })
 })

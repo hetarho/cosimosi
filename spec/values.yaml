@@ -119,11 +119,39 @@ rendering:
   # Cell-star (neuron) constant point radius in world units — seedless, no emotion color; a
   # neuron carries information, not emotion [V5]. Degree-driven sizing stays reserved.
   cell_star_point_size: 0.26
+  # Star-shape triangle ceiling — every entry in the star-shape catalogue must build a body under
+  # this, and a test over the registry fails a new shape that does not. It is the LARGEST body the
+  # scene may pay per memory instance, so a decorated universe of N stars costs at most N × this.
+  # 5120 is an icosphere at subdivision 4: the coarsest shell that still resolves a silhouette
+  # CARVED by vertex displacement (the urchin's needles). Anything beyond it is raw subdivision
+  # buying detail the fragment/normal path already gives for free — see tech/rendering.md.
+  star_shape_triangle_budget: 5120
+  # Star backdrop: the small floating background stars every emotion sky wears — decorative,
+  # rendering-only, no DB. Web = open-beta density; mobile MVP lowers the instance count (§3.5),
+  # mirroring latent_star_count[_mobile].
+  star_field_count: 2600
+  star_field_count_mobile: 1000
+  # Outer shell the field fills out to. Fixed by the backdrop NESTING invariant, not by fidelity:
+  # camera zoom-out limit < this < sky-sphere radius < canvas far plane (tech/rendering.md). Mobile
+  # matches web because both platforms share that camera envelope; the key is still per-platform so
+  # a mobile-only camera change has somewhere to land instead of silently breaking the ordering.
+  star_field_radius: 520
+  star_field_radius_mobile: 520
+  # Icosahedron subdivisions per backdrop mote. 0 = 20 triangles, and each step up multiplies by 4.
+  # A mote covers a handful of pixels at most, so its silhouette is the only thing tessellation buys
+  # and an icosahedron already spends every triangle on it — a UV sphere of the same count crowds
+  # most of them at the poles, where nothing is seen. No mobile variant: this is already the floor.
+  star_field_mote_detail: 0
   # Latent-star field ([E7a][V7]): gray not-yet-recruited engram points scattered through the
   # hippocampus z-band (force_sim.hippocampus_z_*), filling the visible volume. Rendering-only,
   # no DB. Web = open-beta density; mobile MVP lowers the instance count (§3.5).
   latent_star_count: 1800
   latent_star_count_mobile: 700
+  # Sphere segments per latent mote (both width and height) — the field's other fixed vertex cost.
+  # Web keeps the tessellation the look was tuned at; mobile MVP takes the coarser shell, which at
+  # this on-screen size costs the dust nothing it can be seen to lose.
+  latent_star_segments: 6
+  latent_star_segments_mobile: 4
   # World radius of the x,y disc the field scatters within (z comes from the hippocampus band).
   latent_field_radius: 56
   # Latent point world radius — small and dim; below cell_star_point_size so a real neuron reads

@@ -4,6 +4,7 @@ import * as THREE from 'three/webgpu'
 
 import { VALUES } from '@cosimosi/config'
 
+import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
 import { resolveToneMapping, type ToneMappingKey } from './tone-mapping.ts'
 
 // Register three/webgpu's catalogue with R3F (runtime side of jsx-elements.ts).
@@ -62,7 +63,7 @@ export function UniverseCanvas({
   children,
   dpr = [1, 2],
   fov = 55,
-  far = 1400,
+  far = UNIVERSE_CANVAS_FAR,
   clearColor = 0x000000,
   forceWebGL = false,
   transparent = false,

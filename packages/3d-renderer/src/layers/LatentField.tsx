@@ -15,6 +15,8 @@ import {
 } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
+import { VALUES } from '@cosimosi/config'
+
 import { asFloatNode, attributeFloatNode } from '../tsl.ts'
 
 /** The time every mote is frozen at under reduced motion — a frame mid-twinkle, not a dark one. */
@@ -85,7 +87,16 @@ export interface LatentFieldProps {
   readonly consumed?: ReadonlySet<number> | null
   /** Freeze the drift and the per-mote breath to a static frame. */
   readonly reducedMotion?: boolean
+  /** Sphere segments per mote (width and height alike). Caller-supplied from generated config for
+   *  the same reason `size` is — the mobile MVP takes a coarser shell than the web (§3.5). */
+  readonly segments?: number
 }
+
+/** The two platform mote tessellations, straight from `rendering.latent_star_segments*`. */
+export const LATENT_FIELD_SEGMENTS = {
+  web: VALUES.rendering.latentStarSegments,
+  mobile: VALUES.rendering.latentStarSegmentsMobile,
+} as const
 
 export interface LatentMaterialOptions {
   readonly color: THREE.ColorRepresentation
@@ -103,8 +114,8 @@ export interface LatentMaterialOptions {
 //
 // A construction seam for the same reason the material is one: the wander reads this attribute BY NAME,
 // and a name that stops matching costs nothing at build time and silently freezes every mote.
-export function createLatentGeometry(count: number) {
-  const geometry = new THREE.SphereGeometry(1, 6, 6)
+export function createLatentGeometry(count: number, segments: number) {
+  const geometry = new THREE.SphereGeometry(1, segments, segments)
   const seeds = new Float32Array(Math.max(1, count))
   for (let i = 0; i < seeds.length; i++) seeds[i] = moteSeed(i)
   geometry.setAttribute(LATENT_INSTANCE_SEED, new THREE.InstancedBufferAttribute(seeds, 1))
@@ -192,6 +203,7 @@ export function LatentField({
   drift = 0,
   consumed = null,
   reducedMotion = false,
+  segments = LATENT_FIELD_SEGMENTS.web,
 }: LatentFieldProps) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const uTime = useMemo(() => uniform(0), [])
@@ -206,7 +218,10 @@ export function LatentField({
       mesh.visible = false
     }
   }, [])
-  const geometry = useMemo(() => createLatentGeometry(instanceCount), [instanceCount])
+  const geometry = useMemo(
+    () => createLatentGeometry(instanceCount, segments),
+    [instanceCount, segments],
+  )
   const material = useMemo(
     () => createLatentMaterial({ color, drift, time: uTime }),
     [color, drift, uTime],
@@ -214,6 +229,9 @@ export function LatentField({
 
   // Write the instance matrices once from the static field (re-run only when the field, size, or
   // the consumed set changes) — a consumed point collapses to scale 0 so it stops being drawn.
+  // `geometry` is a dependency because a new one rebuilds the mesh through `args`, and the attach
+  // ref hides it at count 0 until this effect fills it: without the dep, a field whose only change
+  // was its tessellation would stay blank.
   useEffect(() => {
     const mesh = ref.current
     if (!mesh || !positions) return
@@ -232,15 +250,12 @@ export function LatentField({
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
     mesh.visible = true
-  }, [positions, count, size, consumed])
+  }, [positions, count, size, consumed, geometry])
 
-  useEffect(
-    () => () => {
-      geometry.dispose()
-      material.dispose()
-    },
-    [geometry, material],
-  )
+  // One resource per effect: a geometry rebuilt for a new count or tessellation must not take the
+  // still-mounted material down with it.
+  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(() => () => material.dispose(), [material])
 
   // Advance the field clock in place (a single uniform write) — it carries both the drift and each
   // mote's breath; the matrices stay untouched. Reduced motion holds one frame mid-twinkle.

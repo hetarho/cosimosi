@@ -35,30 +35,38 @@ const (
 
 // rendering
 const (
-	RenderingActiveSkin            = "emotion"
-	RenderingMaxPixelRatio         = 2
-	RenderingToneMapping           = "neutral"
-	RenderingToneMappingExposure   = 1
-	RenderingEmotionSkyExposure    = 0.62
-	RenderingInstanceBucketSize    = 4096
-	RenderingStarSizeMin           = 0.7
-	RenderingStarSizeMax           = 2.4
-	RenderingStarBrightnessMin     = 0.15
-	RenderingStarBrightnessMax     = 1
-	RenderingFilamentWidthMin      = 0.04
-	RenderingFilamentWidthMax      = 0.35
-	RenderingFilamentBrightnessMin = 0.12
-	RenderingFilamentBrightnessMax = 0.85
-	RenderingCellStarPointSize     = 0.26
-	RenderingLatentStarCount       = 1800
-	RenderingLatentStarCountMobile = 700
-	RenderingLatentFieldRadius     = 56
-	RenderingLatentStarSize        = 0.12
-	RenderingAwakenCapacity        = 32
-	RenderingGistStarSizeMin       = 0.55
-	RenderingGistStarSizeMax       = 1.8
-	RenderingGistStarDiffuse       = 0.55
-	RenderingGistRiseLayerFog      = 0.35
+	RenderingActiveSkin               = "emotion"
+	RenderingMaxPixelRatio            = 2
+	RenderingToneMapping              = "neutral"
+	RenderingToneMappingExposure      = 1
+	RenderingEmotionSkyExposure       = 0.62
+	RenderingInstanceBucketSize       = 4096
+	RenderingStarSizeMin              = 0.7
+	RenderingStarSizeMax              = 2.4
+	RenderingStarBrightnessMin        = 0.15
+	RenderingStarBrightnessMax        = 1
+	RenderingFilamentWidthMin         = 0.04
+	RenderingFilamentWidthMax         = 0.35
+	RenderingFilamentBrightnessMin    = 0.12
+	RenderingFilamentBrightnessMax    = 0.85
+	RenderingCellStarPointSize        = 0.26
+	RenderingStarShapeTriangleBudget  = 5120
+	RenderingStarFieldCount           = 2600
+	RenderingStarFieldCountMobile     = 1000
+	RenderingStarFieldRadius          = 520
+	RenderingStarFieldRadiusMobile    = 520
+	RenderingStarFieldMoteDetail      = 0
+	RenderingLatentStarCount          = 1800
+	RenderingLatentStarCountMobile    = 700
+	RenderingLatentStarSegments       = 6
+	RenderingLatentStarSegmentsMobile = 4
+	RenderingLatentFieldRadius        = 56
+	RenderingLatentStarSize           = 0.12
+	RenderingAwakenCapacity           = 32
+	RenderingGistStarSizeMin          = 0.55
+	RenderingGistStarSizeMax          = 1.8
+	RenderingGistStarDiffuse          = 0.55
+	RenderingGistRiseLayerFog         = 0.35
 )
 
 var (

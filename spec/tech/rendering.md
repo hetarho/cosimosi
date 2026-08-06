@@ -100,7 +100,13 @@ frame instead of a sky around it; a camera that leaves the sky sphere loses the 
 sphere's inner face); and a sky beyond the far plane is clipped into a growing hole straight ahead as you pull back.
 The far plane is therefore set explicitly on the canvas — R3F's own default (1000) is too near for an enclosing sky —
 and the zoom-out limits live with the rigs (`UNIVERSE_CAMERA_RIG.maxDistance` for the product, the demo
-`CameraControls`'s own clamp for `/test`).
+`CameraControls`'s own clamp for `/test`). The four numbers live in four packages, so the ordering is **tested**, not
+just documented: `SKY_SPHERE_RADIUS` (700) and `UNIVERSE_CANVAS_FAR` (1400) are named in
+`3d-renderer/src/backdrop-scale.ts` — one far plane for the web host and its `.native` sibling — and
+`universe-render/src/backdrop-scale.test.ts` walks `UNIVERSE_CAMERA_RIG.maxDistance` (420) → the profile's shell radius
+→ sky → far for **both** platform profiles. That is why `star_field_radius_mobile` exists even though it equals the web
+value: the shell radius is bound by this ordering rather than by the fidelity budget, and a mobile-only camera envelope
+must have somewhere to break the test.
 
 `StarField` scatters from a seeded PRNG (Park-Miller, the latent field's precedent) rather than a Fibonacci lattice:
 independent random draws give the clumps and voids a real sky has, where an index-driven spread leaves a traceable
@@ -108,6 +114,18 @@ spiral. Radius is volume-uniform (cube root) so the field doesn't pack onto its 
 distance so every shell keeps roughly one on-screen size, and the twinkle's phase, rate, pulse shape, and steady glow
 are each an independent per-instance hash — a shared rate or a smooth phase walk makes the whole field pulse as one
 travelling wave. Reduced motion freezes both that twinkle clock and the field's slow spin.
+
+**Backdrop budget.** Count and radius are `rendering.star_field_count[_mobile]` / `star_field_radius[_mobile]`, taken as
+one bundle (`STAR_FIELD_PROFILE.web` / `.mobile`, re-exported with the latent tessellation as `UNIVERSE_BACKDROP`) so a
+surface can never wear one platform's count with the other's radius. `UniverseSceneLayers` REQUIRES that bundle — a host
+that forgets would silently put the web budget on a phone — and the standalone mobile design/test mounts pass
+`STAR_FIELD_PROFILE.mobile` / `LATENT_FIELD_SEGMENTS.mobile` for the same reason: diagnostics must measure the device's
+budget. Each mote is an `IcosahedronGeometry` at `star_field_mote_detail` (0 → 20 triangles), not a UV sphere: a mote
+covers a handful of pixels, so tessellation buys only the silhouette, and a UV sphere of equal count crowds most of its
+triangles at the poles. A camera-facing impostor quad (2 triangles) was spiked and **rejected** — it renders correctly,
+but spreading each mote's light over a soft additive disc changes the sky's grain and would need the twinkle re-tuned to
+match, and it converts the backdrop from an opaque depth-writing draw into a sorted transparent one. The latent field
+keeps its sphere mote at `latent_star_segments[_mobile]` (web 6, mobile 4).
 
 ### Post-processing
 
@@ -407,10 +425,14 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
-- **The gap depth cue is `BandFog`** — a stack of horizontal `DoubleSide` additive glow discs across the z 18–27 gap,
+- **The gap depth cue is `BandFog`** — horizontal `DoubleSide` additive glow discs across the z 18–27 gap,
   visible from above and below, raycast-invisible, and depth-write-free (peak at the gap center, zero at both band edges;
   intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the boundary, never a wall and never a
-  click shield.
+  click shield. **One instanced draw, one material**: the discs' node graphs differed only by the slice strength
+  constant, and a distinct graph is a distinct pipeline compile — the currency a WebGPU frame hitches on. Strength rides
+  an instanced attribute (`aFogStrength`), so another slice costs an instance rather than a compile. The radial falloff
+  reads `positionGeometry`, not `positionLocal`: an instanced disc measuring `positionLocal` would fade from the field's
+  axis instead of from its own center.
 - **The neutral stage-rise is appearance-driven and one-way** ([V8][I10]). Consolidation is the sole stage writer, so
   a `(memory, stage)` instance newly appearing in the projection _is_ the advance's read landing: it eases from the
   memory's hippocampal z up into the band once (`GIST_RISE_DURATION_SECONDS`, a code-level layer constant); the first
@@ -431,12 +453,23 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
-`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`, and `awaken_capacity`
+`latent_star_count`, `latent_star_count_mobile`, `latent_star_segments`, `latent_star_segments_mobile`,
+`latent_field_radius`, `latent_star_size`, and `awaken_capacity`
 (the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code), and the
 plan-42 gist scalars `gist_star_size_min`/`gist_star_size_max` (the quieter `EffectiveStrength` → size range),
 `gist_star_diffuse` (the base softness of the diffuse gist body), `gist_rise_layer_fog` (the gap depth-cue haze).
 (The stage→z map is **not** a value — it is the memory-logic `gistCoordinate` derivation over the reused
 `force_sim.{hippocampus,neocortex}_z_*` bands; the rise duration stays a code-level layer constant.)
+
+The backdrop and the body budget are config too: `star_field_count[_mobile]`, `star_field_radius[_mobile]`,
+`star_field_mote_detail` (the star backdrop, above), and `star_shape_triangle_budget` — the per-instance triangle
+ceiling every entry in the star-shape catalogue must build under, enforced over the whole registry by
+`star-shapes.test.ts`. A star shape is a purchasable decoration multiplied by every memory in a universe, so a new look
+that reaches for raw subdivision fails the gate instead of shipping a per-instance cliff. The displaced looks are carved
+out of an **indexed icosphere** (`icosphere(segments)` in `star-shapes.ts`, 20 × segments² triangles): three builds
+polyhedra non-indexed and uv-seamed, which would trade triangles for vertices, and a UV sphere spends most of its
+budget at the poles where a uniformly-sampled relief has nothing to gain. `facet`/`prism` keep three's polyhedra
+directly — their flat per-face normals ARE the look.
 
 `spec/values.yaml → nebula` (plan 26, its own group): `bleed_radius_coefficient` (`EffectiveStrength` → bleed radius),
 `min_bleed_radius` (floor), `falloff_exponent` (kernel density sharpness), `max_contributors` (kernel budget cap),

@@ -19,6 +19,11 @@ export interface LatentStarFieldProps {
    * would blank arbitrary motes of a different field.
    */
   readonly consumed?: ReadonlySet<number> | null
+  /**
+   * Sphere segments per mote. Omitted, the field takes the web tessellation — the mobile shell
+   * passes `rendering.latent_star_segments_mobile` alongside its own instance count (§3.5).
+   */
+  readonly segments?: number
 }
 
 // The gray latent-neuron background layer (visual entity, §3.1/§3.4): it projects NOTHING from
@@ -30,6 +35,7 @@ export function LatentStarField({
   reducedMotion = false,
   sizeScale = 1,
   consumed,
+  segments,
 }: LatentStarFieldProps) {
   const liveConsumed = useLatentConsumedStore((state) => state.consumed)
   return (
@@ -41,6 +47,7 @@ export function LatentStarField({
       drift={LATENT_STAR_DRIFT}
       consumed={consumed === undefined ? liveConsumed : consumed}
       reducedMotion={reducedMotion}
+      segments={segments}
     />
   )
 }

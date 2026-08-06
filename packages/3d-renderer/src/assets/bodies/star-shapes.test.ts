@@ -2,6 +2,8 @@ import { LIFE_FLOOR } from './star-body.ts'
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three/webgpu'
 
+import { VALUES } from '@cosimosi/config'
+
 import {
   DEFAULT_STAR_SHAPE,
   STAR_SHAPES,
@@ -28,6 +30,25 @@ describe('star shape catalogue', () => {
       // Every candidate is authored inside the unit sphere.
       expect(mesh.geometry.boundingSphere?.radius, shape.key).toBeGreaterThan(0)
       expect(mesh.geometry.boundingSphere?.radius, shape.key).toBeLessThanOrEqual(1.001)
+      mesh.geometry.dispose()
+      ;(mesh.material as THREE.Material).dispose()
+    }
+  })
+
+  // The perf guard the catalogue never had: a shape is a PURCHASABLE decoration multiplied by every
+  // memory in a universe, so an entry that reaches for raw subdivision instead of the shader must
+  // fail here rather than ship a per-instance cliff on the display path the shop monetizes.
+  it('keeps every registered shape under the declared triangle budget', () => {
+    const budget = VALUES.rendering.starShapeTriangleBudget
+    for (const shape of STAR_SHAPES) {
+      const mesh = createStarShapeBodySource(shape.key).resolve({
+        kind: 'shader',
+        id: shape.key,
+      }) as THREE.Mesh
+      const { index } = mesh.geometry
+      const triangles = (index ? index.count : mesh.geometry.getAttribute('position').count) / 3
+      expect(Number.isInteger(triangles), shape.key).toBe(true)
+      expect(triangles, `${shape.key} draws ${triangles} triangles`).toBeLessThanOrEqual(budget)
       mesh.geometry.dispose()
       ;(mesh.material as THREE.Material).dispose()
     }

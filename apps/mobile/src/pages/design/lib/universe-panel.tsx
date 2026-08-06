@@ -8,8 +8,10 @@ import {
   GIST_INSTANCE_DIFFUSE,
   GIST_INSTANCE_TINT,
   InstancedNodeLayer,
+  LATENT_FIELD_SEGMENTS,
   PostFX,
   SKY_EFFECTS,
+  STAR_FIELD_PROFILE,
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SCALE,
   STAR_INSTANCE_SEED,
@@ -169,7 +171,7 @@ function StarFormsStage() {
     <View style={styles.stack}>
       <Canvas>
         <SkySphere stops={stops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
-        <StarField reducedMotion={reducedMotion} />
+        <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
         <EpisodicLayer
           shape={shape}
           memories={scene.memories}
@@ -199,7 +201,7 @@ function SkyStage() {
     <View style={styles.stack}>
       <Canvas>
         <SkySphere stops={emotions} effect={effectKey} reducedMotion={reducedMotion} />
-        <StarField reducedMotion={reducedMotion} />
+        <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
         <PostFX bloom={skin.bloom} />
       </Canvas>
       <ChipRow
@@ -241,12 +243,13 @@ function AmbientStage() {
   return (
     <Canvas>
       <SkySphere stops={stops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
-      <StarField reducedMotion={reducedMotion} />
+      <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
       <LatentStarField
         field={scene.latent}
         reducedMotion={reducedMotion}
         sizeScale={DUST_MAGNIFICATION}
         consumed={NO_CONSUMED_MOTES}
+        segments={LATENT_FIELD_SEGMENTS.mobile}
       />
       <InstancedNodeLayer
         source={cellStarSource}
@@ -280,7 +283,7 @@ function NebulaStage() {
 
   return (
     <Canvas>
-      <StarField reducedMotion={reducedMotion} />
+      <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
       <ColorField
         positions={positions}
         count={scene.contributors.count}
@@ -308,7 +311,7 @@ function ForgettingStage() {
     <View style={styles.stack}>
       <Canvas>
         <SkySphere stops={stops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
-        <StarField reducedMotion={reducedMotion} />
+        <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
         <EpisodicLayer
           shape={DEFAULT_SHOWCASE_SHAPE}
           memories={scene.memories}
@@ -356,7 +359,7 @@ function GistStage() {
   return (
     <Canvas>
       <SkySphere stops={stops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
-      <StarField reducedMotion={reducedMotion} />
+      <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
       <EpisodicLayer
         shape={DEFAULT_SHOWCASE_SHAPE}
         memories={scene.memories}
@@ -401,11 +404,12 @@ function AwakenStage() {
   return (
     <View style={styles.stack}>
       <Canvas>
-        <StarField reducedMotion={reducedMotion} />
+        <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
         <LatentStarField
           field={field}
           reducedMotion={reducedMotion}
           sizeScale={AWAKEN_DUST_SCALE}
+          segments={LATENT_FIELD_SEGMENTS.mobile}
         />
         <AwakenNeuron field={field} newNeuronIds={launches} resolveAnchors={NO_ANCHORS} />
         <PostFX bloom={skin.bloom} />

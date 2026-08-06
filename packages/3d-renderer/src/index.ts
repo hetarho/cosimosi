@@ -48,8 +48,14 @@ export {
   GIST_INSTANCE_TINT,
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
-export { StarField, type StarFieldProps } from './layers/StarField.tsx'
-export { LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
+export { SKY_SPHERE_RADIUS, UNIVERSE_CANVAS_FAR } from './backdrop-scale.ts'
+export {
+  STAR_FIELD_PROFILE,
+  StarField,
+  type StarFieldProfile,
+  type StarFieldProps,
+} from './layers/StarField.tsx'
+export { LATENT_FIELD_SEGMENTS, LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { ColorField, type ColorFieldProps } from './layers/ColorField.tsx'
 export { CameraControls } from './layers/CameraControls.tsx'
 export { SkySphere, type SkySphereProps } from './layers/SkySphere.tsx'

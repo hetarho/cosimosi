@@ -3,10 +3,13 @@ import { useFrame } from '@react-three/fiber'
 import { float, fract, instanceIndex, pow, sin, uniform, vec3 } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
+import { VALUES } from '@cosimosi/config'
+
 export interface StarFieldProps {
-  /** Number of background stars. */
+  /** Number of background stars; defaults to the web density. */
   readonly count?: number
-  /** Outer shell radius — the field fills the volume out to here. */
+  /** Outer shell radius — the field fills the volume out to here. Bound by the backdrop nesting
+   *  invariant (camera zoom-out limit < this < sky sphere < far plane), not by taste. */
   readonly radius?: number
   readonly color?: THREE.ColorRepresentation
   /** Slow drift, radians/sec. */
@@ -14,6 +17,21 @@ export interface StarFieldProps {
   /** Freeze the twinkle to a static frame. */
   readonly reducedMotion?: boolean
 }
+
+/**
+ * The two platform backdrop densities, straight from `rendering.star_field_*`. A scene takes one of
+ * these whole rather than a loose count, so a surface can never end up wearing the web's instance
+ * count with the mobile radius (the two are read together by the nesting invariant).
+ */
+export const STAR_FIELD_PROFILE = {
+  web: { count: VALUES.rendering.starFieldCount, radius: VALUES.rendering.starFieldRadius },
+  mobile: {
+    count: VALUES.rendering.starFieldCountMobile,
+    radius: VALUES.rendering.starFieldRadiusMobile,
+  },
+} as const satisfies Record<string, { readonly count: number; readonly radius: number }>
+
+export type StarFieldProfile = (typeof STAR_FIELD_PROFILE)[keyof typeof STAR_FIELD_PROFILE]
 
 const FROZEN_TIME = 8
 
@@ -23,6 +41,8 @@ const INNER_FRACTION = 0.28
 const SIZE_REFERENCE = 60
 /** Fixed scatter seed: the field is random-looking yet identical on every mount and platform. */
 const SCATTER_SEED = 20260725
+/** World radius of one mote before the per-star distance scaling. */
+const MOTE_RADIUS = 0.18
 
 // Park-Miller minimal-standard LCG — a tiny deterministic PRNG using only integer * and % (all
 // operands stay < 2^53, so it is exact and identical across JS engines → web and mobile agree).
@@ -48,6 +68,15 @@ function starHash(salt: number) {
   return fract(sin(float(instanceIndex).mul(12.9898).add(salt)).mul(43758.5453))
 }
 
+// Package-internal construction seam: an icosahedron, not a UV sphere. A mote covers a handful of
+// pixels, so tessellation buys nothing but the silhouette, and a UV sphere of the same triangle
+// count spends most of them crowding the poles — where a 1-px dot has none to spare. At
+// `star_field_mote_detail: 0` the twenty faces still give a rounder outline than the 8x8 UV sphere
+// this replaces, for 20 triangles instead of 112.
+export function createStarFieldGeometry() {
+  return new THREE.IcosahedronGeometry(MOTE_RADIUS, VALUES.rendering.starFieldMoteDetail)
+}
+
 // Shared R3F layer: the small floating background stars — the universe backdrop every emotion sky
 // wears. Unlit (MeshBasicNodeMaterial) so they read as light points, and each star TWINKLES on its
 // own phase (a per-instance hash off `instanceIndex` drives a host-timed sine), so the field shimmers
@@ -55,14 +84,14 @@ function starHash(salt: number) {
 // The shell reaches past the camera's zoom-out limit so the field still wraps the view from the
 // farthest framing instead of shrinking into a clump at screen centre.
 export function StarField({
-  count = 2600,
-  radius = 520,
+  count = STAR_FIELD_PROFILE.web.count,
+  radius = STAR_FIELD_PROFILE.web.radius,
   color = '#cfe0ff',
   spin = 0.01,
   reducedMotion = false,
 }: StarFieldProps) {
   const ref = useRef<THREE.InstancedMesh>(null)
-  const geometry = useMemo(() => new THREE.SphereGeometry(0.18, 8, 8), [])
+  const geometry = useMemo(() => createStarFieldGeometry(), [])
   const time = useMemo(() => uniform(0), [])
   const material = useMemo(() => {
     const mat = new THREE.MeshBasicNodeMaterial()

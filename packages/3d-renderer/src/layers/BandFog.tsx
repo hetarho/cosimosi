@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from 'react'
-import { float, positionLocal, vec3 } from 'three/tsl'
+import { float, positionGeometry, vec3 } from 'three/tsl'
 import * as THREE from 'three/webgpu'
+
+import { attributeFloatNode } from '../tsl.ts'
 
 // A restrained haze across a z band — the depth cue that makes two stacked universe layers read
 // as separated depth ([V9]): a soft glow filling the gap and fading to nothing at the band
@@ -27,57 +29,90 @@ const FOG_TINT = vec3(0.45, 0.55, 0.78)
 const SLICE_COUNT = 6
 // Radial softness: brightest at the axis, gone by the field edge (a glow disc, never a wall).
 const RADIAL_FALLOFF = 2.2
+/** Per-slice haze strength (float, 0..1) — the ONE thing that differs between the discs. */
+export const BAND_FOG_STRENGTH = 'aFogStrength'
+
+/** The slice fractions across the gap that actually draw: a 1-|t| profile peaking at the gap
+ *  center and reaching 0 at both band edges — the same envelope the layers rise into — so the
+ *  two end slices contribute nothing and are never allocated. */
+function visibleSlices(): { readonly t: number; readonly profile: number }[] {
+  const slices = []
+  for (let i = 0; i < SLICE_COUNT; i++) {
+    const t = i / (SLICE_COUNT - 1)
+    const profile = 1 - Math.abs(t * 2 - 1)
+    if (profile > 0) slices.push({ t, profile })
+  }
+  return slices
+}
 
 // Package-internal construction seam: tests inspect the complete draw/pick/resource contract
 // without depending on a GPU renderer or a camera implementation.
-export function createBandFogGroup({ zMin, zMax, radius, intensity }: BandFogProps): THREE.Group {
-  const container = new THREE.Group()
+//
+// ONE instanced draw, not one mesh per slice: the discs' node graphs differed only by a constant,
+// and every distinct graph is a separate pipeline compile — the currency WebGPU stalls on. Strength
+// rides an instanced attribute instead, so adding slices costs instances rather than compiles.
+export function createBandFogMesh({
+  zMin,
+  zMax,
+  radius,
+  intensity,
+}: BandFogProps): THREE.InstancedMesh {
   const span = Math.max(0.001, zMax - zMin)
-  for (let i = 0; i < SLICE_COUNT; i++) {
-    // Slice fraction across the gap, and a 1-|t| profile peaking at the gap center and
-    // reaching 0 at both band edges — the same envelope the layers rise into.
-    const t = i / (SLICE_COUNT - 1)
-    const profile = 1 - Math.abs(t * 2 - 1)
-    if (profile <= 0) continue
-    const material = new THREE.MeshBasicNodeMaterial()
-    // Radial falloff over the disc: distance from the local center, faded to the rim.
-    const radial = positionLocal.xy.length().div(float(radius)).clamp(0, 1)
-    const glow = float(1).sub(radial).clamp(0, 1).pow(float(RADIAL_FALLOFF))
-    const strength = float(profile * intensity)
-    material.colorNode = FOG_TINT.mul(glow).mul(strength)
-    material.opacityNode = glow.mul(strength)
-    material.transparent = true
-    material.blending = THREE.AdditiveBlending
-    material.depthWrite = false
-    material.side = THREE.DoubleSide
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 48), material)
-    // Behind the bodies in the draw order so the haze never washes a star's core.
-    disc.renderOrder = -1
-    // Invisible to the raycaster: the discs span the whole scene and would otherwise
-    // swallow every click aimed at a body behind them.
-    disc.raycast = () => {}
-    disc.position.set(0, 0, zMin + t * span)
-    container.add(disc)
+  const slices = visibleSlices()
+
+  const geometry = new THREE.CircleGeometry(radius, 48)
+  const strengths = new Float32Array(slices.length)
+  for (const [index, slice] of slices.entries()) strengths[index] = slice.profile * intensity
+  geometry.setAttribute(BAND_FOG_STRENGTH, new THREE.InstancedBufferAttribute(strengths, 1))
+
+  const material = new THREE.MeshBasicNodeMaterial()
+  // Radial falloff over the disc, off the UNTOUCHED geometry attribute: `positionLocal` carries the
+  // instance transform, so an instanced disc would measure its distance from the field's axis
+  // rather than from its own center.
+  const radial = positionGeometry.xy.length().div(float(radius)).clamp(0, 1)
+  const glow = float(1).sub(radial).clamp(0, 1).pow(float(RADIAL_FALLOFF))
+  const strength = attributeFloatNode(BAND_FOG_STRENGTH)
+  material.colorNode = FOG_TINT.mul(glow).mul(strength)
+  material.opacityNode = glow.mul(strength)
+  material.transparent = true
+  material.blending = THREE.AdditiveBlending
+  material.depthWrite = false
+  material.side = THREE.DoubleSide
+  // Without this, three draws every transparent DoubleSide material twice (back faces, then front)
+  // to hide sorting artifacts — the mitigation is pointless for additive flat discs, where the sum
+  // is order-independent, and it would have doubled the very draw call this layer just collapsed.
+  material.forceSinglePass = true
+
+  const mesh = new THREE.InstancedMesh(geometry, material, slices.length)
+  const dummy = new THREE.Object3D()
+  for (const [index, slice] of slices.entries()) {
+    dummy.position.set(0, 0, zMin + slice.t * span)
+    dummy.updateMatrix()
+    mesh.setMatrixAt(index, dummy.matrix)
   }
-  return container
+  mesh.instanceMatrix.needsUpdate = true
+  // Behind the bodies in the draw order so the haze never washes a star's core.
+  mesh.renderOrder = -1
+  // Invisible to the raycaster: the discs span the whole scene and would otherwise
+  // swallow every click aimed at a body behind them.
+  mesh.raycast = () => {}
+  return mesh
 }
 
-export function disposeBandFogGroup(group: THREE.Group) {
-  for (const child of group.children) {
-    const disc = child as THREE.Mesh
-    disc.geometry.dispose()
-    const material = disc.material
-    if (!Array.isArray(material)) material.dispose()
-  }
+export function disposeBandFogMesh(mesh: THREE.InstancedMesh) {
+  mesh.geometry.dispose()
+  const material = mesh.material
+  if (!Array.isArray(material)) material.dispose()
+  mesh.dispose()
 }
 
 export function BandFog(props: BandFogProps) {
-  const group = useMemo(
-    () => createBandFogGroup(props),
+  const mesh = useMemo(
+    () => createBandFogMesh(props),
     [props.zMin, props.zMax, props.radius, props.intensity],
   )
 
-  useEffect(() => () => disposeBandFogGroup(group), [group])
+  useEffect(() => () => disposeBandFogMesh(mesh), [mesh])
 
-  return <primitive object={group} />
+  return <primitive object={mesh} />
 }

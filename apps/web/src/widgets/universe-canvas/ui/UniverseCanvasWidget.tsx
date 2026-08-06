@@ -4,6 +4,7 @@ import { VALUES } from '@cosimosi/config'
 import { SkinProvider, UniverseCanvas, resolveActiveSkin, useSkin } from '@cosimosi/3d-renderer'
 import { useReducedMotion } from '@cosimosi/ui'
 import {
+  UNIVERSE_BACKDROP,
   UniverseSceneLayers,
   useUniverseScene,
   type UniverseNavigationActorRef,
@@ -43,6 +44,7 @@ function UniverseCanvasHost({
         <UniverseSceneLayers
           scene={scene}
           bloom={skin.bloom}
+          backdrop={UNIVERSE_BACKDROP.web}
           reducedMotion={reducedMotion}
           onMemoryHover={setHoveredMemoryIndex}
         />

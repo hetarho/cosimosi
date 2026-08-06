@@ -9,6 +9,7 @@ import {
   type GradientStop,
 } from '../assets/sky/emotion-gradient.ts'
 import { DEFAULT_SKY_EFFECT, resolveSkyEffect } from '../assets/sky/sky-effects.ts'
+import { SKY_SPHERE_RADIUS } from '../backdrop-scale.ts'
 
 // The emotion sky: a large sphere drawn on its INNER surface (BackSide), enclosing the whole
 // universe scene, shaded by a TSL effect. Not a flat screen-space wash — a real body wrapping
@@ -109,7 +110,7 @@ export function SkySphere({
   effect = DEFAULT_SKY_EFFECT,
   reducedMotion = false,
   opacity,
-  radius = 700,
+  radius = SKY_SPHERE_RADIUS,
   rateRef,
 }: SkySphereProps) {
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])

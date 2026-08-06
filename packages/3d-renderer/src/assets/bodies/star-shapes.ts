@@ -151,6 +151,52 @@ function meshSource(build: () => THREE.Mesh): VisualBodySource {
   return { resolve: build }
 }
 
+// ── the shell the round looks are carved out of ──────────────────────────────────────────────
+
+/**
+ * A smooth unit sphere cut into `segments` steps along each icosahedron edge — 20 × segments²
+ * triangles, indexed, with no uv set.
+ *
+ * An icosphere rather than a UV sphere because these bodies sample their relief UNIFORMLY over the
+ * surface: a UV sphere crowds most of its triangles at the poles, so it costs several times as much
+ * to resolve the same displacement everywhere else. Built by hand rather than handed
+ * `IcosahedronGeometry` directly because three builds polyhedra non-indexed and uv-seamed — three
+ * vertices per triangle for a body that reads neither uv nor a flat normal, which would have traded
+ * triangles for vertices instead of cutting both (`rendering.star_shape_triangle_budget`).
+ *
+ * Smooth normals only: `segments: 1` would need three's flat per-face normals, which is the whole
+ * point of `facet`/`prism` — those keep `IcosahedronGeometry`/`DodecahedronGeometry` directly.
+ */
+function icosphere(segments: number): THREE.BufferGeometry {
+  const shell = new THREE.IcosahedronGeometry(1, segments - 1)
+  const source = shell.getAttribute('position')
+  const positions: number[] = []
+  const indices: number[] = []
+  const merged = new Map<string, number>()
+  for (let i = 0; i < source.count; i++) {
+    const x = source.getX(i)
+    const y = source.getY(i)
+    const z = source.getZ(i)
+    // A shared vertex is computed independently by each face that touches it, so the two copies
+    // agree only to float error — far below the ~0.06 spacing of the finest shell used here.
+    const key = `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`
+    let index = merged.get(key)
+    if (index === undefined) {
+      index = positions.length / 3
+      merged.set(key, index)
+      positions.push(x, y, z)
+    }
+    indices.push(index)
+  }
+  shell.dispose()
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  // On a unit-radius shell a smooth vertex normal IS the vertex position.
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([...positions], 3))
+  geometry.setIndex(indices)
+  return geometry
+}
+
 // ── the looks ────────────────────────────────────────────────────────────────────────────────
 
 // Cut facet: 20 flat faces, one tone each. The hardest-edged look in the set — the emotion reads as
@@ -250,7 +296,7 @@ function buildGeodeBody(animate: boolean): THREE.Mesh {
     .mul(shade.mul(float(0.9)))
     .add(mix(tint, HIGHLIGHT, float(0.35)).mul(veins.mul(veinPulse).mul(float(1.8))))
     .mul(brightness)
-  return new THREE.Mesh(new THREE.IcosahedronGeometry(1, 3), material)
+  return new THREE.Mesh(icosphere(4), material)
 }
 
 // Bubble: a hollow shell with nothing in the middle — all the light sits at the limb, tinted by a
@@ -297,7 +343,7 @@ function buildBubbleBody(animate: boolean): THREE.Mesh {
   material.blending = THREE.AdditiveBlending
   material.depthWrite = false
   material.side = THREE.DoubleSide
-  return new THREE.Mesh(new THREE.SphereGeometry(1, 40, 40), material)
+  return new THREE.Mesh(icosphere(8), material)
 }
 
 // Spire: the eight-point star — a broad core with low pyramids toward the cube corners, cut into
@@ -397,7 +443,10 @@ function buildUrchinBody(animate: boolean): THREE.Mesh {
     .mul(shade.mul(float(1.1)))
     .add(mix(tint, HIGHLIGHT, float(0.22)).mul(needle.pow(float(0.5)).mul(float(0.5))))
     .mul(brightness)
-  return new THREE.Mesh(new THREE.SphereGeometry(1, 96, 96), material)
+  // The needles ARE the silhouette, so this look is the one that genuinely spends vertices — its
+  // shell sets `rendering.star_shape_triangle_budget`, and no shape may go past it. 16 steps put
+  // the vertex spacing at the 96x96 UV sphere it replaces, for 28% of the triangles.
+  return new THREE.Mesh(icosphere(16), material)
 }
 
 // Plasma: a churning surface — warped fbm banded into hot steps with ridged filaments over it. Its
@@ -431,7 +480,7 @@ function buildPlasmaBody(animate: boolean): THREE.Mesh {
     .mul(bands.mul(float(1.3)).add(float(0.28)))
     .add(mix(tint, HIGHLIGHT, float(0.5)).mul(veins.mul(float(0.6))))
     .mul(brightness)
-  return new THREE.Mesh(new THREE.SphereGeometry(1, 48, 48), material)
+  return new THREE.Mesh(icosphere(9), material)
 }
 
 // Contour: a lumpy hull wearing its own topographic map — the relief that shapes the body is the
@@ -464,7 +513,9 @@ function buildContourBody(animate: boolean): THREE.Mesh {
     .mul(shade.mul(float(0.6)))
     .add(mix(tint, HIGHLIGHT, float(0.3)).mul(lines.mul(float(1.3))))
     .mul(brightness)
-  return new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), material)
+  // The isolines are drawn per-fragment off `positionGeometry`, so they keep their crispness at any
+  // tessellation — only the relief that shapes the hull needs vertices.
+  return new THREE.Mesh(icosphere(12), material)
 }
 
 // Haze: no surface at all. A facing falloff eaten by soft noise, additive — the emotion as a breath
@@ -506,7 +557,9 @@ function buildHazeBody(animate: boolean): THREE.Mesh {
   material.transparent = true
   material.blending = THREE.AdditiveBlending
   material.depthWrite = false
-  return new THREE.Mesh(new THREE.SphereGeometry(1, 24, 24), material)
+  // Nothing here moves a vertex and the body fades out at its own silhouette, so the shell only has
+  // to carry a smooth view normal — the coarsest one that does.
+  return new THREE.Mesh(icosphere(4), material)
 }
 
 // ── the registry ─────────────────────────────────────────────────────────────────────────────

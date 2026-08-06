@@ -2,11 +2,14 @@ import { VALUES } from '@cosimosi/config'
 import {
   BandFog,
   FrameTick,
+  LATENT_FIELD_SEGMENTS,
   NavigationRig,
   PostFX,
+  STAR_FIELD_PROFILE,
   SkySphere,
   StarField,
   type BloomParams,
+  type StarFieldProfile,
 } from '@cosimosi/3d-renderer'
 import { UNIVERSE_CAMERA_RIG, advanceSkyRate } from '@cosimosi/universe'
 
@@ -21,11 +24,28 @@ import type { UniverseSceneState } from './use-universe-scene.ts'
 
 const EMPTY_NODE_INDEX: Readonly<Record<string, number>> = {}
 
+/** Everything the two ambient backdrop layers cost, as one platform bundle. */
+export interface UniverseBackdropProfile {
+  /** Background star count + shell radius — read together, they carry the nesting invariant. */
+  readonly starField: StarFieldProfile
+  /** Sphere segments per latent mote. */
+  readonly latentSegments: number
+}
+
+/** The shipped backdrop fidelity per platform. A host states which one it is; there is no default,
+ *  because a host that forgets would silently put the web budget on a phone (§3.5). */
+export const UNIVERSE_BACKDROP = {
+  web: { starField: STAR_FIELD_PROFILE.web, latentSegments: LATENT_FIELD_SEGMENTS.web },
+  mobile: { starField: STAR_FIELD_PROFILE.mobile, latentSegments: LATENT_FIELD_SEGMENTS.mobile },
+} as const satisfies Record<string, UniverseBackdropProfile>
+
 export interface UniverseSceneLayersProps {
   /** Everything computed outside the canvas by `useUniverseScene`. */
   readonly scene: UniverseSceneState
   /** From the active skin — a scene default, never a purchasable decoration ([V10][I11]). */
   readonly bloom: BloomParams
+  /** This platform's ambient backdrop budget — `UNIVERSE_BACKDROP.web` or `.mobile`. */
+  readonly backdrop: UniverseBackdropProfile
   readonly reducedMotion: boolean
   /** Lower-fidelity color field for the native MVP; omitted, the field uses its own default. */
   readonly nebulaResolution?: number
@@ -47,6 +67,7 @@ export interface UniverseSceneLayersProps {
 export function UniverseSceneLayers({
   scene,
   bloom,
+  backdrop,
   reducedMotion,
   nebulaResolution,
   onMemoryHover,
@@ -82,7 +103,7 @@ export function UniverseSceneLayers({
         reducedMotion={reducedMotion}
         rateRef={advanceSkyRate}
       />
-      <StarField reducedMotion={reducedMotion} />
+      <StarField {...backdrop.starField} reducedMotion={reducedMotion} />
       {/* Emotion color field: additive mood-color blend behind the latent field and bodies
           (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
       <NebulaField
@@ -91,7 +112,11 @@ export function UniverseSceneLayers({
         firstNodeIndex={neuronCount}
         resolution={nebulaResolution}
       />
-      <LatentStarField field={latentField} reducedMotion={reducedMotion} />
+      <LatentStarField
+        field={latentField}
+        reducedMotion={reducedMotion}
+        segments={backdrop.latentSegments}
+      />
       <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
       <StarLayer
         key={`star-${paletteVersion}-${wearing.STAR_SHADER}`}

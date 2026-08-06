@@ -5,6 +5,7 @@ import { VALUES } from '@cosimosi/config'
 import {
   PostFX,
   SKY_EFFECTS,
+  STAR_FIELD_PROFILE,
   SkinProvider,
   SkySphere,
   StarField,
@@ -77,7 +78,7 @@ function SkyShowcase({ onBack }: { onBack: () => void }) {
           clearColor={skin.sky.night}
         >
           <SkySphere stops={emotions} effect={effectKey} reducedMotion={reducedMotion} />
-          <StarField reducedMotion={reducedMotion} />
+          <StarField {...STAR_FIELD_PROFILE.mobile} reducedMotion={reducedMotion} />
           <PostFX bloom={skin.bloom} />
         </UniverseCanvas>
       </View>
