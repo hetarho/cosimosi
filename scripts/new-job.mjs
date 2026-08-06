@@ -46,7 +46,7 @@ let planRef = kind === 'refactor' ? 'none' : sourceRef
 let title = titleOverride || frontmatterTitle(srcText) || h1Title(srcText)
 
 if (kind === 'change') {
-  planRef = (srcText.match(/^plan:\s*(.+)$/m) || [])[1]?.trim() || 'plan/UNKNOWN'
+  planRef = unquote((srcText.match(/^plan:\s*(.+)$/m) || [])[1]?.trim()) || 'plan/UNKNOWN'
   title = titleOverride || frontmatterTitle(srcText) || title
 }
 
@@ -79,7 +79,16 @@ console.log(
 )
 
 function frontmatterTitle(t) {
-  return (t.match(/^title:\s*(.+)$/m) || [])[1]?.trim() || null
+  return unquote((t.match(/^title:\s*(.+)$/m) || [])[1]?.trim()) || null
+}
+
+// Frontmatter scalars are quoted in the scaffold templates so a placeholder cannot be read as
+// YAML syntax. A consumer reading them back gets the quotes too, and they would land in a job's
+// filename and its own frontmatter.
+function unquote(value) {
+  if (!value) return value
+  const m = value.match(/^(['"])(.*)\1$/)
+  return m ? m[2] : value
 }
 
 function h1Title(t) {
