@@ -134,8 +134,8 @@ export function InstancedNodeLayer({
   const vertexScaleRef = useRef<THREE.InstancedBufferAttribute | null>(null)
   // What the matrices currently on the GPU were composed from, and this frame's candidate. Both
   // are stable scratch objects: the hot loop compares and records field-wise, never allocating.
-  const composedFrame = useMemo(createInstanceFrameKey, [])
-  const frame = useMemo(createInstanceFrameKey, [])
+  const composedFrame = useMemo(() => createInstanceFrameKey(), [])
+  const frame = useMemo(() => createInstanceFrameKey(), [])
   const matrix = useMemo(() => new THREE.Matrix4(), [])
   const derivedPosition = useMemo(() => new Float32Array(3), [])
   // A zero-scale matrix hides an instance whose coordinate isn't in the live buffer yet, keeping its
@@ -236,7 +236,7 @@ export function InstancedNodeLayer({
           channels.vertexScaleAttribute,
         ) as THREE.InstancedBufferAttribute | null) ?? null)
       : null
-  }, [body, channels, instanceCount, count])
+  }, [body, channels, instanceCount, count, scale])
 
   useFrame((state) => {
     const mesh = meshRef.current

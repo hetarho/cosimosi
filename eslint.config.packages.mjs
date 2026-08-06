@@ -35,25 +35,55 @@ const REACT_FILES = [
   'packages/**/react.tsx',
   'packages/**/react/**/*.{ts,tsx}',
   'packages/ui/**/*.{ts,tsx}',
+  // The scene packages are React top to bottom — layers, canvas hosts, the skin context — but none of
+  // it is named `react.*`, so the globs above saw a renderer of ~40 components as pure logic. They are
+  // the repo's densest hook code (every layer runs `useFrame`, `useMemo` over GPU resources and an
+  // effect that disposes them), which makes them the last place a hook rule should be optional.
+  'packages/3d-renderer/src/**/*.{ts,tsx}',
+  'packages/universe-render/src/**/*.{ts,tsx}',
 ]
 
-// Two rules from `react-hooks`' recommended-latest set are OFF, deliberately and with the whole tree
-// measured: they encode the React Compiler's stricter model, and the seams here use two idioms that
-// model rejects but that are correct for hand-written React 19 — every instance already carrying a
-// prose comment explaining itself.
+// The scene packages mutate preallocated objects every frame — a uniform's `.value`, a matrix, a pose
+// record, a controls instance — because that IS the renderer's architecture (§3.2/§3.3: coordinates and
+// per-frame values never enter React state). `react-hooks/immutability` reports every one of those
+// writes: 17 findings across 9 files, all of them a `useFrame` body reaching for something the render
+// allocated. The rule is not wrong about the compiler's model; it is describing a rule the compiler
+// itself does not apply to loop bodies (React Compiler memoizes render code, not `useFrame`), so it
+// contradicts these two packages by construction rather than catching drift in them. Off for their
+// scope, on everywhere else.
+const RENDERER_FRAME_MUTATION = { 'react-hooks/immutability': 'off' }
+
+// The two compiler-model rules, off for a NAMED LIST OF FILES rather than for `packages/**`. Fresh
+// count: 23 `refs` + 3 `set-state-in-effect` across the ten files below (job 133's baseline was 25
+// under a narrower file scope; the addition is the native canvas host's live-config write, which the
+// widened renderer scope above brought into view for the first time). Three idioms account for all of
+// them, and the same three carry the app's list in `apps/web/eslint.config.js`:
 //
-//   `refs` (22 findings) — the latest-ref idiom (`ref.current = latest` during render, read from a
-//     callback) and ref-guarded lazy creation. `packages/auth/src/react.ts:29-31` is the clearest
-//     case: a `useState` initializer there would run twice under StrictMode and orphan a live actor,
-//     a subscription and a refresh timer with no dispose handle.
-//   `set-state-in-effect` (3 findings) — presence/exit-animation state (`packages/ui`'s
-//     `usePresence`), and effects that must fire a callback and commit in the same pass
-//     (`SessionScopeBoundary`).
+//   latest-ref — `ref.current = latest` during render, read from a callback that must not
+//     re-subscribe when an identity moves. `packages/auth/src/react.ts:29-31` is the clearest case: a
+//     `useState` initializer there would run twice under StrictMode and orphan a live actor, a
+//     subscription and a refresh timer with no dispose handle. The native canvas host's
+//     `live.current = {...}` is the same shape and load-bearing for the same reason — the device
+//     effect must not re-key on config (job 136).
+//   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`.
+//   commit-and-fire effects — presence/exit animation (`packages/ui`'s `usePresence`) and effects that
+//     must notify and commit in one pass (`SessionScopeBoundary`, the sequence runner).
 //
-// Turning them on today would mean 25 inline suppressions to land a green gate, which is the thing
-// §4 forbids ("no gate uses suppression to stay green"). Reviewing those two idioms against the
-// compiler model is its own change with its own reasoning — not a lint-wiring job. Every OTHER rule in
-// the set is on and the tree is green against them, so this is a named exclusion, not a ratchet.
+// A file list, not a blanket off: a NEW file reaching for either idiom fails the gate, and the list can
+// only shrink. Every other rule in the set is on and the tree is green against them.
+const COMPILER_MODEL_FILES = [
+  'packages/3d-renderer/src/canvas/UniverseCanvas.native.tsx',
+  'packages/auth/src/react.ts',
+  'packages/observability/src/react.tsx',
+  'packages/sequence/src/react.ts',
+  'packages/ui/src/a11y/use-focus-trap.ts',
+  'packages/ui/src/a11y/use-presence.ts',
+  'packages/ui/src/primitives/sheet.native.tsx',
+  'packages/ui/src/primitives/skeleton.native.tsx',
+  'packages/ui/src/primitives/toast.native.tsx',
+  'packages/ui/src/primitives/toast.tsx',
+]
+
 const COMPILER_MODEL_DEFERRED = {
   'react-hooks/refs': 'off',
   'react-hooks/set-state-in-effect': 'off',
@@ -76,8 +106,15 @@ export default defineConfig([
       // An error, not recommended-latest's `warn`: this is the rule whose absence made the gate hole
       // worth a job, and a warning is a finding the next green run scrolls past.
       'react-hooks/exhaustive-deps': 'error',
-      ...COMPILER_MODEL_DEFERRED,
     },
+  },
+  {
+    files: ['packages/3d-renderer/src/**/*.{ts,tsx}', 'packages/universe-render/src/**/*.{ts,tsx}'],
+    rules: RENDERER_FRAME_MUTATION,
+  },
+  {
+    files: COMPILER_MODEL_FILES,
+    rules: COMPILER_MODEL_DEFERRED,
   },
   // Naming a property beside a rest element is how you OMIT that key, so the binding is unused by
   // construction — `packages/ui`'s `native-styles.ts` drops the web-only `font` group from the token

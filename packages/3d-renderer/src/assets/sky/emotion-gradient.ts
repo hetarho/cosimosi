@@ -116,8 +116,14 @@ export function updateEmotionGradientTexture(
   texture.needsUpdate = true
 }
 
-/** Build the ramp texture (linear-filtered, clamped) and fill it from the stops. */
-export function buildEmotionGradientTexture(stops: readonly GradientStop[]): THREE.DataTexture {
+/**
+ * Build the ramp texture (linear-filtered, clamped) and fill it from the stops. With no stops it is
+ * the bare night — the state the sky is in before a universe's emotions reach it, and the reason the
+ * texture can be allocated without knowing them.
+ */
+export function buildEmotionGradientTexture(
+  stops: readonly GradientStop[] = [],
+): THREE.DataTexture {
   const texture = new THREE.DataTexture(
     new Uint8Array(GRADIENT_WIDTH * 4),
     GRADIENT_WIDTH,

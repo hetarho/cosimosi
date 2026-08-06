@@ -146,25 +146,30 @@ export function QueryCachePanel() {
   const [revision, setRevision] = useState(0)
   const entries = inspectClientCache(queryClient)
 
-  const refresh = useCallback(() => setRevision((value) => value + 1), [])
-  const seedFakeQuery = useCallback(() => {
+  // Unmemoized on purpose. This panel reads the cache during render and its buttons MUTATE that same
+  // client, which is a shape React Compiler cannot preserve manual memoization through — it skips
+  // optimizing the whole component and says so. Nothing here needs stable identity (three buttons,
+  // no memo boundary below), so dropping the hand-memo is what lets the component be optimized at
+  // all.
+  const refresh = () => setRevision((value) => value + 1)
+  const seedFakeQuery = () => {
     setClientCacheData(queryClient, TEST_CACHE_KEY, {
       source: 'test-harness',
       revision,
       updatedAt: new Date().toISOString(),
     })
     refresh()
-  }, [queryClient, refresh, revision])
+  }
 
-  const invalidate = useCallback(() => {
+  const invalidate = () => {
     void queryClient.invalidateQueries()
     refresh()
-  }, [queryClient, refresh])
+  }
 
-  const clear = useCallback(() => {
+  const clear = () => {
     queryClient.clear()
     refresh()
-  }, [queryClient, refresh])
+  }
 
   return (
     <PanelStack>

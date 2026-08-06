@@ -21,6 +21,9 @@ const CONFIG = 'eslint.config.packages.mjs'
 // outside a `react.ts` / `packages/ui` path must NOT fire, and that negative is half the wiring.
 const pureDir = mkdtempSync(join(repoRoot, 'packages/memory-logic/src/.probe-'))
 const reactDir = mkdtempSync(join(repoRoot, 'packages/ui/src/.probe-'))
+// The scene packages are React without being named `react.*`, so their inclusion is a glob nobody
+// would miss removing — hence a probe of its own.
+const rendererDir = mkdtempSync(join(repoRoot, 'packages/3d-renderer/src/.probe-'))
 
 const UNUSED_IMPORT = `import { createEmotion } from '@cosimosi/emotion'\nexport const value = 1\n`
 
@@ -66,6 +69,14 @@ const cases = [
     source: HOOK_IN_CONDITION,
     rule: 'react-hooks/rules-of-hooks',
   },
+  // Positive renderer-scope probe: an ordinary layer file, not a `react.*` one. Before the scope
+  // widened, a missing dependency here was reported by nothing at all.
+  {
+    dir: rendererDir,
+    name: 'missing-dep-layer.tsx',
+    source: MISSING_HOOK_DEP,
+    rule: 'react-hooks/exhaustive-deps',
+  },
 ]
 
 // The React block is path-scoped, so the same hook violation in a pure package must stay unreported —
@@ -109,4 +120,5 @@ try {
 } finally {
   rmSync(pureDir, { recursive: true, force: true })
   rmSync(reactDir, { recursive: true, force: true })
+  rmSync(rendererDir, { recursive: true, force: true })
 }

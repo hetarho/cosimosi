@@ -64,8 +64,8 @@ const NO_ANCHORS = () => []
 
 export function StatesPanel() {
   const [animate, setAnimate] = useState(true)
-  const forgetting = useMemo(forgettingShowcaseScene, [])
-  const gist = useMemo(gistShowcaseScene, [])
+  const forgetting = useMemo(() => forgettingShowcaseScene(), [])
+  const gist = useMemo(() => gistShowcaseScene(), [])
 
   return (
     <div className="flex flex-col gap-8">
@@ -214,7 +214,7 @@ function GistCanvas({ scene, animate }: { scene: GistShowcaseScene; animate: boo
  */
 function AwakenSpecimen({ animate }: { animate: boolean }) {
   const [launches, setLaunches] = useState<readonly string[]>([])
-  const field = useMemo(awakenShowcaseField, [])
+  const field = useMemo(() => awakenShowcaseField(), [])
 
   // The specimen consumes latent motes through the real store, so it restores exactly what it found:
   // a review surface may not leave the live universe missing dust it never awakened.

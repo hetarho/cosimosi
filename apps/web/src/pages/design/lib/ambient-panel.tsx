@@ -56,7 +56,7 @@ const NO_CONSUMED_MOTES: ReadonlySet<number> = new Set()
 
 export function AmbientPanel() {
   const [animate, setAnimate] = useState(true)
-  const scene = useMemo(ambientShowcaseScene, [])
+  const scene = useMemo(() => ambientShowcaseScene(), [])
 
   return (
     <Specimen label={T.ambientLabel} note={T.ambientNote}>

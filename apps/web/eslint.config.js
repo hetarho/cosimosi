@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import { defineConfig } from 'eslint/config'
 import boundaries from 'eslint-plugin-boundaries'
+import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
 
 const layers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']
@@ -33,6 +34,63 @@ const crossImportRules = [
 export default defineConfig([
   {
     ignores: ['dist/**', 'node_modules/**'],
+  },
+  {
+    // React's own rules, including the React Compiler diagnostics — the compiler surfaces them
+    // through this plugin, so they run whether or not the transform is enabled. oxlint carries
+    // `react/rules-of-hooks` alone and cannot express the rest, and the root
+    // `eslint.config.packages.mjs` never sees `apps/web`, so without this block the app was the
+    // one React tree in the repo nothing checked against the compiler model.
+    files: ['src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
+    rules: {
+      // An error, not recommended-latest's `warn` — the packages config's reasoning, applied to the
+      // app: a warning is a finding the next green run scrolls past.
+      'react-hooks/exhaustive-deps': 'error',
+    },
+  },
+  {
+    // The two compiler-model rules, off for a NAMED LIST OF FILES rather than for the app.
+    //
+    // Both flag idioms that are correct hand-written React 19 and that the compiler answers by
+    // skipping the component rather than by miscompiling it — measured by running the real plugin
+    // over every source. Three idioms account for every entry:
+    //
+    //   latest-ref — `ref.current = latestProps` during render, read from a timer/observer callback
+    //     that must not re-subscribe when a callback identity changes (`AccelerateTime`,
+    //     `DemoTimePassing`, `UniverseTimeOverlay`).
+    //   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`, where a
+    //     `useState` initializer would run twice under StrictMode and orphan a live paid-action
+    //     session or a query client (`RecallFlowSheet`, `GistViewSheet`, `DiaryReaderBlock`,
+    //     `query-provider`). This is the `packages/auth` case, in the app.
+    //   commit-and-fire effects — presence/exit-animation state and effects that must both notify and
+    //     commit in one pass (`DetailPanel`'s held content, the sheets' reset-on-retarget, the
+    //     bootstrap gates, the deep-link consumption).
+    //
+    // A file list, not a blanket off, is the whole point: a NEW file that reaches for either idiom
+    // fails the gate, and this list can only shrink. Removing an entry is a behavior-carrying
+    // refactor of that surface, which is why it is not this job's work.
+    files: [
+      'src/app/providers/decoration-bootstrap.tsx',
+      'src/app/providers/query-provider.tsx',
+      'src/features/accelerate-time/ui/AccelerateTime.tsx',
+      'src/features/account-profile/ui/AccountProfile.tsx',
+      'src/pages/demo/ui/DemoPage.tsx',
+      'src/pages/demo/ui/DemoTimePassing.tsx',
+      'src/pages/landing/ui/LandingReveal.tsx',
+      'src/pages/test/lib/platform-panel-components.tsx',
+      'src/widgets/deletion-flow/ui/DeletionFlowSheet.tsx',
+      'src/widgets/diary-reader/ui/DiaryReaderBlock.tsx',
+      'src/widgets/recall-flow/ui/RecallFlowSheet.tsx',
+      'src/widgets/star-detail/ui/DetailPanel.tsx',
+      'src/widgets/star-detail/ui/GistViewSheet.tsx',
+      'src/widgets/stardust/ui/StardustOverlay.tsx',
+      'src/widgets/universe-time/ui/UniverseTimeOverlay.tsx',
+    ],
+    rules: {
+      'react-hooks/refs': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
   {
     files: ['src/**/*.{ts,tsx}'],

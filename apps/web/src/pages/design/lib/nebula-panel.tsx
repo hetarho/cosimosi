@@ -18,7 +18,7 @@ import { m } from '../../../shared/i18n/index.ts'
 
 function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {
   const { skin } = useSkin()
-  const scene = useMemo(moodRingShowcaseScene, [])
+  const scene = useMemo(() => moodRingShowcaseScene(), [])
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
   return (
     <UniverseCanvas

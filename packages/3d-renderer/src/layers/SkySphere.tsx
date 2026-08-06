@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { float, uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
@@ -112,7 +112,11 @@ export function SkySphere({
   radius = SKY_SPHERE_RADIUS,
   rateRef,
 }: SkySphereProps) {
-  const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
+  // Allocated once and repainted in place: a fresh texture per stops change would orphan a GPU
+  // texture AND move the material memo's identity, recompiling the sky's TSL shader on every
+  // refetch. It is allocated bare and painted by the layout effect below, so the memo depends on
+  // nothing and the ramp is still correct before the first frame draws.
+  const gradient = useMemo(() => buildEmotionGradientTexture(), [])
   const time = useMemo(() => uniform(0), [])
   const geometry = useMemo(() => new THREE.SphereGeometry(radius, 96, 48), [radius])
 
@@ -144,8 +148,10 @@ export function SkySphere({
     })
   }, [gradient, time, effect, count, weights, effectOpacity, headroom])
 
-  // Repaint the ramp when the emotions change (no material rebuild).
-  useEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])
+  // Repaint the ramp when the emotions change (no material rebuild). A LAYOUT effect, so the first
+  // paint lands before R3F's first rendered frame rather than after it — a passive effect would let
+  // one frame draw the unpainted (black) ramp.
+  useLayoutEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])
 
   // Dispose each resource only when it is actually replaced (or on unmount) — the material is
   // rebuilt on an effect switch, so its cleanup must NOT take the still-live geometry/gradient with it.

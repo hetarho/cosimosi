@@ -106,10 +106,12 @@ export function disposeBandFogMesh(mesh: THREE.InstancedMesh) {
   mesh.dispose()
 }
 
-export function BandFog(props: BandFogProps) {
+export function BandFog({ zMin, zMax, radius, intensity }: BandFogProps) {
+  // Destructured rather than passed through as `props`: the mesh is rebuilt (and the old one
+  // disposed) whenever any of these move, and naming them is what keeps that list complete.
   const mesh = useMemo(
-    () => createBandFogMesh(props),
-    [props.zMin, props.zMax, props.radius, props.intensity],
+    () => createBandFogMesh({ zMin, zMax, radius, intensity }),
+    [zMin, zMax, radius, intensity],
   )
 
   useEffect(() => () => disposeBandFogMesh(mesh), [mesh])
