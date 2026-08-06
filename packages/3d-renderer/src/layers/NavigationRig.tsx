@@ -4,6 +4,7 @@ import { MathUtils, Vector3 } from 'three/webgpu'
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js'
 
 import { canAttachDomControls, observeElementResize } from './dom-controls.ts'
+import { applyTrackballFeel } from './trackball-feel.ts'
 import {
   createArrivalLatchState,
   stepArrivalLatch,
@@ -70,11 +71,10 @@ export function NavigationRig({
     const el = gl.domElement
     if (!canAttachDomControls(el)) return
     const controls = new TrackballControls(camera, el)
-    // Inertial damping (staticMoving off): the throw keeps gliding, never latching to a stop.
-    controls.staticMoving = false
-    controls.dynamicDampingFactor = 0.15
+    applyTrackballFeel(controls)
+    // Slower than the inspection controls' 1.8, and pan enabled: navigating a whole universe wants a
+    // settled drift, not a quick tumble around one body.
     controls.rotateSpeed = 1.4
-    controls.zoomSpeed = 1.2
     controls.panSpeed = 0.6
     controls.minDistance = minDistance
     controls.maxDistance = maxDistance

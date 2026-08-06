@@ -16,6 +16,7 @@ import {
 import { createForceSimNodeIndex } from '@cosimosi/force-sim'
 import { paletteVersion } from '@cosimosi/emotion'
 import {
+  UNIVERSE_CAMERA_ENVELOPE,
   advanceSkyRate,
   buildUniverseGraph,
   createUniverseSimBridge,
@@ -192,7 +193,7 @@ function DemoCanvasHost({
       {/* Free navigation is free play's (and the sky beat's spectators'): while the tour runs, a
           dragged-away camera would point the ring and the mask hole at a scene the caption is not
           describing, so the controls simply do not mount until the run is over. */}
-      {cameraFree && <CameraControls />}
+      {cameraFree && <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />}
       <FrameTick onFrame={pump} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>

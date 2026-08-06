@@ -13,7 +13,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { Button } from '@cosimosi/ui'
 
-import { moodRingShowcaseScene } from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_ENVELOPE, moodRingShowcaseScene } from '@cosimosi/universe'
 import { m } from '../../../shared/i18n/index.ts'
 
 function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {
@@ -38,7 +38,7 @@ function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {
         baseIntensity={VALUES.nebula.baseIntensity}
         resolution={VALUES.nebula.fieldResolutionWeb}
       />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )

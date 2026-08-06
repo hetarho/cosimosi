@@ -9,6 +9,7 @@ import { VALUES } from '@cosimosi/config'
 
 import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
 import type { UniverseCanvasProps } from './UniverseCanvas.tsx'
+import { DEFAULT_CANVAS_DPR, DEFAULT_CANVAS_FOV } from './canvas-defaults.ts'
 import { resolveToneMapping } from './tone-mapping.ts'
 
 export type { UniverseCanvasProps } from './UniverseCanvas.tsx'
@@ -77,8 +78,8 @@ type LiveConfig = Pick<
 // needs a DOM/CSS backdrop behind the scene.
 export function UniverseCanvas({
   children,
-  dpr = [1, 2],
-  fov = 55,
+  dpr = DEFAULT_CANVAS_DPR,
+  fov = DEFAULT_CANVAS_FOV,
   far = UNIVERSE_CANVAS_FAR,
   clearColor = 0x000000,
   forceWebGL = false,

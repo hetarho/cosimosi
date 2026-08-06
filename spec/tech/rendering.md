@@ -275,15 +275,14 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   failed `GetUniverse` read — so a corrupt row or read failure contains to the canvas area and recovers in place.
 - **Scene primitives** are package layers, the only three importers: `InstancedNodeLayer` (one `InstancedMesh` sized to
   the active node count — bodies resolved through the `VisualBodySource` port, `createPrimitiveBodySource` binding
-  generic unlit spheres until the real bodies land) and `EdgeLineLayer` (a plain `THREE.LineSegments` +
-  `LineBasicNodeMaterial` over a `position` BufferGeometry, 2 verts per edge, raycast disabled so picking stays on
-  nodes). Both READ the latest coordinate buffer in `useFrame` — coordinates never enter React state or a store, and
-  nothing persists them [I5]. **WebGPU note:** a mesh is kept `visible = false` until it has ≥1 instance/segment to
-  draw — a 0-count geometry inside the PostFX `pass()` makes the WebGPU backend build an invalid object bind group and
-  wedges the device. `InstancedNodeLayer`/`EdgeLineLayer`/`createPrimitiveBodySource` remain generic package primitives;
-  the universe scene composes the plan-24 star/cell-star/filament bodies over them (below). `instance_bucket_size`
-  bucketing for graphs beyond one InstancedMesh is still future — each body kind renders as one InstancedMesh / one
-  batched ribbon.
+  generic unlit spheres until the real bodies land) and `FatLineLayer` (the shipped edge renderer — batched ribbons,
+  raycast disabled so picking stays on nodes). Both READ the latest coordinate buffer in `useFrame` — coordinates never
+  enter React state or a store, and nothing persists them [I5]. **WebGPU note:** a mesh is kept `visible = false` until
+  it has ≥1 instance/segment to draw — a 0-count geometry inside the PostFX `pass()` makes the WebGPU backend build an
+  invalid object bind group and wedges the device. `InstancedNodeLayer`/`createPrimitiveBodySource` remain generic
+  package primitives; the universe scene composes the plan-24 star/cell-star/filament bodies over them (below). Bucket
+  capacity is not a declared scalar — each body kind renders as one InstancedMesh / one batched ribbon, sized to the
+  live count.
 - **A clean frame recomposes nothing.** `InstancedNodeLayer` keys each frame on everything that can move an instance —
   the published coordinate version, the channels' identity, the slot window (`count` + `firstNodeIndex`), the flat
   scale, and an optional `animationRevision` ref a layer bumps when it animates through its own arrays — and when none
@@ -514,7 +513,7 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 climbs to, not a fixed ratio), `adaptive_dpr_window_seconds`/`adaptive_dpr_down_fps`/`adaptive_dpr_up_fps`/
 `adaptive_dpr_step`/`adaptive_dpr_max_flipflops` (the adaptive-quality walk, below),
 `coordinate_publication_epsilon` (the published-coordinate threshold, below),
-`instance_bucket_size` (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
+the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
 `latent_star_count`, `latent_star_count_mobile`, `latent_star_segments`, `latent_star_segments_mobile`,

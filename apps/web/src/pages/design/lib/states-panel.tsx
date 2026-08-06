@@ -27,6 +27,7 @@ import { AwakenNeuron, LatentStarField } from '@cosimosi/universe-render'
 import {
   SHOWCASE_ELAPSED_DAYS,
   SHOWCASE_UNIVERSE_TIME,
+  UNIVERSE_CAMERA_ENVELOPE,
   awakenShowcaseField,
   forgettingShowcaseScene,
   gistShowcaseScene,
@@ -148,7 +149,7 @@ function ForgettingCanvas({
       <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={!moving} />
       <StarField reducedMotion={!moving} />
       <EpisodicLayer memories={scene.memories} positions={positions} animate={moving} />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
@@ -201,7 +202,7 @@ function GistCanvas({ scene, animate }: { scene: GistShowcaseScene; animate: boo
         positions={gistPositions}
         channels={gistChannels}
       />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
@@ -265,7 +266,7 @@ function AwakenCanvas({
       <StarField reducedMotion={!moving} />
       <LatentStarField field={field} reducedMotion={!moving} sizeScale={AWAKEN_DUST_SCALE} />
       <AwakenNeuron field={field} newNeuronIds={launches} resolveAnchors={NO_ANCHORS} />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )

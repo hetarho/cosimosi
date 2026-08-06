@@ -5,6 +5,8 @@ import * as THREE from 'three/webgpu'
 
 import { VALUES } from '@cosimosi/config'
 
+import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
+
 export interface StarFieldProps {
   /** Number of background stars; defaults to the web density. */
   readonly count?: number
@@ -32,8 +34,6 @@ export const STAR_FIELD_PROFILE = {
 } as const satisfies Record<string, { readonly count: number; readonly radius: number }>
 
 export type StarFieldProfile = (typeof STAR_FIELD_PROFILE)[keyof typeof STAR_FIELD_PROFILE]
-
-const FROZEN_TIME = 8
 
 /** Innermost shell the scatter starts at, as a fraction of `radius` — keeps the origin clear. */
 const INNER_FRACTION = 0.28
@@ -154,7 +154,7 @@ export function StarField({
   useFrame((_, delta) => {
     if (reducedMotion) {
       if (!frozen.current) {
-        time.value = FROZEN_TIME
+        time.value = REDUCED_MOTION_FROZEN_TIME
         frozen.current = true
       }
       return

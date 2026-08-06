@@ -18,7 +18,6 @@ export const ColorField = Noop
 export const BandFog = Noop
 export const PostFX = Noop
 export const InstancedNodeLayer = Noop
-export const EdgeLineLayer = Noop
 export const FatLineLayer = Noop
 export const NavigationRig = Noop
 export const FrameTick = Noop

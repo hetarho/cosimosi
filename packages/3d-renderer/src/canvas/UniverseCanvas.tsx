@@ -5,6 +5,7 @@ import * as THREE from 'three/webgpu'
 import { VALUES } from '@cosimosi/config'
 
 import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
+import { DEFAULT_CANVAS_DPR, DEFAULT_CANVAS_FOV } from './canvas-defaults.ts'
 import { resolveToneMapping, type ToneMappingKey } from './tone-mapping.ts'
 
 // Register three/webgpu's catalogue with R3F (runtime side of jsx-elements.ts).
@@ -13,8 +14,13 @@ extend(THREE as any)
 
 export interface UniverseCanvasProps {
   readonly children: ReactNode
-  /** devicePixelRatio (single or [min,max]); the app caps it from rendering.max_pixel_ratio. */
+  /**
+   * devicePixelRatio (single or [min,max]). Defaults to the full range the adaptive sampler walks,
+   * `[1, rendering.max_pixel_ratio]` — read from the cap rather than repeated, so raising the cap
+   * can never leave a surface silently pinned to yesterday's ceiling.
+   */
   readonly dpr?: number | [number, number]
+  /** Vertical field of view. Defaults to the active skin's, the same value every mount passes. */
   readonly fov?: number
   /** Opaque scene clear color. The active sky owns this bare-night value. */
   readonly clearColor?: number
@@ -23,6 +29,10 @@ export interface UniverseCanvasProps {
    * camera zoom-out limit < StarField shell < SkySphere radius < this — or the sky is cut away
    * straight ahead and the scene opens onto a hole. (R3F's own default is 1000, too near for the
    * enclosing sky.)
+   *
+   * Code-owned, not a values.yaml scalar: it is one end of that nesting chain, and
+   * `universe-render/backdrop-scale.test` walks the whole chain as one invariant — a knob a
+   * deployment could turn independently is exactly what would break it.
    */
   readonly far?: number
   /** Pin the WebGL2 fallback (skip WebGPU) — for parity testing. */
@@ -61,8 +71,8 @@ export interface UniverseCanvasProps {
  */
 export function UniverseCanvas({
   children,
-  dpr = [1, 2],
-  fov = 55,
+  dpr = DEFAULT_CANVAS_DPR,
+  fov = DEFAULT_CANVAS_FOV,
   far = UNIVERSE_CANVAS_FAR,
   clearColor = 0x000000,
   forceWebGL = false,

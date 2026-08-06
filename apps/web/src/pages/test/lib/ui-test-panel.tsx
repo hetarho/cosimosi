@@ -23,7 +23,12 @@ import {
   type Mood,
 } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
+import {
+  UNIVERSE_CAMERA_ENVELOPE,
+  useEpisodicMemoryStore,
+  useNeuronStore,
+  useSynapseStore,
+} from '@cosimosi/universe'
 import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/universe-render'
 import {
   Badge,
@@ -501,7 +506,7 @@ function EngramUniverseCanvas({
         universeTime={scene.universeTime}
         reducedMotion={reducedMotion}
       />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )

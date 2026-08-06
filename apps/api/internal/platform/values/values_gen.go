@@ -46,7 +46,6 @@ const (
 	RenderingToneMapping                  = "neutral"
 	RenderingToneMappingExposure          = 1
 	RenderingEmotionSkyExposure           = 0.62
-	RenderingInstanceBucketSize           = 4096
 	RenderingStarSizeMin                  = 0.7
 	RenderingStarSizeMax                  = 2.4
 	RenderingStarBrightnessMin            = 0.15

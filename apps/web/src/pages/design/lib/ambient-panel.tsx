@@ -19,6 +19,7 @@ import {
 import { showcaseEmotions } from '@cosimosi/emotion'
 import { LatentStarField } from '@cosimosi/universe-render'
 import {
+  UNIVERSE_CAMERA_ENVELOPE,
   ambientShowcaseScene,
   cellStarChannels,
   type AmbientShowcaseScene,
@@ -125,7 +126,7 @@ function AmbientCanvas({ scene, animate }: { scene: AmbientShowcaseScene; animat
         widths={widths}
         colors={scene.filaments.colors}
       />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )

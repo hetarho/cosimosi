@@ -18,9 +18,7 @@ import * as THREE from 'three/webgpu'
 import { VALUES } from '@cosimosi/config'
 
 import { asFloatNode, attributeFloatNode } from '../tsl.ts'
-
-/** The time every mote is frozen at under reduced motion — a frame mid-twinkle, not a dark one. */
-const FROZEN_TIME = 8
+import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 
 // The dust's visual grammar (code, like the field's colour): how soft each mote's edge falls, and the
 // bands every mote draws its own twinkle and its own wander from. One independent hash draw per band,
@@ -263,7 +261,7 @@ export function LatentField({
   useFrame((_, delta) => {
     if (reducedMotion) {
       if (!frozen.current) {
-        uTime.value = FROZEN_TIME
+        uTime.value = REDUCED_MOTION_FROZEN_TIME
         frozen.current = true
       }
       return

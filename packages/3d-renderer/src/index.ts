@@ -57,7 +57,7 @@ export {
 } from './layers/StarField.tsx'
 export { LATENT_FIELD_SEGMENTS, LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { ColorField, type ColorFieldProps } from './layers/ColorField.tsx'
-export { CameraControls } from './layers/CameraControls.tsx'
+export { CameraControls, type CameraControlsProps } from './layers/CameraControls.tsx'
 export { SkySphere, type SkySphereProps } from './layers/SkySphere.tsx'
 export {
   buildEmotionGradientTexture,
@@ -90,7 +90,6 @@ export {
   type AdaptiveDprThresholds,
 } from './layers/adaptive-dpr.ts'
 export { BandFog, type BandFogProps } from './layers/BandFog.tsx'
-export { EdgeLineLayer, type EdgeLineLayerProps } from './layers/EdgeLineLayer.tsx'
 export { FatLineLayer, type FatLineLayerProps } from './layers/FatLineLayer.tsx'
 export {
   NavigationRig,

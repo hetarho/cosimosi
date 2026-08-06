@@ -25,7 +25,12 @@ import {
 } from '@cosimosi/3d-renderer'
 import { MOODS, createEmotion, moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { buildContributors, starChannels, universeEmotionSlices } from '@cosimosi/universe'
+import {
+  UNIVERSE_CAMERA_ENVELOPE,
+  buildContributors,
+  starChannels,
+  universeEmotionSlices,
+} from '@cosimosi/universe'
 import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
@@ -258,7 +263,7 @@ function StarShapeCanvas({
         sizeScale={sizeScale}
         animate={!reducedMotion}
       />
-      <CameraControls />
+      <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )

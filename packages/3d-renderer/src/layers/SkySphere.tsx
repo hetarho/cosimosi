@@ -10,6 +10,7 @@ import {
 } from '../assets/sky/emotion-gradient.ts'
 import { DEFAULT_SKY_EFFECT, resolveSkyEffect } from '../assets/sky/sky-effects.ts'
 import { SKY_SPHERE_RADIUS } from '../backdrop-scale.ts'
+import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 
 // The emotion sky: a large sphere drawn on its INNER surface (BackSide), enclosing the whole
 // universe scene, shaded by a TSL effect. Not a flat screen-space wash — a real body wrapping
@@ -44,8 +45,6 @@ export interface SkySphereProps {
    */
   readonly radius?: number
 }
-
-const FROZEN_TIME = 12
 
 interface SkyMaterialOptions {
   readonly gradient: THREE.Texture
@@ -158,7 +157,7 @@ export function SkySphere({
   useFrame((_, delta) => {
     if (reducedMotion) {
       if (!frozen.current) {
-        time.value = FROZEN_TIME
+        time.value = REDUCED_MOTION_FROZEN_TIME
         frozen.current = true
       }
       return
