@@ -8,8 +8,10 @@ import { LedgerEntryRow } from './LedgerEntryRow.tsx'
 import { TwinkleRefillMarker } from './TwinkleRefillMarker.tsx'
 
 // The history: newest first, grouped under day headers, keyset-paged with an IntersectionObserver
-// sentinel. No virtualization library — this is the first list in the product to need the mechanic and
-// a ledger page is small; the diary list follows the same shape later.
+// sentinel. Not windowed, unlike the diary archive next door: the rows here are cut into day sections,
+// so a virtualizer would first have to flatten headers and entries into one index space — a change to
+// the shape the day grouping is expressed in, for a list whose page is 50 rows and whose growth is one
+// row per earn or spend. Window it when a real account's ledger reaches the low thousands.
 //
 // The day headers come from the server-supplied `occurredOn`, already resolved in the user's timezone.
 // The client performs no timezone arithmetic ([U7]): a device-local grouping would draw headers that

@@ -623,6 +623,19 @@ diary_reader:
   # [D7] How far below the viewport the web sentinel asks for the next keyset page — roughly half a
   # screen of prefetch, so the list grows before the reader reaches the bottom.
   infinite_scroll_root_margin_px: 400
+  # [D6] The web list windows its rows, and these three drive that window. The height a CLOSED row is
+  # assumed to have before it has been measured — one date line, two clamped preview lines and the
+  # star/mood footer, measured at 114px in a browser at the reader's max width. Only the
+  # not-yet-rendered part of the archive uses it (every mounted row reports its real height), so being
+  # wrong costs scrollbar stability rather than layout: an estimate below the truth makes the page grow
+  # under the reader as rows are measured.
+  row_estimate_height_px: 114
+  # Rows kept mounted beyond each edge of the viewport. Enough that an ordinary flick never exposes a
+  # blank band, small enough that the mounted count stays a viewport's worth rather than an archive's.
+  row_overscan: 4
+  # Vertical space between two rows. The windowed list positions its rows absolutely, so the gap is a
+  # number the virtualizer inserts rather than a flex `gap` class — this is its only source.
+  row_gap_px: 8
   # The mobile FlatList onEndReachedThreshold: a ratio of visible length, not pixels, which is why it
   # cannot share the key above.
   infinite_scroll_end_threshold: 0.5

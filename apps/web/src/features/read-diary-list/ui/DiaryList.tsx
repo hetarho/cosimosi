@@ -1,4 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+
+import { defaultRangeExtractor, useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import { VALUES } from '@cosimosi/config'
 import { moodColor, type Mood } from '@cosimosi/emotion'
@@ -53,10 +55,70 @@ export function DiaryList({
   renderActions,
   renderBodyText,
 }: DiaryListProps) {
-  const openRowRef = useRef<HTMLLIElement | null>(null)
+  // Where the list begins in the document. Rows are positioned relative to the list, so this never
+  // moves them — it is what tells the virtualizer which slice of the archive the page's scroll
+  // offset is currently over. Held as the NODE rather than a ref, because the list is not mounted on
+  // the first render (the archive loads first) and the measurement has to start when it appears.
+  const [listNode, setListNode] = useState<HTMLUListElement | null>(null)
+  const [listOffset, setListOffset] = useState(0)
+  useLayoutEffect(() => {
+    if (!listNode || typeof ResizeObserver === 'undefined') return
+    const sync = () => {
+      const next = Math.round(listNode.getBoundingClientRect().top + window.scrollY)
+      setListOffset((current) => (current === next ? current : next))
+    }
+    sync()
+    // Everything above the list moves it and re-renders none of this: the restore section mounts
+    // when a diary is released, the search controls wrap, the viewport resizes. Each of those
+    // changes the height of the document's own box, which is what is watched here.
+    const observer = new ResizeObserver(sync)
+    observer.observe(document.documentElement)
+    observer.observe(document.body)
+    window.addEventListener('resize', sync)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', sync)
+    }
+  }, [listNode])
+
+  // A row the reader has focused stays mounted after it scrolls out of the window. Unmounting it
+  // would drop keyboard focus to the document body mid-scroll — the one part of "the list behaves as
+  // it did" that windowing breaks by construction.
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const keepFocusedRow = useCallback(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      const visible = defaultRangeExtractor(range)
+      if (focusedIndex === null || focusedIndex >= range.count || visible.includes(focusedIndex)) {
+        return visible
+      }
+      return [...visible, focusedIndex].sort((a, b) => a - b)
+    },
+    [focusedIndex],
+  )
+
+  // Keyed by the diary, not by position, so a row that has been measured keeps its real height if
+  // the archive is re-sorted under it.
+  const itemKey = useCallback((index: number) => diaries[index]?.id ?? index, [diaries])
+  const virtualizer = useWindowVirtualizer({
+    count: diaries.length,
+    estimateSize: () => VALUES.diaryReader.rowEstimateHeightPx,
+    overscan: VALUES.diaryReader.rowOverscan,
+    gap: VALUES.diaryReader.rowGapPx,
+    scrollMargin: listOffset,
+    getItemKey: itemKey,
+    rangeExtractor: keepFocusedRow,
+  })
+
+  // The deep link from a star's detail panel can open a row well outside the mounted window, so the
+  // scroll is asked of the virtualizer by index rather than of a node that may not exist. `auto`
+  // keeps the old behavior of moving only when the row is not already in view. `listOffset` is a
+  // dependency because the first measured offset lands a commit after the list mounts: a deep link
+  // that resolved before it would otherwise scroll to a target computed from offset 0.
+  const openedIndex = openedDiaryId ? diaries.findIndex((diary) => diary.id === openedDiaryId) : -1
   useEffect(() => {
-    if (openedDiaryId && openRowRef.current) openRowRef.current.scrollIntoView({ block: 'nearest' })
-  }, [openedDiaryId])
+    if (openedIndex < 0) return
+    virtualizer.scrollToIndex(openedIndex, { align: 'auto' })
+  }, [openedIndex, listOffset, virtualizer])
 
   const lastResetKey = useRef(scrollResetKey)
   useEffect(() => {
@@ -108,20 +170,31 @@ export function DiaryList({
 
   return (
     <div className="flex flex-col gap-3">
-      <ul className="flex flex-col gap-2">
-        {diaries.map((diary) => {
+      {/* Only the rows over the viewport (plus the overscan) are mounted, so the DOM stays a
+          screenful whatever the archive's length. The <ul> holds the full scroll height and each row
+          is placed inside it; the sentinel below therefore still sits at the true end of the list. */}
+      <ul ref={setListNode} className="relative" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((row) => {
+          const diary = diaries[row.index]
+          if (!diary) return null
           const opened = diary.id === openedDiaryId
           const preview = diaryPreview(diary.body, VALUES.diaryReader.bodyPreviewLength)
           return (
             <li
-              key={diary.id}
-              ref={opened ? openRowRef : null}
-              className="rounded-md border border-border bg-surface"
+              key={row.key}
+              data-index={row.index}
+              ref={virtualizer.measureElement}
+              className="absolute top-0 left-0 w-full rounded-md border border-border bg-surface"
+              style={{ transform: `translateY(${row.start - listOffset}px)` }}
             >
               <button
                 type="button"
                 aria-expanded={opened}
                 onClick={() => (opened ? onClose() : onOpen(diary.id))}
+                onFocus={() => setFocusedIndex(row.index)}
+                onBlur={() =>
+                  setFocusedIndex((current) => (current === row.index ? null : current))
+                }
                 className="flex w-full flex-col items-start gap-1.5 px-4 py-3 text-left"
               >
                 <time
