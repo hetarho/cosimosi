@@ -134,7 +134,7 @@ export const T = {
 
   overlayTitle: 'Overlays',
   overlayBlurb:
-    'Chrome that arrives on top: a tooltip explains, a toast reports, a dialog interrupts. Each is glass, each is portalled, each returns focus where it found it.',
+    'Chrome that arrives on top: a tooltip explains, a toast reports, a dialog interrupts. Each is glass, each is portalled, each returns focus where it found it. Narrow the window past 48rem and the dialog becomes the bottom sheet a thumb can reach — and swipe back down.',
   tooltipTrigger: 'Hover or focus me',
   tooltipContent: 'A tooltip explains; it never carries the only copy of something.',
   toastTrigger: 'Show toast',
@@ -183,7 +183,7 @@ export const T = {
 
   detailTitle: 'Star detail',
   detailBlurb:
-    'The panel that opens over the universe — glass, so the star it describes stays visible behind it.',
+    'What a chosen star says about itself. It arrives in the surface that interrupts — a centred modal on a wide screen, a bottom sheet on a narrow one.',
   detailStrength: 'Strength',
   detailRecalled: 'Recalled 3× · last Y1 · D18',
   detailRecall: 'Recall',

@@ -9,9 +9,14 @@
 ## Opening and closing
 
 Clicking a node on the running universe canvas opens the panel **over** the scene without remounting the
-renderer; deselecting or the close affordance dismisses it. The panel reads the selected id from the
+renderer; deselecting or any of the surface's own exits — the close affordance, the scrim, Escape, and on a
+bottom sheet a swipe back down — dismisses it. The panel reads the selected id from the
 canvas navigation machine — that machine stays the **single owner** of the selection — and owns only its
 own view phase (`closed → meta → provenance`).
+
+The panel **interrupts**, and its host says so: it is the shared `Dialog`, which is a centred modal on a wide
+screen and a bottom sheet on a narrow one. Reading a star is a thing you stop to do, unlike 꾸미기, which is a
+change you watch land in the universe beside it and therefore keeps the scrim-less `Sheet`.
 
 ## Viewing is free and moves no clock
 
@@ -53,5 +58,5 @@ because a normal successful read contains the synthesized created/original basel
 
 The panel exposes **no** override of a star's emotion / strength / position and **no** placement or
 meaning-layer control ([I3][I11]) — it is a pure read surface. web and mobile run the same widget +
-features, sharing the machine/resolver and the provenance read model; only the panel host forks (a web
-side-sheet, a mobile bottom sheet).
+features, sharing the machine/resolver and the provenance read model; only the panel host forks (the web
+`Dialog`, a React-Native bottom sheet).

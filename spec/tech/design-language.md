@@ -220,7 +220,12 @@ The primitive API is plan 09's and does not change here; this is how those primi
 - **Overlays** — tooltip explains, toast reports, dialog interrupts. All three are glass, portalled,
   and return focus where they found it. A dialog is **bounded by the viewport and scrolls its own
   body**: it hosts real editing surfaces, and a surface that interrupts must never push its own
-  actions past the bottom edge.
+  actions past the bottom edge. It also takes the shape the screen has room for — a **centred modal**
+  at `md` and above, a **bottom sheet** below it, where a centred box has neither the width to hold a
+  real panel nor the reach of a thumb. The breakpoint changes where the surface sits, not what it
+  promises: same scrim, same focus trap, same Escape. The sheet adds one exit the modal has no use
+  for — a **swipe back down** the edge it arrived from, past which it goes out under the hand rather
+  than snapping back first.
 
 ## 7. Motion
 

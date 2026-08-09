@@ -734,6 +734,66 @@
   }
 }
 
+/* ── The surface that interrupts: scrim and panel ─────────────────────────────
+ * A Dialog arrives as two things at once — the scrim that puts the screen behind out of reach, and
+ * the panel that has taken its place — so both are timed together and neither appears without the
+ * other having started.
+ *
+ * The panel is a bottom sheet below the breakpoint and a centred modal above it, so its arrival
+ * switches with its shape: a sheet comes up off the edge it lives on, while a modal has no edge to
+ * come from and instead resolves in place, rising a few pixels out of a slight shrink. The same
+ * `usePresence` hold and the same duration cover both — keep them in step with `EXIT_MS` in
+ * dialog.tsx. Reduced motion collapses all of it at the top of this file.
+ */
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes scrim-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@layer components {
+  .scrim-enter {
+    animation: scrim-in 200ms ease-out;
+  }
+  .scrim-leave {
+    animation: scrim-out 200ms ease-in forwards;
+  }
+  .dialog-enter {
+    animation: edge-in-bottom 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .dialog-leave {
+    animation: edge-out-bottom 200ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+  @media (width >= 48rem) {
+    .dialog-enter {
+      animation: dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dialog-leave {
+      animation: dialog-out 200ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+    }
+  }
+}
+
 /* ── State preview ────────────────────────────────────────────────────────────
  * `:hover` / `:active` / `:focus-visible` only exist under a live pointer or keyboard, so a
  * catalogue can't show them side by side — and a designer reviewing the language has to see the

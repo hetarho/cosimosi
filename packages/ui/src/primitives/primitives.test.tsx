@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { Alert } from './alert.tsx'
@@ -20,6 +20,7 @@ import { Tooltip } from './tooltip.tsx'
 import { VisuallyHidden } from './visually-hidden.tsx'
 
 afterEach(cleanup)
+afterEach(() => vi.unstubAllGlobals())
 
 describe('Button', () => {
   it('renders its label and is keyboard-clickable', async () => {
@@ -283,6 +284,66 @@ describe('Dialog', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     // Focus returned to the trigger.
     expect(opener).toHaveFocus()
+  })
+
+  // The sheet's swipe, which is the way out a thumb reaches for before it finds the ✕. jsdom has
+  // neither a PointerEvent constructor nor a media query that evaluates, and the gesture needs both:
+  // it reads clientY off the pointer and asks whether this screen is the shape with a bottom edge to
+  // leave through.
+  class TestPointerEvent extends MouseEvent {
+    readonly isPrimary: boolean
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init)
+      this.isPrimary = init.isPrimary ?? true
+    }
+  }
+
+  function stubViewport(sheet: boolean) {
+    vi.stubGlobal('PointerEvent', TestPointerEvent)
+    vi.stubGlobal('matchMedia', (media: string) => ({ matches: sheet, media }))
+  }
+
+  /** Drag the grab surface (the title band) down by `travel` and let go. */
+  function swipeDown(travel: number) {
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Confirm' }), { clientY: 100 })
+    fireEvent.pointerMove(window, { clientY: 100 + travel })
+    fireEvent.pointerUp(window, { clientY: 100 + travel })
+  }
+
+  function renderSheet(onClose: () => void) {
+    render(
+      <Dialog open onClose={onClose} title="Confirm" closeLabel="Close">
+        <button type="button">Inner</button>
+      </Dialog>,
+    )
+  }
+
+  it('closes when a bottom sheet is swiped down', () => {
+    stubViewport(true)
+    const onClose = vi.fn()
+    renderSheet(onClose)
+
+    swipeDown(160)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('springs back instead of closing when the drag is only a nudge', () => {
+    stubViewport(true)
+    const onClose = vi.fn()
+    renderSheet(onClose)
+
+    swipeDown(12)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Confirm' })).toBeInTheDocument()
+  })
+
+  it('ignores the swipe on a wide screen, where a centred modal has no edge to leave by', () => {
+    stubViewport(false)
+    const onClose = vi.fn()
+    renderSheet(onClose)
+
+    swipeDown(160)
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
 

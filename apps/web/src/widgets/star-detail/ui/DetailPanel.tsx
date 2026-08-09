@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
-import { Button, cx, usePresence } from '@cosimosi/ui'
+import { Button, Dialog } from '@cosimosi/ui'
 import {
   currentDecayText,
   parseGistNodeId,
@@ -19,19 +19,22 @@ import { MetaBlock } from '../../../features/star-meta/index.ts'
 import { ProvenanceList, useProvenanceQuery } from '../../../features/star-provenance/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine, useSelector } from '../../../shared/model/index.ts'
-import { STAR_DETAIL_PANEL } from '../config/panel.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
 
 type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
-/** Must match `.panel-leave` in base.css — the timer, not the animation, is what unmounts. */
-const EXIT_MS = 200
+/** What the panel shows for one selection: its own accessible name and its body. */
+interface DetailView {
+  readonly title: string
+  readonly body: ReactNode
+}
 
-// widgets/star-detail ([D1]): the read-only side-sheet that opens over the running canvas when a
-// node is selected — it never remounts the renderer (A1) and imports no three/visual entity (§3.4).
+// widgets/star-detail ([D1]): the read-only surface that opens over the running canvas when a node
+// is selected — it never remounts the renderer (A1) and imports no three/visual entity (§3.4).
 // It reads the selected id from the canvas navigation machine (the single selection owner, §3.2)
 // and owns only its own view phase (starDetailMachine). It composes the three read features + the
-// three hand-off buttons; it performs no recall, spend, or navigation itself (A5/A6/A8).
+// three hand-off buttons; it performs no recall, spend, or navigation itself (A5/A6/A8). The host is
+// the shared `Dialog`, which is a centred modal on a wide screen and a bottom sheet on a narrow one.
 export function DetailPanel({
   navigationActorRef,
   onRecallRequested,
@@ -89,14 +92,13 @@ export function DetailPanel({
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')
 
-  // Held one animation past the close so the panel can slide back out the edge it came in from. What is
-  // held is the CONTENT ITSELF, not the selection it was built from: the selection is already gone by
-  // then, and re-deriving a body from a cleared one would empty the panel mid-slide. Re-rendering the
-  // same elements keeps their own state and issues no new read. Both live ABOVE the gist branch below,
-  // because a hook cannot sit behind an early return.
+  // Held one animation past the close, because the host stays on screen for the length of its exit.
+  // What is held is the VIEW ITSELF, not the selection it was built from: the selection is already
+  // gone by then, and re-deriving a body from a cleared one would empty the panel mid-slide.
+  // Re-rendering the same elements keeps their own state and issues no new read. This lives ABOVE
+  // the gist branch below, because a hook cannot sit behind an early return.
   const open = phase !== 'closed' && selection.kind !== 'none'
-  const { present, phase: motion } = usePresence(open, EXIT_MS)
-  const heldContent = useRef<ReactNode>(null)
+  const heldView = useRef<DetailView | null>(null)
 
   // A gist body opens the priced gist-view over the canvas (A5); closing clears the canvas
   // selection so re-selecting the same body reopens it.
@@ -104,81 +106,89 @@ export function DetailPanel({
     return <GistViewSheet episodicMemoryId={selection.episodicMemoryId} onClose={clearSelection} />
   }
 
-  const content = open ? (
-    <>
-      <header className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-medium text-text">
-          {selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron()}
-        </h2>
-        <Button color="neutral" size="sm" onClick={clearSelection}>
-          {m.common_dismiss()}
-        </Button>
-      </header>
-
-      {phase === 'meta' && (
-        <div className="flex flex-col gap-5">
-          <MetaBlock selection={selection} universeTime={universeTime} />
-          {selection.kind === 'episodic' && (
-            <>
-              <CurrentMemoryText text={currentDecayText(selection.memory, universeTime)} />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  color="primary"
-                  size="sm"
-                  onClick={() => onRecallRequested(selection.memory.id)}
-                >
-                  {m.star_detail_recall()}
-                </Button>
-                <Button color="neutral" size="sm" onClick={() => send({ type: 'SHOW_PROVENANCE' })}>
-                  {m.star_detail_provenance()}
-                </Button>
-                <Button color="neutral" size="sm" onClick={() => onOpenDiary(selection.memory.id)}>
-                  {m.star_detail_open_diary()}
-                </Button>
-                <Button color="neutral" size="sm" onClick={() => onLetGo(selection.memory.id)}>
-                  {m.star_detail_letgo()}
-                </Button>
-                <Button
-                  color="danger"
-                  size="sm"
-                  onClick={() => onDeleteSourceDiary(selection.memory.id)}
-                >
-                  {m.star_detail_delete_source()}
-                </Button>
+  const view: DetailView | null = open
+    ? {
+        // The star's own name is the surface's name — a heading that says which star this is beats a
+        // generic one the user has to look past.
+        title: selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron(),
+        body: (
+          <>
+            {phase === 'meta' && (
+              <div className="flex flex-col gap-5">
+                <MetaBlock selection={selection} universeTime={universeTime} />
+                {selection.kind === 'episodic' && (
+                  <>
+                    <CurrentMemoryText text={currentDecayText(selection.memory, universeTime)} />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        color="primary"
+                        size="sm"
+                        onClick={() => onRecallRequested(selection.memory.id)}
+                      >
+                        {m.star_detail_recall()}
+                      </Button>
+                      <Button
+                        color="neutral"
+                        size="sm"
+                        onClick={() => send({ type: 'SHOW_PROVENANCE' })}
+                      >
+                        {m.star_detail_provenance()}
+                      </Button>
+                      <Button
+                        color="neutral"
+                        size="sm"
+                        onClick={() => onOpenDiary(selection.memory.id)}
+                      >
+                        {m.star_detail_open_diary()}
+                      </Button>
+                      <Button
+                        color="neutral"
+                        size="sm"
+                        onClick={() => onLetGo(selection.memory.id)}
+                      >
+                        {m.star_detail_letgo()}
+                      </Button>
+                      <Button
+                        color="danger"
+                        size="sm"
+                        onClick={() => onDeleteSourceDiary(selection.memory.id)}
+                      >
+                        {m.star_detail_delete_source()}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
 
-      {phase === 'provenance' && (
-        <div className="flex flex-col gap-4">
-          <Button color="neutral" size="sm" onClick={() => send({ type: 'BACK' })}>
-            {m.star_detail_back()}
-          </Button>
-          <ProvenanceList
-            entries={provenance.entries}
-            status={provenance.status}
-            onRetry={provenance.retry}
-          />
-        </div>
-      )}
-    </>
-  ) : null
-  if (content) heldContent.current = content
-  const shown = content ?? heldContent.current
-  if (!present || !shown) return null
+            {phase === 'provenance' && (
+              <div className="flex flex-col gap-4">
+                <Button color="neutral" size="sm" onClick={() => send({ type: 'BACK' })}>
+                  {m.star_detail_back()}
+                </Button>
+                <ProvenanceList
+                  entries={provenance.entries}
+                  status={provenance.status}
+                  onRetry={provenance.retry}
+                />
+              </div>
+            )}
+          </>
+        ),
+      }
+    : null
+  if (view) heldView.current = view
+  const shown = view ?? heldView.current
+  if (!shown) return null
 
   return (
-    <aside
-      className={cx(
-        'pointer-events-auto absolute top-0 right-0 flex h-full max-w-[90vw] flex-col gap-4 overflow-y-auto border-l border-border bg-surface/95 p-6 backdrop-blur',
-        motion === 'leaving' ? 'panel-leave' : 'panel-enter',
-      )}
-      style={{ width: `${STAR_DETAIL_PANEL.widthRem}rem` }}
-      aria-label={m.star_detail_title()}
+    <Dialog
+      open={open}
+      onClose={clearSelection}
+      title={shown.title}
+      closeLabel={m.common_dismiss()}
     >
-      {shown}
-    </aside>
+      {shown.body}
+    </Dialog>
   )
 }
