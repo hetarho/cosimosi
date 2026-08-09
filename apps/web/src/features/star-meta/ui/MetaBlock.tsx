@@ -1,32 +1,14 @@
-import { moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
 import {
   effectiveBrightness,
   effectiveElapsedDays,
   effectiveStrength,
 } from '@cosimosi/memory-logic'
-import { currentDecayStage, normalizeSeed } from '@cosimosi/universe'
+import { useReducedMotion } from '@cosimosi/ui'
+import { currentDecayStage } from '@cosimosi/universe'
+import { StarPreview } from '@cosimosi/universe-render'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
-
-// A seed-driven star-body preview from the domain seed alone (§3.4 — no three import): the
-// normalized seed rounds + rotates a mood-tinted glyph so the same star always previews the same
-// shape ([V5]). It is the panel's flat stand-in for the renderer's 3D body, not a second body.
-function StarGlyph({ memory }: { memory: EpisodicMemory }) {
-  const seed = normalizeSeed(memory.seed, memory.id)
-  const rounding = 30 + Math.round(seed * 40)
-  return (
-    <div
-      aria-hidden
-      className="bloom-soft size-16 shrink-0"
-      style={{
-        background: moodColor(memory.emotion.mood),
-        borderRadius: `${rounding}% ${100 - rounding}% ${rounding}% ${100 - rounding}%`,
-        transform: `rotate(${Math.round(seed * 360)}deg)`,
-      }}
-    />
-  )
-}
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
@@ -49,6 +31,10 @@ export function MetaBlock({
   // The read-time "now" that drives the forgetting fade + current decay stage [V2][F1].
   universeTime: string | null
 }) {
+  // Read above the neuron branch, because a hook cannot sit behind an early return. A neuron shows
+  // no star, so it simply goes unused there.
+  const reducedMotion = useReducedMotion()
+
   if (selection.kind === 'neuron') {
     const { neuron } = selection
     return (
@@ -77,9 +63,15 @@ export function MetaBlock({
   const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
   const stage = currentDecayStage(memory, universeTime)
   return (
-    <div className="flex gap-4">
-      <StarGlyph memory={memory} />
-      <dl className="flex flex-1 flex-col gap-2">
+    // The star above, what is known about it below. Side by side, the star is a thumbnail beside a
+    // table; stacked, it is the subject and the rows are its caption — and the rows get the panel's
+    // full width instead of splitting it with a picture.
+    <div className="flex flex-col gap-4">
+      {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. */}
+      <div aria-hidden className="h-44 w-full overflow-hidden rounded-xl border border-border">
+        <StarPreview memory={memory} universeTime={universeTime} reducedMotion={reducedMotion} />
+      </div>
+      <dl className="flex flex-col gap-2">
         <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
         <MetaRow label={m.star_meta_brightness()} value={percent(brightness)} />
         <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />

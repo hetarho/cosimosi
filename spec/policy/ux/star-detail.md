@@ -27,10 +27,14 @@ gist view) cost, and they price themselves inside their own flows — no price l
 
 ## What each star shows
 
-- An **episodic (big) star** shows shape · emotion color · brightness · 작성일 · 강도 · current
-  forgetting state, plus its **forgotten current memory text** rendered faded per decay stage (the full
-  text until the forgetting layer stores per-stage texts). Every derived value is read from the shared
-  read-time functions, never re-derived in the panel.
+- An **episodic (big) star** shows the star **itself, rendered** — the real body, tint, brightness and
+  seed the universe gives it, turning slowly against the bare night sky — stacked **above** its rows:
+  emotion color · brightness · 작성일 · 강도 · current forgetting state, plus its **forgotten current
+  memory text** rendered faded per decay stage (the full text until the forgetting layer stores
+  per-stage texts). The one channel the preview does not carry is **size**: size means strength by
+  comparison with the other stars, and a star shown alone has nothing to be bigger than — the panel
+  states strength as a number instead. Every derived value is read from the shared read-time
+  functions, never re-derived in the panel.
 - A **neuron (small) star** shows **information only — no emotion** ([I3]): name · type · connectivity,
   and none of the episodic actions.
 - The free text is the **faded memory, not the original.** The immutable original is reached only via

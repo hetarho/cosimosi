@@ -33,7 +33,7 @@ describe('MetaBlock', () => {
     setActiveLocale(defaultLocale)
   })
 
-  it('shows an episodic star with its emotion, written date, and a seed-driven glyph', () => {
+  it('shows an episodic star with its emotion, written date, and a rendered star', () => {
     const html = renderToString(
       createElement(MetaBlock, {
         selection: { kind: 'episodic', memory },
@@ -42,8 +42,10 @@ describe('MetaBlock', () => {
     )
     expect(html).toContain(moodLabel('JOY'))
     expect(html).toContain('2026-06-20')
-    // The seed-driven glyph is present (rotate transform); the value comes from the seed alone.
-    expect(html).toContain('rotate(')
+    // The star itself is rendered, not illustrated: the block hosts the renderer's own canvas. Its
+    // contents are drawn on the GPU and never reach the markup, so the host is what there is to
+    // assert here — what the star LOOKS like is the renderer's own test surface.
+    expect(html).toContain('<canvas')
   })
 
   it('shows the current forgetting degree — vivid when fresh, deeper as it fades [F1][D1]', () => {
@@ -65,14 +67,14 @@ describe('MetaBlock', () => {
     expect(faded).toContain(m.star_meta_forgetting_distant())
   })
 
-  it('shows a neuron with info only and NO emotion / no glyph', () => {
+  it('shows a neuron with info only and NO emotion / no star', () => {
     const html = renderToString(
       createElement(MetaBlock, { selection: { kind: 'neuron', neuron }, universeTime: null }),
     )
     expect(html).toContain('market')
     expect(html).toContain('3')
-    // No emotion label and no star glyph — a neuron carries no mood ([I3]).
+    // No emotion label and no rendered star — a neuron carries no mood ([I3]).
     expect(html).not.toContain(moodLabel('JOY'))
-    expect(html).not.toContain('rotate(')
+    expect(html).not.toContain('<canvas')
   })
 })

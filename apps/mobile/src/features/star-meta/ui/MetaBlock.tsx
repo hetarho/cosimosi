@@ -1,35 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native'
 
-import { moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
 import {
   effectiveBrightness,
   effectiveElapsedDays,
   effectiveStrength,
 } from '@cosimosi/memory-logic'
-import { tokens } from '@cosimosi/ui'
-import { currentDecayStage, normalizeSeed } from '@cosimosi/universe'
+import { tokens, useReducedMotion } from '@cosimosi/ui'
+import { currentDecayStage } from '@cosimosi/universe'
+import { StarPreview } from '@cosimosi/universe-render'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
-
-// RN fork of the web meta block (§3.5). The seed-driven glyph is drawn from the domain seed alone
-// (no three): the normalized seed rounds + rotates a mood-tinted square so the same star always
-// previews the same shape ([V5]).
-function StarGlyph({ memory }: { memory: EpisodicMemory }) {
-  const seed = normalizeSeed(memory.seed, memory.id)
-  return (
-    <View
-      style={[
-        styles.glyph,
-        {
-          backgroundColor: moodColor(memory.emotion.mood),
-          borderRadius: tokens.radius.md + Math.round(seed * 20),
-          transform: [{ rotate: `${Math.round(seed * 360)}deg` }],
-        },
-      ]}
-    />
-  )
-}
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
@@ -51,6 +32,10 @@ export function MetaBlock({
   // The read-time "now" that drives the forgetting fade + current decay stage [V2][F1].
   universeTime: string | null
 }) {
+  // Read above the neuron branch, because a hook cannot sit behind an early return. A neuron shows
+  // no star, so it simply goes unused there.
+  const reducedMotion = useReducedMotion()
+
   if (selection.kind === 'neuron') {
     const { neuron } = selection
     return (
@@ -79,8 +64,12 @@ export function MetaBlock({
   const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
   const stage = currentDecayStage(memory, universeTime)
   return (
+    // The star above, what is known about it below — the same stack the web fork uses: side by side
+    // the star is a thumbnail beside a table, stacked it is the subject and the rows are its caption.
     <View style={styles.episodic}>
-      <StarGlyph memory={memory} />
+      <View style={styles.preview}>
+        <StarPreview memory={memory} universeTime={universeTime} reducedMotion={reducedMotion} />
+      </View>
       <View style={styles.list}>
         <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
         <MetaRow label={m.star_meta_brightness()} value={percent(brightness)} />
@@ -117,10 +106,17 @@ function percent(value: number): string {
 }
 
 const styles = StyleSheet.create({
-  episodic: { flexDirection: 'row', gap: tokens.spacing[4] },
-  list: { flex: 1, gap: tokens.spacing[2] },
+  episodic: { gap: tokens.spacing[4] },
+  // Rounded and clipped so the sky the star sits in reads as a window, not a hole.
+  preview: {
+    height: 176,
+    overflow: 'hidden',
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.color.border,
+  },
+  list: { gap: tokens.spacing[2] },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: tokens.spacing[4] },
   label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   value: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
-  glyph: { width: 64, height: 64 },
 })

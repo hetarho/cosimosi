@@ -98,6 +98,7 @@ export {
   type NavigationRigProps,
 } from './layers/NavigationRig.tsx'
 export { FrameTick } from './layers/FrameTick.tsx'
+export { SpinGroup, type SpinGroupProps } from './layers/SpinGroup.tsx'
 export { PostFX, type BloomParams } from './layers/PostFX.tsx'
 export { UniverseCanvas, type UniverseCanvasProps } from './canvas/UniverseCanvas.tsx'
 export { resolveToneMapping, type ToneMappingKey } from './canvas/tone-mapping.ts'

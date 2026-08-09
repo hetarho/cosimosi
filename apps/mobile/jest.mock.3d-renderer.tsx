@@ -21,6 +21,8 @@ export const InstancedNodeLayer = Noop
 export const FatLineLayer = Noop
 export const NavigationRig = Noop
 export const FrameTick = Noop
+// Passthrough, not Noop: it wraps the body it turns, so stubbing it out would take the star with it.
+export const SpinGroup = Passthrough
 export const AdaptiveDprLayer = Noop
 // The floor the shell's `dpr` range starts at — a real number, because the shell passes it to the
 // canvas host and a test reading that prop should see what ships.
