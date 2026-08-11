@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 
 import { FakeAuthAdapter, createAuthFacade, type AuthAdapter } from '@cosimosi/auth'
+import { ObservabilityProvider } from '@cosimosi/observability/react'
 import { m } from '../../shared/i18n/index.ts'
 
 import { LoginPage } from '../../pages/login/index.ts'
@@ -34,10 +35,15 @@ describe('LoginPage signup credential state', () => {
 
     try {
       await act(async () => {
+        // The entry screen stands on the empty sky, whose renderer is wrapped in an observed error
+        // boundary — so the page needs the same observability the app mounts it under. The boundary is
+        // what this supplies; the canvas beneath it has no GPU here and falls back to its poster.
         root.render(
-          <WebAuthProvider facade={facade}>
-            <LoginPage mode="signUp" />
-          </WebAuthProvider>,
+          <ObservabilityProvider>
+            <WebAuthProvider facade={facade}>
+              <LoginPage mode="signUp" />
+            </WebAuthProvider>
+          </ObservabilityProvider>,
         )
       })
       const inputs = [...container.querySelectorAll('input')]

@@ -1,7 +1,7 @@
 import type { CSSProperties, RefObject } from 'react'
 
+import { EmptySky } from '../../../widgets/empty-sky/index.ts'
 import { useScrollVeil } from '../lib/use-scroll-veil.ts'
-import { LandingHeroScene } from './LandingHeroScene.tsx'
 
 // The veil's look at full strength; `--veil` (0..1, written by the scroll hook) scales both. The
 // colour mixes from the theme's bg the same way the design system's glass does, so the veiled sky
@@ -14,8 +14,8 @@ const VEIL_STYLE: CSSProperties & Record<'--veil', string> = {
 }
 
 /**
- * The page's floor: the live empty sky pinned behind everything, and a scroll-driven veil over it.
- * At the top of the page the sky is bare; as the visitor scrolls, the veil blurs and dims it so the
+ * The page's floor: the live empty sky (`widgets/empty-sky`) pinned behind everything, and a
+ * scroll-driven veil over it. At the top of the page the sky is bare; as the visitor scrolls, the veil blurs and dims it so the
  * sections arriving on top read like glass floating in front of a night that is still there — and
  * then, across `clearAnchor`, it lifts again and hands the sky back.
  *
@@ -32,7 +32,7 @@ export function LandingBackdrop({
 
   return (
     <div aria-hidden className="fixed inset-0">
-      <LandingHeroScene />
+      <EmptySky />
       <div ref={veilRef} className="absolute inset-0" style={VEIL_STYLE} />
     </div>
   )

@@ -191,7 +191,11 @@ describe('web auth gate', () => {
       // pages/landing's own model tests).
       expect(html).toContain('A diary that fills a universe')
       expect(html).toContain('Step 1 of 6')
-      expect(html).not.toContain('Sign in')
+      // No credential form. The page offers the way in — the header's quiet sign-in link — but a
+      // stranger at `/` is never handed a password field, so the field itself is what this asserts
+      // rather than any word the link could also be spelled with.
+      expect(html).not.toContain('type="password"')
+      expect(html).toContain('Sign in')
     } finally {
       fakes.dispose()
       observability.dispose()

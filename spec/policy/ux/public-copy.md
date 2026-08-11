@@ -83,6 +83,10 @@ whole arc — split, launch, the sky taking colour, the fade, the recall, the mi
   Anyone who wants to steer is one click from the demo.
 - **A demo CTA appears at the top and again at the foot**, and in the closing block the demo comes **before** the signup
   ask. A stranger has no reason to trust a form yet, and the product's whole claim is that it only reads in motion.
+- **The way back in is header chrome, never a third ask.** Someone who already has a universe needs a sign-in link on
+  the front door, and it belongs beside the language switch in the quietest treatment available — not in the closing
+  block, where it would sit next to the two asks and turn a two-option decision into a three-option one. The order rule
+  above governs the demo and the signup; a returning user is not being asked anything.
 - **No meta-disclaimer.** The page carries no "nothing is saved" / "this is an invented example" hedge: a marketing
   page is self-evidently a marketing page, and nobody mistakes its example for their data. [I12] honesty is untouched —
   it forbids overclaiming, not confidence; the five claim classes and the denial allowlist stay the gate.

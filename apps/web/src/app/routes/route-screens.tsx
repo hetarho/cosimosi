@@ -112,6 +112,7 @@ export function LandingRoute() {
       onSelectLocale={onSelectLocale}
       onTryDemo={() => navigate({ to: '/demo' })}
       onSignUp={() => navigate({ to: '/signup' })}
+      onSignIn={() => navigate({ to: '/login' })}
     />
   )
 }

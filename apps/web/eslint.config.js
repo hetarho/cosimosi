@@ -221,6 +221,11 @@ export default defineConfig([
     // one calls useTransport(). A page starved of both cannot call the server by accident, whatever barrel
     // export drifts into scope later.
     //
+    // `widgets/empty-sky` is inside the closure because it is the landing's own ground, lifted into a
+    // widget so the sign-in screen can stand on the same one. A shared surface OUTSIDE the closure would
+    // be the hole the closure exists to have none of: one import added there and every public page has a
+    // transport again, with nothing on the landing's own files to fail.
+    //
     // Narrower than the demo's block on purpose. The landing is not rule-exempt: it has no sandbox and no
     // free time travel, so it needs no ban on prices, balances or the AccountService colour writes — it
     // simply never reaches for them. What it does need is the transport ban, because the one thing the
@@ -228,7 +233,7 @@ export default defineConfig([
     //
     // ESLint flat config REPLACES rule options per matching file rather than merging them, so the
     // three/R3F and i18n bans from the general block are restated here.
-    files: ['src/pages/landing/**/*.{ts,tsx}'],
+    files: ['src/pages/landing/**/*.{ts,tsx}', 'src/widgets/empty-sky/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

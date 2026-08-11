@@ -1,5 +1,7 @@
 import { useRef, type ComponentType } from 'react'
 
+import { Button } from '@cosimosi/ui'
+
 import { m, type Locale } from '../../../shared/i18n/index.ts'
 import {
   LANDING_SECTIONS,
@@ -31,6 +33,12 @@ export interface LandingPageProps {
   readonly onSelectLocale: (next: Locale) => void
   readonly onTryDemo: () => void
   readonly onSignUp: () => void
+  /**
+   * The way in for someone who already has a universe. It is a page-level destination rather than a
+   * third member of `LandingSectionProps`: the sections carry the two ASKS, and a visitor who is
+   * already convinced is not being asked anything.
+   */
+  readonly onSignIn: () => void
 }
 
 // pages/landing: the product's front door, and the only screen a stranger sees before deciding anything.
@@ -41,7 +49,13 @@ export interface LandingPageProps {
 //
 // Both destinations arrive as callbacks, because a page may not import the router (§3.1) — the same seam
 // the universe page uses for the archive and the account home.
-export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: LandingPageProps) {
+export function LandingPage({
+  locale,
+  onSelectLocale,
+  onTryDemo,
+  onSignUp,
+  onSignIn,
+}: LandingPageProps) {
   // Where the veil lifts: the walkthrough screen, whose bottom edge is the boundary the sky comes back
   // across. Handed to the backdrop as an element rather than a section id because the veil needs the
   // measured position, and attached here rather than inside the section because `LandingSectionProps`
@@ -53,8 +67,9 @@ export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: Lan
       {/* The live sky behind everything, veiled as the visitor scrolls — see LandingBackdrop. The main
           itself paints no background: an opaque floor here would wall the fixed scene off. */}
       <LandingBackdrop clearAnchor={clearAnchorRef} />
-      {/* The header is chrome, not one of the prescribed sections — it carries the language switch and
-          nothing that competes with the page's first sentence. */}
+      {/* The header is chrome, not one of the prescribed sections — it carries the language switch, the
+          way back in for someone who already has an account, and nothing that competes with the page's
+          first sentence. */}
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-6 py-4">
         {/* Mark then wordmark, as one lockup. The mark is ornamental to assistive technology because
             the wordmark beside it already names the product — read aloud, the pair would say it twice. */}
@@ -62,7 +77,16 @@ export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: Lan
           <img aria-hidden src="/brand/symbol.svg" alt="" className="size-5" />
           <p className="text-sm text-text-muted">{m.landing_wordmark()}</p>
         </div>
-        <LandingLocaleSwitch locale={locale} onSelectLocale={onSelectLocale} />
+        <div className="flex items-center gap-1">
+          <LandingLocaleSwitch locale={locale} onSelectLocale={onSelectLocale} />
+          {/* A returning user is not the page's argument, so this is the quietest control the design
+              system has: text, neutral, small. The page's asks are the demo and the signup, and both
+              live in the sections — a filled button up here would take the eye the hero needs and
+              would spend it on the one visitor who has already decided. */}
+          <Button variant="text" color="neutral" size="sm" onClick={onSignIn}>
+            {m.landing_sign_in()}
+          </Button>
+        </div>
       </header>
       <div className="relative z-10">
         {LANDING_SECTIONS.map((id) => {

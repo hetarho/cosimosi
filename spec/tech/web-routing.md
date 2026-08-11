@@ -293,7 +293,9 @@ through their own nav seam (disciplinary parity, §3.5):
   (wired from the [04] facade in `WebRouterProvider`) — the guard never touches Supabase or the session machine.
 - **`/login` and `/signup`** — public routes composing the auth facade's sign-in and signup
   commands. Both hold while the session settles, bounce authenticated users to the product, and
-  navigate reciprocally. `/invite/$token` captures into the pending-invite holder and replaces its
+  navigate reciprocally. `/` reaches `/login` too, from the landing header's sign-in link
+  (`LandingRoute` supplies `onSignIn` beside the demo and signup destinations); the two screens
+  share the landing's own ground, recorded in [landing-page.md](landing-page.md) §2b. `/invite/$token` captures into the pending-invite holder and replaces its
   history entry with `/signup`, so the opaque token leaves the address bar and back history.
   On reaching `authenticated`, `/login` navigates to
   `loginReturnTarget(from)` — `from` is user-visible URL input, validated at use: only an internal single-slash

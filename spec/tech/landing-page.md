@@ -1,6 +1,7 @@
 # tech: landing page
 
-> As-built record of the public front door — `apps/web/src/pages/landing` on `/`, plus the origin's SEO root. Plan
+> As-built record of the public front door — `apps/web/src/pages/landing` on `/`, the `widgets/empty-sky` ground it
+> shares with the sign-in screen (§2b), plus the origin's SEO root. Plan
 > [81](../plan/81.landing-page.md) owns it. The routing half (the fourth gate arm, `requiresSignIn`, the re-parented
 > universe route, the trailing-slash policy) lives in [web-routing.md](web-routing.md) §2/§5b/§7/§8; the copy rules live
 > in [policy/ux/public-copy.md](../policy/ux/public-copy.md). Web only, by a stated waiver (§8).
@@ -47,8 +48,16 @@ universe" for a colder reader. `DemoButton` holds the one appearance both render
 either call site can express.
 
 The page header is chrome, deliberately **not** one of the five: it carries the brand lockup (the flat mark from
-`public/brand/symbol.svg` beside the wordmark, the mark `aria-hidden` because the wordmark already names the product)
-and the language switch, and nothing that competes with the page's first sentence.
+`public/brand/symbol.svg` beside the wordmark, the mark `aria-hidden` because the wordmark already names the product),
+the language switch, the sign-in link, and nothing that competes with the page's first sentence.
+
+**The sign-in link is chrome, and the quietest control the design system has** — `variant="text"`, `color="neutral"`,
+`size="sm"`, sitting beside the language switch. It is the way in for someone who already has a universe, and it is
+deliberately not a third CTA: the page's two asks are the demo and the signup, both of them in the sections, and a
+filled button in the header would take the eye the hero needs and spend it on the one visitor who has already decided.
+It is also **not** a member of `LandingSectionProps` — the sections carry the two asks, and a returning user is not
+being asked anything, so `onSignIn` is a page-level destination `LandingRoute` supplies alongside the other two. A
+signed-in visitor never sees it: `/` forwards them to their universe before the page commits (§web-routing).
 
 ## 1a. The walkthrough — the argument, walked
 
@@ -144,7 +153,7 @@ Deterministic on purpose — the free-play surface is the demo, one click away, 
 
 ## 2. The hero — the empty universe, and the poster first
 
-`ui/LandingHeroScene.tsx` mounts the real renderer through `UniverseCanvas` with **exactly two layers**: `SkySphere`
+`widgets/empty-sky` (§2b) mounts the real renderer through `UniverseCanvas` with **exactly two layers**: `SkySphere`
 (the shipped active skin, fed an authored illustrative stop set built from `moodColor`) and `LatentStarField`, at
 `rendering.max_pixel_ratio`. No episodic layer, no cell body, no filament, no colour field, no `CameraControls`, no sim
 bridge and no frame pump — the hero is not navigable, and a marketing page is not where the frame budget the demo needs
@@ -161,6 +170,10 @@ to opaque night over it once the renderer is up. Every way the renderer can fail
 poster is simply still there. `useReducedMotion()` skips the canvas entirely (the hero's whole motion is the sky's drift,
 so there is nothing left to honour). The `ObservedErrorBoundary` around it catches a render-time throw only, renders
 nothing of its own, and carries **no** `resetKeys`: retrying WebGPU behind a marketing headline buys nothing.
+
+The poster is **decorative and carries no alt text**: it is a full-bleed ground behind the page's own words, and the
+landing pins it inside an `aria-hidden` backdrop anyway. A backdrop that described itself would be read out ahead of
+the sentence it exists to sit behind.
 
 **The two rasters** (`landing-hero.png` 1600×900, `landing-og.png` 1200×630) are committed and were generated
 procedurally rather than designed: the active skin's bare-night base `#0a0a12`, lit by the same illustrative mood weights
@@ -185,7 +198,7 @@ walkthrough.
 
 ## 2a. The backdrop, and the veil that is not monotonic
 
-`ui/LandingBackdrop.tsx` pins the hero scene `fixed` behind the whole page — mounted **once**, so scrolling never
+`ui/LandingBackdrop.tsx` pins the empty sky `fixed` behind the whole page — mounted **once**, so scrolling never
 restarts the renderer — with a single veil element over it whose only moving part is the `--veil` custom property
 (`lib/use-scroll-veil.ts`, written in a rAF). At full strength the veil is a backdrop blur plus a `bg`-mixed wash, built
 the same way the design system's glass is, so the veiled sky reads as the same material family as the panels over it.
@@ -209,6 +222,46 @@ section wherever the content above pushes it to, rather than a scroll distance t
 they are `Card variant="glass"` and not a flat surface — glass earns its cost only when something is moving behind it —
 but it does mean legibility there depends on the sky's brightness rather than on a fixed contrast pair.
 
+## 2b. The empty sky is a widget, and both entry screens stand on it
+
+The scene of §2 lives in `apps/web/src/widgets/empty-sky` — `ui/EmptySky.tsx` (the two layers, the poster beneath them,
+the boundary around them) and `config/illustration.ts` (§3). It fills whatever box it is given and owns only what is
+drawn, so **a page decides where the sky is**: the landing pins it behind the whole scroll and veils it (§2a), and
+`/login` · `/signup` hold it still behind one screen.
+
+A widget rather than a second copy, and a widget rather than a page importing a page: `pages/login` may not reach into
+`pages/landing` (§3.1), and the alternative — the same scene authored twice — is how the two public surfaces drift into
+looking like two products. The move also takes the sky's own decisions (the layer list, the poster-first order, the
+reduced-motion skip, the no-`resetKeys` boundary) out of the landing's slice, where nothing else could have reused them.
+
+**The closure follows it.** `widgets/empty-sky` is added to the public-page import block in `apps/web/eslint.config.js`
+beside `pages/landing` (§6). A shared surface outside the closure would be exactly the hole the closure exists not to
+have: one transport import added there and every public page has a transport again, with nothing in the landing's own
+files to fail.
+
+**The sign-in screen is the landing's first screen, wearing a form.** `pages/login/ui/LoginPage.tsx` — both `/login`
+and `/signup`, the same component in its two modes — renders the sky, the hero's soft local floor over it, `BrandMark`,
+the mode's one sentence (`login_title` / `signup_title`) as the screen's `h1`, and the credential form in a
+`Card variant="glass"` beneath. The title is the **screen's**, not the panel's, which is what makes the column read as
+one lockup instead of a card with a heading floating on a picture: the form stands where the hero's paragraph does. The
+continuity is the point — a visitor who follows the signup ask arrives here having just been looking at that sky, and a
+flat card on a flat ground would read as a different product.
+
+- **One screen, and only one.** No scroll and nothing below the fold: the whole choice — Google, email, password, the
+  submit, the way across to the other mode — fits the viewport. `min-h-dvh` rather than a pinned `h-dvh` is what keeps
+  that safe: where the viewport is too short to hold the column (a small phone in landscape, a keyboard eating half the
+  screen) it grows and scrolls rather than clipping its own submit button, which is the one failure a locked height
+  produces. The sky is `fixed`, so it is the same size whatever the mode costs in height.
+- **The glass declares its floor over the hero's own floor.** The `bg`-mixed ellipse the hero puts under its words
+  (`bg-bg/35 blur-3xl`) sits under this column too, so the panel's tint is added to a known ground rather than to a hope
+  about which night the visitor gets — the [ui-principles](../policy/ux/ui-principles.md) §5 rule that a glass surface
+  carrying text is only as legible as the scene's brightest frame.
+- **Only the ground is recorded here.** Everything the screen _does_ — the facade actions, the credential machine, the
+  hold-while-settling and bounce-when-authenticated rules, the `from` replay — belongs to
+  [web-routing.md](web-routing.md) §5b and [auth.md](auth.md) and is untouched by the treatment.
+- **Mobile is out of scope by the same waiver as the landing (§8).** The native app has no marketing route and no such
+  ground; `apps/mobile`'s `LoginPage` keeps its plain centred card.
+
 ## 3. Authored content, and what it may not carry
 
 `config/theory-cards.ts` holds the five research strands as a fixed-length tuple with `satisfies` (the five tour items
@@ -224,17 +277,20 @@ fails the blog's own build from the other.
 Both blog links are **plain anchors with an absolute path**, never router `Link`s: `/blog/` is Worker-served static HTML
 outside this router, and a client navigation would land in the SPA fallback.
 
-`config/illustration.ts` holds the invented moods and weights of the hero sky's ramp (`HERO_SKY_MOODS` /
-`HERO_SKY_WEIGHTS`) — the mirror-swatch half retired with the mirror section — plus `HERO_SKY_RATE`. Presentation content
-like a theme table: there is no right answer to converge on, so none of it is a tuning value. The walkthrough's diary lives
-separately in `config/walkthrough-content.ts` (§1a).
+`widgets/empty-sky/config/illustration.ts` holds the invented moods and weights of the empty sky's ramp
+(`EMPTY_SKY_MOODS` / `EMPTY_SKY_WEIGHTS`) — the mirror-swatch half retired with the mirror section — plus
+`EMPTY_SKY_RATE`. It travelled with the scene (§2b): the ramp is what that sky is made of, and a page holding the
+palette for a widget it merely mounts would be an authored fact two surfaces had to agree on by hand. Presentation
+content like a theme table: there is no right answer to converge on, so none of it is a tuning value. The walkthrough's
+diary lives separately in `config/walkthrough-content.ts` (§1a).
 
 **Eight moods, at 2.5×.** A feeling's weight buys it AREA in the emotion ramp, so the ramp's length is what decides how
 much of the palette a visitor sees — eight unequal feelings divide the sky into eight places rather than five, and none of
-them gets a sliver the fold smears away before it can be named. `HERO_SKY_RATE` is handed to `SkySphere`'s `rateRef` (the
-per-frame seam the product's own time acceleration writes) as a constant the hero never touches: the shipped pace is tuned
+them gets a sliver the fold smears away before it can be named. `EMPTY_SKY_RATE` is handed to `SkySphere`'s `rateRef` (the
+per-frame seam the product's own time acceleration writes) as a constant the scene never touches: the shipped pace is tuned
 for a place you live in, and a visitor here for a few seconds would read 1× as a still image. It accelerates a **drift**,
-not a mechanic — no memory, strength or decay is read from it — and it is the only thing on the page that is sped up. The
+not a mechanic — no memory, strength or decay is read from it — and it is the only thing on either public screen that is
+sped up. The
 mix is chosen for the brand: the moods whose canonical colours sit nearest the design system's **primary** (lavender —
 `FEAR`'s violet, `EMPTINESS`'s violet-grey, `STRESS`'s magenta, `SAD`'s blue) carry 12 of the ramp's 20 shares, the ones
 nearest the **secondary** (chartreuse — `RELIEF`, `CALM`) answer with 4, and rose and dusty blue keep the wash from
@@ -285,7 +341,8 @@ own regression guard.
 
 ## 6. The import closure
 
-`pages/landing` is inside the public-page import closure — a second, narrower block beside the demo's in
+`pages/landing` and `widgets/empty-sky` (§2b) are inside the public-page import closure — a second, narrower block
+beside the demo's in
 `apps/web/eslint.config.js`. Banned: `@connectrpc/*`, `@cosimosi/api-client`, `@cosimosi/client-cache`, every
 server-backed `/react` read mirror, and `@cosimosi/demo`. Read it as a **closure, not an allowlist**: every function that
 issues an RPC takes an `ApiTransport` first, and every hook that hides one calls `useTransport()`, so a page starved of
@@ -296,6 +353,10 @@ no ban on prices, balances or the `AccountService` colour writes; it simply neve
 the transport ban, because the one thing the front door must be unable to do is read somebody's universe. The three/R3F
 and i18n bans are restated inside the block: ESLint flat config replaces rule options per matching file rather than
 merging them.
+
+`pages/login` is deliberately **outside** it. The sign-in screen composes the auth facade, which is the one public
+surface that must reach a server, so the closure would have to be holed to admit it — and a holed closure proves
+nothing. What it mounts of the landing is the sky, and that is inside.
 
 ## 7. The origin's SEO root
 

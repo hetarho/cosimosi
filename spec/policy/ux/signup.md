@@ -49,6 +49,19 @@ a branch that blocks profile creation.
 The pending token survives the external Google round trip and the anonymous-to-user scope change.
 It is consumed by the first `SignUp` request or cleared when an established profile enters.
 
+## The entry screen is the front door's first screen
+
+On web, sign-in and signup are one screen held on the same ground the landing page opens with: the
+empty sky, the brand mark, the mode's one sentence, and the credential panel under it. The
+continuity is the point — a visitor arrives here from the front door's ask, and a different-looking
+screen would read as a different product. It is one screen with nothing below the fold: every part
+of the choice fits the viewport, and a viewport too short to hold it grows rather than clipping the
+submit. The front door offers the way here from its header, so a returning visitor never has to
+find the ask before finding the door.
+
+Native has no marketing route and keeps its plain centred card — the same waiver that makes the
+landing page web-only.
+
 ## Voice and parity
 
 Public entry copy is quiet and factual: no therapeutic claim, brain analogy, decorative emoji, or
