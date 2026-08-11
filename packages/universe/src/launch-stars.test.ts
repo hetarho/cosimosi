@@ -8,6 +8,7 @@ import { insertLaunchedMemories, isPastDated } from './launch-stars.ts'
 function existing(id: string): EpisodicMemory {
   return {
     id,
+    diaryId: 'd',
     name: id,
     emotion: createEmotion('CALM'),
     baseStrength: 0.5,
@@ -52,6 +53,7 @@ describe('insertLaunchedMemories', () => {
       ],
       ['mem-1'],
       '2026-06-01',
+      'diary-1',
     )
     const store = useEpisodicMemoryStore.getState()
     expect(store.ids).toEqual(['old', 'mem-1'])
@@ -68,6 +70,7 @@ describe('insertLaunchedMemories', () => {
       [{ name: 'Kept', mood: 'SAD', sourceText: 'Kept.', neurons: [] }],
       [],
       '2020-01-01',
+      'diary-1',
     )
     expect(useEpisodicMemoryStore.getState().ids).toEqual(['old'])
   })
@@ -80,6 +83,7 @@ describe('insertLaunchedMemories', () => {
       ],
       ['mem-1'],
       '2026-06-01',
+      'diary-1',
     )
     expect(useEpisodicMemoryStore.getState().ids).toEqual(['old', 'mem-1'])
   })

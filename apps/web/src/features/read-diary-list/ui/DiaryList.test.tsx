@@ -104,7 +104,6 @@ function show(props: Partial<DiaryListProps>) {
     diaries: [],
     openedDiaryId: null,
     onOpen: () => {},
-    onClose: () => {},
     isLoading: false,
     isError: false,
     hasMore: false,
@@ -136,17 +135,11 @@ describe('DiaryList (web)', () => {
     expect(filtered).not.toContain(m.diary_reader_empty())
   })
 
-  it('renders the opened entry body verbatim with its split chips (2–5)', () => {
+  it('shows a row preview whether or not its entry is open — the row never expands', () => {
     const rendered = html({ diaries: [joyful('d1', ['sea', 'cold'])], openedDiaryId: 'd1' })
     expect(rendered).toContain('verbatim body of d1')
-    expect(rendered).toContain('sea')
-    expect(rendered).toContain('cold')
-  })
-
-  it('opens an all-let-go diary with the quiet note and no chips', () => {
-    expect(html({ diaries: [joyful('d1', [])], openedDiaryId: 'd1' })).toContain(
-      m.diary_reader_all_let_go(),
-    )
+    // The body and the split live in the entry surface now, so no chip reaches the row.
+    expect(rendered).not.toContain('sea')
   })
 
   it('previews a bounded prefix of the body, not the whole of it ([D6])', () => {
@@ -213,11 +206,12 @@ describe('DiaryList (web)', () => {
   it('marks the keyword only through the injected body renderer ([D10])', () => {
     const rendered = html({
       diaries: [diary('d1', [{ name: 'sea', mood: 'JOY' }], 'coffee and rain')],
-      openedDiaryId: 'd1',
       renderBodyText: (text) => `[${text}]`,
     })
-    // The list hands the renderer its own body and nothing else — there is no query prop to pass on.
+    // The list hands the renderer its own preview and nothing else — there is no query prop to
+    // pass on, and no seam through which one could reach a memory's text.
     expect(rendered).toContain('[coffee and rain]')
+    expect(Object.keys({} as DiaryListProps)).not.toContain('query')
   })
 
   it('mounts a viewport of rows, not the archive, however many pages are in hand', () => {
@@ -250,7 +244,6 @@ describe('DiaryList (web)', () => {
           diaries={archiveOf(200)}
           openedDiaryId={null}
           onOpen={() => {}}
-          onClose={() => {}}
           isLoading={false}
           isError={false}
           hasMore={false}
@@ -336,7 +329,6 @@ describe('DiaryList (web)', () => {
         diaries={[joyful('d1', ['sea'])]}
         openedDiaryId={null}
         onOpen={() => {}}
-        onClose={() => {}}
         isLoading={false}
         isError={false}
         hasMore={false}

@@ -202,6 +202,7 @@ function seedEveryMobileUserState() {
   useEpisodicMemoryStore.getState().setAll([
     {
       id: 'memory-a',
+      diaryId: 'd',
       name: 'A private memory',
       emotion: { mood: 'JOY', valence: 0.82, arousal: 0.72, intensity: 0.7 },
       baseStrength: 0.61,

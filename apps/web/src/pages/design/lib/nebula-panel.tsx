@@ -57,7 +57,7 @@ export function NebulaDemoPanel() {
           {forceWebGL ? m.test_harness_nebula_use_webgpu() : m.test_harness_nebula_force_webgl()}
         </Button>
         {/* Remount the renderer when the backend flips so the WebGPU→WebGL2 fallback is exercised. */}
-        <div className="h-96 overflow-hidden rounded-lg bg-background">
+        <div className="h-96 overflow-hidden rounded-lg bg-bg">
           <NebulaDemoScene key={forceWebGL ? 'gl' : 'gpu'} forceWebGL={forceWebGL} />
         </div>
       </div>

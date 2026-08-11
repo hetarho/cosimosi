@@ -12,7 +12,7 @@ import {
   applyRecallResult,
   classifyPaidActionError,
   createPaidActionSession,
-  currentDecayText,
+  currentDecaySpans,
   recallAdvanceAnnouncement,
   recallFlowMachine,
   recallOutcome,
@@ -242,7 +242,7 @@ export function RecallFlowSheet() {
           memoryId &&
           (costPassed ? (
             <>
-              <CurrentMemoryText text={memory ? currentDecayText(memory, universeTime) : null} />
+              <CurrentMemoryText spans={memory ? currentDecaySpans(memory, universeTime) : null} />
               <RecallRewrite
                 value={rewrite}
                 onChange={setRewrite}

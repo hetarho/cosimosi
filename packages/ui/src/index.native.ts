@@ -74,6 +74,10 @@ export type {
   DialogOwnProps,
   SheetOwnProps,
   TooltipOwnProps,
+  MenuItem,
+  MenuOwnProps,
+  ObscuredTextSpan,
+  ObscuredTextProps,
   ToastOwnProps,
   BadgeOwnProps,
   AlertOwnProps,
@@ -95,9 +99,12 @@ export { IconButton, type IconButtonProps } from './primitives/icon-button.nativ
 export {
   ICON_SIZE,
   DecorateIcon,
+  DeleteIcon,
   DiaryIcon,
   NoticeIcon,
+  ResetIcon,
   SettingsIcon,
+  StarActionsIcon,
   TwinkleGeneralIcon,
   TwinkleSmallIcon,
   type IconProps,
@@ -110,6 +117,8 @@ export { Checkbox, type CheckboxProps } from './primitives/checkbox.native.tsx'
 export { Dialog, type DialogProps } from './primitives/dialog.native.tsx'
 export { Sheet, type SheetProps } from './primitives/sheet.native.tsx'
 export { Tooltip, type TooltipProps } from './primitives/tooltip.native.tsx'
+export { Menu, type MenuProps } from './primitives/menu.native.tsx'
+export { ObscuredText } from './primitives/obscured-text.native.tsx'
 export { Toast, type ToastProps } from './primitives/toast.native.tsx'
 export { Badge, type BadgeProps } from './primitives/badge.native.tsx'
 export { Alert, type AlertProps } from './primitives/alert.native.tsx'

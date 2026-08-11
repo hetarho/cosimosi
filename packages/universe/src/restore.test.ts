@@ -12,6 +12,7 @@ import {
 
 const memory = (id: string): EpisodicMemory => ({
   id,
+  diaryId: 'd',
   name: id,
   emotion: { mood: 'JOY', valence: 0.5, arousal: 0.5, intensity: 0.5 },
   baseStrength: 0.5,

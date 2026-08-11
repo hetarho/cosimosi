@@ -253,10 +253,10 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   awaken anchors). It runs **outside** the canvas because React context does not cross the R3F reconciler.
 - **`<UniverseSceneLayers>`** — the layer composition, in the one order that works, taking that result as props.
 
-Each app widget is then a thin shell holding only what genuinely forks: its canvas host, its sim spawner (web spawns a
-module Worker, native returns null and the bridge runs the sim inline), its fidelity budget
-(`latentStarCountMobile`, `fieldResolutionMobile`), and — web only — the hover/glimpse overlay, since touch has no
-hover. **This is what the `ui`-segment platform-marker exemption to promote-on-reuse (§3.1) does not cover:** two files
+Each app widget is then a thin shell holding only what genuinely forks: its canvas host (web wraps the canvas in a
+positioned DOM element, native mounts the surface itself), its sim spawner (web spawns a module Worker, native returns
+null and the bridge runs the sim inline), and its fidelity budget (`latentStarCountMobile`, `fieldResolutionMobile`).
+**This is what the `ui`-segment platform-marker exemption to promote-on-reuse (§3.1) does not cover:** two files
 that each carry a platform marker are never compared to each other, so a duplicated host can sit there indefinitely.
 It did, for ~330 lines, and drifted twice before being caught by review rather than by a gate — once on pick resolution
 (native resolved through the graph, dropping the optimistic-launch tail) and once on `antialias`. When a shell grows
@@ -332,10 +332,27 @@ logic that is not platform-specific, that logic belongs in the shared pair.
 
 - **Cross-route fly hand-off (plan 47).** The diary-reader jump lives on a separate route from the canvas, so it cannot
   send the navigation actor a `FLY` directly. It parks the target in a shared one-slot `usePendingFlyTargetStore`
-  (`@cosimosi/universe`) and navigates home; the canvas widget consumes it on mount — once the target node exists in the
-  graph it sends `FLY` and clears the store. An episodic star's node id **is** its memory id, so the jump parks the first
-  recalled `episodic_memory_id` with no translation. The reader never imports `three` or the rig (§3.4); the fly is a
-  discrete navigation event, and the reinforced star already exists so the node always resolves.
+  (`@cosimosi/universe`) and navigates home; the canvas widget consumes the request **only once the graph carries the
+  node** — it sends `FLY` and clears the slot then, and leaves the request parked while the node is still missing, so
+  the read already in flight gets its turn at resolving it. Consuming an unresolved target would drop the hand-off for
+  good: the slot holds one request and nothing re-sends it. An episodic star's node id **is** its memory id, so the jump
+  parks the first recalled `episodic_memory_id` with no translation. The reader never imports `three` or the rig (§3.4);
+  the fly is a discrete navigation event.
+- **Arriving is lit, not merely flown to (plan 47).** A glide toward one anonymous star inside a universe that is
+  re-settling behind it reads as a page load, so the jump also names every memory it recalled in `useSpotlightStore`
+  (`@cosimosi/universe` — ids only, no coordinate, no `three` type: which stars matter is the app's to say, how a scene
+  shows that is the renderer's). While a spotlight holds, `SpotlightDim` eases the scene's light down toward
+  `SPOTLIGHT_SCENE_DIM` and `StarLayer` multiplies the named memories' brightness channel by `SPOTLIGHT_STAR_LIFT`, so
+  those stars come out brighter than they began rather than merely un-dimmed. The lift is drawn brightness only — it
+  reads no stored fact and writes none, and `starLife` clamps at 1, so a lifted star keeps its own motion and forgetting
+  stays the only thing that can still a body. **The dim rides the composite, not the materials:** one
+  `spotlightSceneDim` ref reaches `PostFX` as its `dimRef` and multiplies the output node, so sky, colour field,
+  filaments, bodies and the bloom halo go quiet together instead of each fading on its own schedule. The
+  hold runs on its own clock (`SPOTLIGHT_HOLD_SECONDS`, eased at `SPOTLIGHT_FADE_LAMBDA`) rather than on the camera's
+  arrival, because `NavigationRig` can force-arrive while chasing a star that is still settling and tying the dark to
+  that would let a timeout strand the universe in it. Per §3.2 the light is a per-frame ref, so the layer subscribes to
+  the id list once and eases inside the frame callback; reduced motion gets the same darkness with no ramp, and the
+  layer gives the light back on unmount.
 
 ## Star / neuron / filament bodies (plan 24 as-built)
 

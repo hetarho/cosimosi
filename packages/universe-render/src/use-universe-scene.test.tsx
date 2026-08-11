@@ -45,6 +45,7 @@ const universeFixture = () => ({
 
 const serverStoredMemory = (id: string): EpisodicMemory => ({
   ...serverMemory(id),
+  diaryId: `${id}-diary`,
   seed: null,
   lastRecalledUniverseTime: null,
   decayStages: [],

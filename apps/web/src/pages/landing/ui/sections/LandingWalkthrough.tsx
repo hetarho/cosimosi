@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 
 import { moodColor } from '@cosimosi/emotion'
-import { Badge, Button } from '@cosimosi/ui'
+import { Badge, Button, ObscuredText } from '@cosimosi/ui'
 
 import { m, moodLabel, useActiveLocale } from '../../../../shared/i18n/index.ts'
 import {
@@ -311,16 +311,19 @@ function WalkthroughUniverse({ facts }: { facts: WalkthroughSceneFacts }) {
       {/* The returned-to memory's reading, crossfaded when it changes — whole, then eroding, then
           back changed. Keyed by the words themselves, which is what actually changed. */}
       <AnimatePresence mode="wait" initial={false}>
-        {facts.focusText === null ? null : (
-          <motion.p
+        {facts.focusText === null || facts.focusSpans === null ? null : (
+          <motion.div
             key={facts.focusText}
             // drop-shadow-md is the ground: a label directly on the live scene takes its legibility
             // from a dark halo, not from weight — the same treatment the on-scene HUDs carry.
-            className="pointer-events-none absolute inset-x-6 bottom-4 break-keep text-center text-sm text-text drop-shadow-md"
+            className="pointer-events-none absolute inset-x-6 bottom-4 text-center drop-shadow-md"
             {...CAPTION_MOTION}
           >
-            {facts.focusText}
-          </motion.p>
+            <ObscuredText
+              className="break-keep text-center"
+              spans={facts.focusSpans.map((span) => ({ text: span.text, obscured: span.lost }))}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -150,7 +150,7 @@ export function WritingFlowSheet() {
         // but creates no memory, so no star appears ([T1][I10]). Gate the optimistic insert on
         // its `pastDated` flag rather than inferring it from an empty id list.
         if (!response.pastDated) {
-          insertLaunchedMemories(memories, response.memoryIds, diaryDate)
+          insertLaunchedMemories(memories, response.memoryIds, diaryDate, response.diaryId)
           // The reveal rides the clock ([T2] case 1: accelerate → then the star appears): a
           // clock-advancing launch hands the interval + awaken ids to the acceleration seam and
           // the overlay releases them when the transition completes. Presentation only — the

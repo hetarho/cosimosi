@@ -60,7 +60,7 @@ export function NicknameStep({ onCompleted }: NicknameStepProps) {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-6 text-text">
+    <main className="flex min-h-dvh items-center justify-center bg-bg p-6 text-text">
       <Card className="w-full max-w-sm">
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <h1 className="text-lg font-medium">{m.signup_nickname_title()}</h1>

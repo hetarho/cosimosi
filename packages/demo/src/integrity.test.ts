@@ -263,6 +263,7 @@ describe('demo resolution', () => {
         'createdUniverseTime',
         'currentText',
         'decayStages',
+        'diaryId',
         'emotion',
         'forgettingOffsetDays',
         'id',

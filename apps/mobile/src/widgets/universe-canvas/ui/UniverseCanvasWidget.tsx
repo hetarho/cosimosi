@@ -20,8 +20,7 @@ import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 // The native shell around the shared universe scene — the mirror of the web widget. What forks here
 // is the MVP fidelity budget (fewer latent bodies, a lower-resolution color field) and the sim
-// spawner, which returns null so the bridge runs the sim inline on the JS thread. There is no hover
-// on touch, so no hover handler and no glimpse overlay.
+// spawner, which returns null so the bridge runs the sim inline on the JS thread.
 function UniverseCanvasHost({
   navigationActorRef,
 }: {

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import { Badge, Button, tokens } from '@cosimosi/ui'
 
@@ -29,7 +29,6 @@ export function RecallDiaryStarsAction({
             in both locales and the badge is what carries "this one costs". */}
         <Badge variant="neutral">{m.twinkle_balance_general_label()}</Badge>
       </View>
-      <Text style={styles.hint}>{m.diary_reader_paid_hint()}</Text>
     </View>
   )
 }
@@ -37,5 +36,4 @@ export function RecallDiaryStarsAction({
 const styles = StyleSheet.create({
   action: { alignItems: 'flex-start', gap: tokens.spacing[1] },
   control: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
-  hint: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
 })

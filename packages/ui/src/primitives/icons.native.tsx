@@ -1,8 +1,10 @@
+import { ArrowCounterClockwiseIcon } from 'phosphor-react-native/src/icons/ArrowCounterClockwise'
 import { BookOpenIcon } from 'phosphor-react-native/src/icons/BookOpen'
 import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix'
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info'
 import { PaletteIcon } from 'phosphor-react-native/src/icons/Palette'
 import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle'
+import { TrashIcon } from 'phosphor-react-native/src/icons/Trash'
 
 import { color } from '../native-styles.ts'
 import type { IconOwnProps } from './types.ts'
@@ -49,4 +51,24 @@ export function DiaryIcon({ size = ICON_SIZE, color: ink = color.text }: IconPro
 /** An explanation waiting behind a control — a guide or a disclosure, never a failure. */
 export function NoticeIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
   return <InfoIcon size={size} color={ink} />
+}
+
+/** 조건 초기화 — the way back out of a narrowed view. It restores nothing and destroys nothing. */
+export function ResetIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <ArrowCounterClockwiseIcon size={size} color={ink} />
+}
+
+/** 지우기 — the destructive act on the record this control sits beside. */
+export function DeleteIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <TrashIcon size={size} color={ink} />
+}
+
+/**
+ * 이 별로 할 수 있는 일 — the star's own set of actions, gathered behind one control.
+ *
+ * It shares the gear with `SettingsIcon` and is a separate meaning all the same: a slice asks for
+ * the star's actions, not for a gear, so rebinding either one later is a change in this file.
+ */
+export function StarActionsIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <GearSixIcon size={size} color={ink} />
 }

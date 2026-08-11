@@ -117,6 +117,7 @@ function buildStarShapeScene(): StarShapeScene {
     positions[i * 3 + 2] = 0
     return {
       id: `shape-${mood.toLowerCase()}`,
+      diaryId: `shape-${mood.toLowerCase()}-diary`,
       name: mood,
       emotion: createEmotion(mood),
       baseStrength: BASE_STRENGTH,

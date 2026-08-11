@@ -148,6 +148,10 @@ message LaunchStarsResponse {
   // past-dated launch carries the unmoved clock in both (no acceleration).
   string previous_universe_time = 4;
   string universe_time = 5;
+  // The Diary these memories were encoded from. The optimistic insert carries it onto each new
+  // memory so a just-launched one already names its source ([X1]), instead of being the one memory
+  // whose own delete cannot resolve until the next read.
+  string diary_id = 6;
 }
 
 message GetUniverseRequest {}
@@ -206,6 +210,11 @@ message EpisodicMemoryDto {
   // stage (copy x,y, raise z [I5][V9]). The trace transforms; it does not accumulate a body per
   // rung. 0..4 and monotone (a stage never un-rises), so the one body rises with it.
   int32 semantic_stage = 13;
+  // The Diary this memory was encoded from ([X1] — the unit a full delete is keyed by). A
+  // per-memory delete affordance needs this edge, and the archive is a separate paged read the
+  // canvas route does not mount, so without it the intent has nothing to name. An id only, never
+  // the diary's text: the immutable original is reached through the reader [I2].
+  string diary_id = 14;
 }
 
 message NeuronDto {

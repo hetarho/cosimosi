@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react'
+import { useRef, type CSSProperties, type KeyboardEvent } from 'react'
 
 import { cx } from '../lib/cx.ts'
 import type { SegmentedControlOwnProps } from './types.ts'
@@ -33,11 +33,29 @@ export function SegmentedControl({
   }
 
   return (
+    // The thumb is an `aria-hidden` sibling of the radios, never a wrapper around them: putting an
+    // element between the radiogroup and its radios breaks the ownership some assistive tech reads.
+    // Its position is a custom property rather than a class per index, so the group carries one
+    // number and the CSS does the arithmetic.
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="inline-flex rounded-xl border border-border bg-surface p-1"
+      // `inline-grid` with equal auto columns is what actually makes the segments the same width,
+      // which is what lets the thumb be one translate with nothing measured. Flex cannot do it here:
+      // a flex item's automatic minimum is its own content, and a shrink-to-fit container has no
+      // free space left for `flex-grow` to even out — the segments keep their label widths and the
+      // thumb lands beside the one it is meant to be under.
+      className="relative inline-grid auto-cols-fr grid-flow-col rounded-xl border border-border bg-surface p-1"
+      style={
+        {
+          '--segment-count': items.length,
+          '--segment-index': anchorIndex,
+        } as CSSProperties
+      }
     >
+      {/* Hidden when the value is outside the set: `aria-checked` is false on every segment then, and
+          a thumb sitting under the first one would tell the eye a selection the reader is not. */}
+      {selectedIndex !== -1 && <span aria-hidden className="segment-thumb" />}
       {items.map((item, index) => {
         const selected = item.value === value
         return (
@@ -60,8 +78,10 @@ export function SegmentedControl({
               if (event.key === 'ArrowRight' || event.key === 'ArrowDown') move(event, 1)
             }}
             className={cx(
-              'shrink-0 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50',
-              selected ? 'bg-background text-text shadow-sm' : 'text-text-muted hover:text-text',
+              // `relative` lifts the label above the thumb sliding beneath it; the equal widths come
+              // from the group's grid columns.
+              'relative rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50',
+              selected ? 'text-text' : 'text-text-muted hover:text-text',
             )}
           >
             {item.label}

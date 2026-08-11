@@ -238,7 +238,7 @@ export const T = {
   statesElapsed: (days: number) => (days === 0 ? 'today' : `${days}d`),
   statesWordLossLabel: 'Word loss',
   statesWordLossNote:
-    'Nothing here, deliberately. Brightness already says the memory has eroded; which words went is read up close, in the 2D hover glimpse and the star panel. Words are read, not seen from across a universe.',
+    'Nothing in 3D here, deliberately. Brightness already says the memory has eroded; which words went is read up close, in the star panel. A lost word keeps its place in the line and gives up its shape — you see the gap without being told about it. Words are read, not seen from across a universe.',
   statesWordLossStages: [
     '첫 겨울 바다에서 헤엄쳤다',
     '첫 겨울 xxxx 헤엄쳤다',

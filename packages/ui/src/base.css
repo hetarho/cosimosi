@@ -209,21 +209,27 @@
       0 3px 10px -11px var(--btn-glow, transparent);
   }
 
-  /* Outlined — border + glow ring, no fill (hover ring ~70% of the lab size). */
+  /* Outlined — border + glow ring, no fill (hover ring ~70% of the lab size).
+     The rim and the halo read `--btn-ink`, not `--btn-c`, because the two carriers answer different
+     questions: `--btn-c` is what a translucent FILL is mixed from, and neutral's is the dark raised
+     surface — a colour that glows as a smudge against the night. `--btn-ink` is what the control's
+     visible edge is drawn in, which for neutral is the near-white text token. The four accents set
+     both to the same role colour, so only neutral changes, and it changes into the faint neon the
+     appearance was named for. */
   .btn-outlined {
     background-color: transparent;
     color: var(--btn-ink);
-    border: 1px solid color-mix(in oklab, var(--btn-c) 45%, transparent);
-    box-shadow: 0 0 12px -2px color-mix(in oklab, var(--btn-c) 40%, transparent);
+    border: 1px solid color-mix(in oklab, var(--btn-ink) 45%, transparent);
+    box-shadow: 0 0 12px -2px color-mix(in oklab, var(--btn-ink) 40%, transparent);
   }
   .btn-outlined:hover,
   .state-hover .btn-outlined {
-    border-color: color-mix(in oklab, var(--btn-c) 60%, transparent);
-    box-shadow: 0 0 13px -2px color-mix(in oklab, var(--btn-c) 55%, transparent);
+    border-color: color-mix(in oklab, var(--btn-ink) 60%, transparent);
+    box-shadow: 0 0 13px -2px color-mix(in oklab, var(--btn-ink) 55%, transparent);
   }
   .btn-outlined:active,
   .state-pressed .btn-outlined {
-    box-shadow: 0 0 8px -3px color-mix(in oklab, var(--btn-c) 45%, transparent);
+    box-shadow: 0 0 8px -3px color-mix(in oklab, var(--btn-ink) 45%, transparent);
   }
 
   /* Text — bare label, faint tint on hover; toolbars/tab strips of these cost nothing. */
@@ -307,6 +313,66 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .tooltip-surface {
       background-color: color-mix(in oklab, var(--color-surface-raised) 95%, transparent);
+    }
+  }
+}
+
+/* ── Segment thumb — the held choice, carried rather than repainted ─────────────
+ * A bounded choice needs to say WHICH ONE at a glance, and ink weight alone does not: a step from
+ * `text-muted` to `text` is a fraction of a lightness unit at the top of the near-white range.
+ * So the selection gets a surface of its own — a translucent raised lens sliding under the label.
+ *
+ * It SLIDES because the movement is the answer: a thumb that jumped would repaint two segments and
+ * leave the eye to work out which one changed, while one that travels shows the choice moving from
+ * where it was to where it is. Same mechanism as `.switch-thumb` — a transform on a state-driven
+ * custom property, at the token duration/easing — so it collapses to an instant landing under
+ * `prefers-reduced-motion` through the global rule at the top of this file, with no JS to gate.
+ *
+ * The geometry assumes equal-width segments, which is why the control lays its buttons out
+ * `flex-1 basis-0`: it buys a pure-CSS thumb with nothing to measure and nothing to re-measure when
+ * a locale swap changes every label's width.
+ */
+@layer components {
+  .segment-thumb {
+    position: absolute;
+    inset-block: 0.25rem;
+    inset-inline-start: 0.25rem;
+    inline-size: calc((100% - 0.5rem) / var(--segment-count, 1));
+    border-radius: var(--radius-lg);
+    background-color: color-mix(in oklab, var(--color-surface-raised) 82%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 14%, transparent);
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 20%, transparent);
+    transform: translateX(calc(var(--segment-index, 0) * 100%));
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+}
+
+/* ── Obscured run — text that has stopped being legible ─────────────────────────
+ * A run the reader can see is there and can no longer read: it keeps its ink and its place in the
+ * line and gives up its shape. The blur is authored in `em` so it tracks the type size — a smear at
+ * body size stays a smear in a caption — and `user-select: none` keeps the run out of a copied
+ * passage, which is the one place a filter cannot follow the text.
+ *
+ * Forced colours strip `filter` outright, which would hand the characters back intact. There the run
+ * becomes a solid bar of system ink instead: a different picture of the same fact, losing exactly
+ * what the blur loses.
+ */
+@layer components {
+  .obscured-run {
+    display: inline-block;
+    filter: blur(0.3em);
+    opacity: 0.9;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  @media (forced-colors: active) {
+    .obscured-run {
+      filter: none;
+      color: transparent;
+      background-color: CanvasText;
+      border-radius: var(--radius-sm);
     }
   }
 }

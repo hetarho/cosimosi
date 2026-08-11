@@ -11,8 +11,8 @@ import {
 } from '@cosimosi/force-sim'
 import { usePaletteVersion } from '@cosimosi/emotion/react'
 import { useActorRef } from '@cosimosi/state-machine/react'
-import { ornamentRegistryKey, useOrnamentPreviewStore, type OrnamentKind } from '@cosimosi/store'
-import { useAppliedOrnaments } from '@cosimosi/store/react'
+import type { OrnamentKind } from '@cosimosi/store'
+import { useWornOrnaments } from '@cosimosi/store/react'
 import {
   buildUniverseGraph,
   createUniverseSimBridge,
@@ -68,7 +68,6 @@ export interface UniverseSceneState {
   readonly wearing: Readonly<Record<Extract<OrnamentKind, 'BACKGROUND' | 'STAR_SHADER'>, string>>
   /** The clock the SCENE projects at (see below) — not necessarily the committed read clock. */
   readonly sceneTime: string | null
-  readonly universeTime: string | null
   readonly getPose: () => NavigationPose
   readonly onArrived: () => void
   readonly pump: (dt: number) => void
@@ -88,9 +87,9 @@ export interface UniverseSceneState {
  * bridge swaps the coordinate buffer ref, the layers read it in `useFrame`, and the navigation rig
  * polls the machine through `getSnapshot()`. No 60 fps React state, no per-frame store reads.
  *
- * Web and native differ only in the three `UniverseSceneOptions` inputs and in what they wrap this
- * with (a DOM canvas host and a hover overlay vs a native surface) — everything else was a
- * duplicated fork that had already drifted twice.
+ * Web and native differ only in the three `UniverseSceneOptions` inputs and in the host they wrap
+ * this with — a DOM canvas host on one side, a native surface on the other. Everything else is
+ * shared, because a fork of this hook is a fork that drifts.
  */
 export function useUniverseScene({
   simSpawner,
@@ -112,13 +111,16 @@ export function useUniverseScene({
 
   // Camera hand-off from a cross-route action (the diary jump): a parked fly target is consumed
   // once the graph carries the node, gliding to the recovered memory's body, then cleared. The
-  // reinforced memory already exists in the universe, so the node resolves as soon as the read loads.
+  // request stays parked while the node is still missing — the refetch that carries it is already in
+  // flight, and consuming a target the graph cannot resolve would drop the hand-off for good, since
+  // the slot holds one request and nothing re-sends it.
   const flyTargetNodeId = usePendingFlyTargetStore((state) => state.nodeId)
   const clearFlyTarget = usePendingFlyTargetStore((state) => state.clear)
   useEffect(() => {
     if (!flyTargetNodeId || !nodeIndex) return
     const index = nodeIndex.neurons[flyTargetNodeId] ?? nodeIndex.episodicMemories[flyTargetNodeId]
-    if (index !== undefined) actorRef.send({ type: 'FLY', nodeId: flyTargetNodeId })
+    if (index === undefined) return
+    actorRef.send({ type: 'FLY', nodeId: flyTargetNodeId })
     clearFlyTarget()
   }, [flyTargetNodeId, nodeIndex, actorRef, clearFlyTarget])
 
@@ -210,20 +212,12 @@ export function useUniverseScene({
   const universeTime = universe?.universeTime ?? null
   const sceneTime = sweepTime ?? universeTime
 
-  // The ONE translation point from decoration ids into rendering vocabulary (§3.4): while a panel is
-  // open the previewed ids win, otherwise the confirmed read does. `widgets/decoration-panel` never
-  // imports the renderer — it installs a preview, and this reads it. The skin keeps the scene
-  // defaults that are never for sale — bloom, camera, the bare night ([V10][I11]).
-  const applied = useAppliedOrnaments()
-  const previewActive = useOrnamentPreviewStore((state) => state.previewActive)
-  const previewed = useOrnamentPreviewStore((state) => state.previewed)
-  const wearing = previewActive
-    ? {
-        BACKGROUND: ornamentRegistryKey('BACKGROUND', previewed.BACKGROUND) ?? applied.BACKGROUND,
-        STAR_SHADER:
-          ornamentRegistryKey('STAR_SHADER', previewed.STAR_SHADER) ?? applied.STAR_SHADER,
-      }
-    : applied
+  // Decoration ids reach rendering vocabulary through `useWornOrnaments` (§3.4), which resolves the
+  // preview-versus-confirmed precedence for every surface that draws a decorated thing — this scene
+  // and the star-detail panel's own preview alike. `widgets/decoration-panel` never imports the
+  // renderer: it installs a preview, and that hook reads it. The skin keeps the scene defaults that
+  // are never for sale — bloom, camera, the bare night ([V10][I11]).
+  const wearing = useWornOrnaments()
 
   const skyStops = useMemo(() => {
     // The version is a genuine input: moodColor reads the module-level palette it stamps.
@@ -287,7 +281,6 @@ export function useUniverseScene({
     skyStops,
     wearing,
     sceneTime,
-    universeTime,
     getPose,
     onArrived,
     pump,

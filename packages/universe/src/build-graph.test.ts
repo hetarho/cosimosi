@@ -11,6 +11,7 @@ const universeFixture = (): UniverseSnapshot => ({
   memories: [
     {
       id: 'memory-1',
+      diaryId: 'd',
       name: 'first swim in the cold sea',
       emotion,
       baseStrength: 0.61,

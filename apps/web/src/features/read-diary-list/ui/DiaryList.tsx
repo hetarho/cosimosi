@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { defaultRangeExtractor, useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import { VALUES } from '@cosimosi/config'
-import { moodColor, type Mood } from '@cosimosi/emotion'
+import { moodColor } from '@cosimosi/emotion'
 import { diaryMoods, diaryPreview, type Diary, type DiarySplitMember } from '@cosimosi/memory'
 import { Button, VisuallyHidden } from '@cosimosi/ui'
 
@@ -11,9 +11,10 @@ import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DiaryListProps {
   diaries: readonly Diary[]
+  /** Which entry the reader has open. The row itself never expands — this is what the virtualizer
+   *  scrolls to, so a deep-linked entry sits under its own modal and dismissing it lands there. */
   openedDiaryId: string | null
   onOpen: (diaryId: string) => void
-  onClose: () => void
   isLoading: boolean
   isError: boolean
   hasMore: boolean
@@ -26,9 +27,6 @@ export interface DiaryListProps {
   // Changes whenever the archive's conditions do. A fresh keyset page starts at the top, so the
   // reader should be looking there rather than mid-way down the previous result set ([D7]).
   scrollResetKey?: string
-  // The opened entry's spend affordance is injected by the composing widget (the jump is a paid
-  // action that this free read feature must not own); nothing renders when a diary has no live star.
-  renderActions?: (diary: Diary) => ReactNode
   // Renders a stretch of the diary's own body — the seam the search feature marks its hits through.
   // The list never sees the keyword, so no query can reach a memory's text ([D10]).
   renderBodyText?: (text: string) => ReactNode
@@ -43,7 +41,6 @@ export function DiaryList({
   diaries,
   openedDiaryId,
   onOpen,
-  onClose,
   isLoading,
   isError,
   hasMore,
@@ -52,7 +49,6 @@ export function DiaryList({
   emptyState,
   onClearConditions,
   scrollResetKey,
-  renderActions,
   renderBodyText,
 }: DiaryListProps) {
   // Where the list begins in the document. Rows are positioned relative to the list, so this never
@@ -81,19 +77,22 @@ export function DiaryList({
     }
   }, [listNode])
 
-  // A row the reader has focused stays mounted after it scrolls out of the window. Unmounting it
-  // would drop keyboard focus to the document body mid-scroll — the one part of "the list behaves as
-  // it did" that windowing breaks by construction.
+  // A row the reader has focused — or whose entry is open — stays mounted after it scrolls out of
+  // the window. Unmounting either drops keyboard focus to the document body: mid-scroll for the
+  // focused one, and on dismissal for the opened one, since the surface holding the entry restores
+  // focus to the row that opened it and the page behind that surface still scrolls.
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const openedIndex = openedDiaryId ? diaries.findIndex((diary) => diary.id === openedDiaryId) : -1
   const keepFocusedRow = useCallback(
     (range: Parameters<typeof defaultRangeExtractor>[0]) => {
       const visible = defaultRangeExtractor(range)
-      if (focusedIndex === null || focusedIndex >= range.count || visible.includes(focusedIndex)) {
-        return visible
-      }
-      return [...visible, focusedIndex].sort((a, b) => a - b)
+      const pinned = [focusedIndex, openedIndex].filter(
+        (index): index is number =>
+          index !== null && index >= 0 && index < range.count && !visible.includes(index),
+      )
+      return pinned.length === 0 ? visible : [...visible, ...pinned].sort((a, b) => a - b)
     },
-    [focusedIndex],
+    [focusedIndex, openedIndex],
   )
 
   // Keyed by the diary, not by position, so a row that has been measured keeps its real height if
@@ -111,10 +110,9 @@ export function DiaryList({
 
   // The deep link from a star's detail panel can open a row well outside the mounted window, so the
   // scroll is asked of the virtualizer by index rather than of a node that may not exist. `auto`
-  // keeps the old behavior of moving only when the row is not already in view. `listOffset` is a
-  // dependency because the first measured offset lands a commit after the list mounts: a deep link
-  // that resolved before it would otherwise scroll to a target computed from offset 0.
-  const openedIndex = openedDiaryId ? diaries.findIndex((diary) => diary.id === openedDiaryId) : -1
+  // moves only when the row is not already in view. `listOffset` is a dependency because the first
+  // measured offset lands a commit after the list mounts: a deep link that resolved before it would
+  // otherwise scroll to a target computed from offset 0.
   useEffect(() => {
     if (openedIndex < 0) return
     virtualizer.scrollToIndex(openedIndex, { align: 'auto' })
@@ -177,7 +175,6 @@ export function DiaryList({
         {virtualizer.getVirtualItems().map((row) => {
           const diary = diaries[row.index]
           if (!diary) return null
-          const opened = diary.id === openedDiaryId
           const preview = diaryPreview(diary.body, VALUES.diaryReader.bodyPreviewLength)
           return (
             <li
@@ -189,8 +186,8 @@ export function DiaryList({
             >
               <button
                 type="button"
-                aria-expanded={opened}
-                onClick={() => (opened ? onClose() : onOpen(diary.id))}
+                aria-haspopup="dialog"
+                onClick={() => onOpen(diary.id)}
                 onFocus={() => setFocusedIndex(row.index)}
                 onBlur={() =>
                   setFocusedIndex((current) => (current === row.index ? null : current))
@@ -203,26 +200,11 @@ export function DiaryList({
                 >
                   {diary.diaryDate}
                 </time>
-                {!opened && (
-                  <span className="line-clamp-2 text-sm text-text-muted">
-                    {renderBodyText ? renderBodyText(preview) : preview}
-                  </span>
-                )}
+                <span className="line-clamp-2 text-sm text-text-muted">
+                  {renderBodyText ? renderBodyText(preview) : preview}
+                </span>
                 <DiaryRowFooter memories={diary.memories} />
               </button>
-              {opened && (
-                <div className="flex flex-col gap-4 px-4 pb-4">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-text">
-                    {renderBodyText ? renderBodyText(diary.body) : diary.body}
-                  </p>
-                  {diary.memories.length > 0 ? (
-                    <DiaryChips members={diary.memories} />
-                  ) : (
-                    <p className="text-sm text-text-muted">{m.diary_reader_all_let_go()}</p>
-                  )}
-                  {renderActions?.(diary)}
-                </div>
-              )}
             </li>
           )
         })}
@@ -273,27 +255,5 @@ function DiaryRowFooter({ memories }: { memories: readonly DiarySplitMember[] })
         </>
       )}
     </span>
-  )
-}
-
-function DiaryChips({ members }: { members: readonly DiarySplitMember[] }) {
-  return (
-    <ul className="flex flex-wrap gap-2">
-      {members.map((member) => (
-        <li
-          key={member.episodicMemoryId}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1"
-        >
-          <span
-            aria-hidden
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: moodColor(member.mood as Mood) }}
-          />
-          <span className="text-xs text-text" title={moodLabel(member.mood)}>
-            {member.name}
-          </span>
-        </li>
-      ))}
-    </ul>
   )
 }

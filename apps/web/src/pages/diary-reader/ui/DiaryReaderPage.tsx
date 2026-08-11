@@ -26,7 +26,7 @@ export function DiaryReaderPage({
   onMonthChange: (month: string) => void
 }) {
   return (
-    <main className="min-h-dvh overflow-y-auto bg-background text-text">
+    <main className="min-h-dvh overflow-y-auto bg-bg text-text">
       <div className="mx-auto w-full max-w-2xl px-4 py-6">
         <DiaryReaderBlock
           onExit={onExit}

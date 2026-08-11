@@ -64,7 +64,10 @@ describe('RestoreSection (mobile)', () => {
 
     const view = renderSection(transport)
 
-    expect(view.getByText(m.deletion_restore_section_title())).toBeTruthy()
+    // The way back is one word until it is asked for; the list is behind it.
+    expect(view.queryByText(m.deletion_restore_group_summary({ count: 2 }))).toBeNull()
+    fireEvent.press(view.getByText(m.deletion_restore_section_title()))
+
     expect(view.getByText(m.deletion_restore_group_summary({ count: 2 }))).toBeTruthy()
     expect(view.getByText(m.deletion_restore_window_remaining({ days: remaining }))).toBeTruthy()
 

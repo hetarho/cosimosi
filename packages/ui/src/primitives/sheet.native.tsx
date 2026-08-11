@@ -119,7 +119,8 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     paddingHorizontal: space[5],
     paddingTop: space[5],
-    paddingBottom: space[6],
+    // The home indicator's own band plus the room the last control needs above it.
+    paddingBottom: space[6] + space[5],
   },
   header: {
     flexDirection: 'row',

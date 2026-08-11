@@ -9,7 +9,9 @@ import { elapsedUniverseDays } from './universe-time.ts'
 // nothing is ever deleted — brightness and text stop at a floor and wait for recall ([F2][I1]).
 
 // The visual marker a removed word becomes. UI content owned with the algorithm, not a tuning value.
-const REDACTION_TOKEN = 'xxxx'
+// Exported because the RENDERER has to recognise it: what a lost run looks like is the presentation
+// layer's decision, and it can only make that decision if it can tell a lost run from a kept one.
+export const REDACTION_TOKEN = 'xxxx'
 
 // The v1 language-agnostic function-word heuristic: content words are redacted before these. Exact
 // membership is code content (a "to refine" per [F9]), matching the Go forgettingStopWords set.

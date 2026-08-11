@@ -123,6 +123,52 @@ export interface TooltipOwnProps {
   align?: 'center' | 'end'
 }
 
+export interface MenuItem {
+  /** Stable key, and what a selection reports back. */
+  value: string
+  label: ReactNode
+  onSelect: () => void
+  /** `danger` for an item that destroys something; `neutral` (default) for everything else. */
+  tone?: 'neutral' | 'danger'
+  disabled?: boolean
+}
+
+/**
+ * A short list of commands behind one control — the gathering place for the actions a surface has
+ * room to offer but not room to show. It is not a `Select`: nothing here is a value, and the list
+ * closes on the act rather than on a choice.
+ *
+ * Placement is the caller's to state, as it is for `Tooltip`: nothing in this package measures the
+ * viewport, and the composition site is where the room around the trigger is known.
+ */
+export interface MenuOwnProps {
+  items: readonly MenuItem[]
+  /** The control that opens the list. It is cloned to carry the expanded/haspopup state. */
+  trigger: ReactNode
+  /** Accessible name for the list itself, so it is never announced unlabelled. */
+  ariaLabel: string
+  /** Which side of the trigger the list opens toward. Default `bottom`. */
+  side?: 'top' | 'bottom'
+  /** Which edge the list lines up with. Default `end` — the right edge, for a trigger in a corner. */
+  align?: 'start' | 'end'
+}
+
+export interface ObscuredTextSpan {
+  text: string
+  /** This run is no longer legible — render it as a smear, not as its characters. */
+  obscured: boolean
+}
+
+/**
+ * Text with runs that have stopped being readable, drawn as such: the legible runs plainly, the rest
+ * blurred past recognition. The component takes the runs already decided — it never decides which
+ * ones are gone, and it never announces the loss with a word or a marker.
+ */
+export interface ObscuredTextProps {
+  spans: readonly ObscuredTextSpan[]
+  className?: string
+}
+
 export interface ToastOwnProps {
   open: boolean
   onOpenChange: (open: boolean) => void

@@ -10,6 +10,7 @@ const { nebula } = VALUES
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
     id: 'm',
+    diaryId: 'd',
     name: 'memory',
     emotion: createEmotion('JOY'),
     baseStrength: 0.5,

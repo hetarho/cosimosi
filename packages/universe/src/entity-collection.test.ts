@@ -8,6 +8,7 @@ import { useSynapseStore } from './synapse-store.ts'
 
 const memory = (id: string, overrides: Partial<EpisodicMemory> = {}): EpisodicMemory => ({
   id,
+  diaryId: 'd',
   name: `star ${id}`,
   emotion: { mood: 'JOY', valence: 0.5, arousal: 0.4, intensity: 0.6 },
   baseStrength: 0.5,

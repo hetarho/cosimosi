@@ -33,14 +33,14 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 
   if (selfQuery.isPending) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+      <main className="flex min-h-dvh items-center justify-center bg-bg text-text-muted">
         <p className="text-sm">{m.admin_loading()}</p>
       </main>
     )
   }
   if (!isAdmin) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+      <main className="flex min-h-dvh items-center justify-center bg-bg text-text-muted">
         <p className="text-sm">{m.admin_not_admin()}</p>
       </main>
     )
@@ -56,7 +56,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
   const active = tabs.find((t) => t.id === tab) ?? tabs[0]
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-6 bg-background px-4 py-8 text-text">
+    <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-6 bg-bg px-4 py-8 text-text">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{m.admin_title()}</h1>
         <Button variant="outlined" color="neutral" size="sm" onClick={onExit}>

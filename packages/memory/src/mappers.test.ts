@@ -18,6 +18,7 @@ import {
 const memoryDtoFixture = (overrides: Record<string, unknown> = {}) =>
   create(EpisodicMemoryDtoSchema, {
     id: 'memory-1',
+    diaryId: 'diary-1',
     name: 'first swim in the cold sea',
     emotion: { mood: 'JOY', valence: 0.82, arousal: 0.72, intensity: 0.7 },
     baseStrength: 0.61,
@@ -45,6 +46,7 @@ describe('GetUniverse proto→domain mappers', () => {
 
     expect(memory).toEqual({
       id: 'memory-1',
+      diaryId: 'diary-1',
       name: 'first swim in the cold sea',
       emotion: { mood: 'JOY', valence: 0.82, arousal: 0.72, intensity: 0.7 },
       baseStrength: 0.61,

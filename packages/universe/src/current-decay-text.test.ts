@@ -2,11 +2,12 @@ import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { describe, expect, it } from 'vitest'
 
-import { currentDecayStage, currentDecayText } from './current-decay-text.ts'
+import { currentDecaySpans, currentDecayStage, currentDecayText } from './current-decay-text.ts'
 
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
     id: 'm',
+    diaryId: 'd',
     name: 'a memory',
     emotion: createEmotion('CALM'),
     baseStrength: 0.5,
@@ -65,5 +66,48 @@ describe('currentDecayText', () => {
       decayStages: ['stage one xxxx', 'stage two xxxx', 'stage three xxxx', 'stage four xxxx'],
     })
     expect(currentDecayText(decayed, '2027-06-01')).toBe('the whole memory as first written')
+  })
+})
+
+describe('currentDecaySpans', () => {
+  const decayed = (stageText: string) =>
+    memory({ decayStages: [stageText, stageText, stageText, stageText] })
+
+  it('is one legible span while vivid', () => {
+    expect(currentDecaySpans(memory(), '2026-01-01')).toEqual([
+      { text: 'the whole memory as first written', lost: false },
+    ])
+  })
+
+  // The stage decides what is lost, never the characters: a vivid text is the diarist's own words,
+  // so someone who typed the marker themselves reads back exactly what they wrote.
+  it('leaves a vivid text whole even when the diarist wrote the marker', () => {
+    const written = memory({ currentText: '비밀번호는 xxxx 였다' })
+    expect(currentDecayStage(written, '2026-01-01')).toBe(0)
+    expect(currentDecaySpans(written, '2026-01-01')).toEqual([
+      { text: '비밀번호는 xxxx 였다', lost: false },
+    ])
+  })
+
+  it('marks each redaction token as a lost run and leaves the rest legible', () => {
+    expect(currentDecaySpans(decayed('winter xxxx and nothing'), '2027-06-01')).toEqual([
+      { text: 'winter ', lost: false },
+      { text: 'xxxx', lost: true },
+      { text: ' and nothing', lost: false },
+    ])
+  })
+
+  it('coalesces a run of removed words into one span, so a long erasure is one smear', () => {
+    expect(currentDecaySpans(decayed('winter xxxx xxxx xxxx sea'), '2027-06-01')).toEqual([
+      { text: 'winter ', lost: false },
+      { text: 'xxxx xxxx xxxx', lost: true },
+      { text: ' sea', lost: false },
+    ])
+  })
+
+  it('rebuilds the exact text it was given', () => {
+    const text = 'xxxx 겨울 xxxx xxxx 바다에서 헤엄쳤다 xxxx'
+    const spans = currentDecaySpans(decayed(text), '2027-06-01')
+    expect(spans.map((span) => span.text).join('')).toBe(text)
   })
 })

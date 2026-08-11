@@ -57,7 +57,10 @@ slow)`, `decayFactor = 1 − brightness_decay_per_day`, clamped to `[floor, 1]`.
   first and last of each sentence (sentence boundary = a word ending in a Latin/CJK terminator). Removable words are
   ordered content-words-first (a small language-agnostic stop-word set is the function-word tier), then by a seeded
   `seededRank`, then by index; a **prefix** of that stage-independent order is redacted, so a deeper stage removes a
-  **superset** of a shallower one. Each removed word becomes the redaction token `xxxx`.
+  **superset** of a shallower one. Each removed word becomes the redaction token `xxxx` — the domain's record that a
+  word stood there, and the marker the stored string carries. It is not a picture of the loss: the renderer draws the
+  run it stands for as a smear rather than as its own characters
+  ([plan 39](../plan/39.forgetting-visuals.md) owns what a lost run looks like).
 
 ## 4. Values and formulas
 

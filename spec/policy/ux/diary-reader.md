@@ -18,7 +18,11 @@ original-only record, with no chips ([I1]).
 
 A released diary disappears from every archive view — list, search, filters, and calendar — while its release group
 exists. Restore removes that group and the diary returns to every view without rewriting the original or requiring
-another archive-specific write.
+another archive-specific write. The way back is a plain **지운 일기** word standing at the top of the archive, above the
+search controls, that opens this session's released groups in a modal — what was deleted is not what the reader came
+here for, so it holds no panel's worth of the page open and waits as one line. With nothing restorable the word is
+**absent** rather than disabled: on almost every reading there is nothing to restore, and a disabled control claims
+something is here that cannot be reached right now.
 
 ## The universe is primary; the reader is supporting
 
@@ -60,6 +64,19 @@ never an excerpt re-centred on a search hit, because a match-centred snippet is 
 start restoring words forgetting had removed ([D10][I2][F1][G1]). Marking the keyword inside text the
 row is already showing is allowed; moving the window to find it is not.
 
+## A row opens the entry; it never expands
+
+Choosing a row opens that diary as **its own modal over the archive** rather than unfolding it in place. A row that
+expanded would push everything under it down and leave the reader's place somewhere else when it folded back; the modal
+leaves the list exactly where it stands, and dismissing it lands on the row that opened it. So the row is one press with
+one meaning — it says it opens a dialog, and it carries **no control of its own** — while the opened entry is where the
+verbatim body, the split chips and every control that acts on the diary live.
+
+The opened entry is **one body, wherever it is opened from**: the archive's own modal and the calendar's day modal show
+the same verbatim text, the same split chips, the same paid door beneath it and the same delete in its corner, so a
+diary reads and answers identically however it was reached. A star's 원본 일기 deep link is that same opening — the
+list scrolls to that diary's row and the entry opens over it.
+
 ## The archive is free and time-frozen, and says so once
 
 Listing, previewing, sorting, filtering, searching and reading the original spend nothing and advance
@@ -68,28 +85,54 @@ it per control.
 
 ## Exactly one paid door, marked as such
 
-"이 일기로 태어난 별 보기" is the only control on the page that spends. It carries a stardust marker and
-one line saying so, it still shows no amount (the quote belongs to its dialog), and the destructive
-delete sits apart from it — destructive is not the same as paid ([D3][D11]). The free surfaces cannot
-price anything by shape: the list's props have no cost, balance, quote or spend field, and a paid
-affordance can only arrive through the composing widget's action slot.
+"이 일기로 태어난 별 보기" is the only control on the page that spends. A stardust marker rides beside the
+control and carries "this one costs" on its own — no second line repeats it — and it still shows no
+amount (the quote belongs to its dialog). Both it and the destructive delete belong to the **opened
+entry**, never to a row: the paid door sits under the body it would act on, and the delete is a bare
+glyph in the entry's top-right corner, so **distance and form** are what separate them — destructive is
+not the same as paid ([D3][D11]). The glyph sits in the entry's own corner rather than in the modal's
+header, because on a narrow screen that header is the sheet's drag surface, and a press there that
+became a downward drag would be ambiguous between deleting this diary and dismissing it. The glyph is
+not anonymous: 이 일기 지우기 is its accessible name, and on web a tooltip says it too. The free surfaces
+cannot price anything by shape: the list's props have no cost, balance, quote or spend field — and no
+action slot at all, so nothing that spends or destroys can be mounted in a row even by mistake. Both
+reach the reader only through the entry the composing widget opens.
 
 ## Conditions are addressable on web, and never half-applied
 
 On web the keyword, moods, date range and order live in the address bar, so a filtered archive is a
 shareable link and Back restores the previous conditions; on mobile the same shape lives in screen
-state ([D7][D8]). A condition the read would refuse — a keyword below the minimum, a half-typed date,
-an inverted range — is **not** committed: the reader keeps the previous result set and a hint says
-why, rather than watching the archive become an error mid-keystroke. Changing any condition starts a
-fresh keyset page, scrolls to the top, and closes the opened row, because the opened entry may not be
-in the new result set. A star's 원본 일기 deep link searches the **whole** archive: active conditions
-are lifted first, since paging a filtered one would run out of pages and drop the request.
+state ([D7][D8]). A condition the read would refuse — a keyword below the minimum — is **not** committed:
+the reader keeps the previous result set and a hint says why, rather than watching the archive become an
+error mid-keystroke. Changing any condition starts a fresh keyset page, scrolls to the top, and closes the
+opened entry, because that entry may not be in the new result set. A star's 원본 일기 deep link searches
+the **whole** archive: active conditions are lifted first, since paging a filtered one would run out of
+pages and drop the request.
+
+**The keyword stands in the open and the thirteen mood chips fold behind a toggle.** The chips are two
+rows of colour most readings never touch, and the archive is a page for reading. The toggle reads plainly
+**감정** and is the panel's only name — a legend inside the fold would say that word a second time — with
+how many are chosen beside it. The way out of the conditions stays **outside** the fold, so a folded panel
+can neither hide an active filter nor take away the way out of one; it is a reset glyph rather than a
+labelled button, named 조건 지우기 to assistive tech and by a tooltip on web, because it is a small
+correction beside the controls it undoes and not a third thing competing with them for the line.
+
+**A chosen chip is lit in its own feeling's colour** — that mood on its rim, a halo around it, its dot at
+full strength — and an unchosen one is a quiet outline holding a dimmed dot. Choosing nothing is what shows
+everything, so the resting state has to read as **off**: thirteen fully-lit dots would read as thirteen
+switches already thrown over an archive that is in fact unfiltered.
+
+**The date range has no control of its own.** It stays a field of the read and of the address
+(`from`/`to`) and it counts as a condition, so a link carrying it filters the archive and still offers
+조건 지우기 as the way back out; no form field on either platform writes it. The archive's own way to a
+single day is the calendar.
 
 ## 달력 뷰 — the archive has two shapes and one identity ([D12])
 
 The calendar is a **view of `/diary`, not a destination**. The list is the default, a two-option toggle
-(목록 / 달력) is the only way in, and every other reader affordance survives the switch: the header, the
-restore section, the search and filter controls, the star deep-link consumer and the deletion mount all stay
+(목록 / 달력) is the only way in — it rides beside the 일기장 title, because it names which shape the page is
+in right now — and every other reader affordance survives the switch: the header, the 지운 일기 way back, the
+search and filter controls, the star deep-link consumer and the deletion mount all stay
 mounted, so entering the calendar drops nothing. Only the body swaps. There is no new route and no new
 screen. The sort control is the one thing hidden while the calendar shows — it orders the list, and a control
 that steers nothing visible is noise.
@@ -105,15 +148,19 @@ remembering did not survive. `NEUTRAL`'s color is never used to stand in for abs
 a third state, distinct from both: plain recessed text, not a control at all. Out-of-month cells are present
 for grid shape and read the same inert way.
 
-**The calendar is free and time-frozen.** Entering it, stepping months and selecting a day cost nothing and
-move no clock ([D11][T3]). It holds **no paid affordance at all** — unlike the list, it has no action slot a
-spend could be mounted through — so the free/paid boundary needs no visual warning here. It also shows **no
-diary text of any kind**: its read carries none, so a snippet is unrepresentable rather than merely forbidden
-([D10]).
+**The calendar is free and time-frozen.** Entering it, stepping months and opening a day cost nothing and
+move no clock ([D11][T3]). The **grid** holds no paid affordance and no action slot a spend could be mounted
+through — the same guarantee a list row carries — so nothing inside a cell can ever cost. It also shows **no
+diary text of any kind**:
+its read carries none, so a snippet is unrepresentable there rather than merely forbidden ([D10]).
 
-**Clicking a day lands on that day's writing, filtered** — the date range narrows to exactly that day and the
-view returns to the list, so a day holding several diaries shows all of them. Never a guessed single entry,
-and no auto-expand: one rule for one and for many.
+**Clicking a day opens that day's writing over the month** — a modal holding **every** diary of that day, read
+through the archive bounded to exactly that date, so the month being browsed stays where it is and the
+archive's own conditions are left alone. Never a guessed single entry: one rule for one and for many. Each
+diary in it is the **same opened entry** the list offers — the verbatim body, its split chips, the paid door beneath
+it and the delete in its corner — mounted by the composing widget beside the grid rather than passed into it, which
+is what keeps the grid's no-action-slot guarantee exact. Taking either closes the day modal first, so no dialog
+stacks on another.
 
 **Stepping is prev/next only**, one month at a time, unbounded, with the month label between them. There is no
 "today" button and no month picker — on web the `month` param plus Back already return the reader, and the

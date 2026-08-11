@@ -8,6 +8,7 @@ import { hexToLinearRgb, normalizeSeed, starChannels } from './star-channels.ts'
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
     id: 'memory-1',
+    diaryId: 'd',
     name: 'a memory',
     emotion: createEmotion('JOY'),
     baseStrength: 0.5,

@@ -17,7 +17,8 @@ export function RecallDiaryStarsAction({
 }) {
   return (
     // [D11] makes the free/paid line visible, not merely true: this is the one control on the page
-    // that spends, and it says so beside itself. Still no amount — the quote belongs to the modal.
+    // that spends, and the marker beside it is what says so. Still no amount — the quote belongs to
+    // the modal, which is where the reader is asked to agree to it.
     <div className="flex flex-col items-start gap-1">
       <span className="inline-flex items-center gap-1.5">
         <Button color="primary" size="sm" onClick={onInitiate} disabled={liveCount === 0}>
@@ -27,7 +28,6 @@ export function RecallDiaryStarsAction({
             in both locales and the badge is what carries "this one costs". */}
         <Badge variant="neutral">{m.twinkle_balance_general_label()}</Badge>
       </span>
-      <p className="text-xs text-text-subtle">{m.diary_reader_paid_hint()}</p>
     </div>
   )
 }

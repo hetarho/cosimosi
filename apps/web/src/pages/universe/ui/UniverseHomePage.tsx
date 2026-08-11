@@ -23,7 +23,7 @@ import { useDecorationRequestStore } from '@cosimosi/store'
 import {
   universeNavigationMachine,
   useDeletionTargetStore,
-  useDiaryStore,
+  useEpisodicMemoryStore,
   useOpenDiaryTargetStore,
   useRecallTargetStore,
 } from '@cosimosi/universe'
@@ -138,32 +138,32 @@ export function UniverseHomePage({
     },
     [requestOpenDiary, onOpenReader],
   )
-  // 놓아주기 opens the letting-go branch over the canvas (keyed by the episodic memory). Deleting a
-  // star's source diary is diary-scoped: the FE has no episodic→diary map on the universe read, so
-  // resolve it from the diary mirror when it is loaded (open the flow over the canvas); otherwise
-  // fall back to the reader (the memory parked for its owning diary), where the per-entry delete
-  // lives — the same origin-diary resolution the open-diary intent uses.
+  // Both deletion branches open over the canvas and both close the star panel first: two surfaces
+  // that each declare themselves modal would otherwise stack, with two scrims and two focus traps,
+  // and the selection left behind points at a star the flow may be about to remove.
+  //
+  // 놓아주기 is keyed by the episodic memory ([X6]); deleting a star's source diary is keyed by the
+  // diary ([X1]), which the memory itself now names — the archive is a separate paged read this
+  // route does not mount, so resolving the edge here would depend on the reader having been visited.
   const handleLetGo = useCallback(
-    (episodicMemoryId: string) => openLetGo(episodicMemoryId),
-    [openLetGo],
+    (episodicMemoryId: string) => {
+      navigationActorRef.send({ type: 'CLEAR_SELECTION' })
+      openLetGo(episodicMemoryId)
+    },
+    [navigationActorRef, openLetGo],
   )
   const handleDeleteSourceDiary = useCallback(
     (episodicMemoryId: string) => {
-      const owningDiary = Object.values(useDiaryStore.getState().byId).find((diary) =>
-        diary.memories.some((member) => member.episodicMemoryId === episodicMemoryId),
-      )
-      if (owningDiary) {
-        openFullDelete(owningDiary.id)
-      } else {
-        requestOpenDiary(episodicMemoryId)
-        onOpenReader?.()
-      }
+      const diaryId = useEpisodicMemoryStore.getState().byId[episodicMemoryId]?.diaryId
+      if (!diaryId) return
+      navigationActorRef.send({ type: 'CLEAR_SELECTION' })
+      openFullDelete(diaryId)
     },
-    [openFullDelete, requestOpenDiary, onOpenReader],
+    [navigationActorRef, openFullDelete],
   )
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-background text-text">
+    <main className="relative min-h-dvh overflow-hidden bg-bg text-text">
       <div className="absolute inset-0">
         {/* QueryErrorResetBoundary makes Retry actually recover a failed GetUniverse read:
             resetErrorBoundary → reset() flips react-query's error-reset flag so the remounted
@@ -202,10 +202,13 @@ export function UniverseHomePage({
                 carries its name in `label` and a tooltip, which §8 makes mandatory the moment an
                 icon stands without one. pointer-events-auto so they stay tappable over the
                 non-interactive HUD. */}
-            <div className="pointer-events-auto flex flex-col gap-2">
+            {/* `drop-shadow-md` is the ground a fill-less control needs over a live sky: the glyph and
+                its rim take their legibility from a dark halo hugging the strokes, the way the
+                balance above does, rather than from a plate the scene cannot be seen through. */}
+            <div className="pointer-events-auto flex flex-col gap-2 drop-shadow-md">
               <Tooltip content={m.universe_home_settings()} side="left">
                 <IconButton
-                  variant="contained"
+                  variant="outlined"
                   color="neutral"
                   label={m.universe_home_settings()}
                   icon={<SettingsIcon />}
@@ -214,7 +217,7 @@ export function UniverseHomePage({
               </Tooltip>
               <Tooltip content={m.store_open_action()} side="left">
                 <IconButton
-                  variant="contained"
+                  variant="outlined"
                   color="neutral"
                   label={m.store_open_action()}
                   icon={<DecorateIcon />}
@@ -223,7 +226,7 @@ export function UniverseHomePage({
               </Tooltip>
               <Tooltip content={m.diary_reader_title()} side="left">
                 <IconButton
-                  variant="contained"
+                  variant="outlined"
                   color="neutral"
                   label={m.diary_reader_title()}
                   icon={<DiaryIcon />}

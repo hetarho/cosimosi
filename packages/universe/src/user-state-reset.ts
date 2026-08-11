@@ -15,6 +15,7 @@ import { useProposalStore } from './proposal-store.ts'
 import { useRecallTargetStore } from './recall-target-store.ts'
 import { useRecallDraftStore } from './recall-draft-store.ts'
 import { useReleasedGroupsStore } from './released-groups-store.ts'
+import { useSpotlightStore } from './spotlight-store.ts'
 import { useSynapseStore } from './synapse-store.ts'
 import { cancelPendingTimeSyncConsent } from './time-sync-consent-store.ts'
 import { useUniverseClockStore } from './universe-clock-store.ts'
@@ -34,6 +35,7 @@ export function resetUniverseUserState(): void {
   useRecallTargetStore.getState().clear()
   useOpenDiaryTargetStore.getState().clear()
   usePendingFlyTargetStore.getState().clear()
+  useSpotlightStore.getState().clear()
   useDeletionTargetStore.getState().clear()
   useLatentConsumedStore.getState().reset()
   useAwakenRegistryStore.getState().reset()

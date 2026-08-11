@@ -200,6 +200,19 @@ The primitive API is plan 09's and does not change here; this is how those primi
 - **Contained** is a filled liquid-glass lens: a role tint, a directional specular rim, a gloss, and
   a coloured glow. **Outlined** is a rim plus a soft glow ring, no fill. **Text** is a bare label
   that blooms on hover.
+- **An outlined control's rim and halo are drawn in its ink, not in the colour its fill would be
+  mixed from.** What a translucent fill is mixed from and what a visible edge is drawn in are two
+  different questions, and only for the four accent colours do they have the same answer. `neutral`
+  mixes its fill from the raised-surface tint — a colour that, asked to glow instead, glows as a dark
+  smudge against the night — while its ink is the near-white text colour, which is the faint neon the
+  appearance is named for. React Native has no symmetric box-shadow, so there the rim carries alone
+  what the web says with a rim plus a halo.
+- **An icon-only control in HUD chrome carries its emphasis by rim and glow, never by fill.** A
+  filled lens over the universe reads as a chip pasted onto the sky, and a column of them down the
+  screen edge reads as a strip of chips; §1's first commitment is that the scene goes on showing
+  through the chrome standing on it. The HUD toolbar is where "one contained button per group" is
+  felt hardest, and it honours the rule at the floor by carrying none — the home screen's one
+  committing action, 일기 쓰기, is outlined too, at the largest size instead of at the heaviest fill.
 - **Fields** are recessed wells: a carved inner shadow, a hairline rim, the scene faintly readable
   through them. Colour never enters the fill — validation rides the border and the focus ring.
 - **A bounded choice is a picker, and it wears the same well.** The affordance says the set is closed —
@@ -225,7 +238,14 @@ The primitive API is plan 09's and does not change here; this is how those primi
   real panel nor the reach of a thumb. The breakpoint changes where the surface sits, not what it
   promises: same scrim, same focus trap, same Escape. The sheet adds one exit the modal has no use
   for — a **swipe back down** the edge it arrived from, past which it goes out under the hand rather
-  than snapping back first.
+  than snapping back first. It also holds its last control well clear of the bottom edge, and the
+  room it leaves **adds** to the safe-area inset rather than competing with it: the inset says where
+  the device stops being touchable, the padding says how much room a control needs above that, and
+  taking the larger of the two hands the whole gap to the tallest inset — which seats the actions
+  flush against the home indicator on exactly the phones that needed the room most. Every
+  bottom-anchored surface carries the rule: on web as a `calc` over `env(safe-area-inset-bottom)`,
+  and on React Native — which has no such environment value to add to — as two steps of the spacing
+  scale, the indicator's own band plus the room above it.
 
 ## 7. Motion
 
@@ -514,9 +534,15 @@ returned to.
   NEUTRAL. A channel with two owners says nothing.
 
 - **Word-loss says nothing in 3D, deliberately.** Brightness already carries that the memory has
-  eroded; _which_ words went is read up close, in the 2D hover glimpse and the star panel. Words are
-  read, not seen from across a universe, and a star that tried to spell out its erosion would be
-  claiming a resolution the medium does not have.
+  eroded; _which_ words went is read up close, in the 2D star panel. Words are read, not seen from
+  across a universe, and a star that tried to spell out its erosion would be claiming a resolution the
+  medium does not have.
+
+  Up close, the run that went reads as a **smear** — the text under a blur no shape survives, scaled in
+  `em` so it stays a smear at any type size. Printing the marker's own characters was considered and
+  rejected: a row of identical glyphs is a thing to decode, and it stands a word where no word stands.
+  What forced colours leave — a solid bar of system ink, since `filter` is stripped there — loses
+  exactly what the blur loses.
 
 - **Gist rising reads by height alone.** A risen stage leaves its episodic star where it was, so one
   memory sits as two bodies over the same x and y; that a second one exists above **is** the

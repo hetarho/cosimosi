@@ -11,8 +11,9 @@ import {
   type GetDiariesInput,
 } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
+import type { Diary } from '@cosimosi/memory'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
-import { Button, Dialog, SegmentedControl, tokens } from '@cosimosi/ui'
+import { Button, DeleteIcon, Dialog, IconButton, SegmentedControl, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
   createPaidActionSession,
@@ -23,6 +24,7 @@ import {
   useDeletionTargetStore,
   useOpenDiaryTargetStore,
   usePendingFlyTargetStore,
+  useSpotlightStore,
   type DiaryReaderPhase,
   type PaidActionAttempt,
   type PaidActionSession,
@@ -33,7 +35,7 @@ import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
-import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
+import { DiaryEntry, DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
 import { HighlightedBody, SearchDiary } from '../../../features/search-diary/index.ts'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
@@ -108,15 +110,22 @@ export function DiaryReaderBlock({
   )
   const calendar = useDiaryCalendar(displayedMonth, view === 'calendar')
 
-  // Selecting a day narrows the archive to exactly that day and shows the list, so a day holding several
-  // diaries lands on all of them rather than on a guessed single entry ([D12][D8]).
-  const selectDay = useCallback(
-    (date: string) => {
-      changeQuery((previous) => ({ ...previous, from: date, to: date }))
-      onViewChange('list')
-    },
-    [changeQuery, onViewChange],
+  // Selecting a day opens that day's writing over the calendar, so the month stays where it is. It
+  // opens the DAY, not a guessed entry: a day may hold several diaries and the modal shows all of
+  // them ([D12][D8]). The read is a second archive page bounded to that one date, issued only once a
+  // day is picked, and it does not own the shared mirror the list already fills.
+  const [dayModalDate, setDayModalDate] = useState<string | null>(null)
+  // Held here rather than inside the panel: the archive body swaps between branches as reads settle,
+  // and a disclosure owned down there would refold every time one did.
+  const [moodsOpen, setMoodsOpen] = useState(false)
+  // Bounded by the DATE ALONE, deliberately: the grid marks every day that holds writing, without
+  // regard for the keyword or the mood chips, so a day the reader can see marked must open to what
+  // it is marked for. Carrying the conditions in would let a marked day open onto nothing.
+  const dayArchive = useDiaryArchive(
+    { sort: query.sort, from: dayModalDate ?? '', to: dayModalDate ?? '' },
+    { enabled: dayModalDate !== null, mirror: false },
   )
+  const selectDay = useCallback((date: string) => setDayModalDate(date), [])
 
   const [snapshot, send] = useMachine(diaryReaderMachine)
   const phase = snapshot.value as DiaryReaderPhase
@@ -125,6 +134,7 @@ export function DiaryReaderBlock({
   const queryClient = useQueryClient()
   const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
+  const spotlight = useSpotlightStore((state) => state.spotlight)
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
   const invalidateBalance = useInvalidateTwinkleBalance()
@@ -151,6 +161,13 @@ export function DiaryReaderBlock({
   const clearDeepLink = useOpenDiaryTargetStore((state) => state.clear)
   useEffect(() => {
     if (!deepLinkMemoryId) return
+    // An entry the reader opened themselves outranks a request still paging for its diary: swapping
+    // the body under an open surface would replace what they are reading with something they never
+    // asked for. The request is dropped rather than queued — they are already in the archive.
+    if (openedDiaryId) {
+      clearDeepLink()
+      return
+    }
     const match = diaries.find((diary) =>
       diary.memories.some((member) => member.episodicMemoryId === deepLinkMemoryId),
     )
@@ -177,6 +194,7 @@ export function DiaryReaderBlock({
     clearDeepLink,
     conditionsActive,
     clearConditions,
+    openedDiaryId,
   ])
 
   const runRecall = useCallback(
@@ -206,6 +224,10 @@ export function DiaryReaderBlock({
         if (advance) announceAdvance(advance)
         const [firstStar] = response.episodicMemoryIds
         if (firstStar) requestFlyTarget(firstStar)
+        // The camera goes to one star; the spotlight is what makes ARRIVING legible. The universe is
+        // re-laying itself out behind the glide, so a jump that only moved the camera read as a
+        // screen load — the sky holding back while these stars lift is the answer to "which ones".
+        spotlight(response.episodicMemoryIds)
         invalidateUniverse()
         invalidateBalance()
         // The balance is refreshed on BOTH paths because a refused paid action can still have moved
@@ -248,6 +270,7 @@ export function DiaryReaderBlock({
       transport,
       announceAdvance,
       requestFlyTarget,
+      spotlight,
       invalidateUniverse,
       invalidateBalance,
       invalidateAchievements,
@@ -312,18 +335,12 @@ export function DiaryReaderBlock({
   const archiveHeader = (
     <View style={styles.listHeader}>
       <RestoreSection />
-      <SearchDiary value={query} onChange={changeQuery} />
-      <View style={styles.sortRow}>
-        <SegmentedControl
-          ariaLabel={m.calendar_view_label()}
-          value={view}
-          onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
-          items={[
-            { value: 'list', label: m.calendar_list_view_action() },
-            { value: 'calendar', label: m.calendar_view_action() },
-          ]}
-        />
-      </View>
+      <SearchDiary
+        value={query}
+        onChange={changeQuery}
+        moodsOpen={moodsOpen}
+        onMoodsOpenChange={setMoodsOpen}
+      />
       {/* The sort orders the LIST, so it is hidden while the calendar shows — a control that steers
           nothing visible is noise. */}
       {view === 'list' && (
@@ -348,10 +365,73 @@ export function DiaryReaderBlock({
     </View>
   )
 
+  // One opened entry, wherever it was opened from — the archive's own modal and the calendar's day
+  // modal show the same thing, so they compose the same body and the same two controls.
+  //
+  // `dismiss` closes the surface holding it FIRST: both controls open a dialog of their own, and a
+  // second scrim over the first is the one thing this reader never does. The destructive one sits in
+  // the entry's top-right corner rather than beside the paid one.
+  const openedEntry = useCallback(
+    (diary: Diary, dismiss: () => void) => (
+      <View style={styles.entry}>
+        <View style={styles.entryCorner}>
+          <IconButton
+            color="danger"
+            size="sm"
+            label={m.deletion_delete_entry_action()}
+            icon={<DeleteIcon color={tokens.color.danger} />}
+            onPress={() => {
+              dismiss()
+              openFullDelete(diary.id)
+            }}
+            disabled={diary.memories.length === 0}
+          />
+        </View>
+        <DiaryEntry
+          diary={diary}
+          renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
+          actions={
+            <RecallDiaryStarsAction
+              liveCount={diary.memories.length}
+              onInitiate={() => {
+                dismiss()
+                initiateJump(diary.id)
+              }}
+            />
+          }
+        />
+      </View>
+    ),
+    [initiateJump, openFullDelete, query.query],
+  )
+
+  const openedDiary = openedDiaryId
+    ? (diaries.find((diary) => diary.id === openedDiaryId) ?? null)
+    : null
+  // The archive can lose the entry under an open surface — a release elsewhere, a refetch that
+  // returns a shorter set. Letting the id outlive its diary would make the surface reappear the
+  // moment a later page happened to carry that id again, unprompted.
+  useEffect(() => {
+    if (openedDiaryId && !openedDiary && !isLoading) setOpenedDiaryId(null)
+  }, [openedDiaryId, openedDiary, isLoading])
+
   return (
     <View style={styles.block}>
+      {/* Which shape of the archive is showing rides beside the title, because it names what this
+          screen IS right now — the sort below steers only the list. */}
       <View style={styles.header}>
-        <Text style={styles.title}>{m.diary_reader_title()}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{m.diary_reader_title()}</Text>
+          <SegmentedControl
+            ariaLabel={m.calendar_view_label()}
+            value={view}
+            onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
+            items={[
+              { value: 'list', label: m.calendar_list_view_action() },
+              { value: 'calendar', label: m.calendar_view_action() },
+            ]}
+          />
+        </View>
         <Button color="neutral" size="sm" onPress={exit} disabled={phase === 'recalling'}>
           {m.diary_reader_back()}
         </Button>
@@ -376,9 +456,7 @@ export function DiaryReaderBlock({
         <DiaryList
           listHeader={archiveHeader}
           diaries={diaries}
-          openedDiaryId={openedDiaryId}
           onOpen={setOpenedDiaryId}
-          onClose={() => setOpenedDiaryId(null)}
           isLoading={isLoading}
           isError={isError}
           hasMore={hasMore}
@@ -394,27 +472,46 @@ export function DiaryReaderBlock({
             query.sort,
           ])}
           renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
-          renderActions={(diary) => (
-            <View style={styles.rowActions}>
-              <RecallDiaryStarsAction
-                liveCount={diary.memories.length}
-                onInitiate={() => initiateJump(diary.id)}
-              />
-              {/* Destructive is not the same as paid, so the delete sits on its own line behind a rule
-                rather than shoulder to shoulder with the one control that spends ([D11]). */}
-              <View style={styles.destructiveRow}>
-                <Button
-                  color="danger"
-                  size="sm"
-                  onPress={() => openFullDelete(diary.id)}
-                  disabled={diary.memories.length === 0}
-                >
-                  {m.deletion_delete_entry_action()}
-                </Button>
-              </View>
-            </View>
-          )}
         />
+      )}
+
+      {/* An entry the reader opened from the list. The destructive act sits in the body's top-right
+          corner rather than in the Dialog header, where the close affordance already lives. */}
+      {openedDiary && (
+        <Dialog
+          open
+          onClose={() => setOpenedDiaryId(null)}
+          title={openedDiary.diaryDate}
+          closeLabel={m.common_dismiss()}
+        >
+          <ScrollView>{openedEntry(openedDiary, () => setOpenedDiaryId(null))}</ScrollView>
+        </Dialog>
+      )}
+
+      {/* A day picked on the calendar, opened over it. Mounted by the WIDGET rather than handed to
+          `DiaryCalendar`: the grid has no action slot by design, and this modal carries both the
+          paid jump and the delete ([D12] keeps the calendar itself free of either). */}
+      {dayModalDate && (
+        <Dialog
+          open
+          onClose={() => setDayModalDate(null)}
+          title={m.calendar_day_title({ date: dayModalDate })}
+          closeLabel={m.common_dismiss()}
+        >
+          {dayArchive.isLoading ? (
+            <Text style={styles.muted}>{m.calendar_day_loading()}</Text>
+          ) : dayArchive.isError ? (
+            <Text style={styles.muted}>{m.diary_reader_error()}</Text>
+          ) : dayArchive.diaries.length === 0 ? (
+            <Text style={styles.muted}>{m.calendar_day_empty()}</Text>
+          ) : (
+            <ScrollView contentContainerStyle={styles.dayList}>
+              {dayArchive.diaries.map((diary) => (
+                <View key={diary.id}>{openedEntry(diary, () => setDayModalDate(null))}</View>
+              ))}
+            </ScrollView>
+          )}
+        </Dialog>
       )}
 
       {jumpDiaryId && phase === 'confirming' && (
@@ -455,13 +552,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spacing[3],
   },
+  titleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spacing[3],
+  },
   title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
-  rowActions: { gap: tokens.spacing[3] },
-  destructiveRow: {
+  rowActions: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    borderTopColor: tokens.color.border,
-    borderTopWidth: 1,
-    paddingTop: tokens.spacing[3],
+    justifyContent: 'space-between',
+    gap: tokens.spacing[3],
   },
+  entry: { gap: tokens.spacing[2] },
+  entryCorner: { alignItems: 'flex-end' },
+  dayList: { gap: tokens.spacing[5] },
 })

@@ -26,7 +26,7 @@ export function BlogNotFoundPage({ onBackToBlog }: { onBackToBlog: () => void })
   }, [])
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background p-6 text-center text-text">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-bg p-6 text-center text-text">
       <h1 className="text-2xl font-medium">{m.blog_not_found_title()}</h1>
       <p className="max-w-md text-text-muted">{m.blog_not_found_description()}</p>
       <Button color="neutral" onClick={onBackToBlog}>

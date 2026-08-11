@@ -12,7 +12,12 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 
-import { starChannels, useEpisodicMemoryStore } from '@cosimosi/universe'
+import {
+  SPOTLIGHT_STAR_LIFT,
+  starChannels,
+  useEpisodicMemoryStore,
+  useSpotlightStore,
+} from '@cosimosi/universe'
 
 export interface StarLayerProps {
   readonly positions: CoordinateBufferRef
@@ -26,8 +31,6 @@ export interface StarLayerProps {
   readonly reducedMotion?: boolean
   readonly onFocus?: (index: number) => void
   readonly onFly?: (index: number) => void
-  /** Hover glimpse: the star index under the pointer, or null when it leaves ([F1] word-loss preview). */
-  readonly onHover?: (index: number | null) => void
 }
 
 // The instanced R3F binding for the episodic-memory big star: it reads the domain mirror via
@@ -43,7 +46,6 @@ export function StarLayer({
   reducedMotion = false,
   onFocus,
   onFly,
-  onHover,
 }: StarLayerProps) {
   const bodySource = useMemo(
     () => createStarShapeBodySource(shape, { animate: !reducedMotion }),
@@ -51,6 +53,7 @@ export function StarLayer({
   )
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
+  const spotlitIds = useSpotlightStore((state) => state.memoryIds)
 
   const channels = useMemo<InstanceChannels>(() => {
     const count = ids.length
@@ -58,6 +61,11 @@ export function StarLayer({
     const tint = new Float32Array(count * 3)
     const brightness = new Float32Array(count)
     const seed = new Float32Array(count)
+    // A spotlight is presentation, not a second reading of the memory: it lifts the brightness these
+    // stars are DRAWN at so they out-run the scene dim (SpotlightDim), and touches nothing stored.
+    // The lift lands on colour alone — `starLife` clamps at 1, so a lifted star keeps its own motion
+    // and forgetting stays the only thing that can still a body.
+    const spotlit = spotlitIds.length > 0 ? new Set(spotlitIds) : null
     for (let i = 0; i < count; i++) {
       const memory = byId[ids[i]]
       if (!memory) continue
@@ -66,7 +74,9 @@ export function StarLayer({
       tint[i * 3] = channel.color[0]
       tint[i * 3 + 1] = channel.color[1]
       tint[i * 3 + 2] = channel.color[2]
-      brightness[i] = channel.brightness
+      brightness[i] = spotlit?.has(memory.id)
+        ? channel.brightness * SPOTLIGHT_STAR_LIFT
+        : channel.brightness
       seed[i] = channel.seed
     }
     return {
@@ -78,7 +88,7 @@ export function StarLayer({
       ],
       vertexScaleAttribute: STAR_INSTANCE_SCALE,
     }
-  }, [byId, ids, universeTime])
+  }, [byId, ids, universeTime, spotlitIds])
 
   return (
     <InstancedNodeLayer
@@ -91,7 +101,6 @@ export function StarLayer({
       channels={channels}
       onNodeClick={onFocus}
       onNodeDoubleClick={onFly}
-      onNodeHover={onHover}
     />
   )
 }

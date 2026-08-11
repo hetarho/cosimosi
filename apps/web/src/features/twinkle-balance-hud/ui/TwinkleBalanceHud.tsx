@@ -12,14 +12,15 @@ const figure = (loaded: boolean, value: bigint) => (loaded ? String(value) : '�
 // the same glyph at two densities — and the derived total is not shown, because beside the two figures
 // it only repeats them. Figures only: no meaning-layer or placement control ([I11]).
 //
-// TWO compositions, not one that reflows:
+// TWO compositions, not one that reflows — and NEITHER draws a surface. The universe is the subject
+// of this screen; a bordered card floating over it reads as a panel laid on top of the sky rather
+// than a reading taken from it, so both forms sit straight on the sky like the numbers in a game's HUD:
 //
-// - **Wide**: one pill, both labels inline. There is room to name what each figure is.
-// - **Phone**: no surface at all, and the two readings stacked — icons and figures alone, drawn
-//   straight over the sky like the numbers in a game's HUD. A pill wide enough for two labelled
-//   figures cannot share a line with the centred clock on a phone, and a phone has room for the
-//   numbers a diarist glances at rather than the words naming them. The names are one tap away: the
-//   stack is a disclosure, and expanding it puts each label beside its own figure.
+// - **Wide**: one line, both labels inline. There is room to name what each figure is.
+// - **Phone**: the two readings stacked, icons and figures alone. Two labelled figures on one line
+//   cannot share it with the centred clock on a phone, and a phone has room for the numbers a diarist
+//   glances at rather than the words naming them. The names are one tap away: the stack is a
+//   disclosure, and expanding it puts each label beside its own figure.
 //
 // Both forms are the same region to assistive tech. Legibility without a surface comes from ink weight
 // plus a drop shadow, because the sky underneath is bright wherever the nebula is.
@@ -36,7 +37,7 @@ export function TwinkleBalanceHud({ action }: { readonly action?: ReactNode }) {
     <>
       <section
         aria-label={m.twinkle_balance_title()}
-        className="pointer-events-auto hidden items-center gap-4 rounded-full border border-border bg-surface/95 py-1.5 pl-3 pr-1.5 backdrop-blur sm:flex"
+        className="pointer-events-auto hidden items-center gap-4 py-1.5 pl-1 pr-1 drop-shadow-md sm:flex"
       >
         <span className="flex items-center gap-1.5">
           <TwinkleSmallIcon className="shrink-0 text-text-muted" />

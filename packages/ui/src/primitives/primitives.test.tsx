@@ -9,6 +9,8 @@ import { Button } from './button.tsx'
 import { Checkbox } from './checkbox.tsx'
 import { Dialog } from './dialog.tsx'
 import { IconButton } from './icon-button.tsx'
+import { Menu } from './menu.tsx'
+import { ObscuredText } from './obscured-text.tsx'
 import { SegmentedControl } from './segmented-control.tsx'
 import { Skeleton } from './skeleton.tsx'
 import { Switch } from './switch.tsx'
@@ -344,6 +346,116 @@ describe('Dialog', () => {
 
     swipeDown(160)
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+describe('Menu', () => {
+  const items = [
+    { value: 'history', label: 'History', onSelect: vi.fn() },
+    { value: 'delete', label: 'Delete', tone: 'danger' as const, onSelect: vi.fn() },
+  ]
+
+  function renderMenu() {
+    render(
+      <Menu
+        ariaLabel="Star actions"
+        items={items}
+        trigger={<IconButton label="Actions" icon={<span />} />}
+      />,
+    )
+    return screen.getByRole('button', { name: 'Actions' })
+  }
+
+  it('opens from its trigger, announces the expansion, and closes on a choice', async () => {
+    const user = userEvent.setup()
+    const trigger = renderMenu()
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    const list = screen.getByRole('menu', { name: 'Star actions' })
+    expect(list).toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: 'History' }))
+    expect(items[0]!.onSelect).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    // The chosen item is gone, so the keyboard has to land somewhere deliberate — otherwise it falls
+    // to the document body, outside whatever focus trap the composing surface has armed.
+    expect(trigger).toHaveFocus()
+  })
+
+  it('walks the items with the arrow keys and wraps at both ends', async () => {
+    const user = userEvent.setup()
+    await user.click(renderMenu())
+    expect(screen.getByRole('menuitem', { name: 'History' })).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('menuitem', { name: 'History' })).toHaveFocus()
+    await user.keyboard('{ArrowUp}')
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveFocus()
+  })
+
+  // The reason Escape is stopped inside the menu: composed in a Dialog, the surface's own focus trap
+  // is listening for the same key, and dismissing a list must not dismiss the panel holding it.
+  it('closes only itself on Escape when composed inside a Dialog', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(
+      <Dialog open onClose={onClose} title="Star" closeLabel="Close">
+        <Menu
+          ariaLabel="Star actions"
+          items={items}
+          trigger={<IconButton label="Actions" icon={<span />} />}
+        />
+      </Dialog>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Actions' }))
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Star' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actions' })).toHaveFocus()
+  })
+
+  it('dismisses when the press lands outside it', async () => {
+    render(
+      <>
+        <button type="button">Elsewhere</button>
+        <Menu
+          ariaLabel="Star actions"
+          items={items}
+          trigger={<IconButton label="Actions" icon={<span />} />}
+        />
+      </>,
+    )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Actions' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Elsewhere' }))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})
+
+describe('ObscuredText', () => {
+  it('draws the lost runs as smears and leaves the legible ones alone', () => {
+    const { container } = render(
+      <ObscuredText
+        spans={[
+          { text: '겨울 바다에서 ', obscured: false },
+          { text: 'xxxx', obscured: true },
+          { text: ' 헤엄쳤다', obscured: false },
+        ]}
+      />,
+    )
+    const smears = container.querySelectorAll('.obscured-run')
+    expect(smears).toHaveLength(1)
+    expect(smears[0]).toHaveTextContent('xxxx')
+    // The surviving skeleton is plain text — the loss is shown, never announced.
+    expect(container.textContent).toBe('겨울 바다에서 xxxx 헤엄쳤다')
   })
 })
 

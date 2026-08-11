@@ -39,7 +39,7 @@ export function ProfileGate({ children }: { children?: ReactNode }) {
   if (profile.isPending) return <ProfileGateHold />
   if (profile.isError) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background p-6 text-text">
+      <main className="flex min-h-dvh items-center justify-center bg-bg p-6 text-text">
         <Card className="flex w-full max-w-sm flex-col gap-4">
           <p className="text-sm text-text-muted">{m.signup_profile_refused()}</p>
           <Button onClick={() => profile.refetch()}>{m.signup_profile_retry()}</Button>
@@ -75,7 +75,7 @@ export function ProfileGate({ children }: { children?: ReactNode }) {
 
 function ProfileGateHold() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+    <main className="flex min-h-dvh items-center justify-center bg-bg text-text-muted">
       <p className="text-sm">{m.common_loading()}</p>
     </main>
   )

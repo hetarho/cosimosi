@@ -1,5 +1,6 @@
 export { effectiveBrightness, effectiveStrength, slowFactor } from './effective-values.ts'
 export {
+  REDACTION_TOKEN,
   accessibilityCostWeight,
   decayDepth,
   decayStage,

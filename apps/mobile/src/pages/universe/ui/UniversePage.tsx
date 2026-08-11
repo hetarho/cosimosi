@@ -23,7 +23,7 @@ import {
 import {
   universeNavigationMachine,
   useDeletionTargetStore,
-  useDiaryStore,
+  useEpisodicMemoryStore,
   useOpenDiaryTargetStore,
   useRecallTargetStore,
 } from '@cosimosi/universe'
@@ -156,28 +156,28 @@ export function UniversePage({
     },
     [requestOpenDiary, onOpenDiary],
   )
-  // 놓아주기 opens the letting-go branch over the canvas (keyed by the episodic memory). Deleting a
-  // star's source diary is diary-scoped: the FE has no episodic→diary map on the universe read, so
-  // resolve it from the diary mirror when it is loaded (open the flow over the canvas); otherwise
-  // fall back to the reader (the memory parked for its owning diary), where the per-entry delete
-  // lives — the same origin-diary resolution the open-diary intent uses.
+  // Both deletion branches open over the canvas and both close the star panel first: two surfaces
+  // that each declare themselves modal would otherwise stack, and the selection left behind points
+  // at a star the flow may be about to remove.
+  //
+  // 놓아주기 is keyed by the episodic memory ([X6]); deleting a star's source diary is keyed by the
+  // diary ([X1]), which the memory itself now names — the archive is a separate paged read this
+  // screen does not mount, so resolving the edge here would depend on the reader having been opened.
   const handleLetGo = useCallback(
-    (episodicMemoryId: string) => openLetGo(episodicMemoryId),
-    [openLetGo],
+    (episodicMemoryId: string) => {
+      navigationActorRef.send({ type: 'CLEAR_SELECTION' })
+      openLetGo(episodicMemoryId)
+    },
+    [navigationActorRef, openLetGo],
   )
   const handleDeleteSourceDiary = useCallback(
     (episodicMemoryId: string) => {
-      const owningDiary = Object.values(useDiaryStore.getState().byId).find((diary) =>
-        diary.memories.some((member) => member.episodicMemoryId === episodicMemoryId),
-      )
-      if (owningDiary) {
-        openFullDelete(owningDiary.id)
-      } else {
-        requestOpenDiary(episodicMemoryId)
-        onOpenDiary()
-      }
+      const diaryId = useEpisodicMemoryStore.getState().byId[episodicMemoryId]?.diaryId
+      if (!diaryId) return
+      navigationActorRef.send({ type: 'CLEAR_SELECTION' })
+      openFullDelete(diaryId)
     },
-    [openFullDelete, requestOpenDiary, onOpenDiary],
+    [navigationActorRef, openFullDelete],
   )
 
   return (
@@ -212,21 +212,21 @@ export function UniversePage({
         <View style={styles.topRight}>
           <StardustOverlay onOpenAchievements={onOpenAchievements} />
           <IconButton
-            variant="contained"
+            variant="outlined"
             color="neutral"
             label={m.universe_home_settings()}
             icon={<SettingsIcon />}
             onPress={onOpenMe}
           />
           <IconButton
-            variant="contained"
+            variant="outlined"
             color="neutral"
             label={m.store_open_action()}
             icon={<DecorateIcon />}
             onPress={requestDecoration}
           />
           <IconButton
-            variant="contained"
+            variant="outlined"
             color="neutral"
             label={m.diary_reader_title()}
             icon={<DiaryIcon />}

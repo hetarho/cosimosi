@@ -1,6 +1,6 @@
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { Button, Card } from '@cosimosi/ui'
-import { currentDecayText } from '@cosimosi/universe'
+import { Button, Card, ObscuredText } from '@cosimosi/ui'
+import { currentDecaySpans } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
 
@@ -14,9 +14,9 @@ export interface DemoEntryReaderProps {
 // pages/demo ui: a launched star's entry, opened — the demo-local look-alike of the product's
 // detail reading (`DetailPanel` and its provenance/gist reads stay never-mounted). It makes
 // forgetting READABLE, not just visible at a distance: the memory's current words render as the
-// production `currentDecayText` resolves them at the demo clock — eroded when time has passed,
-// whole again after a recall — while the diary body below stays verbatim, because a diary is what
-// was written and a memory is a representation of it ([I2]).
+// production `currentDecaySpans` resolves them at the demo clock — smeared where time has taken
+// them, whole again after a recall — while the diary body below stays verbatim, because a diary is
+// what was written and a memory is a representation of it ([I2]).
 export function DemoEntryReader({
   memory,
   diaryBody,
@@ -34,9 +34,13 @@ export function DemoEntryReader({
         </div>
 
         <p className="mt-3 text-xs text-text-muted">{m.demo_entry_current_label()}</p>
-        <p className="mt-1 whitespace-pre-line text-sm text-text">
-          {currentDecayText(memory, universeTime)}
-        </p>
+        <ObscuredText
+          className="mt-1 whitespace-pre-line"
+          spans={currentDecaySpans(memory, universeTime).map((span) => ({
+            text: span.text,
+            obscured: span.lost,
+          }))}
+        />
 
         <p className="mt-4 text-xs text-text-muted">{m.demo_entry_body_label()}</p>
         <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-line text-sm text-text-subtle">

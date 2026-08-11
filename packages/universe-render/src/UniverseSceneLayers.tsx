@@ -20,6 +20,7 @@ import { FilamentLayer } from './FilamentLayer.tsx'
 import { GistStarLayer } from './GistStarLayer.tsx'
 import { LatentStarField } from './LatentStarField.tsx'
 import { NebulaField } from './NebulaField.tsx'
+import { SpotlightDim } from './SpotlightDim.tsx'
 import { StarLayer } from './StarLayer.tsx'
 import type { UniverseSceneState } from './use-universe-scene.ts'
 
@@ -50,8 +51,6 @@ export interface UniverseSceneLayersProps {
   readonly reducedMotion: boolean
   /** Lower-fidelity color field for the native MVP; omitted, the field uses its own default. */
   readonly nebulaResolution?: number
-  /** Pointer hover — web only. Touch has no hover, so native passes nothing. */
-  readonly onMemoryHover?: (index: number | null) => void
   /**
    * Where adaptive quality's pixel-ratio steps land. Required, not optional: both hosts resolve
    * their `dpr` PROP into the R3F store, so a shell that forgot this would silently render at a
@@ -78,7 +77,6 @@ export function UniverseSceneLayers({
   backdrop,
   reducedMotion,
   nebulaResolution,
-  onMemoryHover,
   onPixelRatio,
 }: UniverseSceneLayersProps) {
   const {
@@ -136,7 +134,6 @@ export function UniverseSceneLayers({
         reducedMotion={reducedMotion}
         onFocus={focusMemory}
         onFly={flyToMemory}
-        onHover={onMemoryHover}
       />
       <FilamentLayer
         positions={bridge.coordinates}
@@ -166,6 +163,9 @@ export function UniverseSceneLayers({
       <NavigationRig getPose={getPose} onArrived={onArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
       <AdaptiveDprLayer onPixelRatio={onPixelRatio} />
+      {/* The sky holds still for the stars a cross-route action named; `StarLayer` lifts those stars
+          past the hold so they are what is left to look at ([47] the jump's arrival). */}
+      <SpotlightDim reducedMotion={reducedMotion} />
       <PostFX bloom={bloom} />
     </>
   )

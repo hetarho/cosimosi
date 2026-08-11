@@ -14,6 +14,13 @@ bottom sheet a swipe back down — dismisses it. The panel reads the selected id
 canvas navigation machine — that machine stays the **single owner** of the selection — and owns only its
 own view phase (`closed → meta → provenance`).
 
+**A deletion hand-off is also an exit.** 놓아주기 and 이 별의 일기 지우기 clear the selection as they emit,
+so the deletion flow has the screen to itself: two surfaces that each declare themselves modal would stack
+two scrims and two focus traps, and a selection left behind points at a star that flow may be about to
+remove. Backing out of the deletion therefore returns to the bare canvas, not to the open panel — the star
+is one click away, and being returned to a panel about a star the user just decided not to act on reads as
+the cancel having failed.
+
 The panel **interrupts**, and its host says so: it is the shared `Dialog`, which is a centred modal on a wide
 screen and a bottom sheet on a narrow one. Reading a star is a thing you stop to do, unlike 꾸미기, which is a
 change you watch land in the universe beside it and therefore keeps the scrim-less `Sheet`.
@@ -52,11 +59,24 @@ because a normal successful read contains the synthesized created/original basel
 
 ## Actions hand off; the panel neither prices nor performs them
 
-- **회고하기** (episodic only) → opens the recall flow; the panel emits the request and does **not**
+The footer holds exactly **one** control, and it is the one a diarist came here for. The four occasional
+acts are gathered behind a single control in the **top-right corner of the star's preview frame** (이 별로
+할 수 있는 일) — five buttons in a row would make the panel read as a control surface rather than as a star.
+
+- **회고하기** (footer, episodic only) → opens the recall flow; the panel emits the request and does **not**
   recall, reconsolidate, price, or spend.
-- **변천사 보기** → toggles the in-panel provenance view.
-- **원본 일기 보기** → emits the origin-diary navigation intent to the reader.
+- **변천사 보기** (menu) → toggles the in-panel provenance view.
+- **원본 일기 보기** (menu) → emits the origin-diary navigation intent to the reader.
+- **놓아주기** (menu) → emits the letting-go intent for this memory; the flow, the suggestion and the seal
+  are the deletion surface's.
+- **이 별의 일기 지우기** (menu) → emits the full-delete intent for the star's **source diary**, a delete that
+  reaches every star born from that diary rather than the selected one alone. The panel deletes nothing.
 - A **gist (요지) star** selection routes to the paid gist-view surface instead of this panel.
+
+The control sits on a wrapper **outside** the preview frame, because that frame is hidden from assistive tech
+and clips what it holds: a focusable control inside a hidden subtree cannot be reached, and one inside the
+clip is cut off at its corner. The menu also keeps **Escape** to itself — it opens under the panel host's
+focus trap, whose own Escape closes the whole surface, and dismissing a list must not dismiss the star.
 
 ## The panel only reads
 

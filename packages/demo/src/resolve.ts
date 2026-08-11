@@ -92,6 +92,7 @@ export function resolveDemoDiarySet(
 
       memories.push({
         id: memory.id,
+        diaryId: diary.id,
         name: memoryText.name,
         emotion: createEmotion(memory.mood, memory.intensity),
         baseStrength: demoBaseStrength(memory.mood),

@@ -7,7 +7,7 @@ import {
   type Mood,
 } from '@cosimosi/emotion'
 import { decayStageText, effectiveStrength, reshape } from '@cosimosi/memory-logic'
-import { currentDecayText } from '@cosimosi/universe'
+import { currentDecaySpans, currentDecayText, type DecayTextSpan } from '@cosimosi/universe'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -155,6 +155,7 @@ export function walkthroughMemory(entry: WalkthroughEntry, id: string): Episodic
   const seed = seedFromText(entry.text)
   return {
     id,
+    diaryId: `${id}-diary`,
     name: entry.name,
     emotion,
     baseStrength: arousalToInitialStrength(emotion.arousal),
@@ -185,6 +186,8 @@ export interface WalkthroughSceneFacts {
   readonly skyStops: readonly EmotionSlice[]
   /** The returned-to memory's reading as it stands now — whole, eroding, or back changed. */
   readonly focusText: string | null
+  /** The same reading cut into legible and lost runs, for the renderer that draws the erosion. */
+  readonly focusSpans: readonly DecayTextSpan[] | null
 }
 
 // Whether `step`'s change has already happened from where the visitor stands: any earlier step's
@@ -246,7 +249,10 @@ export function walkthroughSceneFacts(
     // The sky arrives with the accumulation step, the way the demo's does — the moment the colour
     // shows up is the moment the caption says it does.
     skyStops: hasHappened(state, 'color') ? walkthroughSkyStops(memories) : [],
+    // The plain string stays as the crossfade's identity — what changed is the words — while the
+    // spans beside it are what gets drawn.
     focusText: focus === null ? null : currentDecayText(focus, universeTime),
+    focusSpans: focus === null ? null : currentDecaySpans(focus, universeTime),
   }
 }
 

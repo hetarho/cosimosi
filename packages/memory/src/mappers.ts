@@ -39,6 +39,7 @@ export function episodicMemoryFromDto(dto: EpisodicMemoryDto): EpisodicMemory {
   }
   return {
     id: dto.id,
+    diaryId: dto.diaryId,
     name: dto.name,
     emotion: emotionFromDto(dto.emotion),
     baseStrength: dto.baseStrength,

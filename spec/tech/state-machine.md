@@ -287,11 +287,16 @@ is the resting state, not a phase; only the jump spends and moves the clock:
   recall is never one-click retried into a double-spend;
 - `flying` is terminal: the widget announces the acceleration over the returned
   interval (the same `AdvanceAnnouncement` seam a launch/recall uses), parks the
-  camera target in the shared `usePendingFlyTargetStore`, invalidates
-  `GetUniverse`, and navigates home — the reader unmounts on the route change, so
-  no explicit return-to-`browsing` is needed. The universe canvas consumes the
-  parked fly target on mount and sends its navigation actor a `FLY` (§3.4 —
-  the reader never imports `three` or the camera rig).
+  camera target in the shared `usePendingFlyTargetStore`, names every recalled
+  memory in the shared `useSpotlightStore` (the sky holds back and those stars
+  lift while the camera arrives, so the jump reads as arriving somewhere rather
+  than as a page load), invalidates `GetUniverse`, and navigates home — the
+  reader unmounts on the route change, so no explicit return-to-`browsing` is
+  needed. The universe canvas consumes the parked fly target once the graph
+  carries the node and sends its navigation actor a `FLY`; an unresolved node
+  leaves the request parked for the read still in flight, since the slot holds
+  one request and nothing re-sends it (§3.4 — the reader never imports `three`
+  or the camera rig).
 
 web and mobile import the machine + the diary/open-target/fly-target stores +
 the `RecallDiaryStars` helper verbatim from `packages/universe`; only the
@@ -321,6 +326,12 @@ host page drives.
   (§6.4). This closes the stale-completion race: a call can never be abandoned
   mid-flight to open another branch, so an old async `DONE`/`ERROR` cannot land on
   the wrong branch.
+- **The two machines hand over rather than overlap.** A universe host sends its
+  navigation actor `CLEAR_SELECTION` before it opens either branch, so the star
+  detail panel is down before the flow's modal is up: never two `aria-modal`
+  surfaces stacked, and never a selection pointing at a star the flow may remove.
+  The consequence is deliberate — `CANCEL` returns to the bare canvas, not to the
+  panel the action was reached from.
 - The widget fires the RPC imperatively (the recall-flow precedent, §6.3): the
   optimistic apply runs **only on success** (`Release` removes the returned ids
   from the episodic-memory mirror + records the group for same-session restore;

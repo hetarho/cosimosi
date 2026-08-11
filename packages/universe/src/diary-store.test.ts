@@ -25,4 +25,23 @@ describe('useDiaryStore', () => {
     useDiaryStore.getState().setAll([diary('d1', [])])
     expect(useDiaryStore.getState().byId['d1'].memories).toHaveLength(0)
   })
+
+  // A narrower read beside the paged one — the calendar's day read — contributes what it found
+  // without taking the page away. Anything looked up by id has to find both.
+  it('adds a narrower read’s entries without dropping the page it already holds', () => {
+    useDiaryStore.getState().setAll([diary('d2', ['m1']), diary('d1', [])])
+    useDiaryStore.getState().add([diary('d9', ['m9'])])
+    const state = useDiaryStore.getState()
+    expect(state.ids).toEqual(['d2', 'd1', 'd9'])
+    expect(state.byId['d9'].memories.map((member) => member.episodicMemoryId)).toEqual(['m9'])
+    expect(state.byId['d2']).toBeDefined()
+  })
+
+  it('refreshes an entry it already holds rather than listing it twice', () => {
+    useDiaryStore.getState().setAll([diary('d1', [])])
+    useDiaryStore.getState().add([diary('d1', ['m1'])])
+    const state = useDiaryStore.getState()
+    expect(state.ids).toEqual(['d1'])
+    expect(state.byId['d1'].memories).toHaveLength(1)
+  })
 })

@@ -21,6 +21,17 @@ the window. The confirm carries **two reassurances**: the restore window, and th
 and exportable** through the window (linking the provenance export, [W6][D4]) and permanently removed only after the
 sweep.
 
+Every star names the diary it was encoded from, so the per-star delete opens this same confirm **wherever the star is** —
+over the universe canvas as in the archive — and lists the affected stars there. Reaching a diary's delete never means
+first going to find the diary.
+
+## The flow takes the screen alone
+
+Opening either branch closes the star detail panel first: one modal surface at a time, never a second scrim and focus
+trap over the first, and no selection left pointing at a star the flow may be about to remove. Backing out of the
+deletion therefore returns to the bare canvas rather than to the panel the action was reached from — a deletion the user
+declined leaves the universe as it found it.
+
 ## Letting-go is symbolic, permanent, and semantic-only
 
 Letting-go runs in four steps — **say the words → `SuggestLetGo` → the user approves which to seal → `LetGo`**. The AI

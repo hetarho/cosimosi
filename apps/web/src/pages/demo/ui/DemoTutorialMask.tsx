@@ -50,7 +50,7 @@ function Strip({
   return (
     <div
       className={cx(
-        'pointer-events-none fixed bg-background/80 backdrop-blur-xs transition duration-300',
+        'pointer-events-none fixed bg-bg/80 backdrop-blur-xs transition duration-300',
         lifted && 'opacity-0',
       )}
       style={style}

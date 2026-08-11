@@ -72,6 +72,7 @@ func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(&memoryv1.LaunchStarsResponse{
+		DiaryId:              result.DiaryID,
 		MemoryIds:            result.MemoryIDs,
 		NewNeuronIds:         result.NewNeuronIDs,
 		PastDated:            result.PastDated,
@@ -599,8 +600,9 @@ func universeResponse(facts memory.UniverseFacts, universeTime *time.Time) *memo
 	memories := make([]*memoryv1.EpisodicMemoryDto, 0, len(facts.EpisodicMemories))
 	for _, episodicMemory := range facts.EpisodicMemories {
 		memories = append(memories, &memoryv1.EpisodicMemoryDto{
-			Id:   episodicMemory.ID,
-			Name: episodicMemory.Name,
+			Id:      episodicMemory.ID,
+			DiaryId: episodicMemory.DiaryID,
+			Name:    episodicMemory.Name,
 			Emotion: &memoryv1.EmotionDto{
 				Mood:      string(episodicMemory.Emotion.Mood),
 				Valence:   episodicMemory.Emotion.Valence,

@@ -46,6 +46,10 @@ generated file (`pnpm check:gen` enforces freshness). Two consumers:
   `--color-*`/`--radius-*`/`--shadow-*`/… available as classes (`bg-surface`,
   `text-text-muted`, `ring-focus-ring`) and as `:root` CSS variables. Web loads it
   through `@tailwindcss/vite`; mobile through NativeWind's Metro transform.
+  **The utility's name is the token's name, exactly** — the page ground is `--color-bg`, so the class
+  is `bg-bg` — and a rule is generated only for a name the `@theme` block carries. A class spelled
+  over a name no token has is not an error anywhere in the toolchain; it is simply absent, so the
+  element keeps whatever was beneath it and a state that should have painted reads as no state at all.
 - **Raw TS values** where utilities can't reach: contrast checks, React Native
   style/color props (e.g. `ActivityIndicator` color), and tests import `tokens`.
 
@@ -144,9 +148,9 @@ win deterministically through the `style={[base, …, props.style]}` array.
 - Controlled/uncontrolled where conventional (Switch, Checkbox). A control with no
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
-**Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet,
-Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl, BrandMark, and the icon set.
-**Deferred** (added when a Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+**Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet, Menu,
+Tooltip, Toast, Badge, Skeleton, ObscuredText, VisuallyHidden, Tabs, SegmentedControl, BrandMark, and the icon set.
+**Deferred** (added when a Phase-4 slice needs them, promote-on-use): Slider/Stepper, Drawer.
 
 `BrandMark` is the one **web-only** entry, and the one exception to the sibling rule above: it draws the trademark's
 solid to a `<canvas>`, which has no RN counterpart to honour the same props with, so it is exported from `index.ts` and
@@ -158,8 +162,12 @@ costs a GPU device, a swapchain and a post chain. A brand mark asserts nothing a
 that machinery to draw eleven triangles. See design-language §2.5.
 
 The **icon set** (`primitives/icons.tsx` + `.native`) is a primitive like any other, and the one place
-a Phosphor glyph is named: it exports icons by product meaning (`DiaryIcon`, `TwinkleSmallIcon`, …), so
-swapping a glyph or the whole family never reaches a slice. Web takes ink from `currentColor`; native,
+a Phosphor glyph is named: it exports icons by product meaning (`DiaryIcon`, `TwinkleSmallIcon`, `DeleteIcon` for 지우기,
+`ResetIcon` for 조건 초기화 — the way back out of a narrowed view, which restores nothing and destroys nothing —
+`StarActionsIcon` for a star's own actions gathered behind one control, …), so
+swapping a glyph or the whole family never reaches a slice. Two meanings may share a glyph and stay two exports —
+`StarActionsIcon` and `SettingsIcon` are both the gear today, because a slice asks for the star's actions rather than for
+a gear, and rebinding either one later is a change in this one file. Web takes ink from `currentColor`; native,
 which has none to inherit, takes a token colour prop. Native imports per glyph — Metro does not
 tree-shake, and the package root is ~25 MB of icons. See design-language §8.
 
@@ -175,8 +183,57 @@ decoration panel, which exists to be watched against the running universe.
 panel, so it carries no `aria-controls` and a reader hears a checked state rather than a tab position.
 All options stay visible, which is what separates it from `Select`. Roving focus keeps the group to one
 tab stop; a `value` outside the item set falls back to the first segment as the focus anchor, so a
-caller bug can never leave the group keyboard-unreachable. Promoted on use by the diary archive's
-newest/oldest order control ([D7]).
+caller bug can never leave the group keyboard-unreachable.
+
+The held choice is carried by a **thumb** — a translucent raised lens with a specular hairline, sliding
+beneath the labels — because ink weight alone cannot say _which one_ at a glance: the step from
+`text-muted` to `text` is a fraction of a lightness unit at the top of the near-white range. It slides
+rather than jumps because the movement is the answer; a thumb that jumped would repaint two segments
+and leave the eye to work out which of them changed. The thumb is an **`aria-hidden` sibling** of the
+radios, never a wrapper around them — an element between the radiogroup and its radios takes away the
+ownership some assistive tech reads, and the group has to go on owning its own radios. Its geometry
+rests on **equal-width segments** (`flex-1 basis-0` on web, `flex: 1` on native), which is what buys
+the travel: on web the thumb is one transform over the `--segment-count` / `--segment-index` pair the
+group carries, with nothing measured at all; on native, where a transform takes pixels, the track is
+read once from `onLayout` and divided by the count. Neither measures a _label_, so a locale swap that
+changes every label's width moves nothing. Reduced motion is honoured in each platform's own currency:
+the web travel is a CSS transition, so `base.css`'s global rule collapses it to an instant landing with
+no JS to gate, while React Native has no such layer and the native sibling asks `useReducedMotion()`
+and sets the thumb's position outright. Promoted on use by the diary archive's newest/oldest order
+control ([D7]).
+
+`Tooltip` is **portalled to `document.body`**, as the dialog and the toast are. A tip is the smallest thing on
+screen and the last thing that should lose a paint-order argument: rendered beside its trigger it is sealed inside
+whatever stacking context an ancestor happens to open — and this product's chrome is built out of exactly those (glass is
+a `backdrop-filter`, a lit label is a `filter`) — so any z-index it carried would only sort it against its own siblings.
+Placement stays **stated** (`side` / `align`): nothing here flips a side or hunts for room, because only the composition
+site knows which way there is space. What the portal gives up is the anchoring a sibling gets for free, so the TRIGGER's
+rect is measured — and that is the whole of what the measurement is for, turning the caller's stated side into
+`position: fixed` pixels. Those pixels go stale the moment anything moves, so an open tip re-places on `resize` and on
+`scroll` in the **capture** phase: the trigger may sit in a list that scrolls under it, and a scroll on an element never
+reaches a bubbling listener on `window`.
+
+`Menu` is a short list of commands behind one control. The list is the caller's — the primitive owns only whether it is
+showing, where the keyboard sits inside it, and the three ways out (a choice, Escape, a press elsewhere); every item
+closes the list before it acts, so a command that opens another surface never leaves this one hanging over it. Placement
+is **stated** (`side` / `align`) — the same stance `Tooltip` takes — and here nothing is measured at all, because the
+list stays inside its trigger's own box: a menu is wider than the icon that opens it, and only the composition site knows
+which way there is room. **Escape is stopped inside the list**, and bound with a NATIVE listener on the panel rather than
+React's `onKeyDown`: a `Menu` composed inside a `Dialog` sits under that dialog's focus trap, whose own Escape closes the
+whole surface, and React delegates from the tree's root, so a synthetic handler would run only after the trap's listener
+on an ancestor had already closed the dialog. Dismissing returns focus to the trigger, the one element a caller is
+guaranteed to have rendered. Promoted on use by the star-detail panel, which gathers a star's occasional actions behind
+one control on its preview frame.
+
+`ObscuredText` draws a passage some of which has stopped being legible. The runs arrive **already decided** — this
+renders them and judges nothing: a legible run is plain text, an obscured one is the same characters under a blur strong
+enough that no shape survives, which is what makes the loss something a reader SEES rather than something a label tells
+them. Selection is disabled over the runs, since selecting is the one way a filter cannot follow the text; under forced
+colours, where `filter` is stripped outright, a run becomes a solid bar of system ink instead — a different picture of
+the same fact, losing exactly what the blur loses. React Native has no CSS `filter`, so the native sibling makes the
+smear the way the platform can: transparent ink behind a wide zero-offset text shadow, the glyph's light without its
+edges. The runs stay in the accessibility tree either way, so assistive tech is handed the sentence that is on screen
+rather than a shorter, tidier one.
 
 Slider/Stepper stays deferred for a reason worth stating: a continuous scalar has no place on the
 writing flow's editable surface ([W4a][I3]), so the one obvious consumer must never exist. Promoting it

@@ -1,4 +1,9 @@
-import { decayStage, effectiveElapsedDays, effectiveStrength } from '@cosimosi/memory-logic'
+import {
+  REDACTION_TOKEN,
+  decayStage,
+  effectiveElapsedDays,
+  effectiveStrength,
+} from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -31,4 +36,52 @@ export function currentDecayText(memory: EpisodicMemory, universeTime: string | 
   const stage = currentDecayStage(memory, universeTime)
   if (stage <= 0) return memory.currentText
   return memory.decayStages[stage - 1] ?? memory.currentText
+}
+
+/** One stretch of the current-memory text: still legible, or a run that has gone. */
+export interface DecayTextSpan {
+  readonly text: string
+  readonly lost: boolean
+}
+
+// currentDecaySpans is the same text, cut into the runs a renderer has to treat differently: the
+// words that survive, and the redaction tokens standing where words were removed. Which runs are
+// gone is decided by the decay algorithm and travels in the stored string; WHAT a lost run looks
+// like belongs to the presentation layer, and this is the seam between the two.
+//
+// Consecutive lost words are coalesced into ONE span, whitespace and all, so a long erasure reads as
+// a single smear rather than as a row of identical marks. The kept words are handed over untouched —
+// nothing is reconstructed from `currentText`, which the stored stages are not re-derived from when
+// reconsolidation rewrites it, and which would leak the very words forgetting took ([R8a][F2]).
+//
+// A vivid memory is one legible span whatever it says. The stage decides that, not the characters:
+// the text at stage 0 is the diarist's own, never the algorithm's output, so a writer who typed the
+// token themselves reads back exactly what they wrote.
+export function currentDecaySpans(
+  memory: EpisodicMemory,
+  universeTime: string | null,
+): readonly DecayTextSpan[] {
+  const text = currentDecayText(memory, universeTime)
+  if (!text) return []
+  if (currentDecayStage(memory, universeTime) <= 0) return [{ text, lost: false }]
+  // Split KEEPING the separators, so the gaps between words survive into the rendered line.
+  const pieces = text.split(/(\s+)/).filter((piece) => piece !== '')
+  const isGap = (piece: string) => /^\s+$/.test(piece)
+  // A gap belongs to the erasure only when it sits BETWEEN two removed words; the space before the
+  // next legible word is that word's, so a smear never runs past the loss it stands for.
+  const lostAt = pieces.map((piece, index) =>
+    isGap(piece)
+      ? pieces[index - 1] === REDACTION_TOKEN && pieces[index + 1] === REDACTION_TOKEN
+      : piece === REDACTION_TOKEN,
+  )
+  const spans: DecayTextSpan[] = []
+  pieces.forEach((piece, index) => {
+    const previous = spans[spans.length - 1]
+    if (previous && previous.lost === lostAt[index]) {
+      spans[spans.length - 1] = { text: previous.text + piece, lost: previous.lost }
+      return
+    }
+    spans.push({ text: piece, lost: Boolean(lostAt[index]) })
+  })
+  return spans
 }

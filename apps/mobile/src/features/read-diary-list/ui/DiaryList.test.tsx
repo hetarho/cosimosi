@@ -33,9 +33,7 @@ function renderList(props: Partial<DiaryListProps>) {
   return render(
     <DiaryList
       diaries={[]}
-      openedDiaryId={null}
       onOpen={() => {}}
-      onClose={() => {}}
       isLoading={false}
       isError={false}
       hasMore={false}
@@ -61,16 +59,11 @@ describe('DiaryList (mobile)', () => {
     expect(view.queryByText(m.diary_reader_empty())).toBeNull()
   })
 
-  it('renders the opened entry body verbatim with its split chips', () => {
-    const view = renderList({ diaries: [joyful('d1', ['sea', 'cold'])], openedDiaryId: 'd1' })
+  it('shows a row preview whether or not its entry is open — the row never expands', () => {
+    const view = renderList({ diaries: [joyful('d1', ['sea', 'cold'])] })
     expect(view.getByText('verbatim body of d1')).toBeTruthy()
-    expect(view.getByText('sea')).toBeTruthy()
-    expect(view.getByText('cold')).toBeTruthy()
-  })
-
-  it('opens an all-let-go diary with the quiet note and no chips', () => {
-    const view = renderList({ diaries: [joyful('d1', [])], openedDiaryId: 'd1' })
-    expect(view.getByText(m.diary_reader_all_let_go())).toBeTruthy()
+    // The body and the split live in the entry surface now, so no chip reaches the row.
+    expect(view.queryByText('sea')).toBeNull()
   })
 
   it('previews a bounded prefix of the body, not the whole of it ([D6])', () => {
@@ -127,7 +120,6 @@ describe('DiaryList (mobile)', () => {
   it('marks the keyword only through the injected body renderer ([D10])', () => {
     const view = renderList({
       diaries: [diary('d1', [{ name: 'sea', mood: 'JOY' }], 'coffee and rain')],
-      openedDiaryId: 'd1',
       renderBodyText: (text) => `[${text}]`,
     })
     // The list hands the renderer its own body and nothing else — there is no query prop to pass on.

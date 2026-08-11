@@ -62,7 +62,7 @@ export function Tabs({ items, value, onValueChange, ariaLabel }: TabsProps) {
             }}
             className={cx(
               'shrink-0 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-              selected ? 'bg-background text-text shadow-sm' : 'text-text-muted hover:text-text',
+              selected ? 'bg-bg text-text shadow-sm' : 'text-text-muted hover:text-text',
             )}
           >
             {item.label}

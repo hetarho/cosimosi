@@ -1,9 +1,11 @@
 import {
+  ArrowCounterClockwiseIcon,
   BookOpenIcon,
   GearSixIcon,
   InfoIcon,
   PaletteIcon,
   SparkleIcon,
+  TrashIcon,
 } from '@phosphor-icons/react'
 
 import type { IconOwnProps } from './types.ts'
@@ -49,4 +51,24 @@ export function DiaryIcon({ size = ICON_SIZE, className }: IconProps) {
 /** An explanation waiting behind a control — a guide or a disclosure, never a failure. */
 export function NoticeIcon({ size = ICON_SIZE, className }: IconProps) {
   return <InfoIcon aria-hidden size={size} className={className} />
+}
+
+/** 조건 초기화 — the way back out of a narrowed view. It restores nothing and destroys nothing. */
+export function ResetIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <ArrowCounterClockwiseIcon aria-hidden size={size} className={className} />
+}
+
+/** 지우기 — the destructive act on the record this control sits beside. */
+export function DeleteIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <TrashIcon aria-hidden size={size} className={className} />
+}
+
+/**
+ * 이 별로 할 수 있는 일 — the star's own set of actions, gathered behind one control.
+ *
+ * It shares the gear with `SettingsIcon` and is a separate meaning all the same: a slice asks for
+ * the star's actions, not for a gear, so rebinding either one later is a change in this file.
+ */
+export function StarActionsIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <GearSixIcon aria-hidden size={size} className={className} />
 }

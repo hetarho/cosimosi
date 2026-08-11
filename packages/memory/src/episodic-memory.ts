@@ -12,6 +12,9 @@ export interface NeuronActivation {
 // @cosimosi/memory-logic, and positions are emergent force-sim output, never fields [I5].
 export interface EpisodicMemory {
   readonly id: string
+  /** The `Diary` this memory was encoded from ([X1] — the unit a full delete is keyed by). An id
+   *  only: the immutable original is read through the archive, never from here ([I2]). */
+  readonly diaryId: string
   readonly name: string
   readonly emotion: Emotion
   readonly baseStrength: number

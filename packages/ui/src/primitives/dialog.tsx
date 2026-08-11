@@ -73,10 +73,17 @@ function DialogSurface({
         // The panel is bounded by the viewport and scrolls its own body: a dialog that composes a
         // real editing surface can outgrow the screen, and a surface that interrupts must never
         // push its actions past the bottom edge. The header stays put; only the body scrolls.
-        // Base is the sheet — full width on the bottom edge, clear of the home indicator — and the
-        // `md:` half is the centred modal.
+        // Base is the sheet — full width on the bottom edge — and the `md:` half is the centred
+        // modal, whose own `md:p-6` wins there: a modal held off the viewport by its margin has no
+        // bottom edge to clear.
+        //
+        // The sheet's bottom padding ADDS to the home-indicator inset rather than competing with it
+        // (`calc`, not `max`): the two answer different questions — the inset says where the device
+        // stops being touchable, the padding says how much room the last control needs above that —
+        // and a `max()` lets a tall inset silently eat the whole gap, seating the actions flush
+        // against the indicator on exactly the phones that needed the room most.
         className={cx(
-          'glass-strong relative z-10 flex w-full max-h-[85dvh] flex-col rounded-t-2xl px-5 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]',
+          'glass-strong relative z-10 flex w-full max-h-[85dvh] flex-col rounded-t-2xl px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+2.5rem)]',
           'md:m-4 md:max-h-[calc(100dvh-2rem)] md:max-w-md md:rounded-2xl md:p-6',
           'focus-visible:outline-none',
           // A committed swipe carries the sheet out itself, so the leave animation stands down

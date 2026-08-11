@@ -563,8 +563,12 @@ type LaunchStarsResponse struct {
 	// past-dated launch carries the unmoved clock in both (no acceleration).
 	PreviousUniverseTime string `protobuf:"bytes,4,opt,name=previous_universe_time,json=previousUniverseTime,proto3" json:"previous_universe_time,omitempty"`
 	UniverseTime         string `protobuf:"bytes,5,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The Diary these memories were encoded from. The optimistic insert carries it onto each new
+	// memory so a just-launched one already names its source ([X1]), instead of being the one memory
+	// whose own delete cannot resolve until the next read.
+	DiaryId       string `protobuf:"bytes,6,opt,name=diary_id,json=diaryId,proto3" json:"diary_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LaunchStarsResponse) Reset() {
@@ -628,6 +632,13 @@ func (x *LaunchStarsResponse) GetPreviousUniverseTime() string {
 func (x *LaunchStarsResponse) GetUniverseTime() string {
 	if x != nil {
 		return x.UniverseTime
+	}
+	return ""
+}
+
+func (x *LaunchStarsResponse) GetDiaryId() string {
+	if x != nil {
+		return x.DiaryId
 	}
 	return ""
 }
@@ -892,6 +903,11 @@ type EpisodicMemoryDto struct {
 	// stage (copy x,y, raise z [I5][V9]). The trace transforms; it does not accumulate a body per
 	// rung. 0..4 and monotone (a stage never un-rises), so the one body rises with it.
 	SemanticStage int32 `protobuf:"varint,13,opt,name=semantic_stage,json=semanticStage,proto3" json:"semantic_stage,omitempty"`
+	// The Diary this memory was encoded from ([X1] — the unit a full delete is keyed by). A
+	// per-memory delete affordance needs this edge, and the archive is a separate paged read the
+	// canvas route does not mount, so without it the intent has nothing to name. An id only, never
+	// the diary's text: the immutable original is reached through the reader [I2].
+	DiaryId       string `protobuf:"bytes,14,opt,name=diary_id,json=diaryId,proto3" json:"diary_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1015,6 +1031,13 @@ func (x *EpisodicMemoryDto) GetSemanticStage() int32 {
 		return x.SemanticStage
 	}
 	return 0
+}
+
+func (x *EpisodicMemoryDto) GetDiaryId() string {
+	if x != nil {
+		return x.DiaryId
+	}
+	return ""
 }
 
 type NeuronDto struct {
@@ -3012,7 +3035,7 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x04mood\x18\x02 \x01(\tR\x04mood\x12<\n" +
 	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\x12\x1f\n" +
 	"\vsource_text\x18\x04 \x01(\tR\n" +
-	"sourceText\"\xd4\x01\n" +
+	"sourceText\"\xef\x01\n" +
 	"\x13LaunchStarsResponse\x12\x1d\n" +
 	"\n" +
 	"memory_ids\x18\x01 \x03(\tR\tmemoryIds\x12$\n" +
@@ -3020,7 +3043,8 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\n" +
 	"past_dated\x18\x03 \x01(\bR\tpastDated\x124\n" +
 	"\x16previous_universe_time\x18\x04 \x01(\tR\x14previousUniverseTime\x12#\n" +
-	"\runiverse_time\x18\x05 \x01(\tR\funiverseTime\"\x14\n" +
+	"\runiverse_time\x18\x05 \x01(\tR\funiverseTime\x12\x19\n" +
+	"\bdiary_id\x18\x06 \x01(\tR\adiaryId\"\x14\n" +
 	"\x12GetUniverseRequest\"\xf2\x01\n" +
 	"\x13GetUniverseResponse\x12A\n" +
 	"\bmemories\x18\x01 \x03(\v2%.cosimosi.memory.v1.EpisodicMemoryDtoR\bmemories\x127\n" +
@@ -3035,7 +3059,7 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\tintensity\x18\x04 \x01(\x01R\tintensity\"J\n" +
 	"\x13NeuronActivationDto\x12\x1b\n" +
 	"\tneuron_id\x18\x01 \x01(\tR\bneuronId\x12\x16\n" +
-	"\x06weight\x18\x02 \x01(\x02R\x06weight\"\xe1\x04\n" +
+	"\x06weight\x18\x02 \x01(\x02R\x06weight\"\xfc\x04\n" +
 	"\x11EpisodicMemoryDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x128\n" +
@@ -3050,7 +3074,8 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	" \x03(\tR\vdecayStages\x124\n" +
 	"\x16forgetting_offset_days\x18\v \x01(\x01R\x14forgettingOffsetDays\x12!\n" +
 	"\fcurrent_text\x18\f \x01(\tR\vcurrentText\x12%\n" +
-	"\x0esemantic_stage\x18\r \x01(\x05R\rsemanticStageB\x1e\n" +
+	"\x0esemantic_stage\x18\r \x01(\x05R\rsemanticStage\x12\x19\n" +
+	"\bdiary_id\x18\x0e \x01(\tR\adiaryIdB\x1e\n" +
 	"\x1c_last_recalled_universe_timeB\a\n" +
 	"\x05_seed\"\x82\x01\n" +
 	"\tNeuronDto\x12\x0e\n" +

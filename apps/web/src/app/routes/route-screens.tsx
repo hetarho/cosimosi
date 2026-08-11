@@ -37,7 +37,7 @@ import { AchievementNoticeHost } from '../../features/achievement-notice/index.t
 // mid-refresh must not be shown marketing for a frame.
 export function AuthHold() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+    <main className="flex min-h-dvh items-center justify-center bg-bg text-text-muted">
       <p className="text-sm">{m.common_loading()}</p>
     </main>
   )

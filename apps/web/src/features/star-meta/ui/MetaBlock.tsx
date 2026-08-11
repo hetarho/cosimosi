@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
 import {
   effectiveBrightness,
@@ -26,10 +28,17 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 export function MetaBlock({
   selection,
   universeTime,
+  shape,
+  previewAction,
 }: {
   selection: { kind: 'episodic'; memory: EpisodicMemory } | { kind: 'neuron'; neuron: Neuron }
   // The read-time "now" that drives the forgetting fade + current decay stage [V2][F1].
   universeTime: string | null
+  /** The `STAR_SHADER` ornament this universe wears, so the panel's star is the one in the sky. */
+  shape?: string
+  /** A corner of the preview frame the composing widget may put a control in. This block reserves
+   *  the position and never fills it — a read feature owns no action ([I11]). */
+  previewAction?: ReactNode
 }) {
   // Read above the neuron branch, because a hook cannot sit behind an early return. A neuron shows
   // no star, so it simply goes unused there.
@@ -67,9 +76,19 @@ export function MetaBlock({
     // table; stacked, it is the subject and the rows are its caption — and the rows get the panel's
     // full width instead of splitting it with a picture.
     <div className="flex flex-col gap-4">
-      {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. */}
-      <div aria-hidden className="h-44 w-full overflow-hidden rounded-xl border border-border">
-        <StarPreview memory={memory} universeTime={universeTime} reducedMotion={reducedMotion} />
+      {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. The frame is
+          `aria-hidden` and clips, so the action rides a positioned wrapper OUTSIDE it: a focusable
+          control inside a hidden subtree is unreachable, and one inside the clip is cut off. */}
+      <div className="relative">
+        <div aria-hidden className="h-44 w-full overflow-hidden rounded-xl border border-border">
+          <StarPreview
+            memory={memory}
+            universeTime={universeTime}
+            shape={shape}
+            reducedMotion={reducedMotion}
+          />
+        </div>
+        {previewAction ? <div className="absolute top-2 right-2">{previewAction}</div> : null}
       </div>
       <dl className="flex flex-col gap-2">
         <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />

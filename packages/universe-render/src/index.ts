@@ -12,6 +12,7 @@ export { AwakenNeuron, type AwakenNeuronProps } from './AwakenNeuron.tsx'
 export { GistStarLayer, type GistRiseEvent, type GistStarLayerProps } from './GistStarLayer.tsx'
 export { MoodStarLayer, type MoodStarLayerProps } from './MoodStarLayer.tsx'
 export { StarPreview, type StarPreviewProps } from './StarPreview.tsx'
+export { SpotlightDim } from './SpotlightDim.tsx'
 export {
   UNIVERSE_BACKDROP,
   UniverseSceneLayers,

@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
-import { moodColor, type Mood } from '@cosimosi/emotion'
+import { moodColor } from '@cosimosi/emotion'
 import { diaryMoods, diaryPreview, type Diary, type DiarySplitMember } from '@cosimosi/memory'
 import { Button, tokens } from '@cosimosi/ui'
 
@@ -10,9 +10,7 @@ import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DiaryListProps {
   diaries: readonly Diary[]
-  openedDiaryId: string | null
   onOpen: (diaryId: string) => void
-  onClose: () => void
   isLoading: boolean
   isError: boolean
   hasMore: boolean
@@ -28,9 +26,6 @@ export interface DiaryListProps {
   // Changes whenever the archive's conditions do. A fresh keyset page starts at the top, so the
   // reader should be looking there rather than mid-way down the previous result set ([D7]).
   scrollResetKey?: string
-  // The opened entry's spend affordance is injected by the composing widget (the jump is a paid
-  // action this free read feature must not own); nothing renders for a diary with no live star.
-  renderActions?: (diary: Diary) => ReactNode
   // Renders a stretch of the diary's own body — the seam the search feature marks its hits through.
   // The list never sees the keyword, so no query can reach a memory's text ([D10]).
   renderBodyText?: (text: string) => ReactNode
@@ -43,9 +38,7 @@ export interface DiaryListProps {
 // are free — this surface spends nothing and moves no clock ([D11][T3]). Shares api with web verbatim.
 export function DiaryList({
   diaries,
-  openedDiaryId,
   onOpen,
-  onClose,
   isLoading,
   isError,
   hasMore,
@@ -55,7 +48,6 @@ export function DiaryList({
   onClearConditions,
   listHeader,
   scrollResetKey,
-  renderActions,
   renderBodyText,
 }: DiaryListProps) {
   const listRef = useRef<FlatList<Diary> | null>(null)
@@ -117,37 +109,21 @@ export function DiaryList({
         if (hasMore && !isLoadingMore) onLoadMore()
       }}
       renderItem={({ item }) => {
-        const opened = item.id === openedDiaryId
         const preview = diaryPreview(item.body, VALUES.diaryReader.bodyPreviewLength)
         return (
           <View style={styles.row}>
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ expanded: opened }}
-              onPress={() => (opened ? onClose() : onOpen(item.id))}
+              accessibilityHint={m.diary_reader_open_entry_hint()}
+              onPress={() => onOpen(item.id)}
               style={styles.header}
             >
               <Text style={styles.date}>{item.diaryDate}</Text>
-              {!opened && (
-                <Text style={styles.preview} numberOfLines={2}>
-                  {renderBodyText ? renderBodyText(preview) : preview}
-                </Text>
-              )}
+              <Text style={styles.preview} numberOfLines={2}>
+                {renderBodyText ? renderBodyText(preview) : preview}
+              </Text>
               <DiaryRowFooter memories={item.memories} />
             </Pressable>
-            {opened && (
-              <View style={styles.opened}>
-                <Text style={styles.body}>
-                  {renderBodyText ? renderBodyText(item.body) : item.body}
-                </Text>
-                {item.memories.length > 0 ? (
-                  <DiaryChips members={item.memories} />
-                ) : (
-                  <Text style={styles.muted}>{m.diary_reader_all_let_go()}</Text>
-                )}
-                {renderActions?.(item)}
-              </View>
-            )}
           </View>
         )
       }}
@@ -196,23 +172,6 @@ function DiaryRowFooter({ memories }: { memories: readonly DiarySplitMember[] })
   )
 }
 
-function DiaryChips({ members }: { members: readonly DiarySplitMember[] }) {
-  return (
-    <View style={styles.chips}>
-      {members.map((member) => (
-        <View
-          key={member.episodicMemoryId}
-          style={styles.chip}
-          accessibilityLabel={moodLabel(member.mood)}
-        >
-          <View style={[styles.dot, { backgroundColor: moodColor(member.mood as Mood) }]} />
-          <Text style={styles.chipText}>{member.name}</Text>
-        </View>
-      ))}
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   notice: {
     color: tokens.color['text-muted'],
@@ -234,28 +193,9 @@ const styles = StyleSheet.create({
   },
   date: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
   preview: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  dot: { width: 8, height: 8, borderRadius: tokens.radius.sm },
   footerLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[1] },
   count: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
-  opened: {
-    gap: tokens.spacing[4],
-    paddingHorizontal: tokens.spacing[4],
-    paddingBottom: tokens.spacing[4],
-  },
-  body: { color: tokens.color.text, fontSize: tokens.fontSize.sm, lineHeight: 22 },
-  muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spacing[1],
-    borderWidth: 1,
-    borderColor: tokens.color.border,
-    borderRadius: tokens.spacing[4],
-    paddingHorizontal: tokens.spacing[2],
-    paddingVertical: tokens.spacing[1],
-  },
-  dot: { width: 8, height: 8, borderRadius: tokens.radius.sm },
-  chipText: { color: tokens.color.text, fontSize: tokens.fontSize.xs },
   footerNote: {
     color: tokens.color['text-subtle'],
     fontSize: tokens.fontSize.sm,

@@ -18,15 +18,12 @@ import {
 } from '@cosimosi/universe-render'
 
 import { diagnosticsSurfaceFlag } from '../../../shared/config/index.ts'
-import { setHoveredMemoryIndex } from '../model/hovered-memory-store.ts'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
-import { HoverGlimpse } from './HoverGlimpse.tsx'
 import { PERF_HUD_AVAILABLE, UniversePerfHud } from './UniversePerfHud.tsx'
 
 // The web shell around the shared universe scene. Everything the scene needs is computed by
 // `useUniverseScene` — out here, because React context does not cross the R3F reconciler — and this
-// file holds only what is genuinely web: the DOM canvas host, the hover/glimpse overlay (touch has
-// no hover), and the module-Worker sim spawner.
+// file holds only what is genuinely web: the DOM canvas host and the module-Worker sim spawner.
 function UniverseCanvasHost({
   navigationActorRef,
 }: {
@@ -65,14 +62,10 @@ function UniverseCanvasHost({
           bloom={skin.bloom}
           backdrop={UNIVERSE_BACKDROP.web}
           reducedMotion={reducedMotion}
-          onMemoryHover={setHoveredMemoryIndex}
           onPixelRatio={setPixelRatioCap}
         />
         {perfHudEnabled && <UniversePerfHud />}
       </UniverseCanvas>
-      {/* Shown plainly, no decay warning ([R8a]) — and outside the canvas host so a hover
-          never re-renders the scene tree. */}
-      <HoverGlimpse universeTime={scene.universeTime} />
     </div>
   )
 }

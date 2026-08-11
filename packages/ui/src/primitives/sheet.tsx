@@ -44,7 +44,7 @@ export function Sheet({
       aria-label={title ? undefined : ariaLabel}
       aria-describedby={description ? descriptionId : undefined}
       className={cx(
-        'glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[70dvh] flex-col rounded-t-2xl p-5 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none',
+        'glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[70dvh] flex-col rounded-t-2xl px-5 pt-5 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none md:p-5',
         phase === 'leaving' ? 'sheet-leave' : 'sheet-enter',
       )}
     >

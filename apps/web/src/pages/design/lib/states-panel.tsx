@@ -23,6 +23,8 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 import type { EpisodicMemory } from '@cosimosi/memory'
+import { REDACTION_TOKEN } from '@cosimosi/memory-logic'
+import { ObscuredText } from '@cosimosi/ui'
 import { AwakenNeuron, LatentStarField } from '@cosimosi/universe-render'
 import {
   SHOWCASE_ELAPSED_DAYS,
@@ -92,7 +94,13 @@ export function StatesPanel() {
               <span className="w-14 shrink-0 text-xs tabular-nums text-text-subtle">
                 {T.statesStage(i)}
               </span>
-              <span className={i === 0 ? 'text-text' : 'text-text-muted'}>{stage}</span>
+              <ObscuredText
+                className={i === 0 ? 'text-text' : 'text-text-muted'}
+                spans={stage
+                  .split(/(\s+)/)
+                  .filter((piece) => piece !== '')
+                  .map((piece) => ({ text: piece, obscured: piece === REDACTION_TOKEN }))}
+              />
             </li>
           ))}
         </ol>

@@ -7,6 +7,7 @@ import {
   deletionFlowMachine,
   useDeletionTargetStore,
   useDiaryStore,
+  useEpisodicMemoryStore,
   type DeletionFlowPhase,
 } from '@cosimosi/universe'
 
@@ -54,10 +55,21 @@ export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
   const resetDraft = useDeletionDraftStore((state) => state.reset)
 
   const diariesById = useDiaryStore((state) => state.byId)
-  const affectedNames = useMemo(
-    () => (diaryId ? (diariesById[diaryId]?.memories ?? []).map((member) => member.name) : []),
-    [diaryId, diariesById],
-  )
+  const memoriesById = useEpisodicMemoryStore((state) => state.byId)
+  // Which stars this delete takes — the one thing the confirm exists to show, so it must never come
+  // up empty for want of a source. The archive mirror answers wherever the reader has shown the
+  // diary (its paged list, and the calendar's day read, which contributes without owning it); the
+  // universe route mounts no archive at all, and there the live memory mirror answers instead —
+  // every star in the sky names the diary it came from. Both hold only memories that are still live,
+  // so the two answers agree.
+  const affectedNames = useMemo(() => {
+    if (!diaryId) return []
+    const fromArchive = diariesById[diaryId]?.memories
+    if (fromArchive) return fromArchive.map((member) => member.name)
+    return Object.values(memoriesById)
+      .filter((memory) => memory.diaryId === diaryId)
+      .map((memory) => memory.name)
+  }, [diaryId, diariesById, memoriesById])
   const retentionDays = VALUES.release.softDeleteRetentionDays
 
   const [error, setError] = useState(false)

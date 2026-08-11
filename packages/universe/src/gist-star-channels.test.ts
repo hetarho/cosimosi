@@ -13,6 +13,7 @@ import { moodColor } from '@cosimosi/emotion'
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
     id: 'memory-1',
+    diaryId: 'd',
     name: 'a memory',
     emotion: createEmotion('JOY'),
     baseStrength: 0.5,

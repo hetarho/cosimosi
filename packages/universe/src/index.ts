@@ -126,6 +126,14 @@ export {
 } from './deletion-draft-store.ts'
 export { usePendingFlyTargetStore, type PendingFlyTargetState } from './pending-fly-target-store.ts'
 export {
+  SPOTLIGHT_FADE_LAMBDA,
+  SPOTLIGHT_HOLD_SECONDS,
+  SPOTLIGHT_SCENE_DIM,
+  SPOTLIGHT_STAR_LIFT,
+  useSpotlightStore,
+  type SpotlightState,
+} from './spotlight-store.ts'
+export {
   draftsFromResponse,
   renameMemory,
   setMemoryMood,
@@ -209,7 +217,12 @@ export { useLatentConsumedStore, type LatentConsumedState } from './latent-consu
 
 // Domain → visual channel projections (one-way, §3.4)
 export { starChannels, hexToLinearRgb, normalizeSeed, type StarChannels } from './star-channels.ts'
-export { currentDecayStage, currentDecayText } from './current-decay-text.ts'
+export {
+  currentDecayStage,
+  currentDecaySpans,
+  currentDecayText,
+  type DecayTextSpan,
+} from './current-decay-text.ts'
 export {
   gistNodeId,
   gistStarInstances,

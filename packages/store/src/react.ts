@@ -60,6 +60,31 @@ export function useAppliedOrnaments(): AppliedOrnaments {
   }, [selection.data])
 }
 
+/**
+ * What the universe is wearing THIS INSTANT, resolved to registry keys: the live preview while a
+ * decoration panel is open, the confirmed selection otherwise.
+ *
+ * Every surface that draws a decorated thing reads this one hook — the live scene and any panel-side
+ * preview of it alike. Two surfaces resolving the precedence separately is how one of them ends up
+ * showing the shipped default while the other wears the user's choice.
+ */
+export function useWornOrnaments(): AppliedOrnaments {
+  const applied = useAppliedOrnaments()
+  const previewActive = useOrnamentPreviewStore((state) => state.previewActive)
+  const previewed = useOrnamentPreviewStore((state) => state.previewed)
+  return useMemo(() => {
+    if (!previewActive) return applied
+    return Object.freeze(
+      Object.fromEntries(
+        ORNAMENT_KINDS.map((kind) => [
+          kind,
+          ornamentRegistryKey(kind, previewed[kind]) ?? applied[kind],
+        ]),
+      ) as Record<OrnamentKind, string>,
+    )
+  }, [applied, previewActive, previewed])
+}
+
 /** One catalog group per kind, in the order the panel lists them. */
 export interface OrnamentGroup {
   readonly kind: OrnamentKind

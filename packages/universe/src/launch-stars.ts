@@ -60,11 +60,12 @@ export function insertLaunchedMemories(
   memories: readonly ConfirmedMemoryInput[],
   memoryIds: readonly string[],
   diaryDate: string,
+  diaryId: string,
 ): void {
   const inserted: EpisodicMemory[] = []
   memoryIds.forEach((id, index) => {
     const memory = memories[index]
-    if (memory) inserted.push(optimisticMemory(memory, id, diaryDate))
+    if (memory) inserted.push(optimisticMemory(memory, id, diaryDate, diaryId))
   })
   if (inserted.length === 0) return
   const store = useEpisodicMemoryStore.getState()
@@ -78,10 +79,12 @@ function optimisticMemory(
   memory: ConfirmedMemoryInput,
   id: string,
   diaryDate: string,
+  diaryId: string,
 ): EpisodicMemory {
   const emotion = createEmotion(asMood(memory.mood))
   return {
     id,
+    diaryId,
     name: memory.name,
     emotion,
     // A plausible size until the server's real base strength arrives on the next read.

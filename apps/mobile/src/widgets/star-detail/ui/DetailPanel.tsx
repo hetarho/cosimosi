@@ -13,9 +13,10 @@ import {
 } from 'react-native'
 import type { ActorRefFrom } from 'xstate'
 
-import { Button, tokens, usePresence } from '@cosimosi/ui'
+import { Button, IconButton, Menu, StarActionsIcon, tokens, usePresence } from '@cosimosi/ui'
+import { useWornOrnaments } from '@cosimosi/store/react'
 import {
-  currentDecayText,
+  currentDecaySpans,
   parseGistNodeId,
   resolveSelection,
   starDetailMachine,
@@ -67,6 +68,9 @@ export function DetailPanel({
   const episodicById = useEpisodicMemoryStore((state) => state.byId)
   const neuronById = useNeuronStore((state) => state.byId)
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
+  // Resolved at the WIDGET, not inside `features/star-meta`: the read features stay provider-free,
+  // and the panel's star wears exactly what the sky behind it wears ([P4]).
+  const worn = useWornOrnaments()
   const { height } = useWindowDimensions()
 
   const selection = useMemo(
@@ -127,10 +131,53 @@ export function DetailPanel({
       <ScrollView contentContainerStyle={styles.body}>
         {phase === 'meta' && (
           <>
-            <MetaBlock selection={selection} universeTime={universeTime} />
+            <MetaBlock
+              selection={selection}
+              universeTime={universeTime}
+              shape={worn.STAR_SHADER}
+              previewAction={
+                selection.kind === 'episodic' ? (
+                  <Menu
+                    ariaLabel={m.star_detail_actions_label()}
+                    trigger={
+                      <IconButton
+                        variant="outlined"
+                        color="neutral"
+                        size="sm"
+                        label={m.star_detail_actions_label()}
+                        icon={<StarActionsIcon />}
+                      />
+                    }
+                    items={[
+                      {
+                        value: 'provenance',
+                        label: m.star_detail_provenance(),
+                        onSelect: () => send({ type: 'SHOW_PROVENANCE' }),
+                      },
+                      {
+                        value: 'diary',
+                        label: m.star_detail_open_diary(),
+                        onSelect: () => onOpenDiary(selection.memory.id),
+                      },
+                      {
+                        value: 'letgo',
+                        label: m.star_detail_letgo(),
+                        onSelect: () => onLetGo(selection.memory.id),
+                      },
+                      {
+                        value: 'delete-source',
+                        label: m.star_detail_delete_source(),
+                        tone: 'danger',
+                        onSelect: () => onDeleteSourceDiary(selection.memory.id),
+                      },
+                    ]}
+                  />
+                ) : undefined
+              }
+            />
             {selection.kind === 'episodic' && (
               <>
-                <CurrentMemoryText text={currentDecayText(selection.memory, universeTime)} />
+                <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
                 <View style={styles.actions}>
                   <Button
                     color="primary"
@@ -138,30 +185,6 @@ export function DetailPanel({
                     onPress={() => onRecallRequested(selection.memory.id)}
                   >
                     {m.star_detail_recall()}
-                  </Button>
-                  <Button
-                    color="neutral"
-                    size="sm"
-                    onPress={() => send({ type: 'SHOW_PROVENANCE' })}
-                  >
-                    {m.star_detail_provenance()}
-                  </Button>
-                  <Button
-                    color="neutral"
-                    size="sm"
-                    onPress={() => onOpenDiary(selection.memory.id)}
-                  >
-                    {m.star_detail_open_diary()}
-                  </Button>
-                  <Button color="neutral" size="sm" onPress={() => onLetGo(selection.memory.id)}>
-                    {m.star_detail_letgo()}
-                  </Button>
-                  <Button
-                    color="danger"
-                    size="sm"
-                    onPress={() => onDeleteSourceDiary(selection.memory.id)}
-                  >
-                    {m.star_detail_delete_source()}
                   </Button>
                 </View>
               </>

@@ -377,7 +377,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const displayTime = sweepTime ?? scene.universeTime
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-background">
+    <main className="relative h-dvh w-full overflow-hidden bg-bg">
       <DemoUniverseScene
         scene={scene}
         taste={state.taste}

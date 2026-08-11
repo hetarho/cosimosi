@@ -195,6 +195,7 @@ export function buildEngramDemoScene(): EngramDemoScene {
 
   const memories: EpisodicMemory[] = MEMORY_SEEDS.map((memory) => ({
     id: memory.id,
+    diaryId: `${memory.id}-diary`,
     name: memory.name,
     emotion: createEmotion(memory.mood),
     baseStrength: memory.baseStrength,

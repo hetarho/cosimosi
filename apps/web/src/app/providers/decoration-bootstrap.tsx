@@ -59,7 +59,7 @@ export function DecorationBootstrap({ children }: { children?: ReactNode }) {
 
   if (!ready) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+      <main className="flex min-h-dvh items-center justify-center bg-bg text-text-muted">
         <p className="text-sm">{m.common_loading()}</p>
       </main>
     )

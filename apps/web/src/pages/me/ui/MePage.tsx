@@ -42,7 +42,7 @@ export function MePage({ activeTab, onTabChange, onExit }: MePageProps) {
   const panelId = `me-${activeTab}-panel`
 
   return (
-    <main className="min-h-dvh bg-background text-text">
+    <main className="min-h-dvh bg-bg text-text">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-6">
         <header className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-medium">{m.me_title()}</h1>

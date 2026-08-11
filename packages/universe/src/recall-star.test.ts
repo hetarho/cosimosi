@@ -22,6 +22,7 @@ function response(overrides: Partial<RecallResponse>): RecallResponse {
 
 const memory = {
   id: 'm1',
+  diaryId: 'd',
   name: 'Market run',
   emotion: createEmotion('CALM'),
   baseStrength: 0.5,

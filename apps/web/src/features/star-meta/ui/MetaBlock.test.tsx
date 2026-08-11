@@ -10,6 +10,7 @@ import { MetaBlock } from './MetaBlock.tsx'
 
 const memory = {
   id: 'm1',
+  diaryId: 'd',
   name: 'Market run',
   emotion: createEmotion('JOY'),
   baseStrength: 0.5,

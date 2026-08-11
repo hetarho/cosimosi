@@ -51,12 +51,14 @@ const INK: Record<ButtonColor, string> = {
   neutral: color.text,
   danger: color.danger,
 }
-// Outlined border: the accent, except neutral falls back to the neutral border token.
+// Outlined rim: the role's INK at the same 45% the web mixes, which for neutral is the near-white
+// text token rather than the dark border one. RN has no symmetric box-shadow, so the rim carries
+// alone what the web says with a rim plus a halo — the documented platform divergence.
 const OUTLINE_BORDER: Record<ButtonColor, string> = {
   primary: color.primary,
   secondary: color.secondary,
   tertiary: color.tertiary,
-  neutral: color.border,
+  neutral: oklchToRnColor(rawTokens.color.text, 0.45),
   danger: color.danger,
 }
 

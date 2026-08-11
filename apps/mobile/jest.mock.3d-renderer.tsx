@@ -21,6 +21,7 @@ export const InstancedNodeLayer = Noop
 export const FatLineLayer = Noop
 export const NavigationRig = Noop
 export const FrameTick = Noop
+export const SceneExposure = Noop
 // Passthrough, not Noop: it wraps the body it turns, so stubbing it out would take the star with it.
 export const SpinGroup = Passthrough
 export const AdaptiveDprLayer = Noop

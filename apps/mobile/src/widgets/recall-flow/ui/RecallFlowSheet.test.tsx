@@ -29,6 +29,7 @@ const mockUseSpendQuote = useSpendQuote as jest.Mock
 
 const vividMemory: EpisodicMemory = {
   id: 'm1',
+  diaryId: 'd',
   name: 'Market run',
   emotion: createEmotion('CALM'),
   baseStrength: 0.9,

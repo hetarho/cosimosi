@@ -42,6 +42,7 @@ function dayBefore(days: number): string {
 
 function fixtureMemory(overrides: Partial<EpisodicMemory> & { id: string }): EpisodicMemory {
   return {
+    diaryId: `${overrides.id}-diary`,
     name: overrides.id,
     emotion: createEmotion('NEUTRAL'),
     baseStrength: 0.6,
