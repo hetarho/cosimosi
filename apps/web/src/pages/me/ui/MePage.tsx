@@ -5,7 +5,7 @@ import { Button, Tabs } from '@cosimosi/ui'
 import { AchievementList } from '../../../features/achievement-list/index.ts'
 import { AccountProfile } from '../../../features/account-profile/index.ts'
 import { AccountSection } from '../../../features/account-settings/index.ts'
-import { MoodColorSection } from '../../../features/change-mood-colors/index.ts'
+import { MoodColorsTab } from '../../../features/change-mood-colors/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
 import { ReplayOnboarding } from '../../../features/replay-onboarding/index.ts'
@@ -25,6 +25,7 @@ const TAB_VIEWS: Readonly<
   Record<MeTabId, { title: () => string; Body: ComponentType<MeTabBodyProps> }>
 > = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
+  'mood-colors': { title: m.me_tab_mood_colors, Body: MoodColorsTab },
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
   achievements: { title: m.me_tab_achievements, Body: AchievementList },
   diary: { title: m.me_tab_diary, Body: ExportDiaries },
@@ -77,7 +78,6 @@ function ProfileTab({ onExit }: MeTabBodyProps) {
   return (
     <div className="flex flex-col gap-4">
       <AccountProfile />
-      <MoodColorSection />
       <InviteLink />
       <ReplayOnboarding onExit={onExit} />
     </div>

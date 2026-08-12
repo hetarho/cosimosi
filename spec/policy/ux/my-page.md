@@ -3,14 +3,15 @@
 ## One signed-in account home
 
 My page is the sole signed-in account surface: web `/me` and mobile `Me`, reached from the
-universe. It has exactly five tabs in this order: profile, stardust, achievements, diary
-management, and account. Web keeps the active tab in the `tab` query parameter so links and reloads
-preserve it; mobile keeps it as local screen state. Missing or unknown web values show profile.
+universe. It has exactly six tabs in this order: profile, feeling colors, stardust, achievements,
+diary management, and account. Web keeps the active tab in the `tab` query parameter so links and
+reloads preserve it; mobile keeps it as local screen state. Missing or unknown web values show
+profile.
 
-The Profile tab includes the emotion-color editor: one row for each of the thirteen moods, its
-current resolved swatch, and three recommendations. A choice recolors the running presentation
-through the single palette seam and persists only that mood. A near-duplicate notice never blocks,
-and a statistical ratio appears only when its bucket meets the configured sample floor.
+The feeling-colors tab is the emotion-color editor and owns the whole surface, rather than sharing a
+row of the profile tab. At rest it shows only what the thirteen moods currently wear: one swatch and
+one label each, and nothing to choose. Choosing happens one mood at a time on the surface that
+interrupts (`Dialog` — centred modal on a wide screen, bottom sheet on a narrow one).
 
 No other decoration lives here. My page offers no background, shader, camera, or effect control,
 and the color editor cannot reach a star's meaning, brightness, position, or connections.

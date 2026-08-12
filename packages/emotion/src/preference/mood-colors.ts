@@ -1,19 +1,15 @@
 import type { Transport } from '@connectrpc/connect'
 
 import { createAccountClient, setMoodColor as persistMoodColor } from '@cosimosi/api-client'
-import { VALUES } from '@cosimosi/config'
 
-import { ALTERNATIVE_MOOD_COLORS } from '../alternative-mood-colors.ts'
 import { MOODS, type Mood } from '../mood.ts'
-import { colorToOkLch, okLchToColor } from '../oklab.ts'
 import { defaultMoodPalette, setMoodPalette, type Color, type MoodPalette } from '../palette.ts'
-import { resolveMoodColors, snapToEmotionStep, type MoodColorRow } from '../mood-color.ts'
-
-export interface MoodColorRecommendation {
-  readonly bucket?: number
-  readonly color: Color
-  readonly share?: number
-}
+import { resolveMoodColors, type MoodColorRow } from '../mood-color.ts'
+import {
+  moodColorPresets,
+  type MoodColorBucketStat,
+  type MoodColorPreset,
+} from '../mood-color-preset.ts'
 
 export async function readMoodColors(transport: Transport): Promise<readonly MoodColorRow[]> {
   const response = await createAccountClient(transport).getMoodColors({})
@@ -42,18 +38,28 @@ export async function writeMoodColor(
   return { mood: savedMood, color: savedColor }
 }
 
-export async function readMoodColorRecommendations(
+/**
+ * The cache key both surfaces read presets under. Shared so the write path can invalidate what the
+ * read path stored: saving a colour changes the aggregate it came from, so the ranking and every
+ * share on screen are stale the moment the save lands.
+ */
+export function moodColorPresetsQueryKey(mood: Mood): readonly unknown[] {
+  return ['mood-color-presets', mood]
+}
+
+export async function readMoodColorPresets(
   transport: Transport,
   mood: Mood,
-): Promise<readonly MoodColorRecommendation[]> {
+): Promise<readonly MoodColorPreset[]> {
   const response = await createAccountClient(transport).getMoodColorStats({ mood })
-  const stats = response.stats.flatMap((stat) => {
+  // The order is the server's ranking and is kept as received. A bucket only exists because someone
+  // chose a color in it, so a non-positive share is a malformed row, not a rare one: dropping it is
+  // what keeps a "0% chose this" out of the UI.
+  const stats = response.stats.flatMap<MoodColorBucketStat>((stat) => {
     const color = toColor(stat.swatchColor)
-    return color
-      ? [{ bucket: stat.bucket, color, ...(stat.share === undefined ? {} : { share: stat.share }) }]
-      : []
+    return color && stat.share > 0 ? [{ bucket: stat.bucket, color, share: stat.share }] : []
   })
-  return completeMoodColorRecommendations(mood, stats)
+  return moodColorPresets(mood, stats)
 }
 
 export function applyMoodColors(
@@ -61,31 +67,6 @@ export function applyMoodColors(
   fallback: MoodPalette = defaultMoodPalette,
 ): void {
   setMoodPalette(resolveMoodColors(rows, fallback))
-}
-
-export function completeMoodColorRecommendations(
-  mood: Mood,
-  stats: readonly MoodColorRecommendation[],
-): readonly MoodColorRecommendation[] {
-  const base = defaultMoodPalette.colors[mood]
-  const lch = colorToOkLch(base)
-  const fallback = [
-    base,
-    ALTERNATIVE_MOOD_COLORS[mood],
-    okLchToColor({
-      ...lch,
-      h: (lch.h + VALUES.palette.hueBucketDegrees / 2) % 360,
-    }),
-  ].map(snapToEmotionStep)
-  const recommendations: MoodColorRecommendation[] = []
-  const seen = new Set<string>()
-  for (const recommendation of [...stats, ...fallback.map((color) => ({ color }))]) {
-    if (seen.has(recommendation.color)) continue
-    seen.add(recommendation.color)
-    recommendations.push(recommendation)
-    if (recommendations.length === VALUES.palette.recommendationCount) break
-  }
-  return recommendations
 }
 
 function toMood(value: string): Mood | undefined {

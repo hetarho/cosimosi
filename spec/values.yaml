@@ -312,12 +312,15 @@ palette:
   # a hard block. Tuned so every shipped registry palette passes with margin (the default's
   # sharpest contradiction sits at ~0.4) while a genuinely inverted palette still trips.
   axis_warn_valence_threshold: 0.6
-  # Number of aggregate-backed candidates shown for one mood. The query accepts this generated
-  # limit instead of owning a SQL literal.
-  recommendation_count: 3
-  # A bucket may expose its share only after this many choices. Smaller samples still contribute a
-  # swatch recommendation, but the UI renders no ratio.
-  stat_min_sample: 10
+  # Size of the aggregate candidate pool the stats query returns for one mood. The query accepts
+  # this generated limit instead of owning a SQL literal. It runs ahead of popular_preset_count
+  # because the pool serves two readers at once: the ranked popular presets, and the authored
+  # preset looking up its own bucket's share. The authored color is usually near the top of the
+  # ranking, so a couple of spare candidates cover both without a second round trip.
+  recommendation_count: 5
+  # How many ranked "other people chose this" presets one mood offers, beside the authored preset
+  # and the random one.
+  popular_preset_count: 3
   # Equal-width hue sectors on the OkLCH circle. Twelve 30-degree buckets cover chromatic colors.
   hue_bucket_degrees: 30
   # Colors at or below this OkLCH chroma enter the thirteenth, near-neutral bucket.
@@ -325,6 +328,20 @@ palette:
   # Warn when two mood colors are this close in OkLab. This remains below the authored default
   # table's minimum pairwise separation (0.0545), so the shipped defaults do not self-warn.
   similar_delta_e_min: 0.05
+  # Live risk bands for a color the user is choosing, read as sRGB relative luminance. Server-side
+  # lightness snapping already pins every mood color to one of three OkLCH steps, so these bands are
+  # narrow by construction — they catch the ends of what snapping still lets through, not a wide
+  # swathe of the picker.
+  #
+  # Above this the color is the brightest thing in the frame: the scene bloom pass (threshold 0.4)
+  # picks it up hardest, and a star wearing it washes the neighbourhood it sits in. Only the top
+  # lightness step reaches here at all, and only on the yellow-green arc — the shipped default that
+  # comes closest is RELIEF at 0.537.
+  glare_luminance_max: 0.55
+  # Below this the color stops separating from the night sky it is drawn against. Only the deepest
+  # lightness step reaches here, on the violet-magenta arc; the shipped default that comes closest is
+  # ANGER at 0.2215.
+  dim_luminance_min: 0.21
   # World radius for the thirteen-star onboarding field. It stays inside the portrait camera's
   # narrow axis so every selectable mood remains on-screen on mobile.
   onboarding_field_radius: 18

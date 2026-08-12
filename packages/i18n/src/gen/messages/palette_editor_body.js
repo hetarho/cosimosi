@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Palette_Editor_BodyInputs */
 
 const en_palette_editor_body = /** @type {(inputs: Palette_Editor_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Each feeling can keep its own color. Untouched feelings stay with the authored sky.`)
+	return /** @type {LocalizedString} */ (`These are the colors your thirteen feelings wear now. Touch one to hand it another. Untouched feelings stay with the authored sky.`)
 };
 
 const ko_palette_editor_body = /** @type {(inputs: Palette_Editor_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`각 감정은 저마다의 색을 가질 수 있어요. 건드리지 않은 감정은 처음의 하늘빛으로 남아요.`)
+	return /** @type {LocalizedString} */ (`지금 열세 감정이 입고 있는 색이에요. 하나를 눌러 다른 색을 건네 주세요. 건드리지 않은 감정은 처음의 하늘빛으로 남아요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Each feeling can keep its own color. Untouched feelings stay with the authored sky." |
+* | "These are the colors your thirteen feelings wear now. Touch one to hand it another. Untouched feelings stay with the authored sky." |
 *
 * @param {Palette_Editor_BodyInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

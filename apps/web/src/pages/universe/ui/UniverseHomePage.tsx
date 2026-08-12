@@ -29,6 +29,7 @@ import {
 } from '@cosimosi/universe'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
+import { UniverseViewToggle } from '../../../features/pin-universe-view/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
@@ -184,6 +185,12 @@ export function UniverseHomePage({
             right-aligned flow, so the balance sits flush with the top on every width, from a phone to
             a desktop, with no breakpoint deciding which of the two gets the top line. */}
         <header className="relative flex flex-col items-end gap-3">
+          {/* How the universe is being held, in the corner the eye starts from and out of the
+              right-aligned flow — it belongs to the SPACE, like the clock beside it, rather than to
+              the column of ways out of the canvas. */}
+          <div className="absolute left-0 top-0">
+            <UniverseViewToggle />
+          </div>
           {/* HUD top ([T6]) with the acceleration host riding along; the acceleration renders nothing
               (the scene says time passing), and the consent modal is fixed, so neither cares that its
               host is a centred, zero-height box. */}

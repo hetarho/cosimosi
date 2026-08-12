@@ -15,7 +15,8 @@ export interface MoodColorEditorState {
   readonly duplicateMood?: Mood
   readonly error: boolean
   readonly savingMood?: Mood
-  readonly choose: (mood: Mood, color: Color) => Promise<void>
+  /** Resolves to whether the colour was kept, so a caller can leave its surface open on a failure. */
+  readonly choose: (mood: Mood, color: Color) => Promise<boolean>
   readonly colorFor: (mood: Mood) => Color
 }
 
@@ -35,7 +36,7 @@ export function useMoodColorEditor(
 
   const choose = useCallback(
     async (mood: Mood, input: Color) => {
-      if (savingMood) return
+      if (savingMood) return false
       const color = snapToEmotionStep(input)
       const before = choices
       const beforeDuplicate = duplicateMood
@@ -56,11 +57,13 @@ export function useMoodColorEditor(
         const confirmed = { ...optimistic, [saved.mood]: saved.color }
         setChoices(confirmed)
         applyMoodColors(rowsFromChoices(confirmed), fallback)
+        return true
       } catch {
         setChoices(before)
         applyMoodColors(rowsFromChoices(before), fallback)
         setDuplicateMood(beforeDuplicate)
         setError(true)
+        return false
       } finally {
         setSavingMood(undefined)
       }

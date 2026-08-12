@@ -89,7 +89,9 @@ export function UniverseSceneLayers({
     skyStops,
     wearing,
     sceneTime,
+    pinned,
     getPose,
+    getPinnedView,
     onArrived,
     pump,
     focusNeuron,
@@ -160,7 +162,13 @@ export function UniverseSceneLayers({
         newNeuronIds={newNeuronIds}
         resolveAnchors={resolveAnchors}
       />
-      <NavigationRig getPose={getPose} onArrived={onArrived} {...UNIVERSE_CAMERA_RIG} />
+      <NavigationRig
+        getPose={getPose}
+        getPinnedView={getPinnedView}
+        pinned={pinned}
+        onArrived={onArrived}
+        {...UNIVERSE_CAMERA_RIG}
+      />
       <FrameTick onFrame={pump} />
       <AdaptiveDprLayer onPixelRatio={onPixelRatio} />
       {/* The sky holds still for the stars a cross-route action named; `StarLayer` lifts those stars

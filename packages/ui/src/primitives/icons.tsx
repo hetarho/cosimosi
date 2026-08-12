@@ -1,9 +1,11 @@
 import {
   ArrowCounterClockwiseIcon,
+  ArrowsOutCardinalIcon,
   BookOpenIcon,
   GearSixIcon,
   InfoIcon,
   PaletteIcon,
+  PushPinIcon,
   SparkleIcon,
   TrashIcon,
 } from '@phosphor-icons/react'
@@ -61,6 +63,16 @@ export function ResetIcon({ size = ICON_SIZE, className }: IconProps) {
 /** 지우기 — the destructive act on the record this control sits beside. */
 export function DeleteIcon({ size = ICON_SIZE, className }: IconProps) {
   return <TrashIcon aria-hidden size={size} className={className} />
+}
+
+/** 고정 모드 — the view held flat and centred, with only so much give in it. */
+export function PinnedViewIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <PushPinIcon aria-hidden size={size} weight="fill" className={className} />
+}
+
+/** 자유 모드 — the view free to turn in any direction. */
+export function FreeViewIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <ArrowsOutCardinalIcon aria-hidden size={size} className={className} />
 }
 
 /**

@@ -1,2 +1,2 @@
-export { MoodColorSection } from './ui/MoodColorSection.tsx'
+export { MoodColorsTab } from './ui/MoodColorsTab.tsx'
 export { usePaletteVersion } from '@cosimosi/emotion/react'

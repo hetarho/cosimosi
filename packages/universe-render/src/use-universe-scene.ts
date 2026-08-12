@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
-import type { NavigationPose } from '@cosimosi/3d-renderer'
+import type { NavigationPose, PinnedView } from '@cosimosi/3d-renderer'
 import {
+  FORCE_SIM_COORDINATE_STRIDE,
   createForceSimNodeIndex,
   forceSimCoordinateOffset,
   type ForceSimGraph,
@@ -26,6 +27,8 @@ import {
   useLaunchedNeuronsStore,
   useNeuronStore,
   usePendingFlyTargetStore,
+  useSpotlightStore,
+  useUniverseViewStore,
   type AwakenAnchor,
   type LatentField,
   type SimWorkerSpawner,
@@ -68,7 +71,10 @@ export interface UniverseSceneState {
   readonly wearing: Readonly<Record<Extract<OrnamentKind, 'BACKGROUND' | 'STAR_SHADER'>, string>>
   /** The clock the SCENE projects at (see below) — not necessarily the committed read clock. */
   readonly sceneTime: string | null
+  /** Whether the universe is held flat right now ([U3]'s two ways of holding it). */
+  readonly pinned: boolean
   readonly getPose: () => NavigationPose
+  readonly getPinnedView: () => PinnedView
   readonly onArrived: () => void
   readonly pump: (dt: number) => void
   readonly focusNeuron: (index: number) => void
@@ -149,6 +155,59 @@ export function useUniverseScene({
     pose.target[2] = buffer[offset + 2] ?? 0
     return pose
   }, [actorRef, bridge, nodeIndex, pose])
+
+  // Which shape the universe is held in. A viewer's own choice, so subscribing to it costs one
+  // render per press — the rig reads the flag as a prop because the two modes wear different
+  // controls, and only WHERE the flat camera is orbiting is polled per frame.
+  const pinned = useUniverseViewStore((state) => state.mode) === 'pinned'
+  const pinnedView = useMemo(
+    () => ({ center: [0, 0, 0] as [number, number, number], held: false }),
+    [],
+  )
+  const getPinnedView = useCallback((): PinnedView => {
+    const buffer = bridge.coordinates.current
+    const snapshot = actorRef.getSnapshot()
+    // What holds the frame, in the order a viewer would expect: the star being travelled to, then
+    // the one whose panel is open, then the memories a cross-route jump is spotlighting — the sky is
+    // holding still for those, so the camera holds with it rather than sliding home mid-arrival.
+    const heldId =
+      snapshot.context.travelNodeId ??
+      snapshot.context.selectedNodeId ??
+      useSpotlightStore.getState().memoryIds[0] ??
+      null
+    const heldIndex =
+      heldId && nodeIndex
+        ? (nodeIndex.neurons[heldId] ?? nodeIndex.episodicMemories[heldId])
+        : undefined
+    if (buffer && heldIndex !== undefined) {
+      const offset = forceSimCoordinateOffset(heldIndex)
+      pinnedView.center[0] = buffer[offset] ?? 0
+      pinnedView.center[1] = buffer[offset + 1] ?? 0
+      pinnedView.center[2] = buffer[offset + 2] ?? 0
+      pinnedView.held = true
+      return pinnedView
+    }
+    pinnedView.held = false
+    // The middle of the stars is the centre of mass of the live layout, read in place each frame:
+    // it is emergent like every position here ([I5]), so it is measured rather than stored, and a
+    // universe still settling keeps the last centre instead of snapping to the origin and back.
+    if (buffer && buffer.length >= FORCE_SIM_COORDINATE_STRIDE) {
+      const count = Math.floor(buffer.length / FORCE_SIM_COORDINATE_STRIDE)
+      let x = 0
+      let y = 0
+      let z = 0
+      for (let i = 0; i < count; i++) {
+        const offset = i * FORCE_SIM_COORDINATE_STRIDE
+        x += buffer[offset] ?? 0
+        y += buffer[offset + 1] ?? 0
+        z += buffer[offset + 2] ?? 0
+      }
+      pinnedView.center[0] = x / count
+      pinnedView.center[1] = y / count
+      pinnedView.center[2] = z / count
+    }
+    return pinnedView
+  }, [actorRef, bridge, nodeIndex, pinnedView])
 
   const onArrived = useCallback(() => actorRef.send({ type: 'ARRIVED' }), [actorRef])
   const pump = useCallback((dt: number) => bridge.pump(dt), [bridge])
@@ -281,7 +340,9 @@ export function useUniverseScene({
     skyStops,
     wearing,
     sceneTime,
+    pinned,
     getPose,
+    getPinnedView,
     onArrived,
     pump,
     focusNeuron,

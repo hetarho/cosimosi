@@ -50,9 +50,15 @@ WHERE zero_counts.mood = sqlc.arg(mood)
   AND zero_counts.count = 1
   AND NOT EXISTS (SELECT 1 FROM decremented);
 
+-- Equally-chosen buckets are ordered by the one fact the aggregate already witnessed — which of them
+-- someone reached for first — and only then by hue_bucket, which orders by a property of the hue
+-- circle rather than of anyone's choice. The same rule breaks a tie between two colors inside a
+-- bucket competing to be its swatch.
 -- name: ListMoodColorStats :many
 WITH bucket_counts AS (
-    SELECT hue_bucket, SUM(count)::BIGINT AS bucket_count
+    SELECT hue_bucket,
+           SUM(count)::BIGINT AS bucket_count,
+           MIN(first_counted_at) AS bucket_first_counted_at
     FROM mood_color_counts AS bucket_source
     WHERE bucket_source.mood = sqlc.arg(mood)
     GROUP BY hue_bucket
@@ -63,7 +69,7 @@ swatches AS (
            color AS swatch_color
     FROM mood_color_counts AS swatch_source
     WHERE swatch_source.mood = sqlc.arg(mood)
-    ORDER BY hue_bucket, count DESC, color
+    ORDER BY hue_bucket, count DESC, first_counted_at, color
 )
 SELECT bucket_counts.hue_bucket,
        bucket_counts.bucket_count,
@@ -71,5 +77,7 @@ SELECT bucket_counts.hue_bucket,
        swatches.swatch_color
 FROM bucket_counts
 JOIN swatches USING (hue_bucket)
-ORDER BY bucket_counts.bucket_count DESC, bucket_counts.hue_bucket
+ORDER BY bucket_counts.bucket_count DESC,
+         bucket_counts.bucket_first_counted_at,
+         bucket_counts.hue_bucket
 LIMIT sqlc.arg(recommendation_count);

@@ -96,7 +96,15 @@ export {
   type NavigationPose,
   type NavigationPoseMode,
   type NavigationRigProps,
+  type PinnedView,
 } from './layers/NavigationRig.tsx'
+export {
+  createPinnedOffset,
+  pinnedCameraPosition,
+  readPinnedOffset,
+  type PinnedEnvelope,
+  type PinnedOffset,
+} from './layers/pinned-pose.ts'
 export { FrameTick } from './layers/FrameTick.tsx'
 export { SceneExposure } from './layers/SceneExposure.tsx'
 export { SpinGroup, type SpinGroupProps } from './layers/SpinGroup.tsx'

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   PostFX,
@@ -12,22 +12,44 @@ import {
   resolveActiveSkin,
 } from '@cosimosi/3d-renderer'
 import { VALUES } from '@cosimosi/config'
-import { MOODS, type Color, type Mood, type MoodColorRow } from '@cosimosi/emotion'
 import {
-  completeMoodColorRecommendations,
-  readMoodColorRecommendations,
+  MOODS,
+  clampChromaToGamut,
+  moodColorPresets,
+  okLchToColor,
+  randomMoodColor,
+  type Color,
+  type Mood,
+  type MoodColorRow,
+} from '@cosimosi/emotion'
+import {
+  moodColorPresetsQueryKey,
+  readMoodColorPresets,
   useMoodColorEditor,
 } from '@cosimosi/emotion/react'
 import { Button, Card, tokens, useReducedMotion } from '@cosimosi/ui'
 import { MoodStarLayer } from '@cosimosi/universe-render'
 
-import { m, moodLabel } from '../../../shared/i18n/index.ts'
+import {
+  m,
+  moodColorPresetDetail,
+  moodColorPresetTitle,
+  moodLabel,
+} from '../../../shared/i18n/index.ts'
 
 const EMPTY_ROWS: readonly MoodColorRow[] = []
 
 export function ChooseMoodColors({ onContinue }: { onContinue: () => void }) {
+  const queryClient = useQueryClient()
   const editor = useMoodColorEditor(EMPTY_ROWS)
   const [selectedMood, setSelectedMood] = useState<Mood>('JOY')
+
+  // A choice here joins the aggregate the presets are drawn from, so the cached shares stop being
+  // true the moment it lands.
+  const choose = async (mood: Mood, color: Color) => {
+    if (!(await editor.choose(mood, color))) return
+    await queryClient.invalidateQueries({ queryKey: moodColorPresetsQueryKey(mood) })
+  }
   const { colorFor } = editor
   const colors = useMemo(
     () => Object.fromEntries(MOODS.map((mood) => [mood, colorFor(mood)])) as Record<Mood, Color>,
@@ -56,11 +78,14 @@ export function ChooseMoodColors({ onContinue }: { onContinue: () => void }) {
           <Text style={styles.body}>{m.mood_color_onboarding_body()}</Text>
         </View>
         <View style={styles.controls}>
-          <MoodRecommendations
+          <MoodPresets
             mood={selectedMood}
             current={editor.colorFor(selectedMood)}
             disabled={editor.savingMood !== undefined}
-            onChoose={(color) => editor.choose(selectedMood, color)}
+            onChoose={(color) => {
+              // Resolves either way; a failure surfaces in the notice below.
+              choose(selectedMood, color)
+            }}
           />
           {editor.duplicateMood ? (
             <Text accessibilityRole="alert" style={styles.notice}>
@@ -79,7 +104,12 @@ export function ChooseMoodColors({ onContinue }: { onContinue: () => void }) {
   )
 }
 
-function MoodRecommendations({
+/**
+ * The first-run row: the same preset offers the 감정색 tab opens with, read against the live sky.
+ * No picker and no risk gate — every offer here is already a colour the product stands behind, and
+ * hand-tuning a hue is what the tab is for.
+ */
+function MoodPresets({
   mood,
   current,
   disabled,
@@ -92,11 +122,11 @@ function MoodRecommendations({
 }) {
   const transport = useTransport()
   const query = useQuery({
-    queryKey: ['onboarding-mood-color-recommendations', mood],
-    queryFn: () => readMoodColorRecommendations(transport, mood),
+    queryKey: moodColorPresetsQueryKey(mood),
+    queryFn: () => readMoodColorPresets(transport, mood),
     staleTime: Number.POSITIVE_INFINITY,
   })
-  const recommendations = query.data ?? completeMoodColorRecommendations(mood, [])
+  const presets = query.data ?? moodColorPresets(mood, [])
 
   return (
     <Card style={styles.card}>
@@ -104,38 +134,50 @@ function MoodRecommendations({
         <View style={[styles.current, { backgroundColor: current }]} />
         <Text style={styles.name}>{moodLabel(mood)}</Text>
       </View>
-      <View style={styles.recommendations}>
-        {recommendations.map((recommendation) => (
-          <Pressable
-            key={`${recommendation.bucket ?? 'authored'}-${recommendation.color}`}
-            accessibilityRole="button"
-            accessibilityLabel={m.palette_recommendation_label()}
-            accessibilityState={{
-              selected: recommendation.color === current,
-              disabled,
-            }}
-            disabled={disabled}
-            onPress={() => onChoose(recommendation.color)}
-            style={({ pressed }) => [
-              styles.recommendation,
-              recommendation.color === current && styles.selected,
-              (pressed || disabled) && styles.dimmed,
-            ]}
-          >
-            <View style={[styles.swatch, { backgroundColor: recommendation.color }]} />
-            <Text style={styles.share}>
-              {recommendation.share === undefined
-                ? m.palette_recommendation_usual()
-                : m.palette_recommendation_share({
-                    percent: String(Math.round(recommendation.share * 100)),
-                  })}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.presets}>
+        {presets.map((preset) => {
+          const selected = preset.kind !== 'RANDOM' && preset.color === current
+          const detail = moodColorPresetDetail(preset)
+          return (
+            <Pressable
+              key={preset.kind === 'POPULAR' ? preset.color : preset.kind}
+              accessibilityRole="button"
+              accessibilityLabel={m.palette_preset_label()}
+              accessibilityState={{ selected, disabled }}
+              disabled={disabled}
+              onPress={() =>
+                onChoose(preset.kind === 'RANDOM' ? randomMoodColor(mood) : preset.color)
+              }
+              style={({ pressed }) => [
+                styles.preset,
+                selected && styles.selected,
+                (pressed || disabled) && styles.dimmed,
+              ]}
+            >
+              {/* Random has no colour to show. Native has no conic gradient, so the wheel is a row
+                  of dots, one per sector of the OkLCH circle. */}
+              {preset.kind === 'RANDOM' ? (
+                <View style={styles.wheel}>
+                  {RANDOM_HUES.map((color) => (
+                    <View key={color} style={[styles.wheelDot, { backgroundColor: color }]} />
+                  ))}
+                </View>
+              ) : (
+                <View style={[styles.swatch, { backgroundColor: preset.color }]} />
+              )}
+              <Text style={styles.presetTitle}>{moodColorPresetTitle(preset)}</Text>
+              {detail ? <Text style={styles.share}>{detail}</Text> : null}
+            </Pressable>
+          )
+        })}
       </View>
     </Card>
   )
 }
+
+const RANDOM_HUES = Array.from({ length: 6 }, (_, index) =>
+  okLchToColor(clampChromaToGamut({ l: 0.72, c: 0.2, h: (index * 360) / 6 })),
+)
 
 const styles = StyleSheet.create({
   root: { backgroundColor: tokens.color.bg, flex: 1 },
@@ -157,18 +199,27 @@ const styles = StyleSheet.create({
     width: 20,
   },
   name: { color: tokens.color.text, fontSize: tokens.fontSize.base, fontWeight: '600' },
-  recommendations: { flexDirection: 'row', gap: 8 },
-  recommendation: {
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  preset: {
     alignItems: 'center',
     borderColor: tokens.color.border,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
-    flex: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
     gap: 4,
     justifyContent: 'center',
-    minHeight: 72,
+    minHeight: 88,
     padding: 8,
   },
+  presetTitle: {
+    color: tokens.color.text,
+    fontSize: tokens.fontSize.xs,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  wheel: { flexDirection: 'row', gap: 2 },
+  wheelDot: { borderRadius: 5, height: 10, width: 10 },
   selected: { borderColor: tokens.color.primary },
   dimmed: { opacity: 0.6 },
   swatch: {

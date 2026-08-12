@@ -22,6 +22,12 @@ export {
   type UniverseNavigationMode,
 } from './universe-navigation.machine.ts'
 export { UNIVERSE_CAMERA_ENVELOPE, UNIVERSE_CAMERA_RIG } from './camera-rig.ts'
+export {
+  UNIVERSE_DEFAULT_VIEW_MODE,
+  useUniverseViewStore,
+  type UniverseViewMode,
+  type UniverseViewState,
+} from './universe-view-store.ts'
 
 // Write-vertical control-state + proposal algebra
 export {

@@ -959,10 +959,14 @@ func (x *GetMoodColorStatsResponse) GetStats() []*MoodColorStat {
 }
 
 type MoodColorStat struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Bucket        int32                  `protobuf:"varint,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	Share         *float64               `protobuf:"fixed64,2,opt,name=share,proto3,oneof" json:"share,omitempty"`
-	SwatchColor   string                 `protobuf:"bytes,3,opt,name=swatch_color,json=swatchColor,proto3" json:"swatch_color,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Bucket int32                  `protobuf:"varint,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// A bucket's fraction of the choices made for this mood so far. Not optional: a bucket only exists
+	// because someone chose a colour in it, so its share is always a real number — one lone choice
+	// makes its bucket 1.0, and that is a fact about the aggregate rather than a sample too small to
+	// report.
+	Share         float64 `protobuf:"fixed64,2,opt,name=share,proto3" json:"share,omitempty"`
+	SwatchColor   string  `protobuf:"bytes,3,opt,name=swatch_color,json=swatchColor,proto3" json:"swatch_color,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1005,8 +1009,8 @@ func (x *MoodColorStat) GetBucket() int32 {
 }
 
 func (x *MoodColorStat) GetShare() float64 {
-	if x != nil && x.Share != nil {
-		return *x.Share
+	if x != nil {
+		return x.Share
 	}
 	return 0
 }
@@ -1243,12 +1247,11 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\x18GetMoodColorStatsRequest\x12\x12\n" +
 	"\x04mood\x18\x01 \x01(\tR\x04mood\"U\n" +
 	"\x19GetMoodColorStatsResponse\x128\n" +
-	"\x05stats\x18\x01 \x03(\v2\".cosimosi.account.v1.MoodColorStatR\x05stats\"o\n" +
+	"\x05stats\x18\x01 \x03(\v2\".cosimosi.account.v1.MoodColorStatR\x05stats\"`\n" +
 	"\rMoodColorStat\x12\x16\n" +
-	"\x06bucket\x18\x01 \x01(\x05R\x06bucket\x12\x19\n" +
-	"\x05share\x18\x02 \x01(\x01H\x00R\x05share\x88\x01\x01\x12!\n" +
-	"\fswatch_color\x18\x03 \x01(\tR\vswatchColorB\b\n" +
-	"\x06_share\"\x11\n" +
+	"\x06bucket\x18\x01 \x01(\x05R\x06bucket\x12\x14\n" +
+	"\x05share\x18\x02 \x01(\x01R\x05share\x12!\n" +
+	"\fswatch_color\x18\x03 \x01(\tR\vswatchColor\"\x11\n" +
 	"\x0fWithdrawRequest\"e\n" +
 	"\x10WithdrawResponse\x12!\n" +
 	"\fwithdrawn_at\x18\x01 \x01(\tR\vwithdrawnAt\x12.\n" +
@@ -1354,7 +1357,6 @@ func file_cosimosi_account_v1_account_proto_init() {
 	if File_cosimosi_account_v1_account_proto != nil {
 		return
 	}
-	file_cosimosi_account_v1_account_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

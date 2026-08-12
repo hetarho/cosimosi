@@ -59,7 +59,7 @@ type MoodColorStatCount struct {
 
 type MoodColorStat struct {
 	Bucket      int32
-	Share       *float64
+	Share       float64
 	SwatchColor Color
 }
 
@@ -120,12 +120,14 @@ func (s *Service) GetMoodColorStats(
 	if err != nil {
 		return nil, err
 	}
+	// Every bucket that exists carries its share, down to the single choice that makes one bucket
+	// 100% of the choices made for this mood. A zero TotalCount cannot occur alongside a returned
+	// bucket — the total is the sum over the very rows that produced it — but is not divided by.
 	stats := make([]MoodColorStat, 0, len(counts))
 	for _, count := range counts {
 		stat := MoodColorStat{Bucket: count.Bucket, SwatchColor: count.SwatchColor}
-		if count.BucketCount >= int64(values.PaletteStatMinSample) && count.TotalCount > 0 {
-			share := float64(count.BucketCount) / float64(count.TotalCount)
-			stat.Share = &share
+		if count.TotalCount > 0 {
+			stat.Share = float64(count.BucketCount) / float64(count.TotalCount)
 		}
 		stats = append(stats, stat)
 	}

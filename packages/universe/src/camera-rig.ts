@@ -25,4 +25,20 @@ export const UNIVERSE_CAMERA_RIG = {
   /** A glide that can't settle inside the arrival shell within this many seconds force-arrives,
    *  so a chase of a still-drifting target never strands the rig (normal glides land in ~3s). */
   arriveTimeoutSeconds: 6,
+  /**
+   * How far off the flat the pinned view may tilt, in radians — **each way**, above the flat and
+   * below it, so the whole allowance is twice this and the pinned view opens in the middle of it.
+   *
+   * The z axis is the universe's own up — memories lie in the hippocampus band and their gists float
+   * in the neocortex band above ([V9]) — so a level camera is the one pose where that separation
+   * reads as height rather than as scatter. The allowance is enough to feel the depth between the two
+   * bands from slightly above or below, and small enough that the horizon never leaves the frame.
+   */
+  pinnedTilt: (15 * Math.PI) / 180,
+  /** Exp-damp responsiveness of the return to the pinned pose after a glide lets the camera go. */
+  pinnedReturnLambda: 2.6,
+  /** Trackball-equivalent feel for the pinned orbit: slower than a free tumble, because every drag
+   *  here moves a constrained camera around one fixed centre rather than spinning the whole scene. */
+  pinnedRotateSpeed: 0.7,
+  pinnedDampingFactor: 0.12,
 } as const

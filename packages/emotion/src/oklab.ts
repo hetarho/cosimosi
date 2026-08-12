@@ -17,11 +17,19 @@ export interface OkLch {
 
 export const NEAR_NEUTRAL_HUE_BUCKET = Math.ceil(360 / VALUES.palette.hueBucketDegrees)
 
-export function colorToOkLab(color: Color): OkLab {
-  const [r, g, b] = [1, 3, 5].map((offset) => {
+/**
+ * The hex's three channels with the sRGB transfer curve undone — light as the renderer adds it, not
+ * as the display encodes it. Luminance and gamut measures start here, not from the 8-bit values.
+ */
+export function colorToLinearRgb(color: Color): readonly [number, number, number] {
+  return [1, 3, 5].map((offset) => {
     const channel = Number.parseInt(color.slice(offset, offset + 2), 16) / 255
     return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
   }) as [number, number, number]
+}
+
+export function colorToOkLab(color: Color): OkLab {
+  const [r, g, b] = colorToLinearRgb(color)
   const lRoot = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
   const mRoot = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
   const sRoot = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
@@ -32,19 +40,27 @@ export function colorToOkLab(color: Color): OkLab {
   }
 }
 
-export function okLabToColor(lab: OkLab): Color {
+/**
+ * The unclamped linear-light channels an OkLab value asks for. A channel outside `[0, 1]` means the
+ * color is not expressible in sRGB; `okLabToColor` clamps that away, so a reachability check has to
+ * read this rather than the hex it would produce.
+ */
+export function okLabToLinearRgb(lab: OkLab): readonly [number, number, number] {
   const lRoot = lab.l + 0.3963377774 * lab.a + 0.2158037573 * lab.b
   const mRoot = lab.l - 0.1055613458 * lab.a - 0.0638541728 * lab.b
   const sRoot = lab.l - 0.0894841775 * lab.a - 1.291485548 * lab.b
   const l = lRoot ** 3
   const m = mRoot ** 3
   const s = sRoot ** 3
-  const linear = [
+  return [
     4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ]
-  const hex = linear
+}
+
+export function okLabToColor(lab: OkLab): Color {
+  const hex = okLabToLinearRgb(lab)
     .map((channel) => {
       const clamped = Math.max(0, Math.min(1, channel))
       const srgb = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055

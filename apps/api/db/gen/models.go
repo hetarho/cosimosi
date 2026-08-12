@@ -184,6 +184,8 @@ type MoodColorCount struct {
 	HueBucket int16
 	Color     string
 	Count     int64
+	// when this exact color first entered the aggregate; breaks ties between equally-chosen buckets
+	FirstCountedAt pgtype.Timestamptz
 }
 
 type Neuron struct {

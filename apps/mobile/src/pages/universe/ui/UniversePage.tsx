@@ -31,6 +31,7 @@ import {
 import { useDecorationRequestStore } from '@cosimosi/store'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
+import { UniverseViewToggle } from '../../../features/pin-universe-view/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
@@ -204,6 +205,12 @@ export function UniversePage({
         <View style={styles.clock} pointerEvents="box-none">
           <UniverseTimeOverlay />
         </View>
+        {/* How the universe is being held, in the corner the eye starts from and out of the column's
+            flow — it belongs to the SPACE, like the clock across from it, rather than to the row of
+            ways out of the canvas. Last of the two, so it takes the touches where they overlap. */}
+        <View style={styles.viewMode}>
+          <UniverseViewToggle />
+        </View>
         {/* The persistent Twinkle balance + charge host ([G2][G3]), then a dense toolbar of
             icon-only controls: the account home, 꾸미기 ([P5], a panel over the canvas rather than a
             route) and the archive ([D2]) — a quiet column against the screen edge instead of a row
@@ -282,6 +289,7 @@ const styles = StyleSheet.create({
   },
   // Out of the column's flow and spanning it, so `alignItems: 'center'` inside centres on the screen.
   clock: { position: 'absolute', left: 0, right: 0, top: 0 },
+  viewMode: { position: 'absolute', left: 0, top: 0 },
   topRight: { alignItems: 'flex-end', gap: tokens.spacing[3] },
   hud: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: tokens.spacing[3] },
   welcome: {

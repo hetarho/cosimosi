@@ -319,9 +319,9 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   place by every tick, so presenting it would make the version's claim false. The epsilon is sub-pixel at the closest
   framing the camera rig allows, so what it withholds cannot be seen. It does not silence a settled universe outright
   — `force_sim.min_alpha` deliberately keeps a little residual motion — it roughly halves how often one publishes.
-- **Navigation** is the product `NavigationRig` (zoom · rotate · pan via `TrackballControls` where a DOM canvas exists
-  — inert on native for the MVP — plus machine-driven focus/fly glides). Trackball, so free rotation is unbounded in
-  every direction (no polar clamp, no pole stall); glides disable the controls and drive the camera directly. It replaces the demo `CameraControls` for the
+- **Navigation** is the product `NavigationRig` (zoom · rotate · pan where a DOM canvas exists — the control families
+  are inert on native for the MVP — plus machine-driven focus/fly glides). Glides disable the controls and drive the
+  camera directly. It replaces the demo `CameraControls` for the
   universe scene; the demo layer remains for `/test`/`UniverseScene`. The camera/selection modes live in the XState
   navigation machine (`@cosimosi/universe`, ids-only context), polled per frame via `getSnapshot()`. Arrival is a pure,
   unit-tested latch (`navigation-latch.ts`): it fires ARRIVED once when the camera settles inside the epsilon shell,
@@ -329,6 +329,31 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   can't strand the glide), and force-arrives past `arriveTimeoutSeconds` so chasing a still-drifting target always
   returns control. Rig feel scalars (`UNIVERSE_CAMERA_RIG`) are code-level constants in `@cosimosi/universe` (no
   `rendering.camera.*` values group exists yet).
+
+- **Two ways to hold the universe, two control families.** `useUniverseViewStore` (`@cosimosi/universe`) carries a view
+  preference — `pinned` (the default a viewer arrives in) or `free` — and the rig wears the controls that mode needs:
+  - **free** = `TrackballControls`, so rotation is unbounded in every direction (no polar clamp, no pole stall).
+  - **pinned** = `OrbitControls` with `camera.up` set to the world's **+z** (the axis the two memory bands are stacked
+    along, [V9]), `enablePan = false`, and the polar angle clamped to `90° ± pinnedTilt` — the clamp trackball exists to
+    avoid, wanted on purpose here. `camera.up` must be set BEFORE construction: OrbitControls reads it once, as the
+    axis it orbits. The clamp is symmetric, so `pinnedTilt` is the allowance **each way** and the whole tilt is twice
+    it; the opening pose is levelled to elevation 0 rather than merely clamped, because the scene hands the rig a
+    camera looking straight down and clamping alone would seat the view against the top of its own allowance with all
+    the give on one side.
+
+  The mode is a **preference, not a lifecycle** (no ordering, nothing to enter or leave), so it is Zustand rather than a
+  second region in the navigation machine, and it is a rig **prop** rather than a polled value because swapping controls
+  belongs to the effect that owns them. What is polled is `getPinnedView()`: the world point the flat camera orbits and
+  whether something is holding it there (travel target → selection → spotlight → otherwise the stars' centre of mass,
+  measured off the live coordinate buffer each frame, since positions are emergent [I5]).
+
+  The pinned frame loop keeps the camera inside one bounded offset (azimuth · tilt off the flat · distance —
+  `pinned-pose.ts`, pure and unit-tested). Inside the envelope it hands the camera to OrbitControls and keeps reading
+  the pose back out as the home to return to; outside it (a glide just let go, or the mode was only now turned on) it
+  eases position and **slerps orientation** toward the goal with the controls off — a lookAt would snap a rolled camera
+  level on the first frame, and letting OrbitControls take a camera outside its clamp would snap it too. While a star
+  holds the frame the home pose is left untouched, which is what makes closing a star's panel (`CLEAR_SELECTION`) glide
+  the camera back to where the viewer was looking from rather than to wherever the glide ended.
 
 - **Cross-route fly hand-off (plan 47).** The diary-reader jump lives on a separate route from the canvas, so it cannot
   send the navigation actor a `FLY` directly. It parks the target in a shared one-slot `usePendingFlyTargetStore`

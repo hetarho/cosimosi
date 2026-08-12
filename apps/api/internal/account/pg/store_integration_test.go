@@ -117,6 +117,43 @@ func TestMoodColorWriteKeepsOnePerUserAndMovesAggregateAtomically(t *testing.T) 
 	}
 }
 
+// Two buckets holding one choice each are equally popular, so the order has to come from somewhere
+// that is not the hue circle. The aggregate stamps when a colour first arrived and ranks the earlier
+// one first — otherwise "most chosen" and "next most chosen" swap on a number nobody chose.
+func TestMoodColorStatsBreakAnEqualTieByFirstArrival(t *testing.T) {
+	pool := openAccountTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-mood-color-tie-%d", time.Now().UnixNano())
+	early := base + "-early"
+	late := base + "-late"
+	cleanupAccountTestRows(t, pool, early, late)
+	store := NewStore(pool.PgxPool())
+
+	// A violet at bucket 10 and a teal at bucket 5: the later arrival sits at the LOWER bucket
+	// number, so an ordering that fell through to hue_bucket would put it first.
+	later := account.MoodColor{Mood: account.MoodStress, Color: "#4eb9ad"}
+	earlier := account.MoodColor{Mood: account.MoodStress, Color: "#b98cea"}
+	if _, err := store.SetMoodColor(ctx, mustUserScope(t, early), earlier, account.HueBucket(earlier.Color)); err != nil {
+		t.Fatalf("SetMoodColor(earlier): %v", err)
+	}
+	if _, err := store.SetMoodColor(ctx, mustUserScope(t, late), later, account.HueBucket(later.Color)); err != nil {
+		t.Fatalf("SetMoodColor(later): %v", err)
+	}
+
+	stats, err := store.ListMoodColorStats(ctx, account.MoodStress, 3)
+	if err != nil || len(stats) != 2 {
+		t.Fatalf("tied stats = %+v err %v, want two buckets", stats, err)
+	}
+	if stats[0].SwatchColor != earlier.Color || stats[1].SwatchColor != later.Color {
+		t.Fatalf("tie order = %+v, want the earlier arrival first", stats)
+	}
+	if stats[0].BucketCount != 1 || stats[0].TotalCount != 2 {
+		t.Fatalf("tied counts = %+v", stats)
+	}
+}
+
 func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *testing.T) {
 	pool := openAccountTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

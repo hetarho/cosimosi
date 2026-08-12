@@ -34,21 +34,33 @@ export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-con
 export { arousalToInitialStrength } from './strength.ts'
 export {
   NEAR_NEUTRAL_HUE_BUCKET,
+  colorToLinearRgb,
   colorToOkLab,
   colorToOkLch,
   deltaEOkLab,
   hueBucket,
   okLabToColor,
+  okLabToLinearRgb,
   okLabToOkLch,
   okLchToColor,
   okLchToOkLab,
   type OkLab,
   type OkLch,
 } from './oklab.ts'
+export { clampChromaToGamut, isInGamut, maxChromaInGamut, relativeLuminance } from './gamut.ts'
 export {
   EMOTION_LIGHTNESS_STEPS,
   nearDuplicateMood,
+  nearestEmotionStep,
   resolveMoodColors,
   snapToEmotionStep,
   type MoodColorRow,
 } from './mood-color.ts'
+export { MOOD_COLOR_RISKS, moodColorRisks, type MoodColorRisk } from './mood-color-risk.ts'
+export {
+  moodColorPresets,
+  randomMoodColor,
+  type MoodColorBucketStat,
+  type MoodColorPreset,
+} from './mood-color-preset.ts'
+export { draftFromColor, draftFromOkLch, type MoodColorDraft } from './mood-color-draft.ts'

@@ -91,11 +91,13 @@ export const VALUES = {
   },
   palette: {
     axisWarnValenceThreshold: 0.6,
-    recommendationCount: 3,
-    statMinSample: 10,
+    recommendationCount: 5,
+    popularPresetCount: 3,
     hueBucketDegrees: 30,
     nearNeutralChromaMax: 0.04,
     similarDeltaEMin: 0.05,
+    glareLuminanceMax: 0.55,
+    dimLuminanceMin: 0.21,
     onboardingFieldRadius: 18,
   },
   encode: {

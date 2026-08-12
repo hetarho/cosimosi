@@ -513,7 +513,7 @@ describe('mobile auth gate', () => {
       fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
       fireEvent.press(screen.getByText(m.signup_nickname_submit()))
       await waitFor(() => expect(screen.getByText(m.mood_color_onboarding_title())).toBeTruthy())
-      fireEvent.press(screen.getAllByLabelText(m.palette_recommendation_label())[1])
+      fireEvent.press(screen.getAllByLabelText(m.palette_preset_label())[0])
       await waitFor(() => expect(saved).toBeDefined())
       expect(saved?.mood).toBe('JOY')
       expect(moodColor('JOY')).toBe(saved?.color)
@@ -669,7 +669,7 @@ describe('mobile me screen', () => {
     return view
   }
 
-  it('opens Me with five local-state tabs and no decoration controls', async () => {
+  it('opens Me with six local-state tabs and no decoration controls', async () => {
     const fakes = createMobileShellFakes({
       userId: 'me-test-user',
       transport: createMobileAppTransport(),
@@ -677,14 +677,19 @@ describe('mobile me screen', () => {
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const view = await openMe(fakes)
     try {
-      expect(screen.getAllByRole('tab')).toHaveLength(5)
+      expect(screen.getAllByRole('tab')).toHaveLength(6)
       expect(screen.getByText(m.me_tab_profile())).toBeTruthy()
+      expect(screen.getByText(m.me_tab_mood_colors())).toBeTruthy()
       expect(screen.getByText(m.me_tab_stardust())).toBeTruthy()
       expect(screen.getByText(m.me_tab_achievements())).toBeTruthy()
       expect(screen.getByText(m.me_tab_diary())).toBeTruthy()
       expect(screen.getByText(m.me_tab_account())).toBeTruthy()
       expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(1)
-      expect(screen.getByText(m.palette_editor_title())).toBeTruthy()
+
+      // Colours moved off the profile tab onto their own, where the tab shows what each feeling
+      // wears and opens the editor one feeling at a time.
+      fireEvent.press(screen.getByText(m.me_tab_mood_colors()))
+      await waitFor(() => expect(screen.getByText(m.palette_editor_title())).toBeTruthy())
 
       fireEvent.press(screen.getByText(m.me_tab_achievements()))
       // The tab now lists the catalog. The fake transport answers no entries, so the empty line is

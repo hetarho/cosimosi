@@ -131,7 +131,11 @@ message GetMoodColorStatsResponse {
 
 message MoodColorStat {
   int32 bucket = 1;
-  optional double share = 2;
+  // A bucket's fraction of the choices made for this mood so far. Not optional: a bucket only exists
+  // because someone chose a colour in it, so its share is always a real number — one lone choice
+  // makes its bucket 1.0, and that is a fact about the aggregate rather than a sample too small to
+  // report.
+  double share = 2;
   string swatch_color = 3;
 }
 

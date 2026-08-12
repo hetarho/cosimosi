@@ -171,11 +171,13 @@ var (
 // palette
 const (
 	PaletteAxisWarnValenceThreshold = 0.6
-	PaletteRecommendationCount      = 3
-	PaletteStatMinSample            = 10
+	PaletteRecommendationCount      = 5
+	PalettePopularPresetCount       = 3
 	PaletteHueBucketDegrees         = 30
 	PaletteNearNeutralChromaMax     = 0.04
 	PaletteSimilarDeltaEMin         = 0.05
+	PaletteGlareLuminanceMax        = 0.55
+	PaletteDimLuminanceMin          = 0.21
 	PaletteOnboardingFieldRadius    = 18
 )
 

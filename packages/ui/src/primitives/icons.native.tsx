@@ -1,8 +1,10 @@
 import { ArrowCounterClockwiseIcon } from 'phosphor-react-native/src/icons/ArrowCounterClockwise'
+import { ArrowsOutCardinalIcon } from 'phosphor-react-native/src/icons/ArrowsOutCardinal'
 import { BookOpenIcon } from 'phosphor-react-native/src/icons/BookOpen'
 import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix'
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info'
 import { PaletteIcon } from 'phosphor-react-native/src/icons/Palette'
+import { PushPinIcon } from 'phosphor-react-native/src/icons/PushPin'
 import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle'
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash'
 
@@ -61,6 +63,16 @@ export function ResetIcon({ size = ICON_SIZE, color: ink = color.text }: IconPro
 /** 지우기 — the destructive act on the record this control sits beside. */
 export function DeleteIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
   return <TrashIcon size={size} color={ink} />
+}
+
+/** 고정 모드 — the view held flat and centred, with only so much give in it. */
+export function PinnedViewIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <PushPinIcon size={size} color={ink} weight="fill" />
+}
+
+/** 자유 모드 — the view free to turn in any direction. */
+export function FreeViewIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <ArrowsOutCardinalIcon size={size} color={ink} />
 }
 
 /**

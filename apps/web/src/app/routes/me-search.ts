@@ -15,6 +15,7 @@ export interface MeSearchParams {
 // a tab to the page's union without listing it here fails `pnpm typecheck`.
 const ME_TAB_IDS = {
   profile: true,
+  'mood-colors': true,
   stardust: true,
   achievements: true,
   diary: true,

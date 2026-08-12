@@ -1,11 +1,10 @@
 export {
   applyMoodColors,
-  completeMoodColorRecommendations,
+  moodColorPresetsQueryKey,
   moodColorRows,
-  readMoodColorRecommendations,
+  readMoodColorPresets,
   readMoodColors,
   writeMoodColor,
-  type MoodColorRecommendation,
 } from './preference/mood-colors.ts'
 export {
   useMoodColorEditor,

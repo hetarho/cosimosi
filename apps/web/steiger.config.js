@@ -20,6 +20,18 @@ export default defineConfig([
     },
   },
   {
+    // How the universe is held — 고정 모드 / 자유 모드 — is one user action with one host by design:
+    // it belongs to the universe page's own chrome, and a second entry point would be a second place
+    // to disagree about which way the camera is being flown. The mode itself is shared state in
+    // @cosimosi/universe (the canvas reads it without a prop, because React context does not cross
+    // the R3F reconciler); this slice is only the control. Scoped so a genuinely insignificant future
+    // slice still gets flagged.
+    files: ['./src/features/pin-universe-view/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The writing-flow vertical: four single-action feature slices composed by one widget, and that
     // widget mounted by the universe page. A single reference is the FSD grain here — a feature is
     // one user action (§3.1), not a slice to merge away. The episodic-memory entity holds the

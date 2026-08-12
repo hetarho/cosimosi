@@ -6,8 +6,6 @@ import (
 	"errors"
 	"os"
 	"testing"
-
-	"github.com/cosimosi/api/internal/platform/values"
 )
 
 func TestMoodColorGoldenParity(t *testing.T) {
@@ -70,34 +68,39 @@ func TestSetMoodColorValidatesSnapsAndStoresPerMood(t *testing.T) {
 	}
 }
 
-func TestMoodColorStatsOmitSharesBelowFloor(t *testing.T) {
+func TestMoodColorStatsShareEveryBucketIncludingASingleChoice(t *testing.T) {
 	t.Parallel()
 	store := &fakeStore{
 		profiles: map[string]Profile{"u1": provisionedProfile("u1")},
 		moodColorStats: map[Mood][]MoodColorStatCount{
-			MoodJoy: {
-				{
-					Bucket:      1,
-					BucketCount: int64(values.PaletteStatMinSample),
-					TotalCount:  int64(values.PaletteStatMinSample) + 1,
-					SwatchColor: "#ca53b8",
-				},
-				{
-					Bucket:      2,
-					BucketCount: int64(values.PaletteStatMinSample) - 1,
-					TotalCount:  int64(values.PaletteStatMinSample) + 1,
-					SwatchColor: "#e6b731",
-				},
+			// One lone choice: its bucket holds every choice there is.
+			MoodJoy: {{Bucket: 1, BucketCount: 1, TotalCount: 1, SwatchColor: "#ca53b8"}},
+			// Three choices split two ways. The store's order is the answer — the service ranks
+			// nothing, so an equal pair stays in the order the aggregate handed over.
+			MoodCalm: {
+				{Bucket: 4, BucketCount: 1, TotalCount: 3, SwatchColor: "#4eb9ad"},
+				{Bucket: 6, BucketCount: 2, TotalCount: 3, SwatchColor: "#5eb093"},
 			},
 		},
 	}
 	service := newTestService(t, store)
 
-	stats, err := service.GetMoodColorStats(context.Background(), mustScope(t, "u1"), MoodJoy)
+	lone, err := service.GetMoodColorStats(context.Background(), mustScope(t, "u1"), MoodJoy)
 	if err != nil {
-		t.Fatalf("GetMoodColorStats: %v", err)
+		t.Fatalf("GetMoodColorStats(JOY): %v", err)
 	}
-	if len(stats) != 2 || stats[0].Share == nil || stats[1].Share != nil {
-		t.Fatalf("stats share floor = %+v", stats)
+	if len(lone) != 1 || lone[0].Share != 1 {
+		t.Fatalf("single-choice share = %+v, want one bucket at 1", lone)
+	}
+
+	split, err := service.GetMoodColorStats(context.Background(), mustScope(t, "u1"), MoodCalm)
+	if err != nil {
+		t.Fatalf("GetMoodColorStats(CALM): %v", err)
+	}
+	if len(split) != 2 || split[0].Bucket != 4 || split[1].Bucket != 6 {
+		t.Fatalf("store order = %+v, want it preserved", split)
+	}
+	if split[0].Share != 1.0/3.0 || split[1].Share != 2.0/3.0 {
+		t.Fatalf("split shares = %+v", split)
 	}
 }

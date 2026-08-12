@@ -11,6 +11,7 @@ import {
   universeNavigationMachine,
   useEpisodicMemoryStore,
   useNeuronStore,
+  useSpotlightStore,
   useSynapseStore,
 } from '@cosimosi/universe'
 
@@ -146,6 +147,85 @@ describe('useUniverseScene — pick resolution (R006)', () => {
     // The one fidelity knob the native shell turns down; the seed stays shared so both platforms
     // scatter the same field, just less of it.
     expect(captured.current?.latentField.positions).toHaveLength(8 * 3)
+    view.unmount()
+    actor.stop()
+  })
+})
+
+describe('useUniverseScene — what the pinned camera orbits', () => {
+  beforeEach(() => {
+    useEpisodicMemoryStore.getState().clear()
+    useNeuronStore.getState().clear()
+    useSynapseStore.getState().clear()
+    useSpotlightStore.getState().clear()
+  })
+
+  it('holds the middle of the stars while nothing has taken the frame', async () => {
+    const actor = createActor(universeNavigationMachine).start()
+    const { captured, view } = mountScene(actor)
+    await waitFor(() => expect(captured.current?.graph).not.toBeNull())
+    // One inline sim step, so the coordinate buffer the centre is measured from exists.
+    act(() => captured.current?.pump(1 / 60))
+
+    const buffer = captured.current?.bridge.coordinates.current
+    expect(buffer).toBeTruthy()
+    const nodes = (buffer as Float32Array).length / 3
+    const mean = (axis: number) => {
+      let total = 0
+      for (let i = 0; i < nodes; i++) total += (buffer as Float32Array)[i * 3 + axis] as number
+      return total / nodes
+    }
+
+    const pinned = captured.current?.getPinnedView()
+    expect(pinned?.held).toBe(false)
+    expect(pinned?.center[0]).toBeCloseTo(mean(0), 5)
+    expect(pinned?.center[1]).toBeCloseTo(mean(1), 5)
+    expect(pinned?.center[2]).toBeCloseTo(mean(2), 5)
+    view.unmount()
+    actor.stop()
+  })
+
+  it('holds the selected star instead, and lets it go again when the selection is cleared', async () => {
+    const actor = createActor(universeNavigationMachine).start()
+    const { captured, view } = mountScene(actor)
+    await waitFor(() => expect(captured.current?.graph).not.toBeNull())
+    act(() => captured.current?.pump(1 / 60))
+    const free = captured.current?.getPinnedView()
+    const centroid = [free?.center[0], free?.center[1], free?.center[2]]
+
+    act(() => actor.send({ type: 'SELECT', nodeId: 'server-a' }))
+
+    const held = captured.current?.getPinnedView()
+    expect(held?.held).toBe(true)
+    const index = captured.current?.nodeIndex?.episodicMemories['server-a'] as number
+    const buffer = captured.current?.bridge.coordinates.current as Float32Array
+    expect(held?.center[0]).toBeCloseTo(buffer[index * 3] as number, 5)
+    expect(held?.center[2]).toBeCloseTo(buffer[index * 3 + 2] as number, 5)
+
+    // Leaving the star — the panel closing is a CLEAR_SELECTION — is what puts the middle of the
+    // stars back in the middle of the frame; the rig reads this and glides home.
+    act(() => actor.send({ type: 'CLEAR_SELECTION' }))
+
+    const released = captured.current?.getPinnedView()
+    expect(released?.held).toBe(false)
+    expect(released?.center[0]).toBeCloseTo(centroid[0] as number, 5)
+    view.unmount()
+    actor.stop()
+  })
+
+  it('keeps holding while a spotlight is on, so an arrival is not slid away from', async () => {
+    const actor = createActor(universeNavigationMachine).start()
+    const { captured, view } = mountScene(actor)
+    await waitFor(() => expect(captured.current?.graph).not.toBeNull())
+    act(() => captured.current?.pump(1 / 60))
+
+    act(() => useSpotlightStore.getState().spotlight(['server-b']))
+
+    const held = captured.current?.getPinnedView()
+    expect(held?.held).toBe(true)
+    const index = captured.current?.nodeIndex?.episodicMemories['server-b'] as number
+    const buffer = captured.current?.bridge.coordinates.current as Float32Array
+    expect(held?.center[1]).toBeCloseTo(buffer[index * 3 + 1] as number, 5)
     view.unmount()
     actor.stop()
   })

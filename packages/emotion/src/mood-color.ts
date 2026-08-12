@@ -12,12 +12,19 @@ export interface MoodColorRow {
   readonly color: Color
 }
 
+/**
+ * The step a lightness belongs to. Exported so a picker can offer the three steps and mark the one a
+ * color already sits at, using the same rule `snapToEmotionStep` corrects with.
+ */
+export function nearestEmotionStep(lightness: number): number {
+  return EMOTION_LIGHTNESS_STEPS.reduce((nearest, step) =>
+    Math.abs(step - lightness) < Math.abs(nearest - lightness) ? step : nearest,
+  )
+}
+
 export function snapToEmotionStep(color: Color): Color {
   const lch = colorToOkLch(color)
-  const lightness = EMOTION_LIGHTNESS_STEPS.reduce((nearest, step) =>
-    Math.abs(step - lch.l) < Math.abs(nearest - lch.l) ? step : nearest,
-  )
-  return okLchToColor({ ...lch, l: lightness })
+  return okLchToColor({ ...lch, l: nearestEmotionStep(lch.l) })
 }
 
 export function nearDuplicateMood(

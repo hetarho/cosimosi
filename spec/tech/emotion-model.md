@@ -63,10 +63,14 @@ server-authoritative snap/bucket subset to Go, with `mood-color-parity.json` pin
 Go outputs. This color arithmetic is golden-parity because the server stores its result; rendering
 itself remains frontend-only.
 
-The coarse axis check is still pure and warn-only. The per-mood OkLab near-duplicate check is also
-warn-only. Generated `palette.*` values own recommendation count, sample floor, bucket width,
-near-neutral chroma, duplicate ΔE, onboarding field radius, and the existing axis threshold. Color
-tables and formulas stay code/content.
+The coarse axis check is still pure and warn-only. So are the per-mood OkLab near-duplicate check and
+`moodColorRisks`, which reads glare/dim/faint off sRGB relative luminance and OkLCH chroma —
+luminance rather than the lightness step, because OkLCH lightness is hue-independent while what
+washes out a neighbour or sinks into the sky is emitted light. `gamut.ts` owns the sRGB boundary the
+picker offers chroma against. Generated `palette.*` values own the aggregate candidate pool, popular
+preset count, bucket width, near-neutral chroma, duplicate ΔE, the two risk luminance bands,
+onboarding field radius, and the existing axis threshold. Color tables and formulas stay
+code/content.
 
 The explicit `@cosimosi/emotion/i18n` seam owns `moodLabel(wireMood)`: its exhaustive mood-to-message
 projection falls back to neutral for an unknown DTO value, and app `shared/i18n` barrels re-export
