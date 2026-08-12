@@ -12,16 +12,39 @@ import { EmptySky } from '../../../widgets/empty-sky/index.ts'
 export interface LoginPageProps {
   mode?: 'signIn' | 'signUp'
   onModeChange?: (mode: 'signIn' | 'signUp') => void
+  /** The sandbox, for a visitor who arrived at the door before deciding anything. */
+  onTryDemo?: () => void
+  /** The page that answers "what is this" — the landing, at its own address. */
+  onAbout?: () => void
 }
 
 /**
- * The door, held on the same screen the front door opens with: the empty sky, the turning mark, one
- * sentence, and the form under it.
+ * Whether the door takes an email and a password at all.
+ *
+ * Off while Google is the only provider the product actually supports. The fields stay ON SCREEN
+ * rather than being deleted: someone who came here to type an email is told why the field will not
+ * take it, instead of being left to look for a field that is not there. Turning credentials back on
+ * is this one flag — the form, its machine and its failure copy are all still wired, which is also
+ * why `signup-credential.test.tsx` still proves the wiring.
+ *
+ * Annotated `boolean` on purpose: it keeps every use below a real branch to the compiler, so nothing
+ * downstream of it narrows to dead code while the flag is off.
+ */
+const CREDENTIAL_ENTRY_ENABLED: boolean = false
+
+/**
+ * The door — and, since the origin root became this screen, the product's first contact: the empty
+ * sky, the turning mark, one sentence, and the form under it.
  *
  * It is deliberately the landing's first screen and not a variation on it. A visitor who follows the
- * signup ask down the page arrives here having just been looking at that sky, and a white card on a
- * flat ground would read as a different product — the continuity is what makes the step feel like
- * walking through a door rather than leaving.
+ * signup ask down the landing arrives here having just been looking at that sky, and a white card on
+ * a flat ground would read as a different product — the continuity is what makes the step feel like
+ * walking through a door rather than leaving. That the landing now sits at its own address rather
+ * than at `/` does not change the rule: whichever of the two a visitor meets first, the other has to
+ * look like the same night.
+ *
+ * The way in is Google alone for now (`CREDENTIAL_ENTRY_ENABLED`), and the screen says so where a
+ * visitor is about to reach for a field rather than after they have tried it.
  *
  * **One screen, and only one.** There is no scroll here and nothing below the fold to find: the whole
  * of the choice — Google, email, password, and the way across to the other mode — fits the viewport,
@@ -30,7 +53,7 @@ export interface LoginPageProps {
  * keyboard eating half the screen) the column grows and scrolls rather than clipping its own submit
  * button, which is the one failure a locked height would produce.
  */
-export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
+export function LoginPage({ mode = 'signIn', onModeChange, onTryDemo, onAbout }: LoginPageProps) {
   const facade = useAuthFacade()
   const { status, error } = useSessionSnapshot()
   const [signupSnapshot, sendSignup, signupActorRef] = useMachine(signupCredentialMachine)
@@ -81,7 +104,11 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
   }
 
   return (
-    <EntryScreen title={mode === 'signUp' ? m.signup_title() : m.login_title()}>
+    <EntryScreen
+      title={mode === 'signUp' ? m.signup_title() : m.login_title()}
+      onTryDemo={onTryDemo}
+      onAbout={onAbout}
+    >
       {mode === 'signUp' && signupSnapshot.matches('confirmationSent') ? (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-text-muted">{m.signup_confirmation_sent()}</p>
@@ -104,13 +131,18 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
                 ? m.signup_google()
                 : m.login_google()}
           </Button>
+          {/* Said directly under the button it is about, before the fields it explains — a notice
+              placed after them would only be read by someone who had already tried to type. */}
+          {CREDENTIAL_ENTRY_ENABLED ? null : (
+            <p className="text-sm text-text-muted">{m.login_google_only()}</p>
+          )}
           <TextField
             label={mode === 'signUp' ? m.signup_email_label() : m.login_email_label()}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            disabled={pending}
+            disabled={pending || !CREDENTIAL_ENTRY_ENABLED}
             required
           />
           <TextField
@@ -119,7 +151,7 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
             autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            disabled={pending}
+            disabled={pending || !CREDENTIAL_ENTRY_ENABLED}
             required
           />
           {(mode === 'signIn' && error) ||
@@ -135,7 +167,7 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
                   : m.login_failed()}
             </p>
           ) : null}
-          <Button type="submit" color="primary" disabled={pending}>
+          <Button type="submit" color="primary" disabled={pending || !CREDENTIAL_ENTRY_ENABLED}>
             {pending && method === 'password'
               ? m.common_loading()
               : mode === 'signUp'
@@ -159,18 +191,37 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
 }
 
 /**
- * The screen both entry modes are held in: the sky, the mark, the sentence, and one panel.
+ * The screen both entry modes are held in: the sky, the mark, the sentence, one panel, and the two
+ * ways out of it.
  *
  * The title is the screen's, not the panel's, which is what makes the two read as one column rather
  * than as a card with a heading floating on a picture — the same lockup the hero uses, with the form
  * standing where the hero's paragraph does.
+ *
+ * The mark is large here and small everywhere else. This is the origin root now, so it is the first
+ * thing anyone sees of the product and the only place the brand has room to be a picture rather than
+ * a label; the header's 20px lockup on the landing is the same solid doing the opposite job.
+ *
+ * Under the panel are the two SIDE DOORS. A visitor who has never heard of this arrives here rather
+ * than on the landing, so the screen has to offer both the sandbox and the explanation — but the ask
+ * is the way in, so both stay the design system's quietest SHAPE: text, small, outside the card.
+ *
+ * They differ in colour rather than in weight, and the order is the page's own rule (public-copy:
+ * demo before signup, both times). The demo is `primary` because a stranger has no reason to trust a
+ * form yet and the product's whole claim is that it only reads in motion; the explanation is
+ * `secondary`, offered to whoever wants the argument instead. Neither is filled, so neither competes
+ * with the Google button above them.
  */
 function EntryScreen({
   title,
   children,
+  onTryDemo,
+  onAbout,
 }: {
   readonly title: string
   readonly children: ReactNode
+  readonly onTryDemo?: () => void
+  readonly onAbout?: () => void
 }) {
   return (
     <main className="relative flex min-h-dvh items-center justify-center px-6 py-16 text-text">
@@ -187,7 +238,7 @@ function EntryScreen({
         className="pointer-events-none fixed left-1/2 top-1/2 h-104 w-208 max-w-[150vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-bg/35 blur-3xl"
       />
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-6">
-        <div className="size-16">
+        <div className="size-24 sm:size-28">
           <BrandMark />
         </div>
         <h1 className="break-keep text-2xl font-semibold tracking-tight text-balance text-text">
@@ -196,6 +247,20 @@ function EntryScreen({
         <Card variant="glass" className="w-full">
           {children}
         </Card>
+        {onTryDemo === undefined && onAbout === undefined ? null : (
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            {onTryDemo === undefined ? null : (
+              <Button variant="text" color="primary" size="sm" onClick={onTryDemo}>
+                {m.login_try_demo()}
+              </Button>
+            )}
+            {onAbout === undefined ? null : (
+              <Button variant="text" color="secondary" size="sm" onClick={onAbout}>
+                {m.login_about()}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </main>
   )

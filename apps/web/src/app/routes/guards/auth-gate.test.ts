@@ -51,8 +51,8 @@ describe('loginReturnTarget', () => {
 
   // `from` is user-visible URL input: reject anything that is not an internal single-slash
   // pathname, and never return to /login itself (a crafted from must not pin a signed-in user
-  // to the login screen). `/` joins that set now that the root is the public front door — replaying it
-  // would bounce a freshly signed-in user back through the marketing gate.
+  // to the login screen). `/` is in that set for the same reason — the root renders the door, so
+  // replaying it would hand a freshly signed-in user the screen they just came through.
   for (const hostile of [
     '/',
     '/login',

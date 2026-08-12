@@ -3,15 +3,19 @@
   The origin's own sitemap. The blog ships its own at /blog/sitemap.xml, which robots.txt names alongside
   this one.
 
-  Only the root is listed, though /demo is crawl-allowed too. The app is a client-rendered SPA, so every
-  URL is served the same index.html — whose <link rel="canonical"> points at the root. Listing /demo would
-  ask a crawler to index a URL that then declares itself a duplicate of /, which is a contradiction we
-  would be publishing on purpose. /demo has no crawlable content of its own anyway: it is a JS sandbox.
-  It stays Allow'd so a shared link is never blocked.
+  One URL is listed, and it is /about — the landing page's own address since the origin root became the
+  sign-in door. The app is a client-rendered SPA, so every URL is served the same index.html, and that
+  shell's <link rel="canonical"> names /about too: the listed URL and the declared canonical have to be
+  the same one, or the sitemap would be asking a crawler to index a page that immediately points
+  somewhere else.
+
+  The root and /demo are crawl-allowed but unlisted, for the same reason: both answer with a shell that
+  declares itself a duplicate of /about, and neither has crawlable content of its own — one is a form,
+  the other a JS sandbox. They stay Allow'd so a shared link is never blocked.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://cosimosi.haeram.me/</loc>
+    <loc>https://cosimosi.haeram.me/about</loc>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>

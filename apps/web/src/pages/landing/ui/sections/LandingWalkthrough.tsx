@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 
 import { moodColor } from '@cosimosi/emotion'
@@ -16,6 +16,7 @@ import {
   walkthroughSceneFacts,
   type WalkthroughContent,
   type WalkthroughSceneFacts,
+  type WalkthroughState,
   type WalkthroughStepId,
 } from '../../model/walkthrough.ts'
 import { WALKTHROUGH_STEP_COPY, walkthroughContent } from '../../config/walkthrough-content.ts'
@@ -54,40 +55,45 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
   const atEnd = isLastWalkthroughStep(state) && state.acted
 
   return (
-    // The column takes the SLACK of the screen evenly rather than all of it below. `pt-14`/`pb-24`
-    // are the minimum insets (the bottom one clears the scroll cue), and whatever the screen has left
-    // over is split above and below by `justify-center` — measured, the column is ~565 of 844 CSS px
-    // on a phone, so anchoring it to the top left a ~190px hole under the invitation and put the
-    // screen's whole mass in its upper half. `min-h-dvh` (not a fixed height) is what makes the
-    // centring safe: where the column is taller than the screen there is no free space to split, so
-    // it falls back to the top anchor and the run is never clipped or pushed under the fold.
-    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 pb-24 pt-14 sm:pt-20">
+    // Three bands, top to bottom: the chrome at the screen's top edge, the run taking whatever is
+    // left over, and the invitation at the foot just above the scroll cue. `pt-14`/`pb-24` are the
+    // insets (the bottom one clears the cue). Nothing is centred against the whole screen any more —
+    // the two ends are ANCHORED, so the counter and the invitation stand in the same place on every
+    // step and only the run between them breathes. `min-h-dvh` (not a fixed height) is what keeps
+    // that safe: a column taller than the screen grows downward and scrolls rather than clipping.
+    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 pb-24 pt-14 sm:pt-20">
       {/* One config for the whole run: the preference drops every transform below and keeps the
           fades, so a visitor who asked for less motion still sees each step replace the last. */}
       <MotionConfig reducedMotion="user">
-        <div className="flex flex-col gap-4 sm:gap-5">
-          {/* Chrome only, no title — the stage speaks for itself. Replay on the left, small and out
-              of the action's way, hidden (not removed, so nothing reflows) at both ends of the run:
-              nothing to replay at the start, and the ending's own action IS the replay. The row sits
-              straight on the veiled sky, which is the only surface this section has. */}
-          <div className="flex h-8 items-center justify-between gap-3">
-            <Button
-              color="neutral"
-              variant="text"
-              size="sm"
-              className={atStart || atEnd ? 'invisible' : undefined}
-              onClick={() => setState(restartWalkthrough())}
-            >
-              {m.landing_walk_restart()}
-            </Button>
-            <span className="text-xs tabular-nums text-text-subtle">
-              {m.landing_walk_progress({
-                current: WALKTHROUGH_STEPS.indexOf(state.step) + 1,
-                total: WALKTHROUGH_STEPS.length,
-              })}
-            </span>
-          </div>
+        {/* Chrome only, no title — the stage speaks for itself. Replay on the left, small and out
+            of the action's way, hidden (not removed, so nothing reflows) at both ends of the run:
+            nothing to replay at the start, and the ending's own action IS the replay. It rides at
+            the screen's top edge rather than travelling with the run, because it is the run's
+            frame — where you are, and the way back to the beginning — not a step in it. The row
+            sits straight on the veiled sky, which is the only surface this section has. */}
+        <div className="flex h-8 shrink-0 items-center justify-between gap-3">
+          <Button
+            color="neutral"
+            variant="text"
+            size="sm"
+            className={atStart || atEnd ? 'invisible' : undefined}
+            onClick={() => setState(restartWalkthrough())}
+          >
+            {m.landing_walk_restart()}
+          </Button>
+          <span className="text-xs tabular-nums text-text-subtle">
+            {m.landing_walk_progress({
+              current: WALKTHROUGH_STEPS.indexOf(state.step) + 1,
+              total: WALKTHROUGH_STEPS.length,
+            })}
+          </span>
+        </div>
 
+        {/* The run itself, taking the screen's slack and centred in it. `grow`, never `flex-1`: a zero
+            basis would size this band from the leftover space alone, so on a screen too short for the
+            stage the run would overflow into the invitation instead of pushing the section past
+            `min-h-dvh` and letting the page scroll. */}
+        <div className="flex grow flex-col justify-center gap-4 py-4 sm:gap-5">
           {/* The stage: one fixed box for the whole run. Its height is the same on every step, so the
               action below it never moves — the only thing that changes is what is inside. Taller than
               the words and actions need, because the section is a screen and the stage is what the
@@ -100,31 +106,34 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
             </AnimatePresence>
           </div>
 
-          {/* The words, sized by what they say — the column breathes a little between steps, which is
-              the trade for not reserving room. The swap is a pure-opacity word wipe (the spans below
-              carry it); this wrapper is only the presence boundary. */}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={`${state.step}:${String(state.acted)}`}>
-              <WalkthroughWords step={state.step} acted={state.acted} />
-            </motion.div>
-          </AnimatePresence>
+          {/* The words, in a box as tall as the LONGEST caption in the run rather than as tall as the
+              one on screen — see `WalkthroughCaptionBox`. The swap inside it is a pure-opacity word
+              wipe (the spans below carry it); the motion wrapper is only the presence boundary. */}
+          <WalkthroughCaptionBox>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={`${state.step}:${String(state.acted)}`}>
+                <WalkthroughWords step={state.step} acted={state.acted} />
+              </motion.div>
+            </AnimatePresence>
+          </WalkthroughCaptionBox>
 
-          {/* The actions, always the same corner: back, and the way onward. Two text buttons and
-              nothing else — the run has ONE control, and `next` is it. Each step is two presses (the
-              change, then the move on), so a visitor walks the whole arc without ever choosing what
-              to do; a per-step verb button would offer a choice the story does not have and read as
-              an app the visitor is now operating.
+          {/* The actions: back, and the way onward. Two text buttons and nothing else — the run has
+              ONE control, and `next` is it. Each step is two presses (the change, then the move on),
+              so a visitor walks the whole arc without ever choosing what to do; a per-step verb
+              button would offer a choice the story does not have and read as an app the visitor is
+              now operating.
 
               `next` is the secondary colour with a trailing arrow — the direction is the meaning, and
               the page's primary filled colour is spent on the two real asks (the demo below, the
               signup at the foot), which must not have to compete with a slideshow's pager. Back is
               hidden (not removed) at the start so `next` never moves.
 
-              The row shares the invitation's centre line on a phone and only takes the column's right
-              edge from `sm` up. A 390px column that ran the caption left, the pager right and the
-              invitation centred had three alignment edges in a space too narrow to read them as
-              deliberate (ui-principles §2 — fewer edges, harder commitment to each). */}
-          <div className="flex items-center justify-center gap-1 sm:justify-end">
+              On a phone the pair takes the column's two edges: back where a thumb reaches on the
+              left, onward on the right, as far apart as the screen allows. From `sm` up, where the
+              column is wide enough that a split pair would read as two unrelated controls, they close
+              up on the right edge instead. Both are single, deliberate alignments — never the middle,
+              where the pager would sit on the same centre line as the invitation below it. */}
+          <div className="flex items-center justify-between gap-1 sm:justify-end">
             <Button
               color="neutral"
               variant="text"
@@ -153,13 +162,14 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
               </Button>
             )}
           </div>
+        </div>
 
-          {/* The invitation, closing the screen the argument was just made on. It reads as the answer
-              to what the visitor has been watching rather than as a banner, which is the whole reason
-              it is here instead of in a section of its own. */}
-          <div className="flex justify-center pt-3">
-            <WalkthroughDemoCta onTryDemo={onTryDemo} />
-          </div>
+        {/* The invitation, closing the screen the argument was just made on. It reads as the answer
+            to what the visitor has been watching rather than as a banner, which is the whole reason
+            it is here instead of in a section of its own — and it stands at the foot of the screen,
+            just above the way down, so it is the last thing under the eye before the scroll. */}
+        <div className="flex shrink-0 justify-center">
+          <WalkthroughDemoCta onTryDemo={onTryDemo} />
         </div>
       </MotionConfig>
       <LandingScrollCue />
@@ -167,11 +177,59 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
   )
 }
 
+/**
+ * The caption's box, held at the height of the TALLEST caption the run can show.
+ *
+ * The controls under it must not move as the visitor walks: a step whose words wrap to three lines
+ * would otherwise push the pager down and pull it back up a press later, which reads as the page
+ * flinching. So every one of the twelve captions is laid into the same grid cell — hidden, inert, and
+ * unread — and the live one is laid over them. The box is then as tall as the longest of them by
+ * measurement, in whichever language and at whatever width the visitor is actually reading, which is
+ * what a hardcoded `min-h-*` cannot be: that number would be a guess to re-tune every time a sentence
+ * is edited or a translation lands.
+ */
+function WalkthroughCaptionBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid">
+      {CAPTION_STATES.map(({ step, acted }) => (
+        <div
+          key={`${step}:${String(acted)}`}
+          aria-hidden
+          className="invisible col-start-1 row-start-1"
+        >
+          <WalkthroughWords step={step} acted={acted} wiped={false} />
+        </div>
+      ))}
+      <div className="col-start-1 row-start-1">{children}</div>
+    </div>
+  )
+}
+
+// Every (step, acted) pair the run passes through, in walk order — derived from the step tuple rather
+// than listed, so a seventh step is measured by construction instead of by remembering to add it.
+const CAPTION_STATES: readonly WalkthroughState[] = WALKTHROUGH_STEPS.flatMap((step) => [
+  { step, acted: false },
+  { step, acted: true },
+])
+
 // One (step, acted) state's words — the mirror ending carries the [M5] definition on top of its
-// result. The captions are authored to comparable lengths so the column barely moves between steps.
+// result. The captions are authored to comparable lengths, and the box they sit in holds the tallest
+// of them, so the column never moves between steps.
+//
 // Every word is its own opacity-only motion span, delayed by reading order, so a caption leaves from
-// its first word and the next one arrives the same way — a wipe, not a slide.
-function WalkthroughWords({ step, acted }: { step: WalkthroughStepId; acted: boolean }) {
+// its first word and the next one arrives the same way — a wipe, not a slide. `wiped={false}` renders
+// the same words as plain text, for the hidden copies `WalkthroughCaptionBox` measures its height
+// against: those are laid out and never seen, so twelve of them must cost twelve strings rather than
+// twelve entrances the compositor has to run.
+function WalkthroughWords({
+  step,
+  acted,
+  wiped = true,
+}: {
+  step: WalkthroughStepId
+  acted: boolean
+  wiped?: boolean
+}) {
   const copy = WALKTHROUGH_STEP_COPY[step]
   // The [M5] definition, stated where the walkthrough ends — required copy, not decoration: removing
   // its key from the catalogues fails the build, the same guarantee the retired mirror section carried.
@@ -187,11 +245,15 @@ function WalkthroughWords({ step, acted }: { step: WalkthroughStepId; acted: boo
     <div className="flex flex-col gap-2">
       {definition === null ? null : (
         <p className="max-w-measure break-keep text-base font-medium leading-7 text-text sm:text-lg sm:leading-8">
-          <WipedWords words={definitionWords} offset={0} total={total} />
+          {wiped ? <WipedWords words={definitionWords} offset={0} total={total} /> : definition}
         </p>
       )}
       <p className="max-w-measure break-keep text-base leading-7 text-text-muted sm:text-lg sm:leading-8">
-        <WipedWords words={bodyWords} offset={definitionWords.length} total={total} />
+        {wiped ? (
+          <WipedWords words={bodyWords} offset={definitionWords.length} total={total} />
+        ) : (
+          body
+        )}
       </p>
     </div>
   )

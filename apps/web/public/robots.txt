@@ -1,7 +1,9 @@
 # The origin root belongs to the app, not to the blog served beneath it.
 #
 # The SPA answers every path with the same index.html, so without these Disallow lines a crawler would
-# index the landing page's content under half a dozen wrong URLs. The list is enumerated rather than
+# index the landing page's content under half a dozen wrong URLs. The landing itself lives at /about
+# since the root became the sign-in door — that is the one address the shell's canonical and the
+# sitemap name. The list is enumerated rather than
 # `Disallow: /` + allowlist, because the blog served at /blog/ must stay indexable — which also means an
 # unknown path is not blocked, only unlisted: it still returns the shell, and the not-found screen is what
 # a human sees. That is the same client-rendering limitation the deferred prerendering note records.
@@ -10,6 +12,7 @@
 
 User-agent: *
 Allow: /
+Allow: /about
 Allow: /demo
 
 # Authenticated product routes — the SPA serves the shell for all of them.

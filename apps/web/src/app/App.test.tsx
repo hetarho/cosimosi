@@ -165,7 +165,7 @@ describe('web auth gate', () => {
   // beforeLoad redirect keeps the universe route (and its GetUniverse read) from mounting. The
   // guard's redirect + from-carry decision table is pinned in guards/auth-gate.test.ts; this is the
   // end-to-end complement: the write action / universe HUD is absent for a signed-out session.
-  it('shows the front door — never the universe — to a settled signed-out visitor at /', async () => {
+  it('shows the door — never the universe — to a settled signed-out visitor at /', async () => {
     const fakes = createTestHarnessFakes()
     const observability = createObservabilityFacade()
     const router = createAppRouter({
@@ -186,16 +186,18 @@ describe('web auth gate', () => {
         />,
       )
       expect(html).not.toContain('Write a diary')
-      // A stranger gets the page, not a password field: the landing's own headline, and the
-      // walkthrough that now carries the page's argument (its [M5] closing step is pinned by
-      // pages/landing's own model tests).
-      expect(html).toContain('A diary that fills a universe')
-      expect(html).toContain('Step 1 of 6')
-      // No credential form. The page offers the way in — the header's quiet sign-in link — but a
-      // stranger at `/` is never handed a password field, so the field itself is what this asserts
-      // rather than any word the link could also be spelled with.
-      expect(html).not.toContain('type="password"')
-      expect(html).toContain('Sign in')
+      // The root is the door: a settled signed-out visitor is handed the way in, plus the two side
+      // doors that are the whole reason the marketing page is still one click away.
+      expect(html).toContain('Welcome back')
+      expect(html).toContain('Enter with Google')
+      expect(html).toContain('What is cosimosi?')
+      expect(html).toContain('Try the universe')
+      // Google is the only provider wired, and the screen says so rather than leaving a visitor to
+      // discover it by typing into a field that refuses them.
+      expect(html).toContain('For now, Google is the only way in.')
+      expect(html).toMatch(/type="password"[^>]*disabled=""/)
+      // The marketing page is NOT what `/` resolves to any more; it has its own address.
+      expect(html).not.toContain('A diary that fills a universe')
     } finally {
       fakes.dispose()
       observability.dispose()
@@ -203,10 +205,10 @@ describe('web auth gate', () => {
   })
 
   // A1's second arm: `/` is one URL with one meaning per session state, so an authenticated arrival must
-  // not show the marketing page even for a frame. `LandingRoute` commits only on a settled `'landing'`
-  // decision and holds neutrally otherwise, which is also what covers the mid-refresh case — `refreshing`
-  // maps to `'hold'`, pinned in gate-decision.test.ts.
-  it('renders no landing content at / for an authenticated arrival', async () => {
+  // not see the door even for a frame. `EntryRoute` commits only on a settled signed-out decision and
+  // holds neutrally otherwise, which is also what covers the mid-refresh case — `refreshing` maps to
+  // `'hold'`, pinned in gate-decision.test.ts.
+  it('renders no sign-in form at / for an authenticated arrival', async () => {
     const fakes = createTestHarnessFakes({ userId: 'landing-forward-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
@@ -227,8 +229,8 @@ describe('web auth gate', () => {
           locale="en"
         />,
       )
-      expect(html).not.toContain('A diary you can look up at.')
-      expect(html).not.toContain('Here is one diary, start to finish')
+      expect(html).not.toContain('type="password"')
+      expect(html).not.toContain('Enter with Google')
     } finally {
       fakes.dispose()
       observability.dispose()
@@ -253,8 +255,9 @@ describe('web auth gate', () => {
     })
   })
 
-  // A3: no landing/marketing route between login and the universe — an invented path is not-found.
-  it('has no landing route — an unmapped path resolves to not-found', async () => {
+  // The marketing page has exactly one address. An invented one — `/landing`, the name it never had —
+  // is not-found rather than a second way to reach it.
+  it('resolves an unmapped path to not-found', async () => {
     const fakes = createTestHarnessFakes()
     const observability = createObservabilityFacade()
     const router = createAppRouter({
@@ -280,6 +283,47 @@ describe('web auth gate', () => {
       observability.dispose()
     }
   })
+
+  // `/about` is the landing at its own address, and it carries NO gate of its own: it renders the page
+  // for a stranger and for someone who is already signed in alike. The second arm is the one worth
+  // pinning — the surface used to be the root, where an authenticated session was forwarded away from
+  // it, so a shared link must no longer bounce the person who followed it.
+  it.each<SessionStatus>(['signedOut', 'authenticated'])(
+    'renders the landing at /about for a %s visitor',
+    async (status) => {
+      const fakes = createTestHarnessFakes()
+      const observability = createObservabilityFacade()
+      const router = createAppRouter({
+        diagnosticsEnabled: false,
+        getSessionStatus: () => status,
+        initialEntries: ['/about'],
+      })
+      await router.load()
+      try {
+        const html = renderToString(
+          <App
+            router={router}
+            authFacade={fakes.authFacade}
+            queryClient={fakes.queryClient}
+            transport={fakes.transport}
+            observabilityFacade={observability}
+            locale="en"
+          />,
+        )
+        // The landing's own headline, and the walkthrough that carries the page's argument (its [M5]
+        // closing step is pinned by pages/landing's own model tests).
+        expect(html).toContain('A diary that fills a universe')
+        expect(html).toContain('Step 1 of 6')
+        // No credential form: the page offers the way in — the header's quiet sign-in link — but never
+        // a password field of its own.
+        expect(html).not.toContain('type="password"')
+        expect(html).toContain('Sign in')
+      } finally {
+        fakes.dispose()
+        observability.dispose()
+      }
+    },
+  )
 
   // The two public routes that carry no session at all. `/demo` is the one PUBLIC surface behind a
   // dynamic import, so this is where a guard accidentally inherited by it — or a chunk that fails to

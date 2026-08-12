@@ -10,7 +10,7 @@ describe('gateDecision', () => {
     authenticated: 'universe',
     bootstrapping: 'hold',
     refreshing: 'hold',
-    signedOut: 'landing',
+    signedOut: 'login',
     signingIn: 'login',
     expired: 'login',
     failed: 'login',
@@ -31,23 +31,29 @@ describe('gateDecision', () => {
     expect(gateDecision('failed')).toBe('login')
   })
 
-  it('sends only a settled signed-out visitor to the landing page', () => {
-    // A returning user whose token died is not a marketing arrival, and a pending sign-in belongs on
-    // the surface it started from. Exactly one status opens the front door.
-    const landing = (Object.keys(cases) as SessionStatus[]).filter(
-      (status) => gateDecision(status) === 'landing',
+  it('sends every signed-out status to the same door', () => {
+    // The root is the way in, and the page that introduces the product has its own address — so no
+    // signed-out status resolves to a surface any other signed-out status does not.
+    const door = (Object.keys(cases) as SessionStatus[]).filter(
+      (status) => gateDecision(status) === 'login',
     )
-    expect(landing).toEqual(['signedOut'])
+    expect(door).toEqual(['signedOut', 'signingIn', 'expired', 'failed'])
+  })
+
+  it('has no marketing arm left to resolve to', () => {
+    // The `'landing'` decision retired with the marketing page's move off `/`; a status quietly
+    // mapping back to it would mean the root means two things again.
+    const decisions = (Object.keys(cases) as SessionStatus[]).map(gateDecision)
+    expect([...new Set(decisions)].sort()).toEqual(['hold', 'login', 'universe'])
   })
 })
 
 describe('requiresSignIn', () => {
-  // The structural guard for widening the union: every consumer asks this instead of comparing to
-  // 'login', so the day a fifth decision arrives the exhaustive switch refuses to compile rather than
-  // letting a signed-out visitor through four separate `=== 'login'` checks.
+  // The structural guard every consumer asks through instead of comparing to 'login', so the day a
+  // fourth decision arrives the exhaustive switch refuses to compile rather than letting a signed-out
+  // visitor through four separate `=== 'login'` checks.
   const cases: Record<GateDecision, boolean> = {
     login: true,
-    landing: true,
     universe: false,
     hold: false,
   }
@@ -60,6 +66,6 @@ describe('requiresSignIn', () => {
 
   it('is true for every decision a signed-out person can reach, and no other', () => {
     const signedOutDecisions = (Object.keys(cases) as GateDecision[]).filter(requiresSignIn)
-    expect(signedOutDecisions.sort()).toEqual(['landing', 'login'])
+    expect(signedOutDecisions.sort()).toEqual(['login'])
   })
 })

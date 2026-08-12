@@ -140,10 +140,11 @@ export interface NavigationRootProps {
  * changes, so sign-in lands on the universe and sign-out returns to login with no manual reset — and
  * the universe (and its `GetUniverse` read) never mount without a session.
  *
- * The web front door has no native counterpart, by a stated waiver: a person who installed the app has
- * already converted, so `'landing'` maps to the login stack here. That is what `requiresSignIn` is for
- * — the day a fifth gate decision arrives, this line refuses to compile instead of quietly sending a
- * signed-out visitor into the universe stack. The nav library stays confined to this segment.
+ * The web's marketing page has no native counterpart, by a stated waiver: a person who installed the
+ * app has already converted. Since the web root became the door too, every signed-out status maps to
+ * the login stack on both platforms — and this still asks `requiresSignIn` rather than comparing to
+ * `'login'`, so the day a fourth gate decision arrives this line refuses to compile instead of quietly
+ * sending a signed-out visitor into the universe stack. The nav library stays confined to this segment.
  */
 export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps = {}) {
   const { status } = useSessionSnapshot()

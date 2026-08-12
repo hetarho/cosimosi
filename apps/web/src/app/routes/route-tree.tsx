@@ -14,6 +14,7 @@ import { NotFoundScreen } from './not-found.tsx'
 import {
   AuthenticatedLayout,
   BlogNotFoundRoute,
+  EntryRoute,
   InviteRoute,
   LandingRoute,
   LoginRoute,
@@ -21,7 +22,7 @@ import {
 } from './route-screens.tsx'
 
 // The signed-in product, the admin console and the demo sandbox are fetched on demand rather than
-// shipped in the entry chunk the landing page blocks on. `lazyRouteComponent` (not bare
+// shipped in the entry chunk the front door blocks on. `lazyRouteComponent` (not bare
 // `React.lazy`) because the route tree is hand-built and this is the API wired into the router's own
 // pending and `.preload()` lifecycle — `router.ts` supplies the one pending state they all share.
 //
@@ -67,8 +68,8 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 // The authenticated app subtree (pathless): its guard runs before any product route mounts, so the
 // gate is inherited by every route under it (the universe, the archive, and the my page surface
-// it lands). The diagnostics /test route sits OUTSIDE it (its own gate); /login, /demo and the
-// landing at `/` are public.
+// it lands). The diagnostics /test route sits OUTSIDE it (its own gate); the door at `/`, /login,
+// the landing at /about and /demo are public.
 const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'authenticated',
@@ -76,14 +77,27 @@ const authenticatedRoute = createRoute({
   component: AuthenticatedLayout,
 })
 
-// The front door. Under `rootRoute` beside /login and /demo, with no `beforeLoad` of any kind: the
-// origin root is a stranger's first contact, so an auth guard here would redirect away the one visitor
-// it exists for. `LandingRoute` resolves by gate decision instead, which keeps `/` a single decision
-// point rather than a URL that means two things at once. Sitting outside the authenticated layout is
-// also what keeps `PaletteBootstrap` and the achievement watcher off it.
-const landingRoute = createRoute({
+// The front door: the origin root is the way IN. No `beforeLoad` of any kind — an auth guard here
+// would redirect away the signed-out visitor the route exists for — so `EntryRoute` resolves by gate
+// decision instead, which keeps `/` a single decision point rather than a URL that means two things at
+// once. Sitting outside the authenticated layout is also what keeps `PaletteBootstrap` and the
+// achievement watcher off it.
+//
+// `/login` still exists and still renders the same screen: it is where the guard sends a deep link,
+// carrying `from`, and that return target is the whole reason the two are not one route.
+const entryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: EntryRoute,
+})
+
+// What the product is, for someone who has not decided yet. Public, under `rootRoute` beside /demo,
+// with no `beforeLoad` and no gate decision either: a plain public page, so an authenticated visitor
+// who follows a shared link reads it rather than being bounced to their universe. Only the root has a
+// session to resolve; this address means one thing to everyone.
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/about',
   component: LandingRoute,
 })
 
@@ -186,7 +200,8 @@ const designRoute = createRoute({
 
 export const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, meRoute, adminRoute]),
-  landingRoute,
+  entryRoute,
+  aboutRoute,
   loginRoute,
   signupRoute,
   inviteRoute,

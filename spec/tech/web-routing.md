@@ -32,7 +32,8 @@ never import the library; they navigate through the seam in §4.
   File-based routing is not used — it scatters route files and fights FSD.
 - Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/universe` →
   `UniverseHomePage` (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/me` →
-  `MePage` (`pages/me`, plan 64); outside it, **`/` → `LandingPage`** (`pages/landing`, the public front door, §5b),
+  `MePage` (`pages/me`, plan 64); outside it, **`/` → `LoginPage`** (the door — the origin root is the way in, §5b),
+  **`/about` → `LandingPage`** (`pages/landing`, the public marketing page, §5b),
   `/login` and `/signup` → the two `LoginPage` modes,
   `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
   `/design` → `DesignShowcasePage` (`pages/design`, the design showcase), `/demo` → `DemoPage`
@@ -53,17 +54,27 @@ answered in the app's voice, and it goes back to `/blog/` through `window.locati
 navigation would land straight back on itself. `not_found_handling: "single-page-application"` returns HTTP 200, so it is
 a soft 404 mitigated by `noindex`; see [blog-site.md](blog-site.md) §5.
 
-### 5b. The public root (plan 81)
+### 5b. The public root and the landing (plan 81)
 
-`/` is `landingRoute` under `rootRoute` with **no `beforeLoad`**: an auth guard there would redirect away the one
-visitor the route exists for. `LandingRoute` resolves by gate decision instead — `'landing'` renders the page,
-`'universe'` navigates to `/universe`, `'login'` navigates to `/login`, `'hold'` renders the shipped neutral hold — so
-`/` is the app's single decision point and no URL means two things at once. It also carries the public locale switch:
-`pages` may not import `app`, so `setActiveLocale` + `writeStoredLocale` reach the page as an injected callback, the
-same seam `onOpenReader`/`onExit` use. The landing's import closure bans `@connectrpc/*`, the generated clients, the
-query/cache seam, every server-backed `/react` mirror and `@cosimosi/demo`: the front door cannot obtain a transport,
-so no product read is expressible there. `apps/web/public/{robots.txt,sitemap.xml}` and the shell's SEO block belong to
-this route — see [landing-page.md](landing-page.md).
+**`/` is the door.** `entryRoute` under `rootRoute` with **no `beforeLoad`** — an auth guard there would redirect away
+the signed-out visitor the route exists for — so `EntryRoute` resolves by gate decision instead: a signed-out decision
+renders `LoginPage`, `'universe'` navigates to `loginReturnTarget(undefined)` = `/universe`, `'hold'` renders the
+shipped neutral hold. The form renders only when `requiresSignIn(decision)` is true, never on `!== 'hold'`: the
+redirect is an effect, so an authenticated arrival reaches the render first and would otherwise be shown a password
+field for a frame. `/login` renders the same screen through the same `EntryDoor` component and differs only in
+carrying the guard's `from`, which is the whole reason the two are separate routes.
+
+**`/about` is the landing.** `aboutRoute` under `rootRoute`, public, with no `beforeLoad` **and no gate decision**: at
+its own address there is nothing left for the session to resolve, so an authenticated visitor following a shared link
+reads the page rather than being bounced to their universe. It carries the public locale switch: `pages` may not import
+`app`, so `setActiveLocale` + `writeStoredLocale` reach the page as an injected callback, the same seam
+`onOpenReader`/`onExit` use. The landing's import closure bans `@connectrpc/*`, the generated clients, the query/cache
+seam, every server-backed `/react` mirror and `@cosimosi/demo`: the marketing page cannot obtain a transport, so no
+product read is expressible there.
+
+The door offers `/about` and `/demo` as side doors, because a stranger's first contact is now the form rather than the
+argument. `apps/web/public/{robots.txt,sitemap.xml}` and the shell's SEO block name `/about` as the canonical URL —
+the one address whose rendered page matches the shell's metadata — see [landing-page.md](landing-page.md).
 
 ## 3. Type safety
 
@@ -207,13 +218,14 @@ slice is not "insignificant" (verified — `lint:fsd` is green with none added).
 
 ## 5d. The bundle split — which routes ship in the entry chunk
 
-The origin root is the landing page, so whatever rides in the entry chunk is what every cold visitor and
-every crawler downloads before the hero paints. The route seam is therefore also the **chunk boundary**:
+The origin root is the door and the landing is one click away, so whatever rides in the entry chunk is what
+every cold visitor and every crawler downloads before the first screen paints. The route seam is therefore
+also the **chunk boundary**:
 
-| Loaded                             | Routes                                                                                     | Why                                                                                                                                                                                                                                                                                   |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **static** (entry chunk)           | `/`, `/login`, `/signup`, `/invite/$token`, `/blog/$`, the pathless `authenticated` layout | the public surface a stranger lands on cold, plus the guard. Lazy-loading the page the visitor asked for would add a round trip to the path the split exists to speed up, and moving the layout behind a dynamic import would let an unauthenticated frame render before `beforeLoad` |
-| **dynamic** (`lazyRouteComponent`) | `/universe`, `/diary`, `/me`, `/admin`, `/demo`, `/test`, `/design`                        | nobody arrives on these cold: the product needs a session, `/demo` is reached from a landing CTA, and the two diagnostics surfaces are unreachable unless the flag is on                                                                                                              |
+| Loaded                             | Routes                                                                                               | Why                                                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **static** (entry chunk)           | `/`, `/about`, `/login`, `/signup`, `/invite/$token`, `/blog/$`, the pathless `authenticated` layout | the public surface a stranger lands on cold, plus the guard. Lazy-loading the page the visitor asked for would add a round trip to the path the split exists to speed up, and moving the layout behind a dynamic import would let an unauthenticated frame render before `beforeLoad` |
+| **dynamic** (`lazyRouteComponent`) | `/universe`, `/diary`, `/me`, `/admin`, `/demo`, `/test`, `/design`                                  | nobody arrives on these cold: the product needs a session, `/demo` is reached from a landing CTA, and the two diagnostics surfaces are unreachable unless the flag is on                                                                                                              |
 
 Rules that keep it working:
 
@@ -236,7 +248,10 @@ Rules that keep it working:
 
 **Still open:** the entry chunk is renderer-dominated. `three.js` reaches it as a static dependency of the
 landing's own two scenes, so the next win is a **reduced renderer entry** for `LandingHeroScene` /
-`LandingWalkthroughScene` — a separate change with its own measurement. Preloading a lazy route on link
+`LandingWalkthroughScene` — a separate change with its own measurement. Making `/about` **lazy** is now a
+second candidate that was not available while it was the root: the door renders no walkthrough scene, so a
+visitor who never clicks through would stop paying for one. It stays static until measured, because a
+stranger can still land on `/about` cold from search or from the blog. Preloading a lazy route on link
 intent (`defaultPreload`) is the other unclaimed follow-up.
 
 ## 6. Composition and testing
@@ -260,27 +275,27 @@ intent (`defaultPreload`) is the other unclaimed follow-up.
   replace the current history entry, remain deep-linkable, and survive reload without introducing a tab state
   machine.
 - **Trailing slash is pinned to `'never'`** on `createAppRouter`, so the canonical client form is slashless
-  (`/universe`, `/demo`) with the root as the sole exception. It is pinned rather than defaulted because the origin now
-  publishes canonical URLs: the shell's `<link rel="canonical">` and `public/sitemap.xml` use that same form, and the
-  router has to agree with them. `/blog/` is **outside** this router — the Worker's asset handler serves it — so the
+  (`/about`, `/universe`, `/demo`) with the root as the sole exception. It is pinned rather than defaulted because the
+  origin now publishes canonical URLs: the shell's `<link rel="canonical">` (which names `/about`) and
+  `public/sitemap.xml` use that same form, and the router has to agree with them. `/blog/` is **outside** this router — the Worker's asset handler serves it — so the
   blog's own `trailingSlash: 'always'` cannot conflict, and no product route's matching behaviour changed. Owned by
   plan 81, which introduced the first real information architecture.
 
 ## 8. The auth gate (plan 53) — the app-entry contract
 
-**`/` is the public front door; the universe is `/universe`.** The rule is one pure mapping —
-`gateDecision(status)` in `packages/auth` (beside the [04] facade): `authenticated` → universe; settled **`signedOut` →
-landing**; `signingIn`/`expired`/`failed` → login (a returning user whose token died is not a marketing arrival, and
-`failed` is a signed-out user from the product's view, never an error screen); `bootstrapping`/`refreshing` → **hold**
-(neutral, never a redirect — no signed-out flash and no landing flash either; [04] preserves `userId` through a
-refresh).
+**`/` is the public door; the universe is `/universe`; the landing is `/about`.** The rule is one pure mapping —
+`gateDecision(status)` in `packages/auth` (beside the [04] facade): `authenticated` → universe; **every signed-out
+status** (`signedOut`/`signingIn`/`expired`/`failed`) → login (`failed` is a signed-out user from the product's view,
+never an error screen); `bootstrapping`/`refreshing` → **hold** (neutral, never a redirect — no signed-out flash;
+[04] preserves `userId` through a refresh).
 
-Widening that union was the dangerous part, because every consumer used to ask `=== 'login'` and a fourth arm would
-have passed all of those comparisons silently. So the same file exports **`requiresSignIn(decision)`** — an exhaustive
-`switch`, true for `'login'` and `'landing'` — and all four consumers (the web guard, the authenticated layout, the
-landing wrapper's sibling checks, the mobile stack selector) branch through it. A future fifth decision is a compile
-error inside one pure function instead of a behaviour change spread across four files. Both apps express the mapping
-through their own nav seam (disciplinary parity, §3.5):
+The union carries **three** arms. The `'landing'` arm the front door introduced is retired: it answered "which of two
+surfaces does `/` mean for a signed-out visitor", and the root now means one thing, so a decision distinguishing them
+would be a distinction nothing reads. The same file still exports **`requiresSignIn(decision)`** — an exhaustive
+`switch` — and all four consumers (the web guard, the authenticated layout, the entry/signup routes, the mobile stack
+selector) branch through it rather than comparing to `'login'`: the hazard it was built for is a future FOURTH arm
+passing every `=== 'login'` check silently, and one of those checks guards the authenticated subtree. Both apps express
+the mapping through their own nav seam (disciplinary parity, §3.5):
 
 - **Web** — every product route mounts under a pathless **`authenticated` layout route**. Its `beforeLoad` runs
   `authGuardBeforeLoad` (`routes/guards/auth-gate.ts`): a settled signed-out arrival is `redirect`ed to `/login`
@@ -291,19 +306,20 @@ through their own nav seam (disciplinary parity, §3.5):
   **while mounted** navigates to `/login` with the current pathname. Product reads (`GetUniverse`) mount only under
   the layout, so none can issue without a session. The router context carries a live `getSessionStatus` accessor
   (wired from the [04] facade in `WebRouterProvider`) — the guard never touches Supabase or the session machine.
-- **`/login` and `/signup`** — public routes composing the auth facade's sign-in and signup
-  commands. Both hold while the session settles, bounce authenticated users to the product, and
-  navigate reciprocally. `/` reaches `/login` too, from the landing header's sign-in link
-  (`LandingRoute` supplies `onSignIn` beside the demo and signup destinations); the two screens
-  share the landing's own ground, recorded in [landing-page.md](landing-page.md) §2b. `/invite/$token` captures into the pending-invite holder and replaces its
+- **`/`, `/login` and `/signup`** — public routes composing the auth facade's sign-in and signup
+  commands. All three render only on a signed-out decision, bounce authenticated users to the product, and
+  navigate reciprocally; `/about` reaches `/login` from the landing header's sign-in link
+  (`LandingRoute` supplies `onSignIn` beside the demo and signup destinations), and the entry screen reaches
+  `/about` and `/demo` from its own side doors. The two screens share one ground, recorded in
+  [landing-page.md](landing-page.md) §2b. `/invite/$token` captures into the pending-invite holder and replaces its
   history entry with `/signup`, so the opaque token leaves the address bar and back history.
-  On reaching `authenticated`, `/login` navigates to
+  On reaching `authenticated`, the door navigates to
   `loginReturnTarget(from)` — `from` is user-visible URL input, validated at use: only an internal single-slash
   pathname is replayed (never `//host`/absolute URLs and never `/`, `/login`, `/signup`, or
-  `/invite/...` — `/` joins that set because replaying it would bounce a freshly signed-in user back through the
-  marketing gate), else `/universe`. While
-  `bootstrapping`/`refreshing` the route renders the neutral hold, not the form (the no-flash rule applies to `/login`
-  too); `signingIn` stays on the form.
+  `/invite/...` — `/` is in that set because it renders the door, so replaying it would hand a freshly signed-in user
+  the screen they just came through), else `/universe`. While
+  `bootstrapping`/`refreshing` the route renders the neutral hold, not the form (the no-flash rule applies to the
+  door at every address it stands at); `signingIn` stays on the form.
 - **Mobile mirror** — `app/navigation/NavigationRoot.tsx` selects the authoritative stack from the same snapshot via
   the same mapping: login decision → the `Login` stack; `bootstrapping` → the `Boot` splash; otherwise the
   `Universe` stack (`refreshing` keeps it mounted — a cold entry is never `refreshing`). React Navigation swaps the

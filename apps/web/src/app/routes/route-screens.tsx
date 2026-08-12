@@ -85,27 +85,21 @@ export function AuthenticatedLayout() {
   return <AuthHold />
 }
 
-// `/` is the app's single decision point, so no URL means two things at once: a signed-out visitor gets
-// the front door, an authenticated one is forwarded to their universe, and a session still settling
-// holds neutrally rather than flashing either surface ([U4]).
+// `/about` is what the product is, for someone who has not decided yet. It carries NO gate: it used to
+// be the root, where the session decided which of three surfaces `/` meant, and at its own address there
+// is nothing left to decide — a signed-in visitor following a shared link reads the page rather than
+// being bounced to their universe, the same way /demo and the blog behave.
 //
-// The page takes its two destinations and the locale seam as callbacks, because `pages` may not import
+// The page takes its destinations and the locale seam as callbacks, because `pages` may not import
 // `app` (§3.1) — `setActiveLocale` plus persistence lives up here with the rest of the i18n wiring, and
 // the page just says which of the two locales the visitor chose.
 export function LandingRoute() {
-  const { status } = useSessionSnapshot()
   const navigate = useAppNavigate()
   const locale = useActiveLocale()
-  const decision = gateDecision(status)
-  useEffect(() => {
-    if (decision === 'universe') navigate({ to: '/universe' })
-    else if (decision === 'login') navigate({ to: '/login' })
-  }, [decision, navigate])
   const onSelectLocale = useCallback((next: Locale) => {
     setActiveLocale(next)
     writeStoredLocale(next)
   }, [])
-  if (decision !== 'landing') return <AuthHold />
   return (
     <LandingPage
       locale={locale}
@@ -130,26 +124,51 @@ export function BlogNotFoundRoute() {
   )
 }
 
-// The login entry: on a successful sign-in the session reaches authenticated, so this returns the
-// user to the route they were headed for (the guard's `from`, validated) or the universe. An
-// already-signed-in visitor to /login is bounced straight to the universe. While the session is
-// still settling (bootstrapping/refreshing) this holds neutrally instead of rendering the form —
-// the no-flash rule applies to /login too: a signed-in user opening /login cold must not see a
-// sign-in form for a beat before being bounced. `signingIn` keeps the form (that is where the
-// pending sign-in lives).
-export function LoginRoute() {
-  const search = useSearch({ strict: false }) as { from?: string }
+// The entry screen, wherever it stands: on a successful sign-in the session reaches authenticated, so
+// this returns the user to the route they were headed for (the guard's `from`, validated) or the
+// universe. An already-signed-in visitor is bounced straight there.
+//
+// The form renders ONLY on a signed-out decision — asked through `requiresSignIn`, never `!== 'hold'`.
+// The redirect above is an effect, so a settling session (bootstrapping/refreshing) and an
+// authenticated arrival both reach this line before the navigation runs, and either one rendering the
+// form would flash a password field at somebody who is already inside. `signingIn` is signed-out and
+// keeps the form: that is where the pending sign-in lives.
+//
+// `from` is the only difference between the two routes that render it, which is why they share a
+// component rather than a copy: `/` is the front door a stranger arrives at, `/login` is where the auth
+// guard sends a deep link, carrying where it was headed.
+//
+// It supplies the screen's three destinations — the other mode, the sandbox, and the page that says
+// what this is — because a page may not import the router (§3.1).
+function EntryDoor({ from }: { readonly from?: string }) {
   const { status } = useSessionSnapshot()
   const navigate = useAppNavigate()
   const decision = gateDecision(status)
   const authenticated = decision === 'universe'
   useEffect(() => {
     if (authenticated) {
-      navigate({ to: loginReturnTarget(search.from) })
+      navigate({ to: loginReturnTarget(from) })
     }
-  }, [authenticated, search.from, navigate])
-  if (decision === 'hold') return <AuthHold />
-  return <LoginPage onModeChange={() => navigate({ to: '/signup' })} />
+  }, [authenticated, from, navigate])
+  if (!requiresSignIn(decision)) return <AuthHold />
+  return (
+    <LoginPage
+      onModeChange={() => navigate({ to: '/signup' })}
+      onTryDemo={() => navigate({ to: '/demo' })}
+      onAbout={() => navigate({ to: '/about' })}
+    />
+  )
+}
+
+/** `/` — the origin root is the way in. No `from`: nobody was sent here from anywhere. */
+export function EntryRoute() {
+  return <EntryDoor />
+}
+
+/** `/login` — the same door, carrying the route the guard turned away. */
+export function LoginRoute() {
+  const search = useSearch({ strict: false }) as { from?: string }
+  return <EntryDoor from={search.from} />
 }
 
 export function SignupRoute() {
@@ -159,8 +178,17 @@ export function SignupRoute() {
   useEffect(() => {
     if (decision === 'universe') navigate({ to: '/universe' })
   }, [decision, navigate])
-  if (decision === 'hold') return <AuthHold />
-  return <LoginPage mode="signUp" onModeChange={() => navigate({ to: '/login' })} />
+  // Signed-out only, for the reason `EntryDoor` states: the bounce is an effect, so anyone already
+  // inside would otherwise be shown a signup form for the frame before it runs.
+  if (!requiresSignIn(decision)) return <AuthHold />
+  return (
+    <LoginPage
+      mode="signUp"
+      onModeChange={() => navigate({ to: '/login' })}
+      onTryDemo={() => navigate({ to: '/demo' })}
+      onAbout={() => navigate({ to: '/about' })}
+    />
+  )
 }
 
 export function InviteRoute() {

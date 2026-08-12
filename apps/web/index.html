@@ -14,7 +14,13 @@
       name="description"
       content="Write down a day and it rises as a small light. Entries that share a person, a place or an idea hang from the same point; what you never return to grows faint. Inspired by memory research."
     />
-    <link rel="canonical" href="https://cosimosi.haeram.me/" />
+    <!--
+      /about, not the origin root. The SPA serves this one shell for every URL, so a single canonical
+      has to name the address whose RENDERED page matches the metadata below — and that is the landing,
+      which moved off `/` when the root became the sign-in door. A crawler that arrives at `/` is told
+      to consolidate on the page a human would actually be shown this description of.
+    -->
+    <link rel="canonical" href="https://cosimosi.haeram.me/about" />
     <meta name="theme-color" content="#0a0a12" />
 
     <meta property="og:type" content="website" />
@@ -24,7 +30,7 @@
       property="og:description"
       content="Write down a day and it rises as a small light. Entries that share a person, a place or an idea hang from the same point; what you never return to grows faint."
     />
-    <meta property="og:url" content="https://cosimosi.haeram.me/" />
+    <meta property="og:url" content="https://cosimosi.haeram.me/about" />
     <meta property="og:image" content="https://cosimosi.haeram.me/landing-og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />

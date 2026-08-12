@@ -105,8 +105,8 @@ describe('signup shared state', () => {
         'expired',
         'failed',
       ].map((status) => gateDecision(status as Parameters<typeof gateDecision>[0])),
-      // `signedOut` → 'landing' is the landing page's one owned arm; signup adds none of its own, and
-      // that is what this row is here to keep true.
-    ).toEqual(['hold', 'landing', 'login', 'universe', 'hold', 'login', 'login'])
+      // Signup owns no gate arm of its own — it is the door's other mode, not a fourth surface the
+      // session has to resolve between, and that is what this row is here to keep true.
+    ).toEqual(['hold', 'login', 'login', 'universe', 'hold', 'login', 'login'])
   })
 })

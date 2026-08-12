@@ -33,8 +33,9 @@ describe('route-level code splitting', () => {
   })
 
   // The public entry surface stays static: lazy-loading the very page the visitor asked for would add
-  // a round trip to the path the split exists to speed up.
-  it.each(['/', '/login', '/signup', '/invite/$token', '/blog/$'])(
+  // a round trip to the path the split exists to speed up. `/about` is on this list for the same
+  // reason it was when it was the root — a stranger arrives on it cold, from search or from the blog.
+  it.each(['/', '/about', '/login', '/signup', '/invite/$token', '/blog/$'])(
     'ships %s in the entry chunk',
     (id) => {
       const route = router().routesById[id as '/login']

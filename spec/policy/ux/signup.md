@@ -1,5 +1,14 @@
 # UX policy: signup
 
+## Google is the only way in on web
+
+The web entry screen accepts Google and nothing else. The email and password fields stay on screen,
+disabled, under one line that says Google is the only way in for now — a visitor who came to type an
+email is told why the field refuses them rather than left to hunt for one that is not there. The
+credential path itself is intact behind a single flag in the entry page (`CREDENTIAL_ENTRY_ENABLED`),
+so re-enabling it is a flag rather than a rebuilt form, and everything below still describes what
+happens when it is on. Mobile is unchanged and still offers both.
+
 ## One question after credentials
 
 Credential creation offers Google and email/password on both web and mobile. After authentication,
@@ -49,15 +58,22 @@ a branch that blocks profile creation.
 The pending token survives the external Google round trip and the anonymous-to-user scope change.
 It is consumed by the first `SignUp` request or cleared when an established profile enters.
 
-## The entry screen is the front door's first screen
+## The entry screen is the origin root
 
-On web, sign-in and signup are one screen held on the same ground the landing page opens with: the
-empty sky, the brand mark, the mode's one sentence, and the credential panel under it. The
-continuity is the point — a visitor arrives here from the front door's ask, and a different-looking
-screen would read as a different product. It is one screen with nothing below the fold: every part
-of the choice fits the viewport, and a viewport too short to hold it grows rather than clipping the
-submit. The front door offers the way here from its header, so a returning visitor never has to
-find the ask before finding the door.
+On web, sign-in and signup are one screen, and it is what `/` renders: the empty sky, the brand mark
+at full size, the mode's one sentence, and the credential panel under it. It stands on the same
+ground the landing page does, and the continuity is the point — whichever of the two a visitor meets
+first, the other must look like the same night. It is one screen with nothing below the fold: every
+part of the choice fits the viewport, and a viewport too short to hold it grows rather than clipping
+the submit.
+
+Because a stranger now arrives here rather than on the landing, the screen carries two **side doors**
+under the panel — the demo, and the page that says what this is (`/about`). Both take the quietest
+shape the design system has — text, small, outside the card — and separate by colour rather than by
+weight: the demo is `primary`, the explanation `secondary`. That order is the public-copy rule
+applied here (demo before the ask, both times): a stranger has no reason to trust a form yet, and
+the product's claim is that it only reads in motion. Neither is filled, so neither competes with the
+way in, which is this screen's one ask.
 
 Native has no marketing route and keeps its plain centred card — the same waiver that makes the
 landing page web-only.
@@ -65,5 +81,6 @@ landing page web-only.
 ## Voice and parity
 
 Public entry copy is quiet and factual: no therapeutic claim, brain analogy, decorative emoji, or
-reward promise. Sign-in and signup navigate reciprocally, and both apps offer the same two
-credential methods and the same profile-gate outcomes.
+reward promise. Sign-in and signup navigate reciprocally, and both apps offer the same profile-gate
+outcomes. Credential methods are the one deliberate divergence: web is Google-only while the flag
+above is off, and mobile keeps both.

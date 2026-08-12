@@ -73,7 +73,9 @@ const ogImage = absolute(OG_IMAGE, Astro.site)
       <nav aria-label="Blog links">
         <a href={path()}>글 목록</a>
         <a href={path('rss.xml')}>RSS</a>
-        <a href="/">cosimosi</a>
+        {/* The product, for a reader who arrived here first: /about rather than the origin root,
+            which is the sign-in door. */}
+        <a href="/about">cosimosi</a>
       </nav>
     </header>
     <main id="content">

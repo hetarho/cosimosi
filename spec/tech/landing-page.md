@@ -1,10 +1,15 @@
 # tech: landing page
 
-> As-built record of the public front door — `apps/web/src/pages/landing` on `/`, the `widgets/empty-sky` ground it
-> shares with the sign-in screen (§2b), plus the origin's SEO root. Plan
-> [81](../plan/81.landing-page.md) owns it. The routing half (the fourth gate arm, `requiresSignIn`, the re-parented
+> As-built record of the public marketing page — `apps/web/src/pages/landing` on **`/about`**, the `widgets/empty-sky`
+> ground it shares with the entry screen (§2b), plus the origin's SEO root. Plan
+> [81](../plan/81.landing-page.md) owns it. The routing half (`requiresSignIn`, the door at `/`, the re-parented
 > universe route, the trailing-slash policy) lives in [web-routing.md](web-routing.md) §2/§5b/§7/§8; the copy rules live
 > in [policy/ux/public-copy.md](../policy/ux/public-copy.md). Web only, by a stated waiver (§8).
+>
+> **The root is the door, and this page is one click from it.** `/` renders the entry screen; the landing answers "what
+> is this" at its own address, reached from the door's side door, from the blog, and from search. Nothing about the
+> page's own composition changed with the move — it takes no session and resolves no gate — but every statement below
+> about "the origin root" now means `/about`.
 
 ## 1. The section order is a type
 
@@ -100,19 +105,30 @@ restart over it, and renders the `landing_walk_mirror_definition` sentence at th
 the catalogues fails the build.
 
 **The screen has no panel of its own, and that is what marks it as a screen.** There is no glass card around the
-walkthrough: the section is `min-h-dvh` with its column anchored to the top, and the surface its controls sit on is the **veiled
+walkthrough: the section is `min-h-dvh` with its bands anchored to its edges, and the surface its controls sit on is the **veiled
 sky** (§2a) — the veil is at full strength across exactly this stretch. A card here would be a second surface drawn on
 top of a surface, and the room would stop reading as a room. The stage's own views still carry their own grounds (the
 diary's panel, the split's bordered rows, the canvas), so nothing legible sits directly on a live sky.
 
-**The column takes the screen's slack evenly.** `pt-14 sm:pt-20` and `pb-24` (which clears the scroll cue) are
-**minimum** insets, and `justify-center` splits whatever the screen has left over above and below. The earlier
-top-anchored rule was written on a premise that measurement did not support: the column is ~565 of 844 CSS px on a
-390px phone, not "nearly a whole `dvh`", so anchoring it left a ~190px hole under the invitation and put the screen's
-whole mass in its upper half — the reviewer read the result as not laid out for a phone at all (design review,
-2026-08-06). `min-h-dvh` rather than a fixed height is what makes the centring safe: where the column is taller than
-the screen there is no free space to split, so it degrades to the top anchor. The invitation stays above the fold at
-every size checked — 628 of 640, 688 of 844, 772 of 900 — and never reaches the cue.
+**The screen is three anchored bands, not one centred column.** `pt-14 sm:pt-20` and `pb-24` (which clears the scroll
+cue) are the insets, and between them the section runs: the **chrome** (replay + step counter) pinned at the top edge,
+the **run** (stage → caption → back/next) taking the slack with `grow justify-center`, and the **invitation** pinned
+at the foot, immediately above the cue. Anchoring the two ends is what makes the counter and the demo CTA stand in the
+same place on all twelve states, so only the run between them breathes; a single centred column moved all four when the
+caption's height changed. `min-h-dvh` rather than a fixed height keeps it safe on a short viewport, and the middle band
+is `grow` rather than `flex-1` for the same reason: a zero flex basis would size it from the leftover space alone, so a
+screen too short for the stage would overflow the run into the invitation instead of growing the section and scrolling.
+
+**The caption box is as tall as the longest caption, measured.** `WalkthroughCaptionBox` lays every `(step, acted)`
+caption into one CSS grid cell — hidden, `aria-hidden`, rendered as plain text rather than as motion spans — and puts
+the live one over them. The box is then the tallest of them **in the visitor's own language and at their own width**,
+which is what a hardcoded `min-h-*` cannot be: that number would be a guess to re-tune on every copy edit and every
+translation. Without it the back/next row moved whenever a step's words wrapped to an extra line, which reads as the
+page flinching. The state list is derived from `WALKTHROUGH_STEPS`, so a seventh step is measured by construction.
+
+**Back and next take the column's two edges on a phone** (`justify-between`) and close up on the right from `sm` up
+(`sm:justify-end`). Both are single deliberate alignments; the middle is never one, because the pager would then share
+a centre line with the invitation below it.
 
 **The action zone shares one alignment edge on a phone.** The step controls are `justify-center sm:justify-end`: at
 390px a column that ran the caption left, the pager right and the invitation centred had three alignment edges in a
@@ -222,12 +238,12 @@ section wherever the content above pushes it to, rather than a scroll distance t
 they are `Card variant="glass"` and not a flat surface — glass earns its cost only when something is moving behind it —
 but it does mean legibility there depends on the sky's brightness rather than on a fixed contrast pair.
 
-## 2b. The empty sky is a widget, and both entry screens stand on it
+## 2b. The empty sky is a widget, and the door stands on it
 
 The scene of §2 lives in `apps/web/src/widgets/empty-sky` — `ui/EmptySky.tsx` (the two layers, the poster beneath them,
 the boundary around them) and `config/illustration.ts` (§3). It fills whatever box it is given and owns only what is
 drawn, so **a page decides where the sky is**: the landing pins it behind the whole scroll and veils it (§2a), and
-`/login` · `/signup` hold it still behind one screen.
+the door (`/` · `/login` · `/signup`) holds it still behind one screen.
 
 A widget rather than a second copy, and a widget rather than a page importing a page: `pages/login` may not reach into
 `pages/landing` (§3.1), and the alternative — the same scene authored twice — is how the two public surfaces drift into
@@ -239,16 +255,30 @@ beside `pages/landing` (§6). A shared surface outside the closure would be exac
 have: one transport import added there and every public page has a transport again, with nothing in the landing's own
 files to fail.
 
-**The sign-in screen is the landing's first screen, wearing a form.** `pages/login/ui/LoginPage.tsx` — both `/login`
-and `/signup`, the same component in its two modes — renders the sky, the hero's soft local floor over it, `BrandMark`,
+**The door is the landing's first screen, wearing a form.** `pages/login/ui/LoginPage.tsx` — `/`, `/login` and
+`/signup`, the same component in its two modes — renders the sky, the hero's soft local floor over it, `BrandMark`,
 the mode's one sentence (`login_title` / `signup_title`) as the screen's `h1`, and the credential form in a
 `Card variant="glass"` beneath. The title is the **screen's**, not the panel's, which is what makes the column read as
 one lockup instead of a card with a heading floating on a picture: the form stands where the hero's paragraph does. The
-continuity is the point — a visitor who follows the signup ask arrives here having just been looking at that sky, and a
-flat card on a flat ground would read as a different product.
+continuity is the point — whichever surface a visitor meets first, the other must look like the same night, and a flat
+card on a flat ground would read as a different product.
 
-- **One screen, and only one.** No scroll and nothing below the fold: the whole choice — Google, email, password, the
-  submit, the way across to the other mode — fits the viewport. `min-h-dvh` rather than a pinned `h-dvh` is what keeps
+- **The mark is large here and small everywhere else** (`size-24 sm:size-28`, against the landing header's 20px
+  lockup). This is the origin root, so it is the first thing anyone sees of the product and the only place the brand
+  has room to be a picture rather than a label — the same solid doing the opposite job.
+- **Two side doors under the panel** — the demo (`primary`) and `/about` (`secondary`), both `variant="text" size="sm"`.
+  A stranger arrives at the form rather than at the argument, so the screen has to offer both the sandbox and the
+  explanation. They separate by **colour, not weight**: the shape stays the quietest the system has, so neither competes
+  with the Google button, and the demo leads because a stranger has no reason to trust a form yet
+  ([public-copy](../policy/ux/public-copy.md)'s demo-before-the-ask rule). Destinations arrive as callbacks from
+  `app/routes` (a page imports no router), like every other page-level navigation.
+- **Google only, and the screen says so.** `CREDENTIAL_ENTRY_ENABLED` (one flag in the page) disables the email and
+  password fields and the submit, and `login_google_only` states the reason directly under the Google button — before
+  the fields it explains, not after them. The fields stay rendered rather than removed: someone who came to type an
+  email is told why the field refuses them instead of hunting for one that is not there, and the form, its machine and
+  its failure copy stay wired so re-enabling is the flag alone. The policy is [signup.md](../policy/ux/signup.md).
+- **One screen, and only one.** No scroll and nothing below the fold: the whole choice — Google, the fields, the
+  submit, the way across to the other mode, the side doors — fits the viewport. `min-h-dvh` rather than a pinned `h-dvh` is what keeps
   that safe: where the viewport is too short to hold the column (a small phone in landscape, a keyboard eating half the
   screen) it grows and scrolls rather than clipping its own submit button, which is the one failure a locked height
   produces. The sky is `fixed`, so it is the same size whatever the mode costs in height.
@@ -362,11 +392,11 @@ nothing. What it mounts of the landing is the sky, and that is inside.
 
 The origin root belongs to the app, not to the blog served beneath it.
 
-- **`public/robots.txt`** — indexable `/` and `/demo`; disallows `/universe`, `/diary`, `/me`, `/admin`, `/login`,
-  `/signup`, `/invite/`, `/test`, `/design`. The SPA answers all of them with the same `index.html`, so without those
-  lines a crawler indexes landing content under half a dozen wrong URLs. Two `Sitemap:` lines — the root one and
-  `/blog/sitemap.xml`, which the blog depends on being named here.
-- **`public/sitemap.xml`** — a plain urlset for `/` and `/demo` in the canonical slashless form.
+- **`public/robots.txt`** — indexable `/`, `/about` and `/demo`; disallows `/universe`, `/diary`, `/me`, `/admin`,
+  `/login`, `/signup`, `/invite/`, `/test`, `/design`. The SPA answers all of them with the same `index.html`, so
+  without those lines a crawler indexes landing content under half a dozen wrong URLs. Two `Sitemap:` lines — the root
+  one and `/blog/sitemap.xml`, which the blog depends on being named here.
+- **`public/sitemap.xml`** — a plain urlset listing **`/about`** alone, in the canonical slashless form.
 - **`index.html`** — title, description, absolute canonical, `theme-color`, OG/Twitter tags over `landing-og.png`, and a
   `<noscript>` block carrying the hero line, the mirror definition and a link to `/blog/`. The origin literal is
   `https://cosimosi.haeram.me`, with [DEPLOY.md](../../DEPLOY.md) §1 named in a comment as its SSOT — an address, not a
@@ -375,9 +405,11 @@ The origin root belongs to the app, not to the blog served beneath it.
   `/blog/`, and until plan 82 ships they resolve to the SPA's not-found screen. That is the build order the plans chose —
   81 owns the origin root and the `Sitemap:` line 82 depends on, so it lands first — but it is a real user-visible state
   in the window between them, not a subtlety. The `/blog/sitemap.xml` line is likewise a forward reference.
-- **The root canonical applies to every URL**, because a client-rendered SPA serves one shell. That is why the sitemap
-  lists only `/`: listing `/demo` would ask a crawler to index a URL that then declares itself a duplicate of the root.
-  `/demo` stays `Allow`ed so a shared link is never blocked, and it has no crawlable content of its own regardless.
+- **One canonical applies to every URL**, because a client-rendered SPA serves one shell — and it names `/about`, the
+  one address whose RENDERED page matches the shell's title, description and OG card. That is also why the sitemap
+  lists `/about` alone: listing `/` or `/demo` would ask a crawler to index a URL that then declares itself a duplicate.
+  Both stay `Allow`ed so a shared link is never blocked, and neither has crawlable content of its own — one is a form,
+  the other a JS sandbox.
 - **`robots.txt` enumerates rather than allowlists.** `Disallow: /` plus an allowlist would express "only these are
   indexable" exactly, but it would also block `/blog/` — the tier the theory cards exist to lead to. So an unknown path is
   unlisted rather than blocked: it returns the shell and the not-found screen.
