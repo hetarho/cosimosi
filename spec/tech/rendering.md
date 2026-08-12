@@ -207,7 +207,7 @@ therefore (a) do less per frame, and (b) render fewer pixels.
 
 ## Consumers
 
-- **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (emotion sky + stars +
+- **Web:** `apps/web/src/pages/universe` is the **signed-in main page (`/universe`)** — full-bleed `UniverseCanvas` (emotion sky + stars +
   bloom) with floating HUD buttons. The old design-system showcase page is retired; design-system primitives are
   verified via the `/test` harness `Design system` panel; the sky, star-form, and nebula panels exercise the shared
   product renderer independently.
@@ -330,7 +330,9 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   returns control. Rig feel scalars (`UNIVERSE_CAMERA_RIG`) are code-level constants in `@cosimosi/universe` (no
   `rendering.camera.*` values group exists yet).
 
-- **Two ways to hold the universe, two control families.** `useUniverseViewStore` (`@cosimosi/universe`) carries a view
+- **Two ways to hold the universe, two control families.** What the two modes promise a viewer is
+  [policy/ux/universe-view.md](../policy/ux/universe-view.md); this is the rig that keeps the promise.
+  `useUniverseViewStore` (`@cosimosi/universe`) carries a view
   preference — `pinned` (the default a viewer arrives in) or `free` — and the rig wears the controls that mode needs:
   - **free** = `TrackballControls`, so rotation is unbounded in every direction (no polar clamp, no pole stall).
   - **pinned** = `OrbitControls` with `camera.up` set to the world's **+z** (the axis the two memory bands are stacked
@@ -370,9 +372,15 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   `SPOTLIGHT_SCENE_DIM` and `StarLayer` multiplies the named memories' brightness channel by `SPOTLIGHT_STAR_LIFT`, so
   those stars come out brighter than they began rather than merely un-dimmed. The lift is drawn brightness only — it
   reads no stored fact and writes none, and `starLife` clamps at 1, so a lifted star keeps its own motion and forgetting
-  stays the only thing that can still a body. **The dim rides the composite, not the materials:** one
-  `spotlightSceneDim` ref reaches `PostFX` as its `dimRef` and multiplies the output node, so sky, colour field,
-  filaments, bodies and the bloom halo go quiet together instead of each fading on its own schedule. The
+  stays the only thing that can still a body. **The dim is taken at the exposure, not at the materials and not over the
+  finished picture:** `SpotlightDim` owns the easing and hands its level to `3d-renderer`'s `SceneExposure`, which
+  scales `renderer.toneMappingExposure` — the multiplier the tone curve reads **before** it maps accumulated light onto
+  the display. That is what makes a scene-wide dim behave like less light rather than like a grey sheet: sky, colour
+  field, filaments, bodies and the bloom halo descend together, hues hold as they descend, and `StarLayer`'s lift on a
+  spotlit body composes with it multiplicatively instead of the two acting on opposite sides of the curve. Scaling the
+  composited output would do neither — the curve would never see the darkness, and the alpha would go with it.
+  `SceneExposure` reads the host's exposure once at mount, so a level of 1 restores whatever the host chose, and a level
+  that has not moved writes nothing, so a scene that never dims never touches the renderer. The
   hold runs on its own clock (`SPOTLIGHT_HOLD_SECONDS`, eased at `SPOTLIGHT_FADE_LAMBDA`) rather than on the camera's
   arrival, because `NavigationRig` can force-arrive while chasing a star that is still settling and tying the dark to
   that would let a timeout strand the universe in it. Per §3.2 the light is a per-frame ref, so the layer subscribes to
@@ -436,6 +444,21 @@ The three **rendering entities** turn the domain-mirror graph into bodies. Their
   companion to `effectiveBrightness` / `effectiveSynapseStrength` — so star and filament read the same clock. Visual
   channel mapping (`lerpClamp`) floors a non-finite read-time value to the range minimum, so a skewed row can't write a
   NaN scale/vertex.
+- **One body, away from the universe (plan 35).** `StarPreview` (`@cosimosi/universe-render`) draws a single episodic
+  memory's star on its own canvas — the same `createStarShapeBodySource` body, the same `starChannels` projection, the
+  same skin and `PostFX` the sky uses — so a panel shows the star rather than a swatch of its colour. Two channels
+  differ, and only these two: **scale** is a fixed preview size, because size in the universe means strength _by
+  comparison_ and one star alone has nothing to be bigger than (the panel states strength as a number instead), and the
+  body is wrapped in `SpinGroup` so a still frame does not flatten a shape that is not flat. Tint, brightness and seed
+  stay the real ones. Reading is not writing: the preview reads no stored fact it does not already receive and writes
+  none.
+- **`SpinGroup`** (`@cosimosi/3d-renderer`) turns its children about the vertical axis at a fixed seconds-per-turn,
+  mutating the object3D per frame rather than through React state (§3.2/§3.3) and wrapping the angle so a surface left
+  open for hours keeps its float precision. The rotation is a display device, not a fact about the thing shown —
+  nothing reads the angle back, which is why `paused` (reduced motion) changes only what the eye gets.
+- **`SceneExposure`** (`@cosimosi/3d-renderer`) is the one place a scene-wide dim is allowed to touch the renderer: it
+  scales `renderer.toneMappingExposure` from a per-frame ref, restores the host's own exposure on unmount, and writes
+  nothing while the level has not moved. Its consumer is `SpotlightDim` (plan 47, above), which owns the easing.
 - **On-device render** is pending verification like the rest of the RN scene — run `pnpm ios` (the mobile MVP instance
   caps / dropped post-FX are confirmed via on-device profiling; the shared bodies and projection do not fork).
 

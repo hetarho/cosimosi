@@ -26,7 +26,7 @@ something is here that cannot be reached right now.
 
 ## The universe is primary; the reader is supporting
 
-The universe stays the main surface at `/`; the reader is a supporting archive reached from two doors ([D5]): a
+The universe stays the main surface at `/universe`; the reader is a supporting archive reached from two doors ([D5]): a
 restrained 일기장 affordance in the universe chrome (lands at the list top) and the star-detail 원본 일기 보기 button
 (deep-links to that memory's diary entry). Both land on the same reader.
 

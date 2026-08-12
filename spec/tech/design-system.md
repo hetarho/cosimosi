@@ -149,7 +149,9 @@ win deterministically through the `style={[base, …, props.style]}` array.
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
 **Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet, Menu,
-Tooltip, Toast, Badge, Skeleton, ObscuredText, VisuallyHidden, Tabs, SegmentedControl, BrandMark, and the icon set.
+Tooltip, Toast, Alert, Badge, Card, Progress, Skeleton, ObscuredText, VisuallyHidden, Tabs, SegmentedControl,
+BrandMark, and the icon set. This list is the catalog — [plan 09](../plan/09.design-system.md) states the
+promote-on-use rule and points here rather than keeping a second copy of it.
 **Deferred** (added when a Phase-4 slice needs them, promote-on-use): Slider/Stepper, Drawer.
 
 `BrandMark` is the one **web-only** entry, and the one exception to the sibling rule above: it draws the trademark's
@@ -178,6 +180,14 @@ interactive. That is why it has **no `scrim` / `overlay` / `modal` prop at all**
 two are different promises, not two settings of one. Escape is unbound for the same reason (nothing is dimmed to escape
 from), and `closeDisabled` lets a host block the one way out while a commit is in flight. Promoted on use by the
 decoration panel, which exists to be watched against the running universe.
+
+`Dialog` interrupts, and it takes the shape the screen has room for: a centred modal at `md` and above, a bottom sheet
+below it (design-language §6 owns the rule and why). The breakpoint moves where the surface sits, never what it
+promises — same scrim, same focus trap, same Escape — and the bottom form adds one exit the modal has no use for, a
+swipe back down the edge it arrived from. That gesture is `lib/use-sheet-drag.ts`, a hook rather than a prop: it tracks
+the pointer against a dismiss distance and hands back the live offset, so the surface follows the hand and either goes
+out under it or returns. It lives in `lib/` because it is behaviour, not a surface — nothing about it is `Dialog`'s to
+own alone.
 
 `SegmentedControl` is a **radiogroup**, not a second Tabs: its segments select a value and swap no
 panel, so it carries no `aria-controls` and a reader hears a checked state rather than a tab position.

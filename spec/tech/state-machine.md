@@ -259,6 +259,17 @@ The shortfall→guide seam is a **Zustand request store** (`useEarnRequestStore`
 shared machine: the spend flows and the overlay never import each other, and the overlay consumes the
 request and clears it.
 
+### 6.4.1 How the universe is held has NO machine either
+
+`useUniverseViewStore` (`@cosimosi/universe`) carries `pinned | free` — which of the two camera modes
+the viewer is in ([policy/ux/universe-view.md](../policy/ux/universe-view.md)). It is a **preference,
+not a lifecycle**: there is no ordering between the two, nothing to enter or leave, no in-flight phase
+and no failure to route, so §3.2 keeps it out of the navigation machine, which owns
+`idle`/`focusing`/`flying` — states that genuinely exclude one another. One HUD control
+(`features/pin-universe-view`, mirrored on both apps) writes it and the canvas reads it; a store
+rather than a prop because React context does not cross the R3F reconciler (§5.2). The camera work
+this drives is [tech/rendering.md](rendering.md).
+
 ### 6.5 `diaryReaderMachine` (the diary-reader jump)
 
 `browsing → confirming → recalling → flying`, context empty — the "이 일기로
