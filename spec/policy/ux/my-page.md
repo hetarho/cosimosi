@@ -3,10 +3,24 @@
 ## One signed-in account home
 
 My page is the sole signed-in account surface: web `/me` and mobile `Me`, reached from the
-universe. It has exactly six tabs in this order: profile, feeling colors, stardust, achievements,
-diary management, and account. Web keeps the active tab in the `tab` query parameter so links and
+universe. It has exactly five tabs in this order: profile, feeling colors, stardust, achievements,
+and diary management. Web keeps the active tab in the `tab` query parameter so links and
 reloads preserve it; mobile keeps it as local screen state. Missing or unknown web values show
-profile.
+profile — which is also what a link to the retired `?tab=account` now lands on, and where its rows are.
+
+**There is no 계정 tab.** The signed-in identity, the linked ways in, sign-out and withdrawal are facts
+about the same person the profile tab is already about, and splitting them across two tabs made a reader
+hunt for their own email in the tab that does not say 프로필. They sit at the **foot** of the profile,
+last and behind a separating rule: signing out and leaving are the two things here a stray press must
+not reach, so distance is what protects them ([U9]).
+
+## The header names the open tab, and the way out leads
+
+The way back to the universe sits at the **left** end of the header and the title is **centred** on the
+line, naming the **open tab** rather than the account home in general. With the tab strip directly
+beneath it, a fixed 나 said nothing the strip did not already say, while the open tab's name is the one
+fact the header can add about where the reader is. The same three-part header is the diary reader's
+([47]), so leaving any supporting surface is the same gesture in the same corner.
 
 The feeling-colors tab is the emotion-color editor and owns the whole surface, rather than sharing a
 row of the profile tab. At rest it shows only what the thirteen moods currently wear: one swatch and
@@ -42,9 +56,9 @@ decoded text to the native share sheet, and retains no diary content in the quer
 
 ## Account actions are narrow
 
-The account tab shows the signed-in identity and linked Google/password providers read-only. It
-offers neither provider linking, credential changes, nor email changes. Sign-out keeps one plain
-confirmation and deletes nothing.
+The account rows at the foot of the profile show the signed-in identity and linked Google/password
+providers read-only. They offer neither provider linking, credential changes, nor email changes.
+Sign-out keeps one plain confirmation and deletes nothing.
 
 Withdrawal uses a second explicit confirmation. It states the configured soft-delete retention
 period, offers CSV/Markdown export in place, then withdraws and immediately signs the local session

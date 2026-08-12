@@ -14,8 +14,12 @@ export {
   type UniverseSnapshot,
 } from './mappers.ts'
 export {
+  DIARY_MEMORY_COUNT_ALL,
   diariesFromDtos,
   diaryDaysFromDtos,
+  diaryMemoryCountOption,
+  diaryMemoryCountOptions,
+  diaryMemoryCountRange,
   diaryMoods,
   diaryPreview,
   highlightSegments,
@@ -25,6 +29,7 @@ export {
   type Diary,
   type DiaryDay,
   type DiaryDayMood,
+  type DiaryMemoryCountRange,
   type DiarySplitMember,
   type DiaryTextSegment,
 } from './diary.ts'

@@ -36,6 +36,26 @@ WHERE d.user_id = $1
         AND em.mood = ANY($7::text[])
     )
   )
+  AND (
+    $8::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_min
+      WHERE em_min.user_id = $1
+        AND em_min.diary_id = d.id
+        AND em_min.deleted_at IS NULL
+    ) >= $8::int
+  )
+  AND (
+    $9::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_max
+      WHERE em_max.user_id = $1
+        AND em_max.diary_id = d.id
+        AND em_max.deleted_at IS NULL
+    ) <= $9::int
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM release_groups AS rg
@@ -43,18 +63,20 @@ WHERE d.user_id = $1
       AND rg.diary_id = d.id
   )
 ORDER BY d.diary_date ASC, d.id ASC
-LIMIT $8
+LIMIT $10
 `
 
 type ListDiariesPageAscParams struct {
-	UserID     string
-	CursorDate pgtype.Date
-	CursorID   pgtype.Text
-	FromDate   pgtype.Date
-	ToDate     pgtype.Date
-	Keyword    pgtype.Text
-	Moods      []string
-	PageLimit  int32
+	UserID      string
+	CursorDate  pgtype.Date
+	CursorID    pgtype.Text
+	FromDate    pgtype.Date
+	ToDate      pgtype.Date
+	Keyword     pgtype.Text
+	Moods       []string
+	MinMemories pgtype.Int4
+	MaxMemories pgtype.Int4
+	PageLimit   int32
 }
 
 type ListDiariesPageAscRow struct {
@@ -72,6 +94,8 @@ func (q *Queries) ListDiariesPageAsc(ctx context.Context, arg ListDiariesPageAsc
 		arg.ToDate,
 		arg.Keyword,
 		arg.Moods,
+		arg.MinMemories,
+		arg.MaxMemories,
 		arg.PageLimit,
 	)
 	if err != nil {
@@ -118,6 +142,26 @@ WHERE d.user_id = $1
         AND em.mood = ANY($7::text[])
     )
   )
+  AND (
+    $8::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_min
+      WHERE em_min.user_id = $1
+        AND em_min.diary_id = d.id
+        AND em_min.deleted_at IS NULL
+    ) >= $8::int
+  )
+  AND (
+    $9::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_max
+      WHERE em_max.user_id = $1
+        AND em_max.diary_id = d.id
+        AND em_max.deleted_at IS NULL
+    ) <= $9::int
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM release_groups AS rg
@@ -125,18 +169,20 @@ WHERE d.user_id = $1
       AND rg.diary_id = d.id
   )
 ORDER BY d.diary_date DESC, d.id DESC
-LIMIT $8
+LIMIT $10
 `
 
 type ListDiariesPageDescParams struct {
-	UserID     string
-	CursorDate pgtype.Date
-	CursorID   pgtype.Text
-	FromDate   pgtype.Date
-	ToDate     pgtype.Date
-	Keyword    pgtype.Text
-	Moods      []string
-	PageLimit  int32
+	UserID      string
+	CursorDate  pgtype.Date
+	CursorID    pgtype.Text
+	FromDate    pgtype.Date
+	ToDate      pgtype.Date
+	Keyword     pgtype.Text
+	Moods       []string
+	MinMemories pgtype.Int4
+	MaxMemories pgtype.Int4
+	PageLimit   int32
 }
 
 type ListDiariesPageDescRow struct {
@@ -157,6 +203,8 @@ func (q *Queries) ListDiariesPageDesc(ctx context.Context, arg ListDiariesPageDe
 		arg.ToDate,
 		arg.Keyword,
 		arg.Moods,
+		arg.MinMemories,
+		arg.MaxMemories,
 		arg.PageLimit,
 	)
 	if err != nil {

@@ -35,17 +35,21 @@ func (s Store) DiaryPage(
 		cursorDate = pgDate(cursor.DiaryDate)
 		cursorID = pgText(&cursor.ID)
 	}
+	minMemories := pgInt4Ptr(filter.MinMemories)
+	maxMemories := pgInt4Ptr(filter.MaxMemories)
 
 	if sort == memory.DiarySortOldest {
 		rows, err := s.queries.ListDiariesPageAsc(ctx, dbgen.ListDiariesPageAscParams{
-			UserID:     scope.UserID(),
-			CursorDate: cursorDate,
-			CursorID:   cursorID,
-			FromDate:   pgDatePtr(filter.From),
-			ToDate:     pgDatePtr(filter.To),
-			Keyword:    keyword,
-			Moods:      moods,
-			PageLimit:  int32(limit),
+			UserID:      scope.UserID(),
+			CursorDate:  cursorDate,
+			CursorID:    cursorID,
+			FromDate:    pgDatePtr(filter.From),
+			ToDate:      pgDatePtr(filter.To),
+			Keyword:     keyword,
+			Moods:       moods,
+			MinMemories: minMemories,
+			MaxMemories: maxMemories,
+			PageLimit:   int32(limit),
 		})
 		if err != nil {
 			return nil, err
@@ -62,14 +66,16 @@ func (s Store) DiaryPage(
 	}
 
 	rows, err := s.queries.ListDiariesPageDesc(ctx, dbgen.ListDiariesPageDescParams{
-		UserID:     scope.UserID(),
-		CursorDate: cursorDate,
-		CursorID:   cursorID,
-		FromDate:   pgDatePtr(filter.From),
-		ToDate:     pgDatePtr(filter.To),
-		Keyword:    keyword,
-		Moods:      moods,
-		PageLimit:  int32(limit),
+		UserID:      scope.UserID(),
+		CursorDate:  cursorDate,
+		CursorID:    cursorID,
+		FromDate:    pgDatePtr(filter.From),
+		ToDate:      pgDatePtr(filter.To),
+		Keyword:     keyword,
+		Moods:       moods,
+		MinMemories: minMemories,
+		MaxMemories: maxMemories,
+		PageLimit:   int32(limit),
 	})
 	if err != nil {
 		return nil, err

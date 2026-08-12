@@ -13,8 +13,8 @@ import {
   randomMoodColor,
   type Color,
   type Mood,
+  type MoodColorConcern,
   type MoodColorPreset,
-  type MoodColorRisk,
 } from '@cosimosi/emotion'
 import { moodColorPresetsQueryKey, readMoodColorPresets } from '@cosimosi/emotion/react'
 import { Alert, Button, Dialog } from '@cosimosi/ui'
@@ -32,6 +32,9 @@ export interface MoodColorDialogProps {
   mood: Mood
   /** The colour this feeling wears now — what the dialog opens on and what Cancel returns to. */
   current: Color
+  /** What the other twelve feelings wear, so "too close to another feeling" can be said WHILE choosing
+   *  rather than reported after the save. Keyed by mood; the edited one is ignored if present. */
+  otherColors: Readonly<Partial<Record<Mood, Color>>>
   saving: boolean
   onClose: () => void
   onSave: (color: Color) => void
@@ -42,7 +45,14 @@ export interface MoodColorDialogProps {
  * sheet on a narrow one. Nothing writes until Save, so a colour can be tried against the one it
  * would replace and abandoned without the sky behind moving.
  */
-export function MoodColorDialog({ mood, current, saving, onClose, onSave }: MoodColorDialogProps) {
+export function MoodColorDialog({
+  mood,
+  current,
+  otherColors,
+  saving,
+  onClose,
+  onSave,
+}: MoodColorDialogProps) {
   const transport = useTransport()
   const presetQuery = useQuery({
     queryKey: moodColorPresetsQueryKey(mood),
@@ -58,7 +68,10 @@ export function MoodColorDialog({ mood, current, saving, onClose, onSave }: Mood
   const [draft, setDraft] = useState(() => draftFromColor(current))
   const [confirming, setConfirming] = useState(false)
 
-  const risks = useMemo(() => moodColorRisks(mood, draft.color), [mood, draft.color])
+  const risks = useMemo(
+    () => moodColorRisks(mood, draft.color, otherColors),
+    [mood, draft.color, otherColors],
+  )
 
   const commit = () => {
     if (risks.length > 0 && !confirming) {
@@ -97,7 +110,7 @@ export function MoodColorDialog({ mood, current, saving, onClose, onSave }: Mood
             onChange={(lch) => setDraft(draftFromOkLch(lch))}
           />
           {/* Live rather than on save, so the notice tracks the colour under the cursor. */}
-          {risks.length > 0 ? <RiskNotice risks={risks} titled /> : null}
+          {risks.length > 0 ? <RiskNotice risks={risks} /> : null}
           <div className="flex justify-end gap-2">
             <Button color="neutral" variant="text" onClick={onClose} disabled={saving}>
               {m.common_cancel()}
@@ -138,13 +151,15 @@ export function MoodColorDialog({ mood, current, saving, onClose, onSave }: Mood
   )
 }
 
-function RiskNotice({ risks, titled }: { risks: readonly MoodColorRisk[]; titled?: boolean }) {
+// The sentences alone, with no heading over them. A caption naming the notice ("이 색이 감수하는 것")
+// said nothing the sentences do not already say, in a voice nobody speaks — and a warning box is
+// already legible as a warning without being announced.
+function RiskNotice({ risks }: { risks: readonly MoodColorConcern[] }) {
   return (
     <Alert variant="warning" live="status">
-      {titled ? <h3 className="font-medium">{m.palette_risk_label()}</h3> : null}
       <ul className="flex flex-col gap-1">
-        {risks.map((risk) => (
-          <li key={risk}>{moodColorRiskText(risk)}</li>
+        {risks.map((concern) => (
+          <li key={concern.risk}>{moodColorRiskText(concern)}</li>
         ))}
       </ul>
     </Alert>

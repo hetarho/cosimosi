@@ -205,18 +205,20 @@ export function UniverseHomePage({
             <StardustOverlay onOpenAchievements={onOpenAchievements} />
             {/* A dense toolbar of icon-only controls: the account home, 꾸미기 ([P5], a panel over
                 the canvas rather than a route) and the archive ([D2]) — a quiet column against the
-                screen edge instead of a row of labelled buttons competing with the universe. Each
-                carries its name in `label` and a tooltip, which §8 makes mandatory the moment an
-                icon stands without one. pointer-events-auto so they stay tappable over the
-                non-interactive HUD. */}
-            {/* `drop-shadow-md` is the ground a fill-less control needs over a live sky: the glyph and
-                its rim take their legibility from a dark halo hugging the strokes, the way the
-                balance above does, rather than from a plate the scene cannot be seen through. */}
+                screen edge instead of a row of labelled buttons competing with the universe.
+                pointer-events-auto so they stay tappable over the non-interactive HUD. */}
+            {/* No rim and no plate: over a live sky a bordered circle reads as a hole punched in the
+                universe, and three of them read as a widget tray. What gives a fill-less glyph its
+                ground is `drop-shadow-md` — a dark halo hugging the strokes, the way the balance above
+                takes its legibility — so the controls are round, borderless, and lit only by that
+                shadow. Each still carries its name in `label` and a tooltip, which §8 makes mandatory
+                the moment an icon stands without one. */}
             <div className="pointer-events-auto flex flex-col gap-2 drop-shadow-md">
               <Tooltip content={m.universe_home_settings()} side="left">
                 <IconButton
-                  variant="outlined"
+                  variant="text"
                   color="neutral"
+                  className="rounded-full"
                   label={m.universe_home_settings()}
                   icon={<SettingsIcon />}
                   onClick={() => onOpenMe?.()}
@@ -224,8 +226,9 @@ export function UniverseHomePage({
               </Tooltip>
               <Tooltip content={m.store_open_action()} side="left">
                 <IconButton
-                  variant="outlined"
+                  variant="text"
                   color="neutral"
+                  className="rounded-full"
                   label={m.store_open_action()}
                   icon={<DecorateIcon />}
                   onClick={requestDecoration}
@@ -233,8 +236,9 @@ export function UniverseHomePage({
               </Tooltip>
               <Tooltip content={m.diary_reader_title()} side="left">
                 <IconButton
-                  variant="outlined"
+                  variant="text"
                   color="neutral"
+                  className="rounded-full"
                   label={m.diary_reader_title()}
                   icon={<DiaryIcon />}
                   onClick={() => onOpenReader?.()}

@@ -47,7 +47,6 @@ describe('WebI18nProvider', () => {
         <LocaleRenderBoundary>{() => <MessageProbe />}</LocaleRenderBoundary>
       </WebI18nProvider>,
     )
-    expect(screen.getByText('You')).toBeTruthy()
     expect(screen.getByText('Profile')).toBeTruthy()
     expect(screen.getByText('Retry')).toBeTruthy()
 
@@ -56,7 +55,6 @@ describe('WebI18nProvider', () => {
 
     act(() => setActiveLocale('ko'))
 
-    expect(screen.getByText('나')).toBeTruthy()
     expect(screen.getByText('프로필')).toBeTruthy()
     expect(screen.getByText('다시 시도')).toBeTruthy()
     expect(screen.getByText('1')).toBeTruthy()
@@ -67,7 +65,6 @@ function MessageProbe() {
   const [count, setCount] = useState(0)
   return (
     <>
-      <span>{m.me_title()}</span>
       <span>{m.me_tab_profile()}</span>
       <span>{m.common_retry()}</span>
       <button type="button" onClick={() => setCount((current) => current + 1)}>

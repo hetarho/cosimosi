@@ -315,6 +315,7 @@ const (
 	DiaryReaderRowEstimateHeightPx        = 114
 	DiaryReaderRowOverscan                = 4
 	DiaryReaderRowGapPx                   = 8
+	DiaryReaderRowMinWidthPx              = 288
 	DiaryReaderInfiniteScrollEndThreshold = 0.5
 	DiaryReaderSearchDebounceMs           = 300
 )

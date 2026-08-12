@@ -215,10 +215,12 @@ func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.G
 	}
 	page, err := s.service.GetDiaries(ctx, scope, memory.DiaryQuery{
 		Filter: memory.DiaryFilter{
-			Keyword: req.Msg.GetQuery(),
-			Moods:   moods,
-			From:    from,
-			To:      to,
+			Keyword:     req.Msg.GetQuery(),
+			Moods:       moods,
+			From:        from,
+			To:          to,
+			MinMemories: optionalInt(req.Msg.MinMemories),
+			MaxMemories: optionalInt(req.Msg.MaxMemories),
 		},
 		Sort:      sort,
 		PageSize:  int(req.Msg.GetPageSize()),
@@ -351,6 +353,17 @@ func parseOptionalDiaryDate(raw string) (*time.Time, error) {
 	return &value, nil
 }
 
+// A present-or-absent wire bound carried inward as a pointer. The wire field is `optional` precisely
+// so 0 can be a bound the reader asked for — diaries every memory of which was let go — rather than
+// the absence of a bound.
+func optionalInt(raw *int32) *int {
+	if raw == nil {
+		return nil
+	}
+	value := int(*raw)
+	return &value
+}
+
 func parseRequiredDiaryDate(raw string) (time.Time, error) {
 	if raw == "" {
 		return time.Time{}, memory.ErrDiaryDateRangeInvalid
@@ -391,6 +404,8 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryDateRangeInvalid, err, nil)
 	case errors.Is(err, memory.ErrDiarySortInvalid):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonDiarySortInvalid, err, nil)
+	case errors.Is(err, memory.ErrDiaryCountRangeInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryCountRangeInvalid, err, nil)
 	case errors.Is(err, memory.ErrReleaseInputRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonReleaseInputRequired, err, nil)
 	case errors.Is(err, memory.ErrLetGoInvalidApproved):

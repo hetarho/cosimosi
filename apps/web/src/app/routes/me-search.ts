@@ -19,7 +19,6 @@ const ME_TAB_IDS = {
   stardust: true,
   achievements: true,
   diary: true,
-  account: true,
 } as const satisfies Record<MeTabId, true>
 
 /** The tab a `?tab=` value asks for, or the default when it asks for nothing usable. */

@@ -139,9 +139,10 @@ export function DetailPanel({
                         align="end"
                         trigger={
                           <IconButton
-                            variant="outlined"
+                            variant="text"
                             color="neutral"
                             size="sm"
+                            className="rounded-full"
                             label={m.star_detail_actions_label()}
                             icon={<StarActionsIcon />}
                           />

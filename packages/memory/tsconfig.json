@@ -11,6 +11,10 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
+    // The copy projection reaches @cosimosi/i18n, whose compiled message modules are JS: admitted but
+    // not type-checked here, exactly as @cosimosi/emotion does for the same reason.
+    "allowJs": true,
+    "checkJs": false,
     "types": ["node"],
     "noUnusedLocals": true,
     "noUnusedParameters": true

@@ -53,7 +53,15 @@ describe('parseDiarySearch', () => {
 describe('view state stays out of the conditions mappers ([D12])', () => {
   it('carries neither view nor month into the archive read input', () => {
     const input = diaryQueryFromSearch({ view: 'calendar', month: '2026-05' })
-    expect(Object.keys(input).sort()).toEqual(['from', 'moods', 'query', 'sort', 'to'])
+    expect(Object.keys(input).sort()).toEqual([
+      'from',
+      'maxMemories',
+      'minMemories',
+      'moods',
+      'query',
+      'sort',
+      'to',
+    ])
   })
 
   it('reconstructs neither view nor month from the read input', () => {
@@ -85,9 +93,38 @@ describe('diaryQueryFromSearch / diarySearchFromQuery', () => {
       from: '2026-01-01',
       to: '2026-02-01',
       sort: 'oldest',
+      memories: '2',
     }
     const parsed = parseDiarySearch(search)
     expect(diarySearchFromQuery(diaryQueryFromSearch(parsed))).toEqual(parsed)
+  })
+
+  it('turns a star-count choice into the bounds the read speaks', () => {
+    const top = String(VALUES.encode.maxMemories)
+    expect(diaryQueryFromSearch(parseDiarySearch({ memories: '0' }))).toMatchObject({
+      minMemories: 0,
+      maxMemories: 0,
+    })
+    expect(diaryQueryFromSearch(parseDiarySearch({ memories: `${top}+` }))).toMatchObject({
+      minMemories: VALUES.encode.maxMemories,
+      maxMemories: undefined,
+    })
+  })
+
+  it('drops a count nobody can have chosen rather than forwarding it', () => {
+    // The URL is hand-editable: a value outside the offered list leaves the archive unnarrowed instead
+    // of asking the read for a range no control can express.
+    for (const junk of ['', 'many', '-1', '99', 'all']) {
+      expect(parseDiarySearch({ memories: junk }).memories).toBeUndefined()
+      expect(diaryQueryFromSearch(parseDiarySearch({ memories: junk }))).toMatchObject({
+        minMemories: undefined,
+        maxMemories: undefined,
+      })
+    }
+  })
+
+  it('keeps a bare /diary bare — the unnarrowed count writes no key', () => {
+    expect(diarySearchFromQuery({}).memories).toBeUndefined()
   })
 })
 

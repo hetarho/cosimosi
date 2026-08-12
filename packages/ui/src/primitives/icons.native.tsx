@@ -5,6 +5,8 @@ import { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix'
 import { InfoIcon } from 'phosphor-react-native/src/icons/Info'
 import { PaletteIcon } from 'phosphor-react-native/src/icons/Palette'
 import { PushPinIcon } from 'phosphor-react-native/src/icons/PushPin'
+import { SortAscendingIcon } from 'phosphor-react-native/src/icons/SortAscending'
+import { SortDescendingIcon } from 'phosphor-react-native/src/icons/SortDescending'
 import { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle'
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash'
 
@@ -83,4 +85,14 @@ export function FreeViewIcon({ size = ICON_SIZE, color: ink = color.text }: Icon
  */
 export function StarActionsIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
   return <GearSixIcon size={size} color={ink} />
+}
+
+/** 최신순 — the newest of a list at the top. The glyph beside the order a control is showing now. */
+export function NewestFirstIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <SortDescendingIcon size={size} color={ink} />
+}
+
+/** 오래된순 — the oldest of a list at the top. */
+export function OldestFirstIcon({ size = ICON_SIZE, color: ink = color.text }: IconProps) {
+  return <SortAscendingIcon size={size} color={ink} />
 }

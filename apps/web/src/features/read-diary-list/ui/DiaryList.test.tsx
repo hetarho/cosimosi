@@ -349,4 +349,53 @@ describe('DiaryList (web)', () => {
     await user.click(screen.getAllByRole('button')[3]!)
     expect(onOpen).toHaveBeenCalledWith('d3')
   })
+
+  // The archive gains columns from the width it is GIVEN, so the assertions below hand the list a
+  // width and read back where the cards landed. One column is what an unmeasured (or narrow) list
+  // shows, which is also what every test above depends on.
+  describe('the columns are the width, not a breakpoint', () => {
+    function widen(width: number) {
+      vi.spyOn(HTMLUListElement.prototype, 'getBoundingClientRect').mockImplementation(
+        () => ({ top: LIST_TOP - window.scrollY, height: 0, width }) as DOMRect,
+      )
+    }
+    const lefts = () => rows().map((row) => (row as HTMLElement).style.left)
+
+    it('lays the archive in one column while the width holds only one card', () => {
+      widen(VALUES.diaryReader.rowMinWidthPx + 4)
+      show({ diaries: archiveOf(6) })
+      expect(new Set(lefts())).toEqual(new Set(['0%']))
+    })
+
+    it('adds a column for every card the width gains room for', () => {
+      // Four cards' worth of room, so the fifth card starts the second windowed row back at the left.
+      widen(VALUES.diaryReader.rowMinWidthPx * 4 + VALUES.diaryReader.rowGapPx * 3)
+      show({ diaries: archiveOf(8) })
+
+      const placed = lefts()
+      expect(new Set(placed)).toEqual(new Set(['0%', '25%', '50%', '75%']))
+      expect(placed[0]).toBe('0%')
+      expect(placed[4]).toBe('0%')
+      expect(rows().every((row) => (row as HTMLElement).style.width === '25%')).toBe(true)
+    })
+
+    it('re-lays the cards when the window widens under them, rather than leaving one column', () => {
+      widen(VALUES.diaryReader.rowMinWidthPx + 4)
+      show({ diaries: archiveOf(6) })
+      expect(new Set(lefts())).toEqual(new Set(['0%']))
+
+      widen(VALUES.diaryReader.rowMinWidthPx * 3 + VALUES.diaryReader.rowGapPx * 2)
+      act(() => fireResize?.())
+      expect(new Set(lefts())).toEqual(new Set(['0%', '33.333333333333336%', '66.66666666666667%']))
+    })
+
+    it('still mounts a window rather than the archive, however many columns there are', () => {
+      widen(VALUES.diaryReader.rowMinWidthPx * 4 + VALUES.diaryReader.rowGapPx * 3)
+      show({ diaries: archiveOf(400) })
+      // Four lanes means four cards per windowed row, so the mounted count scales with the columns —
+      // what must NOT scale with it is the archive's length.
+      expect(rows().length).toBeLessThan(100)
+      expect(rows().length).toBeGreaterThan(0)
+    })
+  })
 })

@@ -22,6 +22,7 @@ var (
 	ErrDiaryMoodFilterInvalid   = errors.New("diary mood filter is invalid")
 	ErrDiaryDateRangeInvalid    = errors.New("diary date range is invalid")
 	ErrDiarySortInvalid         = errors.New("diary sort is invalid")
+	ErrDiaryCountRangeInvalid   = errors.New("diary memory count range is invalid")
 )
 
 type DiarySort string
@@ -36,6 +37,11 @@ type DiaryFilter struct {
 	Moods   []Mood
 	From    *time.Time
 	To      *time.Time
+	// Inclusive bounds on the count of STILL-LIVE episodic memories a diary has. Pointers because zero
+	// is a real bound — a diary whose every memory was let go still lists ([I1]) — so "no bound" cannot
+	// be spelled 0.
+	MinMemories *int
+	MaxMemories *int
 }
 
 type DiaryQuery struct {
@@ -235,6 +241,18 @@ func validateDiaryFilter(filter DiaryFilter) (DiaryFilter, error) {
 	}
 	if filter.From != nil && filter.To != nil && filter.From.After(*filter.To) {
 		return DiaryFilter{}, ErrDiaryDateRangeInvalid
+	}
+	// A negative bound and an inverted range are both unsatisfiable, and the reader cannot have meant
+	// either — refused rather than silently clamped to "everything", which would answer a question
+	// nobody asked.
+	if filter.MinMemories != nil && *filter.MinMemories < 0 {
+		return DiaryFilter{}, ErrDiaryCountRangeInvalid
+	}
+	if filter.MaxMemories != nil && *filter.MaxMemories < 0 {
+		return DiaryFilter{}, ErrDiaryCountRangeInvalid
+	}
+	if filter.MinMemories != nil && filter.MaxMemories != nil && *filter.MinMemories > *filter.MaxMemories {
+		return DiaryFilter{}, ErrDiaryCountRangeInvalid
 	}
 	if filter.Keyword != "" {
 		filter.Keyword = escapeDiaryLikePattern(filter.Keyword)

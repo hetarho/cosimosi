@@ -23,6 +23,13 @@ export function MoodColorsTab() {
   const rows = useMemo(() => moodColorRows(query.data?.colors ?? []), [query.data?.colors])
   const editor = useMoodColorEditor(rows)
   const [editing, setEditing] = useState<Mood>()
+  // What all thirteen wear right now, live: the dialog needs the other twelve to warn about a colour
+  // that would be hard to tell apart from one of them, and this card is the only place that knows.
+  const { colorFor } = editor
+  const palette = useMemo(
+    () => Object.fromEntries(MOODS.map((mood) => [mood, colorFor(mood)])) as Record<Mood, Color>,
+    [colorFor],
+  )
 
   // A failed write leaves the dialog open: the failure notice is on this card and the save is what
   // the person needs to reach next. A landed one contributed to the aggregate the presets are drawn
@@ -60,19 +67,19 @@ export function MoodColorsTab() {
           </li>
         ))}
       </ul>
-      {editor.duplicateMood ? (
-        <Alert variant="warning" live="status">
-          {m.palette_near_duplicate({ mood: moodLabel(editor.duplicateMood) })}
-        </Alert>
-      ) : null}
       {editor.error ? <Alert variant="danger">{m.palette_save_failed()}</Alert> : null}
       {editing ? (
         // Keyed by feeling: the dialog seeds its draft from `current` once, so a different feeling
         // has to be a different instance rather than the same one handed new props.
+        //
+        // The whole palette is handed down, so "too close to another feeling" is raised WHILE choosing
+        // instead of as a line on this card after the save landed — the moment it can still change
+        // what a reader picks. This card therefore carries no near-duplicate notice of its own.
         <MoodColorDialog
           key={editing}
           mood={editing}
           current={editor.colorFor(editing)}
+          otherColors={palette}
           saving={editor.savingMood !== undefined}
           onClose={() => setEditing(undefined)}
           onSave={(color) => void save(editing, color)}

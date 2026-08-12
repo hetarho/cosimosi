@@ -653,6 +653,11 @@ diary_reader:
   # Vertical space between two rows. The windowed list positions its rows absolutely, so the gap is a
   # number the virtualizer inserts rather than a flex `gap` class — this is its only source.
   row_gap_px: 8
+  # [D6] The narrowest a web archive column may become before the grid drops a column. The list grows
+  # its column count by dividing the measured width by this, so the archive gains columns as the
+  # window widens instead of stepping at named breakpoints — a card holds a date, two clamped preview
+  # lines and the star/mood footer, and below this the preview stops being a preview.
+  row_min_width_px: 288
   # The mobile FlatList onEndReachedThreshold: a ratio of visible length, not pixels, which is why it
   # cannot share the key above.
   infinite_scroll_end_threshold: 0.5

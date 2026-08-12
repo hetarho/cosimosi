@@ -123,6 +123,51 @@ export function isKeywordSearchable(keyword: string, minLength: number): boolean
   return trimmed === '' || trimmed.length >= minLength
 }
 
+/** An inclusive bound on how many still-live memories a diary has; an absent side is unbounded. */
+export interface DiaryMemoryCountRange {
+  readonly min?: number
+  readonly max?: number
+}
+
+/** The option every choice is spelled as — `all`, an exact count, or the top count and above. */
+export const DIARY_MEMORY_COUNT_ALL = 'all'
+
+// entities/diary lib ([D9]): the live-memory-count condition, as the closed list of choices a control
+// offers and the range each one means. A split holds at most `maxMemories` memories, so the top choice
+// is "that many or more" rather than an exact count — a diary can only be reached from above there.
+// Zero is a REAL choice, not the absence of one: a diary whose every memory was let go still lists
+// ([I1]), and asking for those is a question the archive can answer.
+//
+// `maxMemories` is passed in rather than read here: this package holds no config seam, and the bound
+// belongs to the encode contract (encode.max_memories) rather than to the reader.
+export function diaryMemoryCountOptions(maxMemories: number): string[] {
+  const top = Math.max(1, Math.floor(maxMemories))
+  const exact = Array.from({ length: top }, (_, index) => String(index))
+  return [DIARY_MEMORY_COUNT_ALL, ...exact, `${String(top)}+`]
+}
+
+export function diaryMemoryCountRange(option: string, maxMemories: number): DiaryMemoryCountRange {
+  const top = Math.max(1, Math.floor(maxMemories))
+  if (option === `${String(top)}+`) return { min: top }
+  // Anything the list does not hold — a hand-edited link, a value a later build stopped offering —
+  // reads as no condition rather than as a range nobody asked for. The digits are tested as a STRING
+  // first: `Number('')` and `Number(' ')` are both 0, and an empty option must not mean "no stars".
+  if (!/^\d+$/.test(option)) return {}
+  const exact = Number(option)
+  if (exact >= top) return {}
+  return { min: exact, max: exact }
+}
+
+/** The reverse: which option a range spells, so a read (or an address bar) can be shown as a choice. */
+export function diaryMemoryCountOption(range: DiaryMemoryCountRange, maxMemories: number): string {
+  const top = Math.max(1, Math.floor(maxMemories))
+  if (range.min === top && range.max === undefined) return `${String(top)}+`
+  if (range.min !== undefined && range.min === range.max && range.min < top) {
+    return String(range.min)
+  }
+  return DIARY_MEMORY_COUNT_ALL
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 // entities/diary lib ([D8]): an inclusive date range is usable when each side is either absent or a

@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createSyncStatusQueryKey,
   createSyncStatusQueryOptions,
-  DiarySort,
   type GetDiariesInput,
 } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
@@ -92,14 +91,26 @@ export function DiaryReaderBlock({
     [onQueryChange],
   )
 
+  // The ORDER is deliberately absent: it narrows nothing, so an archive read oldest-first is not a
+  // filtered archive and 조건 지우기 must not turn it back over.
   const conditionsActive =
     (query.query ?? '') !== '' ||
     (query.moods ?? []).length > 0 ||
     (query.from ?? '') !== '' ||
-    (query.to ?? '') !== ''
+    (query.to ?? '') !== '' ||
+    query.minMemories !== undefined ||
+    query.maxMemories !== undefined
 
   const clearConditions = useCallback(() => {
-    changeQuery((previous) => ({ ...previous, query: '', moods: [], from: '', to: '' }))
+    changeQuery((previous) => ({
+      ...previous,
+      query: '',
+      moods: [],
+      from: '',
+      to: '',
+      minMemories: undefined,
+      maxMemories: undefined,
+    }))
   }, [changeQuery])
 
   // The month is RESOLVED rather than stored, from the archive page the list has already fetched, and is
@@ -406,64 +417,42 @@ export function DiaryReaderBlock({
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-col gap-2">
-        {/* Which shape of the archive is showing rides beside the title, because it names what this
-            page IS right now — the two are one line, and the sort below steers only the list. */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-lg font-medium text-text">{m.diary_reader_title()}</h1>
-            <SegmentedControl
-              ariaLabel={m.calendar_view_label()}
-              value={view}
-              onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
-              items={[
-                { value: 'list', label: m.calendar_list_view_action() },
-                { value: 'calendar', label: m.calendar_view_action() },
-              ]}
-            />
-          </div>
-          <Button color="neutral" size="sm" onClick={exit} disabled={phase === 'recalling'}>
-            {m.diary_reader_back()}
-          </Button>
-        </div>
-        {/* [D11] said once, plainly: everything on this page is free and the universe clock is still. */}
-        <p className="text-xs text-text-subtle">{m.diary_reader_free_note()}</p>
+      {/* The way out is on the LEFT and the page's name is CENTRED on the line, so the title reads as
+          the place rather than as the first item in a row of controls, and the door back to the
+          universe sits where a reader reaches for a way back. A three-cell grid rather than
+          `justify-between`: the middle cell is centred on the HEADER, so the title does not drift as
+          the controls beside it change width. Which shape of the archive is showing keeps its place
+          beside the title — it names what this page IS right now ([D12]). */}
+      <header className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+        <Button color="neutral" size="sm" onClick={exit} disabled={phase === 'recalling'}>
+          {m.diary_reader_back()}
+        </Button>
+        <h1 className="text-center text-lg font-medium text-text">{m.diary_reader_title()}</h1>
+        <SegmentedControl
+          ariaLabel={m.calendar_view_label()}
+          value={view}
+          onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
+          items={[
+            { value: 'list', label: m.calendar_list_view_action() },
+            { value: 'calendar', label: m.calendar_view_action() },
+          ]}
+        />
       </header>
 
       {/* The soft-deleted "지운 일기" restore section sits beside the immutable archive it survives
           within ([W6][D4]) — this session's releases only (an accepted v1 limit). */}
       <RestoreSection />
 
+      {/* Every condition of the archive on one line — keyword, order, feelings, star count and the way
+          back out. The ORDER steers the list, so it is withheld while the calendar shows: a control
+          that moves nothing visible is noise ([D12]). */}
       <SearchDiary
         value={query}
         onChange={changeQuery}
         moodsOpen={moodsOpen}
         onMoodsOpenChange={setMoodsOpen}
+        sortable={view === 'list'}
       />
-
-      {/* The sort orders the LIST, so it is hidden while the calendar shows — a control that steers
-          nothing visible is noise. */}
-      <div className="flex flex-wrap items-center gap-2">
-        {view === 'list' && (
-          <>
-            <span className="text-sm text-text-muted">{m.diary_reader_sort_label()}</span>
-            <SegmentedControl
-              ariaLabel={m.diary_reader_sort_label()}
-              value={query.sort === DiarySort.OLDEST ? 'oldest' : 'newest'}
-              onValueChange={(next) =>
-                changeQuery((previous) => ({
-                  ...previous,
-                  sort: next === 'oldest' ? DiarySort.OLDEST : DiarySort.NEWEST,
-                }))
-              }
-              items={[
-                { value: 'newest', label: m.diary_reader_sort_newest() },
-                { value: 'oldest', label: m.diary_reader_sort_oldest() },
-              ]}
-            />
-          </>
-        )}
-      </div>
 
       {/* Only the BODY branches: the header, the restore section, the search controls and the deep-link
           consumer effect above stay mounted across the switch, and the page-level deletion mount is
@@ -495,6 +484,8 @@ export function DiaryReaderBlock({
             query.from,
             query.to,
             query.sort,
+            query.minMemories,
+            query.maxMemories,
           ])}
           renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
         />

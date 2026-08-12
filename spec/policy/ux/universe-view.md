@@ -22,6 +22,14 @@ the space's own chrome, beside the clock rather than in the column of ways out o
 is currently in (고정 모드 / 자유 모드), not the one a press would bring. Over a live sky a lone glyph is a guess, and
 this control changes how the whole scene answers a drag.
 
+**Every icon control over the universe is round, borderless, and lit only by a shadow.** No rim and no plate: over a
+live sky a bordered circle reads as a hole punched in the universe, and a column of them reads as a widget tray. What
+gives a fill-less glyph its ground is a dark halo hugging the strokes — the same treatment the balance readout above
+them takes its legibility from — rather than a surface the scene cannot be seen through. Each control still carries its
+name for assistive tech and a tooltip on web, which design-language §8 makes mandatory the moment an icon stands
+without a label. (The transparent border every control keeps for `forced-colors` is unaffected — that is structure, not
+look, per [ui-principles](ui-principles.md) §5.)
+
 **Neither mode changes what is true, only what is seen** ([I5][I11]). Position stays the force-sim's emergent output;
 holding the universe flat frames it and never re-lays it out, stores a coordinate, or reorders anything.
 

@@ -32,11 +32,17 @@ export interface DiaryListProps {
   renderBodyText?: (text: string) => ReactNode
 }
 
-// features/read-diary-list ui ([D2][D6][D7]): the immutable archive. A closed row is date + a bounded
+// features/read-diary-list ui ([D2][D6][D7]): the immutable archive. A closed card is date + a bounded
 // preview of the verbatim body + the count of stars born from it + its distinct mood dots — no title
-// exists at any layer. A row opens to the whole body ([I2][D4]) and its split membership as
+// exists at any layer. A card opens to the whole body ([I2][D4]) and its split membership as
 // mood-colored chips ([D3]). Reading, previewing and scrolling are free: this surface spends nothing
 // and moves no clock ([D11][T3]).
+//
+// The archive lays itself out in as many columns as the width HOLDS, not as many as a breakpoint
+// names: the column count is the measured width divided by `rowMinWidthPx`, so one phone column
+// becomes two, three, four as the window grows and no width has a layout nobody designed for. The
+// windowing survives that — the virtualizer is given the column count as its lane count, so a
+// four-column archive mounts four cards per windowed row rather than four times the DOM.
 export function DiaryList({
   diaries,
   openedDiaryId,
@@ -57,11 +63,25 @@ export function DiaryList({
   // the first render (the archive loads first) and the measurement has to start when it appears.
   const [listNode, setListNode] = useState<HTMLUListElement | null>(null)
   const [listOffset, setListOffset] = useState(0)
+  // How many cards fit across, measured rather than named. 1 until the list has been measured, so the
+  // first paint is the narrow layout and widening is what adds columns — never the other way round.
+  const [columns, setColumns] = useState(1)
   useLayoutEffect(() => {
     if (!listNode || typeof ResizeObserver === 'undefined') return
     const sync = () => {
       const next = Math.round(listNode.getBoundingClientRect().top + window.scrollY)
       setListOffset((current) => (current === next ? current : next))
+      // A width that is not a real number is the SINGLE-column answer, not an arithmetic accident: an
+      // unmeasured box (and a test's stubbed rect) must never reach the virtualizer as a NaN lane count.
+      const width = listNode.getBoundingClientRect().width
+      const fits = Number.isFinite(width)
+        ? Math.floor(
+            (width + VALUES.diaryReader.rowGapPx) /
+              (VALUES.diaryReader.rowMinWidthPx + VALUES.diaryReader.rowGapPx),
+          )
+        : 1
+      const nextColumns = Math.max(1, fits)
+      setColumns((current) => (current === nextColumns ? current : nextColumns))
     }
     sync()
     // Everything above the list moves it and re-renders none of this: the restore section mounts
@@ -95,18 +115,32 @@ export function DiaryList({
     [focusedIndex, openedIndex],
   )
 
-  // Keyed by the diary, not by position, so a row that has been measured keeps its real height if
+  // Keyed by the diary, not by position, so a card that has been measured keeps its real height if
   // the archive is re-sorted under it.
   const itemKey = useCallback((index: number) => diaries[index]?.id ?? index, [diaries])
   const virtualizer = useWindowVirtualizer({
     count: diaries.length,
     estimateSize: () => VALUES.diaryReader.rowEstimateHeightPx,
-    overscan: VALUES.diaryReader.rowOverscan,
+    // The overscan is a count of ITEMS, and a wide archive spends a lane on each: scaling it by the
+    // column count keeps the same number of windowed ROWS mounted beyond each edge whatever the width,
+    // so a flick on a four-column desktop is no more likely to expose a blank band than on a phone.
+    overscan: VALUES.diaryReader.rowOverscan * columns,
     gap: VALUES.diaryReader.rowGapPx,
     scrollMargin: listOffset,
     getItemKey: itemKey,
     rangeExtractor: keepFocusedRow,
+    lanes: columns,
   })
+
+  // A lane count change re-partitions every card, and the measurements taken under the previous count
+  // describe a layout that no longer exists — without this, widening the window leaves the cards at
+  // their one-column offsets.
+  useEffect(() => {
+    virtualizer.measure()
+    // `virtualizer` is deliberately not a dependency: it is a fresh object every render, and
+    // re-measuring on each commit would throw away every measured height the list just took.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns])
 
   // The deep link from a star's detail panel can open a row well outside the mounted window, so the
   // scroll is asked of the virtualizer by index rather than of a node that may not exist. `auto`
@@ -168,43 +202,58 @@ export function DiaryList({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Only the rows over the viewport (plus the overscan) are mounted, so the DOM stays a
-          screenful whatever the archive's length. The <ul> holds the full scroll height and each row
+      {/* Only the cards over the viewport (plus the overscan) are mounted, so the DOM stays a
+          screenful whatever the archive's length. The <ul> holds the full scroll height and each card
           is placed inside it; the sentinel below therefore still sits at the true end of the list. */}
       <ul ref={setListNode} className="relative" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((row) => {
           const diary = diaries[row.index]
           if (!diary) return null
           const preview = diaryPreview(diary.body, VALUES.diaryReader.bodyPreviewLength)
+          // The lane is the column. Width and offset are PERCENTAGES of the list, so a card follows a
+          // resize without waiting for the measurement pass, and the horizontal gap is carved out of
+          // the cell by an inset rather than by shrinking the track — a percentage track minus a pixel
+          // gap would not add up to the list's width.
+          const lane = row.lane
+          const cell = 100 / columns
           return (
             <li
               key={row.key}
               data-index={row.index}
               ref={virtualizer.measureElement}
-              className="absolute top-0 left-0 w-full rounded-md border border-border bg-surface"
-              style={{ transform: `translateY(${row.start - listOffset}px)` }}
+              className="absolute top-0"
+              style={{
+                left: `${String(lane * cell)}%`,
+                width: `${String(cell)}%`,
+                transform: `translateY(${String(row.start - listOffset)}px)`,
+                // The last column has nothing to its right, so its inset would only narrow the card.
+                paddingRight:
+                  lane === columns - 1 ? undefined : `${String(VALUES.diaryReader.rowGapPx)}px`,
+              }}
             >
-              <button
-                type="button"
-                aria-haspopup="dialog"
-                onClick={() => onOpen(diary.id)}
-                onFocus={() => setFocusedIndex(row.index)}
-                onBlur={() =>
-                  setFocusedIndex((current) => (current === row.index ? null : current))
-                }
-                className="flex w-full flex-col items-start gap-1.5 px-4 py-3 text-left"
-              >
-                <time
-                  dateTime={diary.diaryDate}
-                  className="text-sm font-medium text-text tabular-nums"
+              <div className="h-full rounded-md border border-border bg-surface">
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => onOpen(diary.id)}
+                  onFocus={() => setFocusedIndex(row.index)}
+                  onBlur={() =>
+                    setFocusedIndex((current) => (current === row.index ? null : current))
+                  }
+                  className="flex h-full w-full flex-col items-start gap-1.5 px-4 py-3 text-left"
                 >
-                  {diary.diaryDate}
-                </time>
-                <span className="line-clamp-2 text-sm text-text-muted">
-                  {renderBodyText ? renderBodyText(preview) : preview}
-                </span>
-                <DiaryRowFooter memories={diary.memories} />
-              </button>
+                  <time
+                    dateTime={diary.diaryDate}
+                    className="text-sm font-medium text-text tabular-nums"
+                  >
+                    {diary.diaryDate}
+                  </time>
+                  <span className="line-clamp-2 text-sm text-text-muted">
+                    {renderBodyText ? renderBodyText(preview) : preview}
+                  </span>
+                  <DiaryRowFooter memories={diary.memories} />
+                </button>
+              </div>
             </li>
           )
         })}

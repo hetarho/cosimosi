@@ -46,35 +46,35 @@ export function LedgerEntryRow({ entry }: { entry: LedgerEntry }) {
 
   return (
     <View style={styles.row}>
-      <View style={styles.line}>
-        <Text style={styles.reason}>{label()}</Text>
-        <Text style={styles.amount}>{`${sign}${String(entry.amount)}`}</Text>
-      </View>
-      {spend ? (
-        <Text style={styles.split}>
-          {`${m.me_stardust_spend_split_label()} ${m.twinkle_balance_small_label()} ${String(
-            entry.fromSmall,
-          )} · ${m.twinkle_balance_general_label()} ${String(entry.fromGeneral)}`}
-        </Text>
-      ) : null}
+      <Text style={styles.reason}>{label()}</Text>
+      {/* One baseline, one reading: the amount, and the parenthetical breakdown of it a step smaller
+          and a step quieter, so the eye takes the total first and the split only if it wants it. */}
+      <Text style={styles.amount}>
+        {`${sign}${String(entry.amount)}`}
+        {spend ? (
+          <Text style={styles.split}>
+            {` (${m.me_stardust_spend_split({
+              small: String(entry.fromSmall),
+              general: String(entry.fromGeneral),
+            })})`}
+          </Text>
+        ) : null}
+      </Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   row: {
-    gap: tokens.spacing[1],
-    paddingVertical: tokens.spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.color.border,
-  },
-  line: {
-    flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
+    borderBottomColor: tokens.color.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
     gap: tokens.spacing[3],
+    justifyContent: 'space-between',
+    paddingVertical: tokens.spacing[2],
   },
   reason: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
-  amount: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
-  split: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs },
+  amount: { color: tokens.color.text, flexShrink: 1, fontSize: tokens.fontSize.sm },
+  split: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
 })

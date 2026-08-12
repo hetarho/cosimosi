@@ -20,3 +20,4 @@ export {
   moodColorRiskText,
   moodLabel,
 } from '@cosimosi/emotion/i18n'
+export { diaryMemoryCountLabel } from '@cosimosi/memory/i18n'

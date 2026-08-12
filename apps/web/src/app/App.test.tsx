@@ -357,7 +357,7 @@ describe('web auth gate', () => {
     })
   })
 
-  it('serves the deep-linked achievements tab with all five tab ids and no decoration', async () => {
+  it('serves the deep-linked achievements tab with every tab id and no decoration', async () => {
     const fakes = createTestHarnessFakes({ userId: 'me-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
@@ -381,11 +381,11 @@ describe('web auth gate', () => {
         />,
       )
 
-      expect(html).toContain('You')
       expect(html).toContain('Profile')
       expect(html).toContain('Achievements')
       expect(html).toContain('Diary management')
-      expect(html).toContain('Account')
+      // 계정 is no longer a tab of its own — the account rows moved to the foot of the profile ([64]).
+      expect(html).not.toContain('>Account<')
       // /me?tab=achievements lands on the LIST, not a placeholder. The panel element belongs to MePage
       // and was there before, so it proves nothing; what proves the real body mounted is the list's own
       // pending surface — server-rendered, the read has not resolved, so the list renders its skeleton.

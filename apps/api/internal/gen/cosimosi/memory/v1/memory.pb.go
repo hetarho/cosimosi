@@ -1990,7 +1990,12 @@ type GetDiariesRequest struct {
 	From string `protobuf:"bytes,5,opt,name=from,proto3" json:"from,omitempty"`
 	To   string `protobuf:"bytes,6,opt,name=to,proto3" json:"to,omitempty"`
 	// UNSPECIFIED preserves the shipped newest-first behavior.
-	Sort          DiarySort `protobuf:"varint,7,opt,name=sort,proto3,enum=cosimosi.memory.v1.DiarySort" json:"sort,omitempty"`
+	Sort DiarySort `protobuf:"varint,7,opt,name=sort,proto3,enum=cosimosi.memory.v1.DiarySort" json:"sort,omitempty"`
+	// Inclusive bounds on how many STILL-LIVE episodic memories the diary has (the same count the
+	// reader sees on a row). Explicitly optional rather than 0-means-unset: zero is a real bound —
+	// a diary every memory of which was let go still lists ([I1]) — so absence has to be its own state.
+	MinMemories   *int32 `protobuf:"varint,8,opt,name=min_memories,json=minMemories,proto3,oneof" json:"min_memories,omitempty"`
+	MaxMemories   *int32 `protobuf:"varint,9,opt,name=max_memories,json=maxMemories,proto3,oneof" json:"max_memories,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2072,6 +2077,20 @@ func (x *GetDiariesRequest) GetSort() DiarySort {
 		return x.Sort
 	}
 	return DiarySort_DIARY_SORT_UNSPECIFIED
+}
+
+func (x *GetDiariesRequest) GetMinMemories() int32 {
+	if x != nil && x.MinMemories != nil {
+		return *x.MinMemories
+	}
+	return 0
+}
+
+func (x *GetDiariesRequest) GetMaxMemories() int32 {
+	if x != nil && x.MaxMemories != nil {
+		return *x.MaxMemories
+	}
+	return 0
 }
 
 // Chronological in the requested direction. next_page_token empty = the last page.
@@ -3140,7 +3159,7 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x0eExportResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\fR\acontent\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x1a\n" +
-	"\bfilename\x18\x03 \x01(\tR\bfilename\"\xd2\x01\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\"\xc4\x02\n" +
 	"\x11GetDiariesRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
@@ -3149,7 +3168,11 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x05moods\x18\x04 \x03(\tR\x05moods\x12\x12\n" +
 	"\x04from\x18\x05 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x06 \x01(\tR\x02to\x121\n" +
-	"\x04sort\x18\a \x01(\x0e2\x1d.cosimosi.memory.v1.DiarySortR\x04sort\"t\n" +
+	"\x04sort\x18\a \x01(\x0e2\x1d.cosimosi.memory.v1.DiarySortR\x04sort\x12&\n" +
+	"\fmin_memories\x18\b \x01(\x05H\x00R\vminMemories\x88\x01\x01\x12&\n" +
+	"\fmax_memories\x18\t \x01(\x05H\x01R\vmaxMemories\x88\x01\x01B\x0f\n" +
+	"\r_min_memoriesB\x0f\n" +
+	"\r_max_memories\"t\n" +
 	"\x12GetDiariesResponse\x126\n" +
 	"\adiaries\x18\x01 \x03(\v2\x1c.cosimosi.memory.v1.DiaryDtoR\adiaries\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc0\x01\n" +
@@ -3373,6 +3396,7 @@ func file_cosimosi_memory_v1_memory_proto_init() {
 	}
 	file_cosimosi_memory_v1_memory_proto_msgTypes[12].OneofWrappers = []any{}
 	file_cosimosi_memory_v1_memory_proto_msgTypes[13].OneofWrappers = []any{}
+	file_cosimosi_memory_v1_memory_proto_msgTypes[28].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

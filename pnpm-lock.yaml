@@ -757,6 +757,9 @@ importers:
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../emotion
+      '@cosimosi/i18n':
+        specifier: workspace:*
+        version: link:../i18n
     devDependencies:
       '@bufbuild/protobuf':
         specifier: ^2.12.1
@@ -9914,7 +9917,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.0': {}
 

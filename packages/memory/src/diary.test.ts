@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DIARY_MEMORY_COUNT_ALL,
+  diaryMemoryCountOption,
+  diaryMemoryCountOptions,
+  diaryMemoryCountRange,
   diaryMoods,
   diaryPreview,
   highlightSegments,
@@ -184,5 +188,48 @@ describe('shouldAdoptCommitted', () => {
   it('adopts a value changed outside the field', () => {
     expect(shouldAdoptCommitted('coffee ', '')).toBe(true)
     expect(shouldAdoptCommitted('coffee', 'tea')).toBe(true)
+  })
+})
+
+describe('the live-memory-count condition', () => {
+  it('offers every count a split can hold, plus zero and a top-and-above', () => {
+    expect(diaryMemoryCountOptions(5)).toEqual([
+      DIARY_MEMORY_COUNT_ALL,
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5+',
+    ])
+  })
+
+  it('reads zero as a REAL bound rather than the absence of one', () => {
+    // A diary whose every memory was let go still lists ([I1]), so "no stars left" is a question the
+    // archive can answer — and it cannot be spelled by leaving the bound out.
+    expect(diaryMemoryCountRange('0', 5)).toEqual({ min: 0, max: 0 })
+    expect(diaryMemoryCountRange(DIARY_MEMORY_COUNT_ALL, 5)).toEqual({})
+  })
+
+  it('bounds an exact count on both sides and the top choice only from below', () => {
+    expect(diaryMemoryCountRange('3', 5)).toEqual({ min: 3, max: 3 })
+    expect(diaryMemoryCountRange('5+', 5)).toEqual({ min: 5 })
+  })
+
+  it('reads anything the list does not hold as no condition at all', () => {
+    for (const junk of ['', 'many', '-1', '9', '2.5', '5']) {
+      expect(diaryMemoryCountRange(junk, 5)).toEqual({})
+    }
+  })
+
+  it('round-trips every offered choice through the range it means', () => {
+    for (const option of diaryMemoryCountOptions(5)) {
+      expect(diaryMemoryCountOption(diaryMemoryCountRange(option, 5), 5)).toBe(option)
+    }
+  })
+
+  it('shows a range no choice spells as no choice, rather than the nearest one', () => {
+    expect(diaryMemoryCountOption({ min: 2, max: 4 }, 5)).toBe(DIARY_MEMORY_COUNT_ALL)
+    expect(diaryMemoryCountOption({ min: 1 }, 5)).toBe(DIARY_MEMORY_COUNT_ALL)
   })
 })

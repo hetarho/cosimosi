@@ -43,6 +43,7 @@ export const ERROR_REASONS = {
   memoryDiaryMoodFilterInvalid: 'MEMORY_DIARY_MOOD_FILTER_INVALID',
   memoryDiaryDateRangeInvalid: 'MEMORY_DIARY_DATE_RANGE_INVALID',
   memoryDiarySortInvalid: 'MEMORY_DIARY_SORT_INVALID',
+  memoryDiaryCountRangeInvalid: 'MEMORY_DIARY_COUNT_RANGE_INVALID',
   memoryReleaseInputRequired: 'MEMORY_RELEASE_INPUT_REQUIRED',
   memoryLetGoInvalidApproved: 'MEMORY_LET_GO_INVALID_APPROVED',
   memoryOperationIdRequired: 'MEMORY_OPERATION_ID_REQUIRED',

@@ -14,6 +14,7 @@ const (
 	reasonDiaryMoodFilterInvalid     = "MEMORY_DIARY_MOOD_FILTER_INVALID"
 	reasonDiaryDateRangeInvalid      = "MEMORY_DIARY_DATE_RANGE_INVALID"
 	reasonDiarySortInvalid           = "MEMORY_DIARY_SORT_INVALID"
+	reasonDiaryCountRangeInvalid     = "MEMORY_DIARY_COUNT_RANGE_INVALID"
 	reasonReleaseInputRequired       = "MEMORY_RELEASE_INPUT_REQUIRED"
 	reasonLetGoInvalidApproved       = "MEMORY_LET_GO_INVALID_APPROVED"
 	reasonOperationIDRequired        = "MEMORY_OPERATION_ID_REQUIRED"

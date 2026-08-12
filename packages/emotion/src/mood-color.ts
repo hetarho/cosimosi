@@ -27,12 +27,19 @@ export function snapToEmotionStep(color: Color): Color {
   return okLchToColor({ ...lch, l: nearestEmotionStep(lch.l) })
 }
 
+/**
+ * The first feeling already wearing a color this close, or nothing. `except` is the mood being
+ * edited: a color is never too close to the color it is replacing, and the table handed in is usually
+ * the whole palette rather than a pre-filtered copy of it.
+ */
 export function nearDuplicateMood(
   color: Color,
   chosen: Readonly<Partial<Record<Mood, Color>>>,
+  except?: Mood,
 ): Mood | undefined {
   return MOODS.find(
     (mood) =>
+      mood !== except &&
       chosen[mood] !== undefined &&
       deltaEOkLab(color, chosen[mood]) < VALUES.palette.similarDeltaEMin,
   )

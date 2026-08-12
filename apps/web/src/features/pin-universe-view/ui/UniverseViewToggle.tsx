@@ -25,6 +25,9 @@ export interface UniverseViewToggleProps {
 // the whole scene answers a drag, which is too much to leave to one glyph. `aria-pressed` carries
 // the state a sighted viewer gets from the fill, and the accessible name is the ACTION, so the
 // button still announces what pressing it does.
+//
+// Borderless and round like the rest of the HUD's controls: its ground is the `drop-shadow-md` on the
+// group below, not a rim — over a live sky a bordered circle reads as a hole in the universe.
 export function UniverseViewToggle({ size = 'md' }: UniverseViewToggleProps) {
   const mode = useUniverseViewStore((state) => state.mode)
   const toggle = useUniverseViewStore((state) => state.toggle)
@@ -35,8 +38,9 @@ export function UniverseViewToggle({ size = 'md' }: UniverseViewToggleProps) {
     <div className="pointer-events-auto flex items-center gap-2 drop-shadow-md">
       <Tooltip content={action} side="bottom">
         <IconButton
-          variant="outlined"
+          variant="text"
           color="neutral"
+          className="rounded-full"
           size={size}
           label={action}
           aria-pressed={pinned}

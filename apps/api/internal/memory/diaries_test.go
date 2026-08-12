@@ -248,6 +248,28 @@ func TestGetDiariesRejectsInvalidFiltersAndDirectionMismatch(t *testing.T) {
 		t.Fatalf("inverted range err = %v, want ErrDiaryDateRangeInvalid", err)
 	}
 
+	negative, zero, two := -1, 0, 2
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{MinMemories: &negative},
+	}); !errors.Is(err, ErrDiaryCountRangeInvalid) {
+		t.Fatalf("negative min err = %v, want ErrDiaryCountRangeInvalid", err)
+	}
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{MinMemories: &two, MaxMemories: &zero},
+	}); !errors.Is(err, ErrDiaryCountRangeInvalid) {
+		t.Fatalf("inverted count range err = %v, want ErrDiaryCountRangeInvalid", err)
+	}
+	// A zero bound is a REQUEST, not an absent one: it asks for the diaries whose every memory was let
+	// go ([I1]), so it has to survive validation and reach the reader as a bound.
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{MinMemories: &zero, MaxMemories: &zero},
+	}); err != nil {
+		t.Fatalf("zero-bounded count range failed: %v", err)
+	}
+	if fixture.diaries.lastFilter.MaxMemories == nil || *fixture.diaries.lastFilter.MaxMemories != 0 {
+		t.Fatalf("bound max = %v, want a present 0", fixture.diaries.lastFilter.MaxMemories)
+	}
+
 	token := encodeDiaryCursor(DiaryCursor{
 		DiaryDate: day(2026, 7, 1),
 		ID:        "d1",

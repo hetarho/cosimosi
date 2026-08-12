@@ -15,7 +15,10 @@ import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 
-const meTabs = ['profile', 'mood-colors', 'stardust', 'achievements', 'diary', 'account'] as const
+// The five tabs of the account home, mirroring the web's ([64]). 계정 is NOT one of them: the identity,
+// the linked ways in, sign-out and withdrawal are facts about the same person the profile tab is
+// already about, and they sit at the FOOT of it instead.
+const meTabs = ['profile', 'mood-colors', 'stardust', 'achievements', 'diary'] as const
 export type MeTabId = (typeof meTabs)[number]
 
 // Every tab body is handed the screen's back callback, and the profile tab's last row is the one that
@@ -33,7 +36,6 @@ const tabViews: Readonly<
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
   achievements: { title: m.me_tab_achievements, Body: AchievementList },
   diary: { title: m.me_tab_diary, Body: ExportDiaries },
-  account: { title: m.me_tab_account, Body: AccountTab },
 }
 
 export function MePage({
@@ -68,11 +70,18 @@ export function MePage({
         },
       ]}
     >
+      {/* The way out on the LEFT and the open tab's own name centred, mirroring the web header: with
+          the tab strip right beneath, a fixed 나 said nothing the strip did not already say. The two
+          side cells share the leftover width equally, so the title is centred on the HEADER rather
+          than on the space the button happens to leave. */}
       <View style={styles.header}>
-        <Text style={styles.title}>{m.me_title()}</Text>
-        <Button color="neutral" size="sm" onPress={onBack}>
-          {m.me_back()}
-        </Button>
+        <View style={styles.headerSide}>
+          <Button color="neutral" size="sm" onPress={onBack}>
+            {m.me_back()}
+          </Button>
+        </View>
+        <Text style={styles.title}>{tabViews[activeTab].title()}</Text>
+        <View style={styles.headerSide} />
       </View>
       <Tabs
         ariaLabel={m.me_tabs_label()}
@@ -97,21 +106,19 @@ function isMeTab(value: string): value is MeTabId {
   return (meTabs as readonly string[]).includes(value)
 }
 
+// Everything true of the person rather than of their universe, and then — at the foot, behind a
+// separating rule — the account itself. Signing out and leaving are the two things on this screen a
+// stray tap must not reach, so distance is what protects them ([U9]).
 function ProfileTab({ onExit }: MeTabBodyProps) {
   return (
     <View style={styles.accountTab}>
       <AccountProfile />
       <InviteLink />
       <ReplayOnboarding onExit={onExit} />
-    </View>
-  )
-}
-
-function AccountTab() {
-  return (
-    <View style={styles.accountTab}>
-      <AccountSection />
-      <WithdrawAccount exportOffer={<ExportDiaries />} />
+      <View style={styles.accountFoot}>
+        <AccountSection />
+        <WithdrawAccount exportOffer={<ExportDiaries />} />
+      </View>
     </View>
   )
 }
@@ -123,9 +130,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'space-between',
   },
+  headerSide: { alignItems: 'flex-start', flex: 1 },
   title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   section: { gap: 12 },
   accountTab: { gap: 24 },
+  accountFoot: {
+    borderTopColor: tokens.color.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 24,
+    paddingTop: tokens.spacing[6],
+  },
 })

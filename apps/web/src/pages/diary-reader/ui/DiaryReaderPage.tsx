@@ -27,7 +27,12 @@ export function DiaryReaderPage({
 }) {
   return (
     <main className="min-h-dvh overflow-y-auto bg-bg text-text">
-      <div className="mx-auto w-full max-w-2xl px-4 py-6">
+      {/* UNCAPPED, rather than a reading column: the archive is a GRID whose column count is the width
+          it is given ([D6]), so a maximum width would be a maximum number of columns. Nothing here holds
+          long-form text — the entry a reader actually reads opens in a dialog, which keeps its own
+          measure — and a card stops narrowing at `rowMinWidthPx`, so a wider window gains columns
+          instead of stretching a line of prose. */}
+      <div className="w-full px-4 py-6">
         <DiaryReaderBlock
           onExit={onExit}
           query={query}

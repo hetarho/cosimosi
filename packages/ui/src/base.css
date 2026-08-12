@@ -232,11 +232,15 @@
     box-shadow: 0 0 8px -3px color-mix(in oklab, var(--btn-ink) 45%, transparent);
   }
 
-  /* Text — bare label, faint tint on hover; toolbars/tab strips of these cost nothing. */
+  /* Text — bare label, faint tint on hover; toolbars/tab strips of these cost nothing.
+     The border is DECLARED and transparent rather than absent: under `forced-colors: active` the
+     browser strips fills, shadows and blur, and a control whose edge existed only as a fill would
+     vanish — a real border gives the OS palette something to draw (ui-principles §5). It costs no
+     layout, since every control here is border-box and fixed-size. */
   .btn-text {
     background-image: none;
     background-color: transparent;
-    border-color: transparent;
+    border: 1px solid transparent;
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

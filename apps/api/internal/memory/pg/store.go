@@ -968,6 +968,13 @@ func pgInt8(value *int64) pgtype.Int8 {
 	return pgtype.Int8{Int64: *value, Valid: true}
 }
 
+func pgInt4Ptr(value *int) pgtype.Int4 {
+	if value == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*value), Valid: true}
+}
+
 func pgInt2Ptr(value *int16) pgtype.Int2 {
 	if value == nil {
 		return pgtype.Int2{}

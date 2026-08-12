@@ -27,6 +27,26 @@ WHERE d.user_id = sqlc.arg(user_id)
         AND em.mood = ANY(sqlc.arg(moods)::text[])
     )
   )
+  AND (
+    sqlc.narg(min_memories)::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_min
+      WHERE em_min.user_id = sqlc.arg(user_id)
+        AND em_min.diary_id = d.id
+        AND em_min.deleted_at IS NULL
+    ) >= sqlc.narg(min_memories)::int
+  )
+  AND (
+    sqlc.narg(max_memories)::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_max
+      WHERE em_max.user_id = sqlc.arg(user_id)
+        AND em_max.diary_id = d.id
+        AND em_max.deleted_at IS NULL
+    ) <= sqlc.narg(max_memories)::int
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM release_groups AS rg
@@ -60,6 +80,26 @@ WHERE d.user_id = sqlc.arg(user_id)
         AND em.deleted_at IS NULL
         AND em.mood = ANY(sqlc.arg(moods)::text[])
     )
+  )
+  AND (
+    sqlc.narg(min_memories)::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_min
+      WHERE em_min.user_id = sqlc.arg(user_id)
+        AND em_min.diary_id = d.id
+        AND em_min.deleted_at IS NULL
+    ) >= sqlc.narg(min_memories)::int
+  )
+  AND (
+    sqlc.narg(max_memories)::int IS NULL
+    OR (
+      SELECT count(*)
+      FROM episodic_memories AS em_max
+      WHERE em_max.user_id = sqlc.arg(user_id)
+        AND em_max.diary_id = d.id
+        AND em_max.deleted_at IS NULL
+    ) <= sqlc.narg(max_memories)::int
   )
   AND NOT EXISTS (
     SELECT 1

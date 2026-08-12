@@ -88,11 +88,10 @@ describe('DiaryReaderBlock — the archive’s two shapes ([D12][A1])', () => {
     })
   })
 
-  it('keeps the header, the free note, the restore section and the search controls mounted in BOTH views', async () => {
+  it('keeps the header, the restore section and the search controls mounted in BOTH views', async () => {
     for (const view of ['list', 'calendar'] as const) {
       const { container, unmount } = mount(view)
       await waitFor(() => expect(container.textContent).toContain(m.diary_reader_title()))
-      expect(container.textContent).toContain(m.diary_reader_free_note())
       expect(container.textContent).toContain(m.deletion_restore_section_title())
       expect(screen.queryByLabelText(m.diary_search_keyword_label())).not.toBeNull()
       expect(screen.queryByRole('button', { name: m.diary_reader_back() })).not.toBeNull()
@@ -123,15 +122,21 @@ describe('DiaryReaderBlock — the archive’s two shapes ([D12][A1])', () => {
     expect(onViewChange).toHaveBeenCalledWith('calendar')
   })
 
-  it('hides the sort control while the calendar shows, since it orders the list', async () => {
+  it('hides the order toggle while the calendar shows, since it orders the list', async () => {
     const list = mount('list')
-    await waitFor(() => expect(list.container.textContent).toContain(m.diary_reader_sort_label()))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: m.diary_reader_sort_to_oldest() }),
+      ).not.toBeNull(),
+    )
     list.unmount()
     cleanup()
 
     const calendar = mount('calendar')
     await waitFor(() => expect(calendar.container.querySelector('.grid-cols-7')).not.toBeNull())
-    expect(calendar.container.textContent).not.toContain(m.diary_reader_sort_label())
+    expect(screen.queryByRole('button', { name: m.diary_reader_sort_to_oldest() })).toBeNull()
+    // The rest of the conditions survive the switch — only the ORDER is withheld ([D12]).
+    expect(screen.queryByLabelText(m.diary_search_memory_count_label())).not.toBeNull()
   })
 
   it('issues no calendar read at all while the list is showing', async () => {

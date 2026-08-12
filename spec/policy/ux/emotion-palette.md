@@ -60,7 +60,8 @@ before palette-dependent children mount. Live choices use the same seam and neve
 Per-mood colors are lowercase `#rrggbb` and server-snapped to the nearest existing emotion
 lightness step (`0.80`, `0.72`, `0.63`). Hue and chroma remain the user's within 8-bit encoding
 tolerance. A color within the configured OkLab ΔE of another chosen mood raises a visible notice
-but is still accepted.
+but is still accepted — raised **while choosing**, as one of the editor's live concerns (below),
+rather than as a line on the tab after the save landed.
 
 ### The preset row: three kinds of offer
 
@@ -119,29 +120,48 @@ snap or reject.
 
 ### Risk is warned live, and asked once more before it is kept
 
-`moodColorRisks` reads three warn-only risks off a color, as sRGB relative luminance and OkLCH
-chroma — emitted light, not perceptual lightness, because what washes out a neighbour or sinks into
-the void against an additive bloom pass is the light itself:
+`moodColorRisks` reads four warn-only concerns off a color. Three are about the color **alone**, as sRGB
+relative luminance and OkLCH chroma — emitted light, not perceptual lightness, because what washes out a
+neighbour or sinks into the void against an additive bloom pass is the light itself:
 
 - **glare** — brighter than the sky around it; can wash out the stars beside it.
 - **dim** — nearly indistinguishable from the night sky.
 - **faint** — below the near-neutral chroma, so it no longer reads as a hue and may not stand apart
   from the other twelve feelings.
 
-Lightness snapping already does most of this protection, so the bands are deliberately narrow: each
-is reachable only at one end of one lightness step. A mood's own authored color never carries a
-risk, and the faint warning is withheld for a mood whose authored color is itself near-neutral —
-the product does not argue with its own defaults.
+The fourth is **relational**, and it is raised in the same list rather than as a notice of its own:
 
-Risks are on standing display while a color is being chosen, not revealed at the save. A color
-carrying no risk saves on one press; a color carrying one asks a second, explicit confirmation
-before it is kept — and that confirmation still keeps it if the person says so. Like the axis and
-near-duplicate notices, none of this blocks ([P3]).
+- **similar** — within the configured OkLab ΔE of the color another feeling already wears, so the two
+  will be hard to tell apart in the universe. It names that other feeling.
+
+Lightness snapping already does most of the first three's protection, so their bands are deliberately
+narrow: each is reachable only at one end of one lightness step. A mood's own authored color never
+carries one of them, and the faint warning is withheld for a mood whose authored color is itself
+near-neutral — the product does not argue with its own defaults. **similar** takes no such exemption: an
+authored color can still land next to one the reader chose for another feeling, and staying quiet about
+that would be the product defending its default over what the reader can see. A color is never "too
+close" to the one it is replacing.
+
+Every concern is on standing display **while a color is being chosen**, not revealed at the save and not
+reported after it — a reader learns two feelings will be hard to tell apart at the moment they can still
+pick another. There is **no heading over the sentences**: a caption naming the notice said nothing the
+sentences do not already say, and a warning box reads as a warning without being announced. Each sentence
+names the cause and then what it costs in the universe, because "too bright" alone gives a reader nothing
+to decide with.
+
+A color carrying no concern saves on one press; a color carrying one asks a second, explicit confirmation
+before it is kept — and that confirmation still keeps it if the person says so. Like the axis notice, none
+of this blocks ([P3]).
+
+The first-signin screen has **no** risk gate and keeps its own after-the-fact near-duplicate line: every
+offer there is a preset the product stands behind, and there is no free picker to warn about.
 
 Skipping first-signin color choice writes no color and no durable seen/skipped marker. Absence stays
 an honest preference state.
 
 **Axis-consistency is warn-only.** `checkPaletteAxisConsistency` flags warm/cool ↔ valence
-mismatches as warnings, never hard blocks ([P3]). The per-mood near-duplicate notice follows the
-same warn-only principle. Palette tables and formulas remain code/content; only genuine tuning
+mismatches as warnings, never hard blocks ([P3]). It is a quality check over a whole palette and is
+deliberately **not** one of the editor's per-color concerns: telling a reader their color does not
+suit the feeling is an argument about their own vocabulary, which is the one thing this editor exists
+to hand over. The per-mood near-duplicate notice follows the same warn-only principle. Palette tables and formulas remain code/content; only genuine tuning
 scalars live in `values.yaml`.

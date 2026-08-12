@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Palette_Risk_FaintInputs */
 
 const en_palette_risk_faint = /** @type {(inputs: Palette_Risk_FaintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`It is too washed out to read as a hue, and may not stand apart from other feelings.`)
+	return /** @type {LocalizedString} */ (`Its chroma is so low that it may not stand apart from the other feelings.`)
 };
 
 const ko_palette_risk_faint = /** @type {(inputs: Palette_Risk_FaintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`색이라기엔 너무 흐려요. 다른 감정과 구분되지 않을 수 있어요.`)
+	return /** @type {LocalizedString} */ (`채도가 너무 낮아서 우주에서 다른 감정과 구분이 안 될 수 있어요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "It is too washed out to read as a hue, and may not stand apart from other feelings." |
+* | "Its chroma is so low that it may not stand apart from the other feelings." |
 *
 * @param {Palette_Risk_FaintInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

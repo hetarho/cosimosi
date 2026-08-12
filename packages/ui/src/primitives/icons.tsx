@@ -6,6 +6,8 @@ import {
   InfoIcon,
   PaletteIcon,
   PushPinIcon,
+  SortAscendingIcon,
+  SortDescendingIcon,
   SparkleIcon,
   TrashIcon,
 } from '@phosphor-icons/react'
@@ -83,4 +85,14 @@ export function FreeViewIcon({ size = ICON_SIZE, className }: IconProps) {
  */
 export function StarActionsIcon({ size = ICON_SIZE, className }: IconProps) {
   return <GearSixIcon aria-hidden size={size} className={className} />
+}
+
+/** 최신순 — the newest of a list at the top. The glyph beside the order a control is showing now. */
+export function NewestFirstIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <SortDescendingIcon aria-hidden size={size} className={className} />
+}
+
+/** 오래된순 — the oldest of a list at the top. */
+export function OldestFirstIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <SortAscendingIcon aria-hidden size={size} className={className} />
 }

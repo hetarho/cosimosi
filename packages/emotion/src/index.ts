@@ -56,7 +56,12 @@ export {
   snapToEmotionStep,
   type MoodColorRow,
 } from './mood-color.ts'
-export { MOOD_COLOR_RISKS, moodColorRisks, type MoodColorRisk } from './mood-color-risk.ts'
+export {
+  MOOD_COLOR_RISKS,
+  moodColorRisks,
+  type MoodColorConcern,
+  type MoodColorRisk,
+} from './mood-color-risk.ts'
 export {
   moodColorPresets,
   randomMoodColor,

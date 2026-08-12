@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Palette_Risk_DimInputs */
 
 const en_palette_risk_dim = /** @type {(inputs: Palette_Risk_DimInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`It nearly sinks into the night sky; the star may be hard to find.`)
+	return /** @type {LocalizedString} */ (`It's so dark that it may sink into the night sky.`)
 };
 
 const ko_palette_risk_dim = /** @type {(inputs: Palette_Risk_DimInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`밤하늘에 거의 잠기는 색이에요. 별이 잘 보이지 않을 수 있어요.`)
+	return /** @type {LocalizedString} */ (`너무 어두워서 우주에서 밤하늘에 묻혀 보일 수 있어요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "It nearly sinks into the night sky; the star may be hard to find." |
+* | "It's so dark that it may sink into the night sky." |
 *
 * @param {Palette_Risk_DimInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

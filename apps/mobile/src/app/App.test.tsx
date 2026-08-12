@@ -646,7 +646,8 @@ describe('mobile auth gate', () => {
       expect(fakes.queryClient.getQueryData(['user-a-only'])).toBeUndefined()
 
       fireEvent.press(screen.getByRole('button', { name: m.universe_home_settings() }))
-      await waitFor(() => expect(screen.getByText(m.me_tab_profile())).toBeTruthy())
+      // 프로필 reads twice: the header names the open tab, and the strip below still lists it.
+      await waitFor(() => expect(screen.getAllByText(m.me_tab_profile()).length).toBeGreaterThan(0))
     } finally {
       view.unmount()
       fakes.dispose()
@@ -677,13 +678,16 @@ describe('mobile me screen', () => {
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const view = await openMe(fakes)
     try {
-      expect(screen.getAllByRole('tab')).toHaveLength(6)
-      expect(screen.getByText(m.me_tab_profile())).toBeTruthy()
+      expect(screen.getAllByRole('tab')).toHaveLength(5)
+      // 프로필 reads twice on purpose: the header names the open tab, and the strip below still lists it.
+      expect(screen.getAllByText(m.me_tab_profile()).length).toBeGreaterThan(0)
       expect(screen.getByText(m.me_tab_mood_colors())).toBeTruthy()
       expect(screen.getByText(m.me_tab_stardust())).toBeTruthy()
       expect(screen.getByText(m.me_tab_achievements())).toBeTruthy()
       expect(screen.getByText(m.me_tab_diary())).toBeTruthy()
-      expect(screen.getByText(m.me_tab_account())).toBeTruthy()
+      // 계정 is no longer a tab: its rows sit at the foot of the profile, which is already showing —
+      // the identity line proves the merged body mounted rather than a tab that had to be pressed.
+      expect(screen.getByText('test@example.test')).toBeTruthy()
       expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(1)
 
       // Colours moved off the profile tab onto their own, where the tab shows what each feeling
@@ -697,7 +701,7 @@ describe('mobile me screen', () => {
       await waitFor(() => expect(screen.getByText(m.achievement_empty())).toBeTruthy())
       fireEvent.press(screen.getByText(m.me_tab_diary()))
       expect(screen.getByText(m.me_export_action())).toBeTruthy()
-      fireEvent.press(screen.getByText(m.me_tab_account()))
+      fireEvent.press(screen.getAllByText(m.me_tab_profile()).at(-1) as never)
       await waitFor(() => expect(screen.getByText('test@example.test')).toBeTruthy())
       await waitFor(() => expect(screen.getByText(m.me_provider_google())).toBeTruthy())
     } finally {
@@ -716,12 +720,11 @@ describe('mobile me screen', () => {
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const view = await openMe(fakes)
     try {
-      fireEvent.press(screen.getByText(m.me_tab_account()))
       fireEvent.press(screen.getByText(m.me_sign_out()))
       await waitFor(() => expect(screen.getByText(m.me_sign_out_confirm())).toBeTruthy())
       fireEvent.press(screen.getByText(m.common_cancel()))
       await waitFor(() => expect(screen.queryByText(m.me_sign_out_confirm())).toBeNull())
-      expect(screen.getByText(m.me_tab_account())).toBeTruthy()
+      expect(screen.getAllByText(m.me_tab_profile()).length).toBeGreaterThan(0)
       expect(fakes.authFacade.snapshot.status).toBe('authenticated')
 
       fireEvent.press(screen.getByText(m.me_sign_out()))
@@ -729,7 +732,7 @@ describe('mobile me screen', () => {
       fireEvent.press(screen.getAllByText(m.me_sign_out()).at(-1) as never)
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
       expect(fakes.authFacade.snapshot.status).toBe('signedOut')
-      expect(screen.queryByText(m.me_tab_account())).toBeNull()
+      expect(screen.queryByText(m.me_tab_profile())).toBeNull()
     } finally {
       view.unmount()
       fakes.dispose()
@@ -776,7 +779,6 @@ describe('mobile me screen', () => {
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const view = await openMe(fakes)
     try {
-      fireEvent.press(screen.getByText(m.me_tab_account()))
       fireEvent.press(screen.getByText(m.withdraw_start()))
       expect(
         screen.getByText(

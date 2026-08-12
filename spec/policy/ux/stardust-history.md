@@ -22,10 +22,14 @@ client performs no timezone arithmetic of its own — a device-local grouping wo
 
 ## A row says what happened and how much — nothing more
 
-Each row carries its **reason** as the caption, and its **signed amount**. For a **spend** it also shows which kinds paid
-(`작은 별가루 3 · 별가루 2`). An **earn** row shows no kind line: every ledgered earn credits 별가루, because 작은 별가루
-is refilled by derivation and never earned — so the two row shapes differ rather than one carrying a permanently empty
-field.
+Each row carries its **reason** as the caption, and its **signed amount**. For a **spend** the amount is followed, in
+parentheses on the same baseline, by which kinds paid — `−15 (작은 별가루 5 · 별가루 10)` — a step smaller and a step
+quieter than the number it belongs to. It is a breakdown **of** that number, not a second fact about the row, and a
+full-size line under the reason gave it the weight of one. **No label introduces it**: the parentheses and the two kind
+names already say what it is, so a caption over them ("쓴 몫") was a heading for something a reader can simply read.
+
+An **earn** row shows no split at all: every ledgered earn credits 별가루, because 작은 별가루 is refilled by derivation
+and never earned — so the two row shapes differ rather than one carrying a permanently empty field.
 
 **A row is never a link into a memory** ([I11]). Not "not wired yet" — the entry carries no episodic-memory id and no
 diary id, so there is nothing to navigate to. A jump from an accounting record into a memory would also bypass the recall

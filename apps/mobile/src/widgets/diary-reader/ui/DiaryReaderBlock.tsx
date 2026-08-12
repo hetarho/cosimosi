@@ -7,7 +7,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createSyncStatusQueryKey,
   createSyncStatusQueryOptions,
-  DiarySort,
   type GetDiariesInput,
 } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
@@ -92,14 +91,26 @@ export function DiaryReaderBlock({
     [onQueryChange],
   )
 
+  // The ORDER is deliberately absent: it narrows nothing, so an archive read oldest-first is not a
+  // filtered archive and 조건 지우기 must not turn it back over.
   const conditionsActive =
     (query.query ?? '') !== '' ||
     (query.moods ?? []).length > 0 ||
     (query.from ?? '') !== '' ||
-    (query.to ?? '') !== ''
+    (query.to ?? '') !== '' ||
+    query.minMemories !== undefined ||
+    query.maxMemories !== undefined
 
   const clearConditions = useCallback(() => {
-    changeQuery((previous) => ({ ...previous, query: '', moods: [], from: '', to: '' }))
+    changeQuery((previous) => ({
+      ...previous,
+      query: '',
+      moods: [],
+      from: '',
+      to: '',
+      minMemories: undefined,
+      maxMemories: undefined,
+    }))
   }, [changeQuery])
 
   // The month is RESOLVED rather than stored, from the archive page the list has already fetched ([D12]).
@@ -335,33 +346,16 @@ export function DiaryReaderBlock({
   const archiveHeader = (
     <View style={styles.listHeader}>
       <RestoreSection />
+      {/* Every condition of the archive in one gathered block — keyword, order, feelings, star count
+          and the way back out. The ORDER steers the list, so it is withheld while the calendar shows:
+          a control that moves nothing visible is noise ([D12]). */}
       <SearchDiary
         value={query}
         onChange={changeQuery}
         moodsOpen={moodsOpen}
         onMoodsOpenChange={setMoodsOpen}
+        sortable={view === 'list'}
       />
-      {/* The sort orders the LIST, so it is hidden while the calendar shows — a control that steers
-          nothing visible is noise. */}
-      {view === 'list' && (
-        <View style={styles.sortRow}>
-          <Text style={styles.sortLabel}>{m.diary_reader_sort_label()}</Text>
-          <SegmentedControl
-            ariaLabel={m.diary_reader_sort_label()}
-            value={query.sort === DiarySort.OLDEST ? 'oldest' : 'newest'}
-            onValueChange={(next) =>
-              changeQuery((previous) => ({
-                ...previous,
-                sort: next === 'oldest' ? DiarySort.OLDEST : DiarySort.NEWEST,
-              }))
-            }
-            items={[
-              { value: 'newest', label: m.diary_reader_sort_newest() },
-              { value: 'oldest', label: m.diary_reader_sort_oldest() },
-            ]}
-          />
-        </View>
-      )}
     </View>
   )
 
@@ -417,27 +411,24 @@ export function DiaryReaderBlock({
 
   return (
     <View style={styles.block}>
-      {/* Which shape of the archive is showing rides beside the title, because it names what this
-          screen IS right now — the sort below steers only the list. */}
+      {/* The way out on the LEFT and the screen's name centred, mirroring the web header. Which shape
+          of the archive is showing keeps its place beside the title — it names what this screen IS
+          right now ([D12]). */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{m.diary_reader_title()}</Text>
-          <SegmentedControl
-            ariaLabel={m.calendar_view_label()}
-            value={view}
-            onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
-            items={[
-              { value: 'list', label: m.calendar_list_view_action() },
-              { value: 'calendar', label: m.calendar_view_action() },
-            ]}
-          />
-        </View>
         <Button color="neutral" size="sm" onPress={exit} disabled={phase === 'recalling'}>
           {m.diary_reader_back()}
         </Button>
+        <Text style={styles.title}>{m.diary_reader_title()}</Text>
+        <SegmentedControl
+          ariaLabel={m.calendar_view_label()}
+          value={view}
+          onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
+          items={[
+            { value: 'list', label: m.calendar_list_view_action() },
+            { value: 'calendar', label: m.calendar_view_action() },
+          ]}
+        />
       </View>
-      {/* [D11] said once, plainly: everything on this page is free and the universe clock is still. */}
-      <Text style={styles.freeNote}>{m.diary_reader_free_note()}</Text>
 
       {view === 'calendar' ? (
         // The grid is a fixed-height month, so it scrolls with its header rather than hosting a list.
@@ -470,6 +461,8 @@ export function DiaryReaderBlock({
             query.from,
             query.to,
             query.sort,
+            query.minMemories,
+            query.maxMemories,
           ])}
           renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
         />
@@ -541,10 +534,7 @@ export function DiaryReaderBlock({
 }
 
 const styles = StyleSheet.create({
-  freeNote: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
   listHeader: { gap: tokens.spacing[4], paddingBottom: tokens.spacing[2] },
-  sortRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
-  sortLabel: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   block: { flex: 1, gap: tokens.spacing[4] },
   header: {
     flexDirection: 'row',
@@ -552,13 +542,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spacing[3],
   },
-  titleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: tokens.spacing[3],
+  // Centred BETWEEN the two controls rather than by a fixed measure: the title takes the middle of
+  // whatever the row leaves, so neither the way out nor the view toggle pushes the name off centre.
+  title: {
+    color: tokens.color.text,
+    flexShrink: 1,
+    fontSize: tokens.fontSize['2xl'],
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   rowActions: {
     flexDirection: 'row',

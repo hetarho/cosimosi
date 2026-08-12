@@ -58,7 +58,8 @@ service MemoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
-  // and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
+  // and optional body/date/live-memory-mood/live-memory-count filters. Free — no clock, no Twinkle,
+  // GET-eligible.
   rpc GetDiaries(GetDiariesRequest) returns (GetDiariesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -379,6 +380,11 @@ message GetDiariesRequest {
   string to = 6;
   // UNSPECIFIED preserves the shipped newest-first behavior.
   DiarySort sort = 7;
+  // Inclusive bounds on how many STILL-LIVE episodic memories the diary has (the same count the
+  // reader sees on a row). Explicitly optional rather than 0-means-unset: zero is a real bound —
+  // a diary every memory of which was let go still lists ([I1]) — so absence has to be its own state.
+  optional int32 min_memories = 8;
+  optional int32 max_memories = 9;
 }
 
 // Chronological in the requested direction. next_page_token empty = the last page.

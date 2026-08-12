@@ -208,6 +208,7 @@ export const VALUES = {
     rowEstimateHeightPx: 114,
     rowOverscan: 4,
     rowGapPx: 8,
+    rowMinWidthPx: 288,
     infiniteScrollEndThreshold: 0.5,
     searchDebounceMs: 300,
   },

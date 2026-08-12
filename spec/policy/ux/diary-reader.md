@@ -47,14 +47,28 @@ opens before the recall: **예** proceeds to `RecallDiaryStars`; **아니오** c
 **nothing spent**. The jump only ever advances the clock, never rewinds ([I10]). A failed recall returns to browsing with
 nothing applied; an ambiguous failure closes the jump rather than offer a one-click retry that could double-spend.
 
-## A row is recognised without a title
+## A card is recognised without a title
 
-A closed row is the diary's date, a length-bounded preview of its body, the count of stars born from
+A closed card is the diary's date, a length-bounded preview of its body, the count of stars born from
 it, and its distinct mood dots — nothing else, and no title field exists at any layer ([D6]). Writing
-friction is the thing the product fights, so the row carries the recognition load instead of asking
+friction is the thing the product fights, so the card carries the recognition load instead of asking
 for a headline. The dots are the diary's distinct moods in the palette's own declaration order, capped
 with a `+N` remainder; a diary whose memories were all let go shows a count of `0`, no dots, and never
 `NEUTRAL`'s colour — the absence of a recorded feeling is not a feeling ([M3][I1]).
+
+## The archive has as many columns as the width holds
+
+The list is a **grid whose column count is measured, not named**: the width divided by
+`diary_reader.row_min_width_px` is how many cards sit across, so the archive gains a column whenever the
+window has room for one and no width has a layout nobody designed for. A phone shows one column and a
+wide desktop several, from the same rule rather than from a breakpoint table. The page is therefore
+**not** capped at a reading column — nothing on it is long-form; the entry a reader actually reads opens
+in a dialog, which keeps its own measure.
+
+The windowing survives the columns ([D6]): the column count is the virtualizer's lane count, so a
+four-column archive mounts four cards per windowed row rather than four times the DOM. A card's width
+and offset are percentages of the list, so a resize re-lays the grid without waiting for a measurement
+pass.
 
 ## The preview is a prefix of the original, always
 
@@ -77,11 +91,24 @@ the same verbatim text, the same split chips, the same paid door beneath it and 
 diary reads and answers identically however it was reached. A star's 원본 일기 deep link is that same opening — the
 list scrolls to that diary's row and the entry opens over it.
 
-## The archive is free and time-frozen, and says so once
+## The archive is free and time-frozen, and shows it rather than stating it
 
 Listing, previewing, sorting, filtering, searching and reading the original spend nothing and advance
-no universe time ([D11][G4][T3]). The reader states this in one restrained line rather than repeating
-it per control.
+no universe time ([D11][G4][T3]). The reader carries **no line saying so**. The guarantee is carried by
+shape instead: exactly one control on the page wears a stardust marker, and everything else is
+unmarked — so a standing sentence about what is free could only restate what the absence of markers
+already says, at the top of a page whose first job is to be read. The claim itself is not weakened by
+dropping the sentence: it is enforced by the props ([D11] — the list has no cost, quote or spend field,
+and no action slot at all).
+
+## The header: the way out on the left, the page's name in the middle
+
+The way back to the universe sits at the **left** end of the header and the page's name is **centred**
+on the line, with the 목록/달력 toggle at the right end. A title that began a row of controls read as
+the first item in that row; centred, it reads as the name of the place. The way out leads because that
+is where a reader reaches for one, and because the archive is a page people arrive at and leave from
+rather than one they act on. The same three-part header is the account home's ([64]), so leaving any
+supporting surface is the same gesture in the same corner.
 
 ## Exactly one paid door, marked as such
 
@@ -100,22 +127,42 @@ reach the reader only through the entry the composing widget opens.
 
 ## Conditions are addressable on web, and never half-applied
 
-On web the keyword, moods, date range and order live in the address bar, so a filtered archive is a
-shareable link and Back restores the previous conditions; on mobile the same shape lives in screen
-state ([D7][D8]). A condition the read would refuse — a keyword below the minimum — is **not** committed:
+On web the keyword, moods, date range, star count and order live in the address bar, so a filtered
+archive is a shareable link and Back restores the previous conditions; on mobile the same shape lives
+in screen state ([D7][D8]). A condition the read would refuse — a keyword below the minimum — is **not** committed:
 the reader keeps the previous result set and a hint says why, rather than watching the archive become an
 error mid-keystroke. Changing any condition starts a fresh keyset page, scrolls to the top, and closes the
 opened entry, because that entry may not be in the new result set. A star's 원본 일기 deep link searches
 the **whole** archive: active conditions are lifted first, since paging a filtered one would run out of
 pages and drop the request.
 
+**Every condition is one row, and the row carries no card.** The keyword, the order, the 감정 fold, the
+star count and the way back out sit on a single line that **wraps** — a wide screen reads them left to
+right, a narrow one stacks the same controls into a gathered block, and no breakpoint decides which
+controls exist. They wear no border, fill or panel: the archive is the only thing on this page worth
+framing, and a plate around its conditions read as a second surface competing with it.
+
 **The keyword stands in the open and the thirteen mood chips fold behind a toggle.** The chips are two
 rows of colour most readings never touch, and the archive is a page for reading. The toggle reads plainly
-**감정** and is the panel's only name — a legend inside the fold would say that word a second time — with
-how many are chosen beside it. The way out of the conditions stays **outside** the fold, so a folded panel
-can neither hide an active filter nor take away the way out of one; it is a reset glyph rather than a
-labelled button, named 조건 지우기 to assistive tech and by a tooltip on web, because it is a small
-correction beside the controls it undoes and not a third thing competing with them for the line.
+**감정** and is the fold's only name — a legend inside it would say that word a second time — and it
+carries how many are chosen while it is closed. The way out of the conditions stays **outside** the fold,
+so a folded panel can neither hide an active filter nor take away the way out of one; it is a reset glyph
+rather than a labelled button, named 조건 지우기 to assistive tech and by a tooltip on web, because it is
+a small correction beside the controls it undoes and not a third thing competing with them for the line.
+
+**The order is a toggle that says where it is**, not a pair of switches: there are exactly two
+directions, so a control offering both spends the row's width restating that. It shows the order the
+archive is **in** (최신순 / 오래된순) with the matching glyph, and its accessible name is the **action** a
+press performs, so it announces what it does rather than only what it shows. The order is deliberately
+**not** a condition: it narrows nothing, so it is absent from 조건 지우기 and from the "filtered to
+nothing" state — clearing conditions must not turn the archive back over.
+
+**The star count is a picker over a closed scale** — any count, none left, each exact count, and the
+top count and above. `encode.max_memories` is what a split can hold, so the top choice is
+"that many or more" rather than an exact number. **Zero is a real choice, not the absence of one**: a
+diary whose every memory was let go still lists ([I1]), and asking for exactly those is a question the
+archive can answer. A choice the build does not offer — a hand-edited link — leaves the archive
+unnarrowed rather than reaching the read as a range no control can express.
 
 **A chosen chip is lit in its own feeling's colour** — that mood on its rim, a halo around it, its dot at
 full strength — and an unchosen one is a quiet outline holding a dimmed dot. Choosing nothing is what shows
@@ -134,8 +181,10 @@ The calendar is a **view of `/diary`, not a destination**. The list is the defau
 in right now — and every other reader affordance survives the switch: the header, the 지운 일기 way back, the
 search and filter controls, the star deep-link consumer and the deletion mount all stay
 mounted, so entering the calendar drops nothing. Only the body swaps. There is no new route and no new
-screen. The sort control is the one thing hidden while the calendar shows — it orders the list, and a control
-that steers nothing visible is noise.
+screen. The **order toggle** is the one thing withheld while the calendar shows — it orders the list, and
+a control that steers nothing visible is noise. The other conditions stay mounted (they are the
+archive's, not the list's, and they are still there when the list comes back) even though the grid marks
+days without regard for them, which the day modal below is what keeps honest.
 
 **A day's color is the top slice of that day's strength-weighted emotions** — the same blend the universe
 paints ([M4]), collapsed to one mood. A day may hold several diaries and many moods; the mark asserts the

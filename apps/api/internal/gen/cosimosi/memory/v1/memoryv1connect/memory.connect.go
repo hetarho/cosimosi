@@ -117,7 +117,8 @@ type MemoryServiceClient interface {
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
 	// The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
-	// and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
+	// and optional body/date/live-memory-mood/live-memory-count filters. Free — no clock, no Twinkle,
+	// GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
 	// Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
 	GetDiaryCalendar(context.Context, *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error)
@@ -386,7 +387,8 @@ type MemoryServiceHandler interface {
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
 	// The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
-	// and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
+	// and optional body/date/live-memory-mood/live-memory-count filters. Free — no clock, no Twinkle,
+	// GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
 	// Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
 	GetDiaryCalendar(context.Context, *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error)
