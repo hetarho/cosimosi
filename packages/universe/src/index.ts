@@ -249,11 +249,13 @@ export {
 } from './contributors.ts'
 export { universeEmotionSlices } from './universe-emotion-slices.ts'
 export {
+  GIST_SHAPE_STAR_MAGNIFICATION,
   SHOWCASE_ELAPSED_DAYS,
   SHOWCASE_UNIVERSE_TIME,
   ambientShowcaseScene,
   awakenShowcaseField,
   forgettingShowcaseScene,
+  gistShapesShowcaseScene,
   gistShowcaseScene,
   moodRingShowcaseScene,
   starFormsShowcaseScene,

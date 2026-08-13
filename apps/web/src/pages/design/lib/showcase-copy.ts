@@ -240,6 +240,94 @@ export const T = {
   skyBlurb:
     'A shader-lit sphere enclosing the scene, not a wash behind it — look around inside it. Each sky arranges the same four axes differently, and every colour comes from the universe\u2019s own feelings. Hand any sky any number of emotions: more feelings means smaller territories, never a muddier wash.',
   skyEmotionCount: 'How many emotions',
+  backdropTitle: 'Backdrops',
+  backdropBlurb:
+    'The decorative field behind everything, as a whole rather than as one particle. Each backdrop arranges the same four axes — where the motes sit, what one is drawn as, how its brightness moves, what colour that is spent on — plus how much of it there is, so "packed", "barely there" and "nothing at all" are looks in the list like any other. The field carries no memory, no feeling and no strength, which is exactly why it is free to change.',
+  backdropSky: 'Emotion sky',
+  backdropAxisScatter: 'Scatter',
+  backdropAxisMote: 'Mote',
+  backdropAxisLife: 'Life',
+  backdropAxisTone: 'Tone',
+  backdropAxisDensity: 'Density',
+  backdropMoteSize: 'Mote size',
+  backdropCost: 'Fixed cost',
+  backdropCostValue: (triangles: number) => `${triangles.toLocaleString('en-US')} tris`,
+  gistFormsTitle: 'Gist forms',
+  gistFormsBlurb:
+    'Every candidate body a risen gist can wear. A gist is a summary, so these are deliberately plainer than the star forms: none of them reads a form seed, so every gist in a universe is the same shape, and each is one idea of light on the same plain shell. What tells two gists apart is their feeling and how far they have risen — never a silhouette of their own.',
+  gistFormsStars: 'Episodic stars',
+  gistFormsLadder:
+    'Left to right: one rung deeper each step, so the same body should read as less defined rather than as a different one. Below each gist is the memory it summarises, at its real size — the gist has to look simpler than that star.',
+  gistForms: {
+    halo: {
+      name: 'Halo',
+      detail: 'The shipped body: a soft glow ball with a faint breathing grain.',
+    },
+    veil: {
+      name: 'Veil',
+      detail: 'The falloff alone — no grain, no rim. The plainest reading of a gist there is.',
+    },
+    bead: {
+      name: 'Bead',
+      detail: 'The same light pulled tight, so it collects into a small defined centre.',
+    },
+    ring: {
+      name: 'Ring',
+      detail: 'An annulus. The centre is empty, so what is left is an outline of a memory.',
+    },
+    corona: {
+      name: 'Corona',
+      detail: 'Light only at the limb — a hollow shell you can see a star through.',
+    },
+    echo: {
+      name: 'Echo',
+      detail: 'Concentric rings of the same falloff: one shape, said more than once.',
+    },
+    crest: {
+      name: 'Crest',
+      detail: 'The falloff terraced into a few plateaus instead of a gradient.',
+    },
+    pearl: {
+      name: 'Pearl',
+      detail: 'The one opaque form: a matte body under a fixed key light, not a glow.',
+    },
+    mist: { name: 'Mist', detail: 'The falloff eaten by soft noise, with no edge anywhere.' },
+    lens: { name: 'Lens', detail: 'The same glow, wider than it is tall — light caught in glass.' },
+    sigil: {
+      name: 'Sigil',
+      detail: 'A soft cross. A mark rather than a mass — a gist as notation.',
+    },
+    pip: {
+      name: 'Pip',
+      detail: 'A hard point inside a wide faint aura: a place to point at, and a presence.',
+    },
+    pulse: {
+      name: 'Pulse',
+      detail: 'The plain form on a slow shared breath — one process over the whole layer.',
+    },
+    dome: {
+      name: 'Dome',
+      detail: 'Brighter along one body axis, so a field of them shares a way up.',
+    },
+    shell: {
+      name: 'Shell',
+      detail: 'Hollow and drawn on both faces, so the far wall glows through the near one.',
+    },
+    ash: { name: 'Ash', detail: 'Drained toward grey and turned down — a gist nearly not there.' },
+    bloom: { name: 'Bloom', detail: 'The same glow overdriven until the bloom pass takes it.' },
+    drop: {
+      name: 'Drop',
+      detail: 'The bright centre pulled low with the haze trailing under it — it hangs.',
+    },
+    bar: {
+      name: 'Bar',
+      detail: 'One soft horizontal band. The least a mark can be and still be seen.',
+    },
+    grain: {
+      name: 'Grain',
+      detail: 'The haze printed rather than lit: quantized noise with a tooth.',
+    },
+  },
   statesTitle3D: 'States',
   statesBlurb3D:
     'What a memory looks like as it is forgotten, as it rises, and as a neuron wakes. Three of the four are decisions to leave the design alone, and they say so — a state that should read as nothing is a design choice like any other.',

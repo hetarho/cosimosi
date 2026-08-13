@@ -1,5 +1,6 @@
 import { MOODS, createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory, Synapse } from '@cosimosi/memory'
+import { SEMANTIC_MAX_STAGE } from '@cosimosi/memory-logic'
 
 import { buildContributors, type NebulaContributors } from './contributors.ts'
 import { gistStarInstances } from './gist-star-channels.ts'
@@ -249,6 +250,71 @@ export function gistShowcaseScene(): GistShowcaseScene {
     gistTints[i * 3 + 2] = instance.color[2]
     gistSoftness[i] = instance.softness
     gistScales[i] = instance.size
+  })
+  return {
+    memories,
+    positions,
+    gistPositions,
+    gistTints,
+    gistSoftness,
+    gistScales,
+    gistCount: instances.length,
+  }
+}
+
+/** How far the gist bench magnifies. A gist body is authored in the quieter half of the size range,
+ *  which is right at the universe's own distance and too small to judge a LOOK by at arm's length. */
+const GIST_SHAPE_MAGNIFICATION = 3.4
+/** The same magnification for the episodic stars under the row, so the pair keeps its real ratio: a
+ *  gist reads smaller than the memory it came from, and the bench must not flatter it. */
+export const GIST_SHAPE_STAR_MAGNIFICATION = GIST_SHAPE_MAGNIFICATION
+/** One memory per rung, each in its own feeling — the two things a gist body is allowed to differ by. */
+const GIST_LADDER_MOODS = ['GRATITUDE', 'CALM', 'JOY', 'SAD', 'ANGER'] as const
+const GIST_LADDER_SPACING = 11
+
+/**
+ * The gist bench: one risen memory per rung of the ladder, with its episodic original below it.
+ *
+ * Both of a gist look's questions are in this one frame. Left to right the stage deepens, so the row
+ * shows whether a look still reads as the SAME body getting less defined rather than as five
+ * different ones. Top to bottom is the pair, so it shows whether the gist reads as simpler than the
+ * memory it summarises — which is the only reason the two body families are distinct at all.
+ */
+export function gistShapesShowcaseScene(): GistShowcaseScene {
+  const stages = Array.from({ length: SEMANTIC_MAX_STAGE }, (_, i) => i + 1)
+  const memories = stages.map((stage, i) =>
+    fixtureMemory({
+      id: `gist-shape-${stage}`,
+      name: String(stage),
+      emotion: createEmotion(GIST_LADDER_MOODS[i % GIST_LADDER_MOODS.length]),
+      // Held equal across the row: size is strength's, and a row that varied it would read as a
+      // ladder of importance instead of one of abstraction.
+      baseStrength: 0.75,
+      createdUniverseTime: SHOWCASE_UNIVERSE_TIME,
+      lastRecalledUniverseTime: SHOWCASE_UNIVERSE_TIME,
+      seed: BigInt(700_001 + i * 9_311),
+      semanticStage: stage,
+    }),
+  )
+  const positions = new Float32Array(memories.length * 3)
+  memories.forEach((_, i) => {
+    positions[i * 3] = (i - (memories.length - 1) / 2) * GIST_LADDER_SPACING
+  })
+  const instances = gistStarInstances(memories)
+  const gistPositions = new Float32Array(instances.length * 3)
+  const gistTints = new Float32Array(instances.length * 3)
+  const gistSoftness = new Float32Array(instances.length)
+  const gistScales = new Float32Array(instances.length)
+  instances.forEach((instance, i) => {
+    const slot = memories.findIndex((memory) => memory.id === instance.memoryId)
+    gistPositions[i * 3] = positions[slot * 3] ?? 0
+    gistPositions[i * 3 + 1] = positions[slot * 3 + 1] ?? 0
+    gistPositions[i * 3 + 2] = instance.z
+    gistTints[i * 3] = instance.color[0]
+    gistTints[i * 3 + 1] = instance.color[1]
+    gistTints[i * 3 + 2] = instance.color[2]
+    gistSoftness[i] = instance.softness
+    gistScales[i] = instance.size * GIST_SHAPE_MAGNIFICATION
   })
   return {
     memories,

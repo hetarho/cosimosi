@@ -41,6 +41,17 @@ export {
   type StarShapeKey,
   type StarShapeOptions,
 } from './assets/bodies/star-shapes.ts'
+// The gist-shape bench: candidate looks for the gist body, all on the gist body's channel contract.
+export {
+  DEFAULT_GIST_SHAPE,
+  GIST_SHAPES,
+  GIST_TRIANGLE_CEILING,
+  createGistShapeBodySource,
+  resolveGistShape,
+  type GistShape,
+  type GistShapeKey,
+  type GistShapeOptions,
+} from './assets/bodies/gist-shapes.ts'
 export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
 export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
 export {
@@ -48,6 +59,39 @@ export {
   GIST_INSTANCE_TINT,
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
+// The backdrop catalogue: what the decorative field behind the universe looks like as a whole,
+// arranged from the four backdrop axes (scatter · mote · life · tone).
+export {
+  BACKDROP_THEMES,
+  BACKDROP_TRIANGLE_CEILING,
+  DEFAULT_BACKDROP_THEME,
+  backdropMoteCount,
+  backdropTriangleCost,
+  resolveBackdropTheme,
+  type BackdropTheme,
+  type BackdropThemeKey,
+} from './assets/backdrop/backdrop-themes.ts'
+export {
+  backdropBrightness,
+  backdropTint,
+  type BackdropFieldInputs,
+  type BackdropLifeKey,
+  type BackdropToneKey,
+} from './assets/backdrop/backdrop-life.ts'
+export {
+  MOTE_RADIUS,
+  backdropMoteTriangles,
+  createBackdropMote,
+  type BackdropMote,
+  type BackdropMoteKey,
+} from './assets/backdrop/backdrop-motes.ts'
+export {
+  scatterBackdrop,
+  seededRandom,
+  type BackdropScatterKey,
+  type BackdropScatterResult,
+  type BackdropScatterSpec,
+} from './assets/backdrop/backdrop-scatter.ts'
 export { SKY_SPHERE_RADIUS, UNIVERSE_CANVAS_FAR } from './backdrop-scale.ts'
 export {
   STAR_FIELD_PROFILE,

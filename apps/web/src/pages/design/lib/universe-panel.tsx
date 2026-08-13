@@ -17,6 +17,8 @@ import { MAX_SHOWCASE_EMOTIONS, showcaseEmotions } from '@cosimosi/emotion'
 import { cx, useReducedMotion } from '@cosimosi/ui'
 
 import { AmbientPanel } from './ambient-panel.tsx'
+import { BackdropPanel } from './backdrop-panel.tsx'
+import { GistShapePanel } from './gist-forms-panel.tsx'
 import { NebulaDemoPanel } from './nebula-panel.tsx'
 import { StatesPanel } from './states-panel.tsx'
 import { Section } from './showcase-shell.tsx'
@@ -38,8 +40,16 @@ export function UniversePanel() {
         <StarShapePanel />
       </Section>
 
+      <Section id="gist-forms" title={T.gistFormsTitle} blurb={T.gistFormsBlurb}>
+        <GistShapePanel />
+      </Section>
+
       <Section id="sky" title={T.skyTitle} blurb={T.skyBlurb}>
         <SkySection />
+      </Section>
+
+      <Section id="backdrop" title={T.backdropTitle} blurb={T.backdropBlurb}>
+        <BackdropPanel />
       </Section>
 
       <Section id="ambient" title={T.ambientTitle} blurb={T.ambientBlurb}>
