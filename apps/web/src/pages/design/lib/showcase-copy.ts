@@ -134,9 +134,21 @@ export const T = {
 
   overlayTitle: 'Overlays',
   overlayBlurb:
-    'Chrome that arrives on top: a tooltip explains, a toast reports, a dialog interrupts. Each is glass, each is portalled, each returns focus where it found it. Narrow the window past 48rem and the dialog becomes the bottom sheet a thumb can reach — and swipe back down.',
+    'Chrome that arrives on top: a tooltip explains, a menu gathers, a toast reports, a dialog interrupts. Each is glass, each is portalled, each returns focus where it found it. Narrow the window past 48rem and the dialog becomes the bottom sheet a thumb can reach — and swipe back down, or drag its handle to leave the universe more room.',
   tooltipTrigger: 'Hover or focus me',
   tooltipContent: 'A tooltip explains; it never carries the only copy of something.',
+  hintLabel: 'Explanation on press',
+  hintNote: 'Touch has no hover, so the tip that IS the content opens on a press as well.',
+  hintTrigger: 'What this value means',
+  hintContent:
+    'A tip long enough to be a sentence wraps to the reading measure instead of running off the edge of the screen, and it stays open until the next press elsewhere.',
+  menuLabel: 'Menu',
+  menuNote:
+    'Open it: the row under the pointer LIGHTS. On this glass a darker wash reads as nothing.',
+  menuTrigger: 'Row actions',
+  menuHistory: 'View history',
+  menuOpen: 'Open the diary',
+  menuDelete: 'Delete',
   toastTrigger: 'Show toast',
   toastBody: 'Saved.',
   dialogTrigger: 'Open dialog',

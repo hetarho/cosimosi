@@ -6,25 +6,52 @@ import {
   effectiveElapsedDays,
   effectiveStrength,
 } from '@cosimosi/memory-logic'
-import { useReducedMotion } from '@cosimosi/ui'
+import { IconButton, NoticeIcon, Tooltip, useReducedMotion } from '@cosimosi/ui'
 import { currentDecayStage } from '@cosimosi/universe'
 import { StarPreview } from '@cosimosi/universe-render'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+// A row of the star's meta, and — for every row that is a reading rather than a fact anyone can read
+// off a calendar — the ⓘ that says what the reading MEANS: where it comes from, what it does to the
+// star, and what makes it move. A number like 0.87 or a word like 아스라함 is not self-explaining, and
+// a panel that shows five of them and explains none is asking the diarist to guess.
+//
+// The mark rides INSIDE the term, next to the word it explains, and its negative inset gives its 24px
+// hit area back to the row: a control tall enough to press must not be what sets the spacing of a
+// table of readings. The tip opens on a press as well as on hover — the panel is a bottom sheet on a
+// phone, where there is no hover to open anything with — sits ABOVE the row, since these rows are in
+// the lower half of the screen on that shape, and hangs from the mark's left edge so a sentence-long
+// tip stays on screen in a narrow sheet.
+function MetaRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 text-sm">
-      <dt className="text-text-muted">{label}</dt>
+      <dt className="flex items-center gap-0.5 text-text-muted">
+        {label}
+        {hint ? (
+          <Tooltip content={hint} side="top" align="start" press wrap>
+            <IconButton
+              variant="text"
+              color="neutral"
+              size="sm"
+              className="-my-1.5 rounded-full"
+              label={m.star_meta_hint_label({ label })}
+              icon={<NoticeIcon />}
+            />
+          </Tooltip>
+        ) : null}
+      </dt>
       <dd className="text-text">{value}</dd>
     </div>
   )
 }
 
 // features/star-meta ([D1]): the read-only meta block. An episodic (big) star shows shape ·
-// emotion color · brightness · 작성일 · 강도 · current forgetting state; a neuron (small) star
-// shows info only, with NO emotion ([I3]). Every derived value is read from the shared read-time
-// functions (starChannels/effectiveStrength/effectiveBrightness) — none re-derived here (A2).
+// emotion color · brightness · 작성일 · 강도 · current forgetting state, each reading but the date
+// carrying the ⓘ that says what it means; a neuron (small) star shows info only, with NO emotion
+// ([I3]). Every derived value is read from the shared read-time functions
+// (starChannels/effectiveStrength/effectiveBrightness) — none re-derived here (A2), and the hints
+// only describe what those functions already do.
 export function MetaBlock({
   selection,
   universeTime,
@@ -91,11 +118,29 @@ export function MetaBlock({
         {previewAction ? <div className="absolute top-2 right-2">{previewAction}</div> : null}
       </div>
       <dl className="flex flex-col gap-2">
-        <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
-        <MetaRow label={m.star_meta_brightness()} value={percent(brightness)} />
+        <MetaRow
+          label={m.star_meta_emotion()}
+          value={moodLabel(memory.emotion.mood)}
+          hint={m.star_meta_hint_emotion()}
+        />
+        <MetaRow
+          label={m.star_meta_brightness()}
+          value={percent(brightness)}
+          hint={m.star_meta_hint_brightness()}
+        />
+        {/* The one row with nothing to explain: a date is the fact itself, and an ⓘ that only said
+            "this is the date" would teach the diarist to stop pressing the others. */}
         <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
-        <MetaRow label={m.star_meta_strength()} value={strength.toFixed(2)} />
-        <MetaRow label={m.star_meta_forgetting_state()} value={forgettingStageLabel(stage)} />
+        <MetaRow
+          label={m.star_meta_strength()}
+          value={strength.toFixed(2)}
+          hint={m.star_meta_hint_strength()}
+        />
+        <MetaRow
+          label={m.star_meta_forgetting_state()}
+          value={forgettingStageLabel(stage)}
+          hint={m.star_meta_hint_forgetting_state()}
+        />
       </dl>
     </div>
   )

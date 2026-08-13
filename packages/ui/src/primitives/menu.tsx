@@ -27,9 +27,12 @@ const ALIGN = {
   end: 'right-0',
 } as const
 
+// Ink is the tone's; the lit ground a hovered row takes is `.menu-row`'s, which reads the same tone
+// through `--item-c` (base.css) — a popover row has to brighten to be seen, and a Tailwind
+// `hover:bg-*` on this glass can only paint a flat colour at it.
 const ITEM_TONE = {
-  neutral: 'text-text hover:bg-surface',
-  danger: 'text-danger hover:bg-surface',
+  neutral: 'text-text',
+  danger: 'text-danger menu-row-danger',
 } as const
 
 /**
@@ -164,7 +167,7 @@ export function Menu({ items, trigger, ariaLabel, side = 'bottom', align = 'end'
                 item.onSelect()
               }}
               className={cx(
-                'rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap transition',
+                'menu-row rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap transition',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                 'disabled:pointer-events-none disabled:opacity-50',
                 ITEM_TONE[item.tone ?? 'neutral'],

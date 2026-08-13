@@ -7,20 +7,25 @@
 ## The rules
 
 **There are two ways to hold the universe, and the viewer says which** ([U3][V0]). **고정 모드** holds it flat:
-the world's up axis stays up, the middle of the stars stays in the middle of the frame, the view tilts about 15° above
-the flat and 15° below it — 30° in all — and it does not pan. Walking around it and stepping toward it is all that is
+the world's up axis stays up, the middle of the stars stays in the middle of the frame, the view tilts about 20° above
+the flat and 10° below it — 30° in all — and it does not pan. Walking around it and stepping toward it is all that is
 left. **자유 모드** is the unbounded tumble: any direction, past the poles, no fixed horizon.
 
 **고정 모드 is where a viewer arrives, and it arrives level.** The depth between the two memory bands ([V9] — memories
 below, their risen gists above) only reads as height while the horizon holds still; a universe first seen at a random
-tumble reads as scatter. The opening view sits in the MIDDLE of the tilt allowance, not against one of its edges, so
-the give is the same in both directions from the first moment. 자유 모드 is one press away and stays chosen for the
-rest of the visit.
+tumble reads as scatter. The opening view is LEVEL rather than against an edge of the allowance, so there is give in
+both directions from the first moment — and the give is deliberately unequal, because the two directions are not worth
+the same: rising looks down onto the band the memories lie in and across at the gists above them, which is the view
+that shows the depth, while dipping only puts the near stars between the eye and everything else. 자유 모드 is one
+press away and stays chosen for the rest of the visit.
 
-**One control says which mode it is in, in words as well as in a glyph.** It sits in the universe's top-left corner —
-the space's own chrome, beside the clock rather than in the column of ways out of the canvas — and names the mode it
-is currently in (고정 모드 / 자유 모드), not the one a press would bring. Over a live sky a lone glyph is a guess, and
-this control changes how the whole scene answers a drag.
+**One control says which mode it is in, in words as well as in a glyph — and it is ONE control.** It sits in the
+universe's top-left corner — the space's own chrome, beside the clock rather than in the column of ways out of the
+canvas — and names the mode it is currently in (고정 모드 / 자유 모드), not the one a press would bring. Over a live sky
+a lone glyph is a guess, and this control changes how the whole scene answers a drag. The glyph and the word are inside
+the same button rather than beside each other: a mark and a label with a gap between them read as a control next to a
+caption, and the caption is then the one part of it a pointer cannot press. What hovering adds is the CONSEQUENCE —
+what the other way of holding the universe would let you do — not a second copy of the name already on the button.
 
 **Every icon control over the universe is round, borderless, and lit only by a shadow.** No rim and no plate: over a
 live sky a bordered circle reads as a hole punched in the universe, and a column of them reads as a widget tray. What

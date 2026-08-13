@@ -724,6 +724,40 @@
   }
 }
 
+/* ── Menu row — the one under the pointer ─────────────────────────────────────
+ * A row in a popover has to answer the pointer on a ground that is already a raised, translucent
+ * glass, and it has to do it by getting BRIGHTER. A darker wash is the intuitive move and the wrong
+ * one: the panel's own fill is `--color-surface-raised`, a step ABOVE `--color-surface`, so a row
+ * painted in the plain surface colour lands a fraction of a lightness step below its own panel —
+ * a change too small to see, in the direction the eye does not read as "this one".
+ *
+ * So the row lights: a specular wash lifts it off the glass, and the rim it wears while lit gives the
+ * lift an edge instead of letting it fade out into the panel. The wash is `--color-specular` — the
+ * theme's own light — so it never becomes a stale white patch when the universe changes, and it is
+ * mixed with transparency rather than opacity so the blurred scene keeps reading through.
+ *
+ * `--item-c` carries the tone, so one recipe serves both the ordinary rows and the destructive one:
+ * danger lights in its own red, which says which row it is while the pointer is on it.
+ *
+ * The transparent border is DECLARED rather than absent for the same reason `.btn-text`'s is: under
+ * `forced-colors` a fill is stripped and an edge that existed only as one disappears with it
+ * (ui-principles §5).
+ */
+@layer components {
+  .menu-row {
+    --item-c: var(--color-specular);
+    border: 1px solid transparent;
+  }
+  .menu-row-danger {
+    --item-c: var(--color-danger);
+  }
+  .menu-row:hover:not(:disabled),
+  .state-hover .menu-row:not(:disabled) {
+    background-color: color-mix(in oklab, var(--item-c) 16%, transparent);
+    border-color: color-mix(in oklab, var(--item-c) 26%, transparent);
+  }
+}
+
 /* ── Selected item ────────────────────────────────────────────────────────────
  * The held choice in a list of choices. It is `.btn-text:hover`'s language — the accent lighting the
  * glyphs from inside — but held rather than transient, because a list has to say which one is live

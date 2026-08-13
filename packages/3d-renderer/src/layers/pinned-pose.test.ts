@@ -8,7 +8,8 @@ import {
 } from './pinned-pose.ts'
 
 const ENVELOPE: PinnedEnvelope = {
-  maxTilt: (15 * Math.PI) / 180,
+  maxTiltUp: (20 * Math.PI) / 180,
+  maxTiltDown: (10 * Math.PI) / 180,
   minDistance: 8,
   maxDistance: 420,
 }
@@ -29,8 +30,9 @@ describe('readPinnedOffset', () => {
     expect(offset.radius).toBeCloseTo(100, 10)
   })
 
-  it('clamps the tilt off the flat in both directions, keeping the azimuth the viewer chose', () => {
-    // Straight up would be 90° off the flat; the pinned view allows 15.
+  it('clamps the tilt off the flat to its own allowance each way, keeping the azimuth the viewer chose', () => {
+    // Straight up or straight down would be 90° off the flat; the pinned view allows less, and less
+    // again below the flat than above it.
     const above = readPinnedOffset(
       createPinnedOffset(),
       { x: CENTER.x, y: CENTER.y + 10, z: CENTER.z + 90 },
@@ -44,8 +46,8 @@ describe('readPinnedOffset', () => {
       ENVELOPE,
     )
 
-    expect(above.elevation).toBeCloseTo(ENVELOPE.maxTilt, 10)
-    expect(below.elevation).toBeCloseTo(-ENVELOPE.maxTilt, 10)
+    expect(above.elevation).toBeCloseTo(ENVELOPE.maxTiltUp, 10)
+    expect(below.elevation).toBeCloseTo(-ENVELOPE.maxTiltDown, 10)
     // +y from the centre, both times — the clamp bounds the tilt, never the way round.
     expect(above.azimuth).toBeCloseTo(Math.PI / 2, 10)
     expect(below.azimuth).toBeCloseTo(Math.PI / 2, 10)
@@ -99,6 +101,6 @@ describe('pinnedCameraPosition', () => {
     const elevation = Math.asin((goal.z - CENTER.z) / radius)
 
     expect(radius).toBeCloseTo(100, 6)
-    expect(elevation).toBeCloseTo(ENVELOPE.maxTilt, 6)
+    expect(elevation).toBeCloseTo(ENVELOPE.maxTiltUp, 6)
   })
 })

@@ -270,6 +270,28 @@ The primitive API is plan 09's and does not change here; this is how those primi
   bottom-anchored surface carries the rule: on web as a `calc` over `env(safe-area-inset-bottom)`,
   and on React Native — which has no such environment value to add to — as two steps of the spacing
   scale, the indicator's own band plus the room above it.
+- **A row in a popover answers the pointer by getting BRIGHTER.** A popover's own ground is already a
+  raised translucent glass, so the intuitive darker wash lands a fraction of a lightness step BELOW
+  the panel it sits in — a change too small to see, in the direction the eye does not read as "this
+  one". The hovered row takes a **specular wash plus the rim that wash implies**, and a destructive
+  row takes the same recipe in its own red, so the tone says which row it is while the pointer is on
+  it. It is one class (`.menu-row`) with the tone on a variable, not a `hover:bg-*` per call site: a
+  flat colour cannot brighten glass.
+- **The scrim-less `Sheet` wears a handle on its bottom-edge shape, and the handle resizes it.** The
+  whole argument for a scrim-less surface is that what it is about stays visible beside it — and on a
+  phone the sheet is the half of the screen that thing was using. So the handle hands height back to
+  the scene and takes it again, a **tap** collapses the sheet and taps it back (a function reachable
+  only by dragging is a function some hands cannot reach — WCAG 2.5.7), and a pull that carries on
+  **past the short end** lets the surface go. A sheet whose content never filled the short end is
+  never GROWN by either — there is no height to give back, and glass with nothing in it is not a
+  taller sheet. A host that is mid-commit refuses to close, and the throw refuses
+  with it: an exit its host will not follow would leave the surface invisible and still there.
+- **A tooltip that is the CONTENT rather than a name opens on a press too, and wraps.** The hover-only
+  tip is the right default for a name a control already carries; an explanation behind an ⓘ is the one
+  case where the tip is the only copy of something, and touch has no hover to open it with. Such a tip
+  is **held** — it stays until the next press elsewhere, Escape, or the trigger losing focus — and it
+  **gives up width at a screen edge** rather than hanging off it, because the side it sits on stays the
+  caller's decision and only its measure answers to the viewport.
 
 ## 7. Motion
 

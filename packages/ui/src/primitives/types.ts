@@ -116,11 +116,22 @@ export interface TooltipOwnProps {
   side?: 'top' | 'bottom' | 'left'
   /**
    * How a `top`/`bottom` tip lines up with its trigger. `center` (default) is right for a control
-   * with room on both sides; `end` pins the tip's right edge to the trigger's, which is what keeps a
-   * tip wider than its control from running off the screen when the control hugs the right edge.
-   * Ignored for `side: 'left'`, which centres on the trigger's height.
+   * with room on both sides; `end` pins the tip's right edge to the trigger's and `start` its left
+   * edge, which is what keeps a tip wider than its control from running off the screen when the
+   * control hugs one edge of it. Ignored for `side: 'left'`, which centres on the trigger's height.
    */
-  align?: 'center' | 'end'
+  align?: 'center' | 'end' | 'start'
+  /**
+   * Open on a press as well, and stay open until the next press elsewhere, Escape, or the trigger
+   * losing focus. For the one case where the tip IS the content rather than a name a control already
+   * carries — an explanation behind an ⓘ — because touch has no hover to open it with.
+   */
+  press?: boolean
+  /**
+   * Let the tip wrap to a reading measure instead of staying on one line. A name fits on a line and
+   * should keep to one; an explanation is a sentence, and a sentence on one line runs off the screen.
+   */
+  wrap?: boolean
 }
 
 export interface MenuItem {

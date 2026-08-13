@@ -42,6 +42,20 @@ gist view) cost, and they price themselves inside their own flows — no price l
   comparison with the other stars, and a star shown alone has nothing to be bigger than — the panel
   states strength as a number instead. Every derived value is read from the shared read-time
   functions, never re-derived in the panel.
+- **Every row that is a READING carries an ⓘ that says what it means**, because a number like `0.87` and
+  a word like 아스라함 explain nothing on their own, and the rows and the star above them are the same
+  facts twice with nothing on the surface saying so. Each hint says where the reading comes from, what
+  it does to the star, and what makes it move: **감정** is what the diary was read as and is where the
+  colour comes from ([I3]); **밝기** is how vivid the memory still is, falling as universe days pass since
+  the last recall and returning with one, never reaching zero ([F1][F2]); **강도** is how firmly the memory
+  has settled, raised by every recall, and the higher it is the larger the star and the slower the fade
+  ([V3][F7]); **지금 상태** is how far the text has blurred, losing words a stage at a time and reading whole
+  again after a recall ([F5]). **적은 날 carries none** — a date is the fact itself, and an ⓘ that only
+  said "this is the date" would teach the diarist to stop pressing the others. The hints **open on a
+  press as well as on hover**, since the panel is a bottom sheet on a phone where there is no hover to
+  open anything with, and they describe only what the shared read-time functions already do — never a
+  mechanism the code does not have. They are reads like everything else here: they cost nothing,
+  advance nothing, and change nothing.
 - A **neuron (small) star** shows **information only — no emotion** ([I3]): name · type · connectivity,
   and none of the episodic actions.
 - The free text is the **faded memory, not the original.** The immutable original is reached only via

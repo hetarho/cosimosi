@@ -336,12 +336,13 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   preference — `pinned` (the default a viewer arrives in) or `free` — and the rig wears the controls that mode needs:
   - **free** = `TrackballControls`, so rotation is unbounded in every direction (no polar clamp, no pole stall).
   - **pinned** = `OrbitControls` with `camera.up` set to the world's **+z** (the axis the two memory bands are stacked
-    along, [V9]), `enablePan = false`, and the polar angle clamped to `90° ± pinnedTilt` — the clamp trackball exists to
-    avoid, wanted on purpose here. `camera.up` must be set BEFORE construction: OrbitControls reads it once, as the
-    axis it orbits. The clamp is symmetric, so `pinnedTilt` is the allowance **each way** and the whole tilt is twice
-    it; the opening pose is levelled to elevation 0 rather than merely clamped, because the scene hands the rig a
-    camera looking straight down and clamping alone would seat the view against the top of its own allowance with all
-    the give on one side.
+    along, [V9]), `enablePan = false`, and the polar angle clamped to `[90° − pinnedTiltUp, 90° + pinnedTiltDown]` — the
+    clamp trackball exists to avoid, wanted on purpose here. `camera.up` must be set BEFORE construction:
+    OrbitControls reads it once, as the axis it orbits. The clamp is **asymmetric** — a larger rise above the flat than
+    dip below it, because the rise is the view the band separation reads from — so the polar angle is bounded by the UP
+    allowance at its minimum and the DOWN allowance at its maximum; the opening pose is levelled to elevation 0 rather
+    than merely clamped, because the scene hands the rig a camera looking straight down and clamping alone would seat
+    the view against the top of its own allowance with nothing left to rise into.
 
   The mode is a **preference, not a lifecycle** (no ordering, nothing to enter or leave), so it is Zustand rather than a
   second region in the navigation machine, and it is a rig **prop** rather than a polled value because swapping controls

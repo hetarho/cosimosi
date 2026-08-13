@@ -68,6 +68,26 @@ describe('MetaBlock', () => {
     expect(faded).toContain(m.star_meta_forgetting_distant())
   })
 
+  it('explains every reading it shows, and leaves the date alone', () => {
+    const html = renderToString(
+      createElement(MetaBlock, {
+        selection: { kind: 'episodic', memory },
+        universeTime: '2026-06-25',
+      }),
+    )
+
+    for (const label of [
+      m.star_meta_emotion(),
+      m.star_meta_brightness(),
+      m.star_meta_strength(),
+      m.star_meta_forgetting_state(),
+    ]) {
+      expect(html).toContain(m.star_meta_hint_label({ label }))
+    }
+    // A date is the fact itself; there is nothing behind it to open.
+    expect(html).not.toContain(m.star_meta_hint_label({ label: m.star_meta_created() }))
+  })
+
   it('shows a neuron with info only and NO emotion / no star', () => {
     const html = renderToString(
       createElement(MetaBlock, { selection: { kind: 'neuron', neuron }, universeTime: null }),

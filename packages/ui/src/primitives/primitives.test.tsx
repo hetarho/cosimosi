@@ -12,6 +12,7 @@ import { IconButton } from './icon-button.tsx'
 import { Menu } from './menu.tsx'
 import { ObscuredText } from './obscured-text.tsx'
 import { SegmentedControl } from './segmented-control.tsx'
+import { Sheet } from './sheet.tsx'
 import { Skeleton } from './skeleton.tsx'
 import { Switch } from './switch.tsx'
 import { Tabs } from './tabs.tsx'
@@ -302,7 +303,12 @@ describe('Dialog', () => {
 
   function stubViewport(sheet: boolean) {
     vi.stubGlobal('PointerEvent', TestPointerEvent)
-    vi.stubGlobal('matchMedia', (media: string) => ({ matches: sheet, media }))
+    vi.stubGlobal('matchMedia', (media: string) => ({
+      matches: sheet,
+      media,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
   }
 
   /** Drag the grab surface (the title band) down by `travel` and let go. */
@@ -346,6 +352,138 @@ describe('Dialog', () => {
 
     swipeDown(160)
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  // The scrim-less Sheet's own handle, which does one more thing than the Dialog's: it gives height
+  // back to the scene the surface is about. jsdom lays nothing out, so the panel is told how tall it
+  // is — the gesture measures the sheet it starts from, and a 0-height panel has nothing to resize.
+  describe('Sheet handle', () => {
+    /** 0.3 · 0.7 of jsdom's 768px viewport — the two ends the height is bounded by. */
+    const SHORTEST = Math.round(768 * 0.3)
+    const TALLEST = Math.round(768 * 0.7)
+
+    function renderResizableSheet(onClose: () => void, closeDisabled = false, height = 500) {
+      // A fake layout that answers with the height the gesture last chose, since the gesture reads the
+      // sheet it is starting from and jsdom would answer 0 for every element forever.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        const chosen = this.style.getPropertyValue('--sheet-height')
+        return { height: chosen ? Number.parseFloat(chosen) : height } as DOMRect
+      })
+      render(
+        <Sheet
+          open
+          onClose={onClose}
+          title="Decorate"
+          closeLabel="Close"
+          closeDisabled={closeDisabled}
+        >
+          <button type="button">Inner</button>
+        </Sheet>,
+      )
+      return screen.getByRole('region', { name: 'Decorate' })
+    }
+
+    /** Drag the grab surface (the handle band) by `travel` — negative is upward — and let go. */
+    function dragHandle(travel: number) {
+      fireEvent.pointerDown(screen.getByRole('heading', { name: 'Decorate' }), { clientY: 400 })
+      fireEvent.pointerMove(window, { clientY: 400 + travel })
+      fireEvent.pointerUp(window, { clientY: 400 + travel })
+    }
+
+    const chosenHeight = (panel: HTMLElement) => panel.style.getPropertyValue('--sheet-height')
+
+    it('starts with no height of its own, so an untouched sheet is whatever its content makes it', () => {
+      stubViewport(true)
+      const panel = renderResizableSheet(vi.fn())
+
+      expect(chosenHeight(panel)).toBe('')
+    })
+
+    it('shortens as the handle is pulled down, without letting the sheet go', () => {
+      stubViewport(true)
+      const onClose = vi.fn()
+      const panel = renderResizableSheet(onClose)
+
+      dragHandle(120)
+
+      expect(chosenHeight(panel)).toBe('380px')
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('stops at the short end and lets go only when the pull carries on past it', () => {
+      stubViewport(true)
+      const onClose = vi.fn()
+      const panel = renderResizableSheet(onClose)
+
+      // All the way down to the short end — held, because reaching the end is not yet leaving.
+      dragHandle(500 - SHORTEST)
+      expect(chosenHeight(panel)).toBe(`${SHORTEST}px`)
+      expect(onClose).not.toHaveBeenCalled()
+
+      dragHandle(500 - SHORTEST + 120)
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('collapses on a tap and comes back on the next one, so the height is not drag-only', () => {
+      stubViewport(true)
+      const panel = renderResizableSheet(vi.fn())
+
+      dragHandle(0)
+      expect(chosenHeight(panel)).toBe(`${SHORTEST}px`)
+
+      // Back to the height it had on its own, rather than up into glass its content never filled.
+      dragHandle(0)
+      expect(chosenHeight(panel)).toBe('')
+    })
+
+    it('refuses to leave while its host is mid-commit, and still gets out of the way', () => {
+      stubViewport(true)
+      const onClose = vi.fn()
+      const panel = renderResizableSheet(onClose, true)
+
+      dragHandle(500 - SHORTEST + 200)
+
+      expect(onClose).not.toHaveBeenCalled()
+      expect(chosenHeight(panel)).toBe(`${SHORTEST}px`)
+    })
+
+    it('takes no height from a drag on the wide-screen shape, which owns the whole edge', () => {
+      stubViewport(false)
+      const onClose = vi.fn()
+      const panel = renderResizableSheet(onClose)
+
+      dragHandle(120)
+
+      expect(chosenHeight(panel)).toBe('')
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('never grows a sheet its content never filled, and still lets that one go', () => {
+      stubViewport(true)
+      const onClose = vi.fn()
+      // Shorter than the short end already: there is no height to give back, so a pull down is only
+      // ever about leaving — and it must not JUMP up to the bound on the way.
+      const panel = renderResizableSheet(onClose, false, 180)
+
+      // Held at its own height: below the floor the sheet travels rather than shrinking.
+      dragHandle(20)
+      expect(chosenHeight(panel)).toBe('180px')
+      expect(onClose).not.toHaveBeenCalled()
+
+      dragHandle(140)
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('cannot be pulled taller than the sheet is allowed to be', () => {
+      stubViewport(true)
+      const panel = renderResizableSheet(vi.fn())
+
+      dragHandle(-400)
+
+      expect(chosenHeight(panel)).toBe(`${TALLEST}px`)
+    })
   })
 })
 

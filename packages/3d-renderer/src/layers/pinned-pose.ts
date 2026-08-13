@@ -5,8 +5,8 @@
 // The pinned camera is described by its offset from whatever it is orbiting, in the universe's own
 // axes: an azimuth AROUND z, an elevation ABOVE the flat, and a radius. Reading a camera position as
 // that offset and writing an offset back out as a position are the two halves of the return glide,
-// and clamping happens in between — in the one representation where "15 degrees off flat" is a
-// single number rather than a rotation to decompose.
+// and clamping happens in between — in the one representation where "a few degrees off flat" is a
+// single signed number rather than a rotation to decompose.
 
 export interface Vec3Like {
   readonly x: number
@@ -23,15 +23,17 @@ export interface MutableVec3 {
 export interface PinnedOffset {
   /** Rotation around the world z axis, in radians. Free — the viewer chooses where they stand. */
   azimuth: number
-  /** Angle above the flat, in radians. Bounded by the envelope's tilt. */
+  /** Angle above the flat, in radians — negative below it. Bounded by the envelope's two tilts. */
   elevation: number
   /** Distance from the orbited centre. Bounded by the zoom envelope. */
   radius: number
 }
 
 export interface PinnedEnvelope {
-  /** Largest angle off the flat the pinned view allows, in radians. */
-  readonly maxTilt: number
+  /** Largest rise above the flat the pinned view allows, in radians. */
+  readonly maxTiltUp: number
+  /** Largest dip below the flat it allows, in radians — a positive number, like the rise. */
+  readonly maxTiltDown: number
   readonly minDistance: number
   readonly maxDistance: number
 }
@@ -67,7 +69,7 @@ export function readPinnedOffset(
     return out
   }
   out.azimuth = Math.atan2(dy, dx)
-  out.elevation = clamp(Math.atan2(dz, flat), -envelope.maxTilt, envelope.maxTilt)
+  out.elevation = clamp(Math.atan2(dz, flat), -envelope.maxTiltDown, envelope.maxTiltUp)
   out.radius = clamp(radius, envelope.minDistance, envelope.maxDistance)
   return out
 }

@@ -16,6 +16,15 @@ The renderer is never remounted to show a choice; only the layer that changed re
 The way in is one restrained affordance in the HUD's existing row, beside the archive and the account home — not a new
 chrome bar and not a persistent panel.
 
+**On a phone the panel can be pushed out of the way without being closed.** The lower third is still the part of the
+screen the universe was using, and a viewer comparing two skies has to be able to see more of it than the panel leaves.
+So the sheet carries a **handle** above its title: dragging it down gives height back to the universe and dragging it up
+takes the height back, a tap collapses the panel and taps it back open, and a pull that carries on past the short end
+closes it the same way the ✕ does — reverting whatever was being previewed. A save in flight refuses the close and still allows the
+resize: a commit is a reason not to leave, not a reason to sit on top of the thing being committed. The handle changes
+nothing about what is chosen or shown; the wide-screen shape, which takes an edge the universe was not using, does not
+have one.
+
 ## Everything is in one list, and ownership shows up as a price
 
 The catalog is **one list of everything** ([P6]): owned and unowned rows sit together, in the same order, rendered the

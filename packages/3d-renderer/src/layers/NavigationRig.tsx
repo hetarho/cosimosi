@@ -63,8 +63,10 @@ export interface NavigationRigProps {
   readonly pinned: boolean
   /** Polled once per frame while pinned — what the flat camera is orbiting right now. */
   readonly getPinnedView: () => PinnedView
-  /** Largest angle off the flat the pinned camera may tilt, in radians. */
-  readonly pinnedTilt: number
+  /** Largest rise above the flat the pinned camera may tilt to, in radians. */
+  readonly pinnedTiltUp: number
+  /** Largest dip below it — a positive number, like the rise. */
+  readonly pinnedTiltDown: number
   /** Exp-damp responsiveness of the return to the pinned pose. */
   readonly pinnedReturnLambda: number
   readonly pinnedRotateSpeed: number
@@ -113,7 +115,8 @@ export function NavigationRig({
   arriveTimeoutSeconds,
   pinned,
   getPinnedView,
-  pinnedTilt,
+  pinnedTiltUp,
+  pinnedTiltDown,
   pinnedReturnLambda,
   pinnedRotateSpeed,
   pinnedDampingFactor,
@@ -141,8 +144,8 @@ export function NavigationRig({
     firstFrame: true,
   })
   const envelope = useMemo<PinnedEnvelope>(
-    () => ({ maxTilt: pinnedTilt, minDistance, maxDistance }),
-    [pinnedTilt, minDistance, maxDistance],
+    () => ({ maxTiltUp: pinnedTiltUp, maxTiltDown: pinnedTiltDown, minDistance, maxDistance }),
+    [pinnedTiltUp, pinnedTiltDown, minDistance, maxDistance],
   )
 
   useEffect(() => {
@@ -164,8 +167,11 @@ export function NavigationRig({
       controls.enableDamping = true
       controls.dampingFactor = pinnedDampingFactor
       controls.rotateSpeed = pinnedRotateSpeed
-      controls.minPolarAngle = Math.PI / 2 - pinnedTilt
-      controls.maxPolarAngle = Math.PI / 2 + pinnedTilt
+      // The polar angle is measured DOWN from the orbit axis, so the rise above the flat is the
+      // smaller angle and the dip below it the larger one: the up allowance bounds the minimum and
+      // the down allowance the maximum.
+      controls.minPolarAngle = Math.PI / 2 - pinnedTiltUp
+      controls.maxPolarAngle = Math.PI / 2 + pinnedTiltDown
       // The rig hands over only once the camera sits inside the envelope; until then its own return
       // glide owns the camera, so the clamp lands as an ease rather than as a snap.
       controls.enabled = false
@@ -205,7 +211,8 @@ export function NavigationRig({
     pinned,
     pinnedDampingFactor,
     pinnedRotateSpeed,
-    pinnedTilt,
+    pinnedTiltDown,
+    pinnedTiltUp,
   ])
 
   useFrame((_, delta) => {
@@ -387,7 +394,8 @@ function stepPinnedView({
   }
   // Opening dead level rather than at whatever the incoming camera clamps to. The scene hands this
   // rig a camera looking straight down, so the clamp alone would seat the view against the TOP of
-  // the allowance and leave the give all on one side; from the flat, the tilt has both of its halves.
+  // the allowance with nothing left to rise into; from the flat, both directions of the tilt are
+  // still there to spend — the rise the depth reads from, and the smaller dip beneath it.
   if (instant) memory.home.elevation = 0
   // A held frame is orbited from wherever the viewer already is; a released one returns to the pose
   // they left. Both offsets were clamped on the way in, so either goal is inside the envelope.

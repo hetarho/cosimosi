@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type PointerEvent } from 'react'
 
-/**
- * The width below which a `Dialog` is a bottom sheet rather than a centred modal. It must stay in
- * step with the `md:` switch in dialog.tsx — the gesture only makes sense on the shape that has a
- * bottom edge to go out through, and reading the media query here is what keeps a wide-screen
- * pointer from dragging a modal that has nowhere to go.
- */
-const SHEET_VIEWPORT = '(width < 48rem)'
+import { isSheetShape, startsOnControl } from './sheet-shape.ts'
+
 /** Downward travel past which a release dismisses instead of springing back. */
 const DISMISS_PX = 96
 /**
@@ -18,8 +13,6 @@ const FLICK_PX = 24
 const FLICK_VELOCITY = 0.5
 /** Must match the sheet's leave animation in base.css — the throw and the unmount end together. */
 const SETTLE_MS = 200
-/** A drag that starts on a control is that control's press, not the sheet's. */
-const INTERACTIVE = 'button, a, input, textarea, select, [role="button"], [role="slider"]'
 
 const DRAGGING: CSSProperties = { transition: 'none' }
 const THROWN: CSSProperties = {
@@ -71,11 +64,8 @@ export function useSheetDrag(onDismiss: () => void): SheetDrag {
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.button !== 0) return
-    // `matchMedia` is read at press time rather than subscribed to: the shape only matters for the
-    // gesture, so a value one frame stale during a resize costs nothing and a render does.
-    const media = typeof window === 'undefined' ? null : window.matchMedia?.(SHEET_VIEWPORT)
-    if (!media?.matches) return
-    if (event.target instanceof Element && event.target.closest(INTERACTIVE)) return
+    if (!isSheetShape()) return
+    if (startsOnControl(event.target)) return
     setGrab({ y: event.clientY, time: event.timeStamp })
     setOffset(0)
     setRest('idle')

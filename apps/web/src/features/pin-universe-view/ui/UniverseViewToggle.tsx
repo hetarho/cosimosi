@@ -1,17 +1,18 @@
 import {
+  Button,
   FreeViewIcon,
-  IconButton,
   PinnedViewIcon,
   Tooltip,
-  type IconButtonProps,
+  VisuallyHidden,
+  type ButtonProps,
 } from '@cosimosi/ui'
 import { useUniverseViewStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
 
 export interface UniverseViewToggleProps {
-  /** Web-only affordance sizing; the HUD's other controls default to `md` alongside it. */
-  size?: IconButtonProps['size']
+  /** Web-only affordance sizing; a labelled chip on the sky wants the small cut by default. */
+  size?: ButtonProps['size']
 }
 
 // features/pin-universe-view: the one control that says how the universe is being held — 고정 모드
@@ -20,39 +21,48 @@ export interface UniverseViewToggleProps {
 // which is why no prop, actor, or callback runs between the two (React context does not cross the
 // R3F reconciler).
 //
-// The glyph says which mode is ON rather than which one a press would bring, and the word beside it
-// says the same thing again — over a live sky an icon alone is a guess, and this control changes how
-// the whole scene answers a drag, which is too much to leave to one glyph. `aria-pressed` carries
-// the state a sighted viewer gets from the fill, and the accessible name is the ACTION, so the
-// button still announces what pressing it does.
+// ONE control, glyph and word inside the same button: a mark beside a caption reads as two things,
+// and the caption is then the half of it a pointer cannot press. The word says which mode is ON
+// rather than which one a press would bring — over a live sky an icon alone is a guess, and this
+// control changes how the whole scene answers a drag. `aria-pressed` carries that state for a reader
+// who never sees the fill.
 //
-// Borderless and round like the rest of the HUD's controls: its ground is the `drop-shadow-md` on the
-// group below, not a rim — over a live sky a bordered circle reads as a hole in the universe.
-export function UniverseViewToggle({ size = 'md' }: UniverseViewToggleProps) {
+// What pressing DOES is added to the name in a hidden run rather than replacing it with `aria-label`:
+// the mode is now printed on the control, and a name that dropped the visible word would leave anyone
+// driving the page by voice saying a label the button does not answer to (WCAG 2.5.3). So the name is
+// the state AND the action — "고정 모드, 자유 모드로 보기" — which is also the only reading that tells a
+// screen-reader user both things this one button holds.
+//
+// The tooltip is the CONSEQUENCE, not the name: the button already carries the mode in words, and a
+// tip repeating what is printed on the control is a tip that teaches nothing. What a viewer cannot
+// see is what the other way of holding the universe would let them do.
+//
+// Borderless and pill-shaped like the rest of the HUD's controls: its ground is the `drop-shadow-md`
+// hugging the glyph and the word, not a rim — over a live sky a bordered chip reads as a hole cut in
+// the universe.
+export function UniverseViewToggle({ size = 'sm' }: UniverseViewToggleProps) {
   const mode = useUniverseViewStore((state) => state.mode)
   const toggle = useUniverseViewStore((state) => state.toggle)
   const pinned = mode === 'pinned'
   const action = pinned ? m.universe_view_free_action() : m.universe_view_pin_action()
+  const consequence = pinned ? m.universe_view_free_hint() : m.universe_view_pin_hint()
 
   return (
-    <div className="pointer-events-auto flex items-center gap-2 drop-shadow-md">
-      <Tooltip content={action} side="bottom">
-        <IconButton
+    <div className="pointer-events-auto drop-shadow-md">
+      <Tooltip content={consequence} side="bottom" align="start" wrap>
+        <Button
           variant="text"
           color="neutral"
-          className="rounded-full"
           size={size}
-          label={action}
+          className="gap-1.5 rounded-full px-2.5"
           aria-pressed={pinned}
-          icon={pinned ? <PinnedViewIcon /> : <FreeViewIcon />}
+          leadingIcon={pinned ? <PinnedViewIcon /> : <FreeViewIcon />}
           onClick={toggle}
-        />
+        >
+          {pinned ? m.universe_view_pinned() : m.universe_view_free()}
+          <VisuallyHidden>{action}</VisuallyHidden>
+        </Button>
       </Tooltip>
-      {/* Reads as the state, not as a second button: bare type on the sky, the same way the
-          universe's own clock is written across from it. */}
-      <span aria-hidden className="text-xs text-text-muted">
-        {pinned ? m.universe_view_pinned() : m.universe_view_free()}
-      </span>
     </div>
   )
 }

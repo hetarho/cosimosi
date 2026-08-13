@@ -26,15 +26,20 @@ export const UNIVERSE_CAMERA_RIG = {
    *  so a chase of a still-drifting target never strands the rig (normal glides land in ~3s). */
   arriveTimeoutSeconds: 6,
   /**
-   * How far off the flat the pinned view may tilt, in radians — **each way**, above the flat and
-   * below it, so the whole allowance is twice this and the pinned view opens in the middle of it.
+   * How far off the flat the pinned view may tilt, in radians — one allowance for rising above the
+   * flat and a separate, smaller one for dipping below it. The pinned view opens LEVEL, so these are
+   * the give it has in each direction from there.
    *
    * The z axis is the universe's own up — memories lie in the hippocampus band and their gists float
    * in the neocortex band above ([V9]) — so a level camera is the one pose where that separation
-   * reads as height rather than as scatter. The allowance is enough to feel the depth between the two
-   * bands from slightly above or below, and small enough that the horizon never leaves the frame.
+   * reads as height rather than as scatter. The two halves are unequal because the two directions
+   * are not worth the same: rising looks DOWN onto the band the memories lie in and across at the
+   * gists above them, which is the view that shows the depth, while dipping only puts the near stars
+   * between the eye and everything else. Both stay small enough that the horizon never leaves the
+   * frame.
    */
-  pinnedTilt: (15 * Math.PI) / 180,
+  pinnedTiltUp: (20 * Math.PI) / 180,
+  pinnedTiltDown: (10 * Math.PI) / 180,
   /** Exp-damp responsiveness of the return to the pinned pose after a glide lets the camera go. */
   pinnedReturnLambda: 2.6,
   /** Trackball-equivalent feel for the pinned orbit: slower than a free tumble, because every drag

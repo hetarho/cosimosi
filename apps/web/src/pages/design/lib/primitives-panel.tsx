@@ -7,6 +7,7 @@ import {
   Card,
   Checkbox,
   Dialog,
+  Menu,
   Sheet,
   IconButton,
   Select,
@@ -22,7 +23,7 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-import { EllipsisIcon, StarIcon } from './showcase-icons.tsx'
+import { EllipsisIcon, InfoIcon, StarIcon } from './showcase-icons.tsx'
 import { T } from './showcase-copy.ts'
 import {
   LabeledRow,
@@ -365,6 +366,51 @@ function OverlaySection() {
           {T.sheetTrigger}
         </Button>
       </Stage>
+
+      {/* The two overlays that only exist over something busy, so they are reviewed over something
+          busy: a popover's rows have to answer a pointer ON the glass they sit in, and a held tip has
+          to stay legible against whatever is behind it. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Specimen label={T.menuLabel} note={T.menuNote}>
+          <LitBackdrop>
+            {/* The open list needs its room INSIDE the lit ground: the stage clips what it rounds,
+                and a popover reviewed half-cut is a popover nobody can judge. */}
+            <div className="min-h-48">
+              <Menu
+                ariaLabel={T.menuTrigger}
+                align="start"
+                items={[
+                  { value: 'history', label: T.menuHistory, onSelect: () => {} },
+                  { value: 'diary', label: T.menuOpen, onSelect: () => {} },
+                  { value: 'delete', label: T.menuDelete, tone: 'danger', onSelect: () => {} },
+                ]}
+                trigger={
+                  <IconButton
+                    variant="text"
+                    color="neutral"
+                    label={T.menuTrigger}
+                    icon={<EllipsisIcon />}
+                  />
+                }
+              />
+            </div>
+          </LitBackdrop>
+        </Specimen>
+        <Specimen label={T.hintLabel} note={T.hintNote}>
+          <LitBackdrop>
+            <Tooltip content={T.hintContent} side="bottom" align="start" press wrap>
+              <IconButton
+                variant="text"
+                color="neutral"
+                size="sm"
+                className="rounded-full"
+                label={T.hintTrigger}
+                icon={<InfoIcon />}
+              />
+            </Tooltip>
+          </LitBackdrop>
+        </Specimen>
+      </div>
 
       <Toast open={toastOpen} onOpenChange={setToastOpen} variant="success" durationMs={2400}>
         {T.toastBody}
