@@ -1,52 +1,47 @@
-import type { EpisodicMemory } from '@cosimosi/memory'
-import { Button, Card, ObscuredText } from '@cosimosi/ui'
-import { currentDecaySpans } from '@cosimosi/universe'
+import { moodColor, type Mood } from '@cosimosi/emotion'
+import type { Diary } from '@cosimosi/memory'
+import { Dialog } from '@cosimosi/ui'
 
-import { m } from '../../../shared/i18n/index.ts'
+import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DemoEntryReaderProps {
-  readonly memory: EpisodicMemory
-  readonly diaryBody: string
-  readonly universeTime: string
+  readonly diary: Diary | null
   readonly onClose: () => void
 }
 
-// pages/demo ui: a launched star's entry, opened — the demo-local look-alike of the product's
-// detail reading (`DetailPanel` and its provenance/gist reads stay never-mounted). It makes
-// forgetting READABLE, not just visible at a distance: the memory's current words render as the
-// production `currentDecaySpans` resolves them at the demo clock — smeared where time has taken
-// them, whole again after a recall — while the diary body below stays verbatim, because a diary is
-// what was written and a memory is a representation of it ([I2]).
-export function DemoEntryReader({
-  memory,
-  diaryBody,
-  universeTime,
-  onClose,
-}: DemoEntryReaderProps) {
+// pages/demo ui: one opened diary — the read-only twin of the archive's opened entry
+// (`features/read-diary-list`'s `DiaryEntry` inside the reader's modal): the immutable body
+// verbatim, then the memories it split into as mood-coloured chips. The product reaches it by
+// navigating to the archive; the sandbox has no archive route, so the same body opens as the surface
+// it already is on the calendar's day view — a `Dialog` over the universe.
+//
+// A diary is what was written and a memory is a representation of it ([I2]): the eroded current
+// words live on the star's own panel, and nothing here is ever rewritten.
+export function DemoEntryReader({ diary, onClose }: DemoEntryReaderProps) {
+  if (!diary) return null
+
   return (
-    <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-full max-w-md flex-col justify-center p-4">
-      <Card>
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-text">{memory.name}</p>
-          <Button color="neutral" size="sm" onClick={onClose}>
-            {m.demo_entry_close_action()}
-          </Button>
-        </div>
-
-        <p className="mt-3 text-xs text-text-muted">{m.demo_entry_current_label()}</p>
-        <ObscuredText
-          className="mt-1 whitespace-pre-line"
-          spans={currentDecaySpans(memory, universeTime).map((span) => ({
-            text: span.text,
-            obscured: span.lost,
-          }))}
-        />
-
-        <p className="mt-4 text-xs text-text-muted">{m.demo_entry_body_label()}</p>
-        <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-line text-sm text-text-subtle">
-          {diaryBody}
-        </p>
-      </Card>
-    </div>
+    <Dialog open onClose={onClose} title={diary.diaryDate} closeLabel={m.common_dismiss()}>
+      <article className="flex flex-col gap-4">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap text-text">{diary.body}</p>
+        <ul className="flex flex-wrap gap-2">
+          {diary.memories.map((member) => (
+            <li
+              key={member.episodicMemoryId}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1"
+            >
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: moodColor(member.mood as Mood) }}
+              />
+              <span className="text-xs text-text" title={moodLabel(member.mood)}>
+                {member.name}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </article>
+    </Dialog>
   )
 }

@@ -61,11 +61,19 @@ export function resolveCaptionPlacement(
 }
 
 /**
+ * Where the floating `center` caption's midline sits, as a fraction of the viewport height. Just
+ * ABOVE the middle: the surfaces that interrupt on a narrow screen come up from the bottom edge
+ * (`Dialog` is a sheet there, and so is every panel), so the free room is the upper half — while the
+ * eyeline is still the middle, not the top edge. Renderer and resolver read the same number, or the
+ * band the resolver yields for would not be the band the line renders in.
+ */
+export const CENTERED_CAPTION_MIDLINE = 0.42
+
+/**
  * The floating variant a host opts into when its guidance should sit in the visitor's eyeline
- * rather than along an edge. `center` renders at the LOWER third — under the screen's own middle,
- * where the scene the guidance describes usually lives — and still yields: a step whose anchored
- * control crosses that band falls back to the edge resolution above, because guidance laid over
- * the very control it describes guides nothing.
+ * rather than along an edge. `center` renders slightly ABOVE the middle (see the constant) and
+ * still yields: a step whose anchored control crosses that band falls back to the edge resolution
+ * above, because guidance laid over the very control it describes guides nothing.
  */
 export function resolveCenteredCaptionPlacement(
   anchorRect: SequenceRect | null,
@@ -73,7 +81,7 @@ export function resolveCenteredCaptionPlacement(
   bandHeight: number,
 ): CaptionPlacement {
   if (!anchorRect) return 'center'
-  const bandTop = (viewport.height * 2) / 3 - Math.max(0, bandHeight) / 2
+  const bandTop = viewport.height * CENTERED_CAPTION_MIDLINE - Math.max(0, bandHeight) / 2
   const bandBottom = bandTop + Math.max(0, bandHeight)
   const anchorBottom = anchorRect.y + anchorRect.height
   const crossesBand = anchorBottom > bandTop && anchorRect.y < bandBottom

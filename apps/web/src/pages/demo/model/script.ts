@@ -44,7 +44,10 @@ const BEAT_STEPS: Readonly<Record<DemoBeatId, { anchor?: DemoAnchor; signal: Dem
     recall: { anchor: 'recall-action', signal: 'recalled' },
     gist_rise: { anchor: 'time-month-action', signal: 'gist_risen' },
     color: { signal: 'sky_filled' },
-    ornament_taster: { anchor: 'decorate-action', signal: 'ornament_tasted' },
+    // The decorating beat anchors the 꾸미기 control and waits for the sheet to CLOSE: opening it,
+    // trying something on and coming back out to the changed universe is one beat's work, so its
+    // ring walks (page-side) from the control to the row and its caption covers the whole arc.
+    ornament_taster: { anchor: 'decorate-action', signal: 'decorate_closed' },
     // The closing beat points at NOTHING: highlighting the signup control would read as "the tour
     // ends by leaving". Its caption names where the door is; the visitor goes when they feel like
     // it, and the room is already open under the caption.

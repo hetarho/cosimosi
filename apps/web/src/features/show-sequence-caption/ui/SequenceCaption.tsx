@@ -1,4 +1,8 @@
-import type { CaptionPlacement, SequenceCaption as CaptionAccessor } from '@cosimosi/sequence'
+import {
+  CENTERED_CAPTION_MIDLINE,
+  type CaptionPlacement,
+  type SequenceCaption as CaptionAccessor,
+} from '@cosimosi/sequence'
 import { cx } from '@cosimosi/ui'
 
 export const CAPTION_BAND_HEIGHT_PX = 112
@@ -29,14 +33,24 @@ export function SequenceCaption({
         // put the line behind the very panel it describes.
         'pointer-events-none fixed inset-x-0 z-[var(--z-guide)] flex justify-center px-6',
         // `center` is host-opted (a placement resolver yields it only when asked) and floats the
-        // line at the LOWER third — in the eyeline, but under the scene's own middle, because what
-        // the guidance talks about (the demo's memory cluster, most of the time) lives dead center
-        // and must stay watchable behind it.
+        // line just ABOVE the middle — in the eyeline, and clear of the bottom edge every
+        // interrupting surface on a narrow screen comes up from. Its exact midline is the
+        // resolver's own `CENTERED_CAPTION_MIDLINE`, applied as a style below rather than as a class
+        // so the yielding band and the rendered band cannot drift apart.
         !pin && placement === 'top' && 'top-0 pt-8',
         !pin && placement === 'bottom' && 'bottom-0 pb-8',
-        !pin && placement === 'center' && 'top-2/3 -translate-y-1/2 items-center',
+        !pin && placement === 'center' && '-translate-y-1/2 items-center',
       )}
-      style={pin ? { top: pin.top, bottom: pin.bottom } : { minHeight: CAPTION_BAND_HEIGHT_PX }}
+      style={
+        pin
+          ? { top: pin.top, bottom: pin.bottom }
+          : {
+              minHeight: CAPTION_BAND_HEIGHT_PX,
+              ...(placement === 'center'
+                ? { top: `${CENTERED_CAPTION_MIDLINE * 100}%` }
+                : undefined),
+            }
+      }
     >
       {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has to
           carry from the middle of a page whose everything-else is deliberately dimmed. */}

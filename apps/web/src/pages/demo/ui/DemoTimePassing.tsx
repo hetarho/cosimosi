@@ -72,11 +72,14 @@ export function DemoTimeAdvance({ interval, onTick, onDone }: DemoTimeAdvancePro
   return null
 }
 
-// The persistent clock pill, mirroring the product HUD's shape: a label and a value only — no
-// control sits here, so nothing on the time surface can act ([I10]'s look, if not its rule).
+// The persistent clock, in the product HUD's shape ([T6]): a label and a value, and no control —
+// the reading itself can do nothing to the time it reports. Bare type rather than a chip, because a
+// surface behind it makes the one reading that belongs to the PLACE look like another control in the
+// chrome; the sky is what it is written on, and legibility over a bright nebula comes from a shadow
+// on the glyphs instead of a panel under them.
 export function DemoTimeHud({ date }: { readonly date: string }) {
   return (
-    <div className="glass-subtle pointer-events-none flex items-baseline gap-2 rounded-md px-3 py-1.5">
+    <div className="pointer-events-none flex items-baseline gap-2 drop-shadow-md">
       <span className="text-xs text-text-muted">{m.demo_time_hud_label()}</span>
       <span className="text-sm tabular-nums text-text">{date}</span>
     </div>

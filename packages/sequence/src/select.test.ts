@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { defineScript } from './script.ts'
 import { initialSequenceRunSnapshot } from './sequence.machine.ts'
 import {
+  CENTERED_CAPTION_MIDLINE,
   currentStep,
   isActive,
   progress,
@@ -80,10 +81,18 @@ describe('sequence selectors', () => {
     )
   })
 
-  it('floats the opted-in caption at the lower third except over a crossing control', () => {
+  it('floats the opted-in caption just above the middle except over a crossing control', () => {
+    // The floating band is ABOVE the middle, so the bottom half — where a narrow screen's sheets
+    // come up from — is never where the line lands.
+    expect(CENTERED_CAPTION_MIDLINE).toBeLessThan(0.5)
     // A control along the top edge leaves the floating band free.
     expect(
       resolveCenteredCaptionPlacement({ x: 0, y: 40, width: 200, height: 40 }, VIEWPORT, BAND),
+    ).toBe('center')
+    // A control sitting where a bottom sheet does is well clear of the band and does not push the
+    // line off it — the whole point of floating above the middle rather than under it.
+    expect(
+      resolveCenteredCaptionPlacement({ x: 0, y: 560, width: 400, height: 240 }, VIEWPORT, BAND),
     ).toBe('center')
     // No anchor (a narration-only step) floats too.
     expect(resolveCenteredCaptionPlacement(null, VIEWPORT, BAND)).toBe('center')

@@ -7,11 +7,7 @@ import { useSequenceRun } from '@cosimosi/sequence/react'
 import { VALUES } from '@cosimosi/config'
 import { resetUniverseUserState, type AdvanceInterval } from '@cosimosi/universe'
 
-import { Button } from '@cosimosi/ui'
-
-import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
-import { m } from '../../../shared/i18n/index.ts'
 import { shallowEqual, useActorRef, useSelector } from '../../../shared/model/index.ts'
 import { DEMO_SCRIPT } from '../model/script.ts'
 import {
@@ -22,11 +18,13 @@ import {
   tutorialInteractiveAnchors,
 } from '../model/run-machine.ts'
 import { DEMO_TIME_JUMPS, shiftDemoDate, useDemoRun } from '../model/use-demo-run.ts'
-import { DemoControlRail, type DemoStarRow } from './DemoControlRail.tsx'
 import { DemoDecorationSheet } from './DemoDecorationSheet.tsx'
 import { DemoEntryReader } from './DemoEntryReader.tsx'
+import { DemoHud } from './DemoHud.tsx'
+import { DemoRecallSheet } from './DemoRecallSheet.tsx'
+import { DemoStarPanel } from './DemoStarPanel.tsx'
 import { DemoTutorialMask } from './DemoTutorialMask.tsx'
-import { DemoTimeAdvance, DemoTimeHud } from './DemoTimePassing.tsx'
+import { DemoTimeAdvance } from './DemoTimePassing.tsx'
 import { DemoUniverseScene } from './DemoUniverseScene.tsx'
 import { DemoWritingSheet, type DemoProposedMemory } from './DemoWritingSheet.tsx'
 
@@ -91,6 +89,21 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // sheet cannot be stranded — its close is simply inert until then.
   const [sheetOpen, setSheetOpen] = useState(true)
 
+  // The surfaces a picked star opens, all page state for the same reason: which star is selected,
+  // whether its recall walk is up (and whether it has been applied), and which diary is being read.
+  // Only ONE of them is ever on screen — each opens by closing the one it came from, because two
+  // surfaces that both declare themselves modal would stack two scrims and two focus traps.
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null)
+  const [recallMemoryId, setRecallMemoryId] = useState<string | null>(null)
+  const [recallApplied, setRecallApplied] = useState(false)
+  const [readingDiaryId, setReadingDiaryId] = useState<string | null>(null)
+
+  // 꾸미기 opens the product-shaped decoration sheet. `decorateTasted` is what makes the decorating
+  // beat a round trip rather than one press: until something has been tried on, the sheet's way out
+  // is inert, and the beat ends when the visitor comes back out to the changed universe.
+  const [decorateOpen, setDecorateOpen] = useState(false)
+  const [decorateTasted, setDecorateTasted] = useState(false)
+
   // The chrome's layout moves when the phase, the draft or the sheet does — the split rows appear,
   // the dialog mounts, launched rows arrive — and the engine cannot see any of that (a registry
   // change is its only signal). Re-measure after those commits, or the ring keeps pointing at the
@@ -103,7 +116,17 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const phaseKey = phase.kind === 'tutorial' ? phase.beatId : 'freePlay'
   useEffect(() => {
     remeasure()
-  }, [phaseKey, remeasure, sheetOpen, starCount, writingState])
+  }, [
+    decorateOpen,
+    phaseKey,
+    readingDiaryId,
+    recallMemoryId,
+    remeasure,
+    selectedMemoryId,
+    sheetOpen,
+    starCount,
+    writingState,
+  ])
 
   // The mask's hole: the union box of every control the current beat opens — one lit region cut
   // out of one covering layer. Measured page-side through the same anchor registry the engine
@@ -131,28 +154,60 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     return () => {
       live = false
     }
-  }, [engineRect, phaseKey, sheetOpen, starCount, writingState])
+  }, [
+    decorateOpen,
+    engineRect,
+    phaseKey,
+    recallMemoryId,
+    selectedMemoryId,
+    sheetOpen,
+    starCount,
+    writingState,
+  ])
 
-  // The neuron-reuse beat anchors the write control, but the beat's WORK is the whole flow: once
-  // the drawn diary is on screen the ring walks with the visitor — 쪼개기, then 띄우기 — instead
-  // of staying parked on a button already pressed. The engine's own anchor stays what the script
-  // says; this is a page-side view override, measured through the same registry.
-  const [flowRect, setFlowRect] = useState<SequenceRect | null>(null)
+  // Two beats do their work across a surface the first press OPENS, so their ring walks with the
+  // visitor instead of staying parked on a button already pressed. The engine's own anchor stays
+  // what the script says; this is a page-side view override, measured through the same registry.
+  // `none` is a deliberate third state: the last leg of the decorating beat is "come back out", and
+  // the way out is the sheet's own close — a control the shared primitive owns, which this page
+  // cannot wrap in an anchor and must not learn about. So the ring stands down and the caption,
+  // which the engine guarantees, carries that leg alone.
+  const [ringOverride, setRingOverride] = useState<
+    { readonly kind: 'rect'; readonly rect: SequenceRect | null } | { readonly kind: 'none' } | null
+  >(null)
   useEffect(() => {
-    if (phaseKey !== 'neuron_reuse' || !writingState || !sheetOpen) {
-      setFlowRect(null)
-      return
+    // The neuron-reuse beat: drawing is only its first press — 쪼개기 and 띄우기 finish the diary.
+    if (phaseKey === 'neuron_reuse' && writingState && sheetOpen) {
+      const target = writingState.splitRevealed ? 'launch-action' : 'split-action'
+      let live = true
+      void measureAnchor(target).then((rect) => {
+        if (live) setRingOverride({ kind: 'rect', rect })
+      })
+      return () => {
+        live = false
+      }
     }
-    const target = writingState.splitRevealed ? 'launch-action' : 'split-action'
-    let live = true
-    void measureAnchor(target).then((rect) => {
-      if (live) setFlowRect(rect)
-    })
-    return () => {
-      live = false
+    // The decorating beat: into the sheet, onto a row, then out of the way for the trip back.
+    if (phaseKey === 'ornament_taster' && decorateOpen) {
+      if (decorateTasted) {
+        setRingOverride({ kind: 'none' })
+        return
+      }
+      let live = true
+      void measureAnchor('ornament-row-action').then((rect) => {
+        if (live) setRingOverride({ kind: 'rect', rect })
+      })
+      return () => {
+        live = false
+      }
     }
-  }, [engineRect, phaseKey, sheetOpen, writingState])
-  const guideAnchorRect = flowRect ?? run.anchorRect
+    setRingOverride(null)
+  }, [decorateOpen, decorateTasted, engineRect, phaseKey, sheetOpen, writingState])
+  const guideAnchorRect = ringOverride
+    ? ringOverride.kind === 'rect'
+      ? ringOverride.rect
+      : null
+    : run.anchorRect
 
   // The covering yields to the scene when the scene IS the point: a launch and a time sweep both
   // play out on the covered canvas, so the whole layer fades out for their duration plus a linger,
@@ -219,8 +274,6 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     releaseMaskLift()
   }, [releaseMaskLift])
 
-  const [openMemoryId, setOpenMemoryId] = useState<string | null>(null)
-
   const onDiaryRead = useCallback(() => signal('diary_read'), [signal])
 
   const onDraw = useCallback(() => {
@@ -275,13 +328,32 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     [demo, playSweep, signal],
   )
 
-  const onRecall = useCallback(
-    (memoryId: string) => {
-      demo.recall(memoryId)
-      signal('recalled')
-    },
-    [demo, signal],
-  )
+  // 회고하기 walks the product's own three steps — the star's panel hands the memory to the recall
+  // surface, the confirm applies it, and the result is read before the room comes back. The beat is
+  // reported on the way OUT, not on the confirm: the reshaped, re-brightened star is the point, and
+  // it plays on a canvas the result surface is standing on. So the covering lifts as the flow closes
+  // and the next caption arrives with it, exactly as a launch does.
+  const onRecallRequested = useCallback((memoryId: string) => {
+    setSelectedMemoryId(null)
+    setRecallApplied(false)
+    setRecallMemoryId(memoryId)
+  }, [])
+
+  const onRecallConfirm = useCallback(() => {
+    if (!recallMemoryId || recallApplied) return
+    demo.recall(recallMemoryId)
+    setRecallApplied(true)
+  }, [demo, recallApplied, recallMemoryId])
+
+  const onRecallClose = useCallback(() => {
+    const applied = recallApplied
+    setRecallMemoryId(null)
+    setRecallApplied(false)
+    if (!applied) return
+    holdMaskLift()
+    releaseMaskLift()
+    signal('recalled')
+  }, [holdMaskLift, recallApplied, releaseMaskLift, signal])
 
   // Beat 8 is a consequence rather than an action: once the universe holds enough re-read emotion,
   // the sky takes its colour. The page applies it and then reports, so the caption never runs ahead.
@@ -292,21 +364,22 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     signal('sky_filled')
   }, [demo, signal, state.skyFilled, stepId])
 
-  // 꾸미기 opens the product-shaped decoration sheet; a selection applies at once and reports.
-  const [decorateOpen, setDecorateOpen] = useState(false)
+  // A tried-on ornament applies at once — a selection simply IS the sky now ([Z8] discharged by
+  // absence: no preview, no save, no total). Nothing is reported here: what finishes the decorating
+  // beat is the trip back out to the universe, which is where the change is actually seen.
   const onApplyBackground = useCallback(
     (rendererKey: string | null) => {
       demo.taste({ background: rendererKey })
-      signal('ornament_tasted')
+      setDecorateTasted(true)
     },
-    [demo, signal],
+    [demo],
   )
   const onApplyBodyShape = useCallback(
     (rendererKey: string | null) => {
       demo.taste({ bodyShape: rendererKey })
-      signal('ornament_tasted')
+      setDecorateTasted(true)
     },
-    [demo, signal],
+    [demo],
   )
   const onApplyPalette = useCallback(
     (on: boolean) => {
@@ -316,10 +389,15 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       if (on) applyMoodColors(MOODS.map((mood) => ({ mood, color: ALTERNATIVE_MOOD_COLORS[mood] })))
       else resetMoodPalette()
       demo.taste({ palette: on })
-      signal('ornament_tasted')
+      setDecorateTasted(true)
     },
-    [demo, signal],
+    [demo],
   )
+
+  const onCloseDecoration = useCallback(() => {
+    setDecorateOpen(false)
+    signal('decorate_closed')
+  }, [signal])
 
   // The drawn diary through the product's review shapes: each proposed memory carries the name and
   // mood the split decided, the diary passage it was encoded from (its stage-0 words) and the
@@ -350,107 +428,115 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     }
   }, [state.resolved.snapshot, state.writing, writingDiary])
 
-  const stars: readonly DemoStarRow[] = useMemo(
-    () => scene.memories.map((memory) => ({ memoryId: memory.id, name: memory.name ?? '' })),
-    [scene.memories],
-  )
-
-  // The one reading gate for both surfaces — the rail's 일기 보기 and a star picked on the canvas.
-  // During the tutorial the entry-open kind is closed, so a canvas tap is simply not reading yet.
-  const onOpenEntry = useCallback(
+  // A star picked on the canvas opens its panel — the product's own way in ([D1]), and now the
+  // demo's only one. During the tutorial a pick lands only where the current beat is: the recall
+  // beat's own star. Reading and recalling are gated inside the panel by the same derivation, so a
+  // beat can never be pressed forward from a star it is not about.
+  const tutorialRecallMemoryId = state.set.scenario.recallMemoryId
+  const onSelectMemory = useCallback(
     (memoryId: string) => {
-      if (!isDemoAnchorInteractive(phase, 'entry-open-action')) return
-      setOpenMemoryId(memoryId)
+      const isTarget = memoryId === tutorialRecallMemoryId
+      if (
+        phase.kind === 'tutorial' &&
+        !isDemoAnchorInteractive(phase, 'recall-action', isTarget) &&
+        !isDemoAnchorInteractive(phase, 'entry-open-action')
+      )
+        return
+      setSelectedMemoryId(memoryId)
     },
-    [phase],
+    [phase, tutorialRecallMemoryId],
   )
 
-  const openMemory = openMemoryId
-    ? (scene.memories.find((memory) => memory.id === openMemoryId) ?? null)
+  // The recall beat opens with its star already picked. The beat's WORK stays the visitor's — the
+  // recall is theirs to press ([O2]) — but which star it is about is the scenario's, and asking a
+  // visitor to find it among a cluster of look-alikes is a search task the caption cannot help with.
+  // The writing sheet arrives the same way, already open on beat 1.
+  useEffect(() => {
+    if (phaseKey !== 'recall' || recallMemoryId) return
+    setSelectedMemoryId((current) => current ?? tutorialRecallMemoryId)
+  }, [phaseKey, recallMemoryId, tutorialRecallMemoryId])
+
+  const findMemory = (memoryId: string | null) =>
+    memoryId ? (scene.memories.find((memory) => memory.id === memoryId) ?? null) : null
+
+  const selectedMemory = findMemory(selectedMemoryId)
+  const recallMemory = findMemory(recallMemoryId)
+  const readingDiary = readingDiaryId
+    ? (state.resolved.diaries.find((diary) => diary.id === readingDiaryId) ?? null)
     : null
-  const openDiaryBody = openMemory
-    ? (state.resolved.diaries.find((diary) =>
-        diary.memories.some((member) => member.episodicMemoryId === openMemory.id),
-      )?.body ?? '')
-    : ''
+
+  // 원본 일기 보기 — the star names the diary it was split from, so the reader opens that one ([D2]'s
+  // shape without the archive route the sandbox does not have).
+  const diaries = state.resolved.diaries
+  const onOpenDiary = useCallback(() => {
+    const diary = diaries.find((entry) =>
+      entry.memories.some((member) => member.episodicMemoryId === selectedMemoryId),
+    )
+    if (!diary) return
+    setSelectedMemoryId(null)
+    setReadingDiaryId(diary.id)
+  }, [diaries, selectedMemoryId])
 
   const displayTime = sweepTime ?? scene.universeTime
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-bg">
+    <main className="relative h-dvh w-full overflow-hidden bg-bg text-text">
       <DemoUniverseScene
         scene={scene}
         taste={state.taste}
         displayTime={displayTime}
         cameraFree={phase.kind === 'freePlay'}
-        onSelectMemory={onOpenEntry}
+        onSelectMemory={onSelectMemory}
       />
 
       {sweep && <DemoTimeAdvance interval={sweep} onTick={setSweepTime} onDone={onSweepDone} />}
 
-      <div className="pointer-events-none absolute inset-0">
-        {/* Mobile lays the controls along the bottom edge under the free canvas; from `sm` up they
-            keep the left rail. One DOM order, two arrangements — no control renders twice, so no
-            anchor id ever registers twice. */}
-        <div className="pointer-events-auto absolute inset-x-0 bottom-12 max-h-64 w-full overflow-y-auto p-4 sm:top-0 sm:bottom-0 sm:right-auto sm:max-h-none sm:max-w-sm">
-          <DemoControlRail
-            phase={phase}
-            stars={stars}
-            tutorialRecallMemoryId={state.set.scenario.recallMemoryId}
-            onDraw={onDraw}
-            onAdvanceDays={onAdvanceDays}
-            onRecall={onRecall}
-            onOpenEntry={onOpenEntry}
-          />
-        </div>
-        {/* Top-centre from `sm` up; on a phone the sequence chrome's skip owns the top edge's
-            right half, so the clock keeps left. */}
-        <div className="absolute left-4 top-4 sm:left-1/2 sm:-translate-x-1/2">
-          <DemoTimeHud date={displayTime} />
-        </div>
-        {/* The door out and the do-over, parked under the skip's corner: never highlighted, never
-            gated, never the tour's destination — the closing caption names the corner and the
-            visitor goes when they feel like it ([Z3]-10, [Z7]). */}
-        <div className="pointer-events-auto absolute right-4 top-16 flex flex-col items-end gap-2">
-          <Button color="primary" size="sm" onClick={onSignUp}>
-            {m.demo_signup_action()}
-          </Button>
-          <Button color="neutral" size="sm" onClick={onReset}>
-            {m.demo_reset_action()}
-          </Button>
-        </div>
-        {/* The product's own door into decorating; the sheet it opens paints above the mask, so
-            beat 9's hole only needs to light this button. */}
-        <div className="pointer-events-auto absolute bottom-80 right-4 sm:bottom-4">
-          <SequenceAnchor id="decorate-action">
-            <Button
-              color="neutral"
-              size="sm"
-              onClick={() => setDecorateOpen(true)}
-              disabled={!isDemoAnchorInteractive(phase, 'decorate-action')}
-            >
-              {m.store_open_action()}
-            </Button>
-          </SequenceAnchor>
-        </div>
-        {openMemory && (
-          <DemoEntryReader
-            memory={openMemory}
-            diaryBody={openDiaryBody}
-            universeTime={displayTime}
-            onClose={() => setOpenMemoryId(null)}
-          />
-        )}
-      </div>
+      {/* The HUD in the home screen's own arrangement — one layer, one DOM order, no breakpoint
+          duplicating a control, so no anchor id ever registers twice. */}
+      <DemoHud
+        phase={phase}
+        displayTime={displayTime}
+        onDraw={onDraw}
+        onAdvanceDays={onAdvanceDays}
+        onOpenDecoration={() => setDecorateOpen(true)}
+        onSignUp={onSignUp}
+        onReset={onReset}
+      />
+
+      {/* A picked star, and the two surfaces it hands off to. Each opens by closing the one before
+          it, so the canvas is never under two scrims at once. */}
+      <DemoStarPanel
+        memory={selectedMemory}
+        phase={phase}
+        universeTime={displayTime}
+        bodyShape={state.taste.bodyShape}
+        isRecallTarget={selectedMemoryId === tutorialRecallMemoryId}
+        onRecall={() => selectedMemoryId && onRecallRequested(selectedMemoryId)}
+        onOpenDiary={onOpenDiary}
+        onClose={() => setSelectedMemoryId(null)}
+      />
+      <DemoRecallSheet
+        open={!!recallMemoryId}
+        memory={recallMemory}
+        universeTime={displayTime}
+        reconsolidatedText={
+          recallMemoryId ? (state.resolved.reconsolidatedTexts[recallMemoryId] ?? null) : null
+        }
+        done={recallApplied}
+        onConfirm={onRecallConfirm}
+        onClose={onRecallClose}
+      />
+      <DemoEntryReader diary={readingDiary} onClose={() => setReadingDiaryId(null)} />
 
       <DemoDecorationSheet
         open={decorateOpen}
         phase={phase}
         taste={state.taste}
+        canClose={phaseKey !== 'ornament_taster' || decorateTasted}
         onApplyBackground={onApplyBackground}
         onApplyBodyShape={onApplyBodyShape}
         onApplyPalette={onApplyPalette}
-        onClose={() => setDecorateOpen(false)}
+        onClose={onCloseDecoration}
       />
 
       {writing && (
@@ -483,10 +569,20 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         progress={run.progress}
         onSkip={run.skip}
         onRemeasure={run.remeasure}
-        // Mid-screen guidance normally; a step staged inside the writing sheet glues its line to
-        // the highlighted control instead, and while the decoration sheet is up it pins to the top
-        // — on a phone that sheet owns the middle AND the bottom.
-        captionStyle={decorateOpen ? 'top' : sheetOpen && writing ? 'attached' : 'center'}
+        // How the line should sit on a NARROW screen, where every surface here comes up from the
+        // bottom edge (from `md` up the guide puts it in the bottom band regardless, because the
+        // surfaces centre and the edge is free). The write flow is the one surface whose steps point
+        // at its own fields in sequence, so its line glues to the highlighted control; every other
+        // open surface — the star's panel, the recall walk, a diary, the catalog — takes the top
+        // band, clear of the sheet it would otherwise lie across. With nothing open the line floats
+        // in the eyeline.
+        captionStyle={
+          sheetOpen && writing
+            ? 'attached'
+            : decorateOpen || selectedMemoryId || recallMemoryId || readingDiaryId
+              ? 'top'
+              : 'center'
+        }
       />
     </main>
   )

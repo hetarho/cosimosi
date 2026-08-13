@@ -23,6 +23,7 @@ const EVERY_ANCHOR: readonly DemoAnchor[] = [
   'recall-action',
   'entry-open-action',
   'decorate-action',
+  'ornament-row-action',
 ]
 
 function interactiveSet(phase: ReturnType<typeof demoRunPhase>): readonly DemoAnchor[] {
@@ -53,7 +54,9 @@ describe('the demo run machine', () => {
       recall: ['recall-action'],
       gist_rise: ['time-month-action'],
       color: [],
-      ornament_taster: ['decorate-action'],
+      // Opening the sheet is only the beat's first press: trying something on inside it is the same
+      // beat's work, so the catalog rows stay pressable beside the button that opened them.
+      ornament_taster: ['decorate-action', 'ornament-row-action'],
       // The closing beat is a valediction over an OPEN room: gating everything but the CTA here
       // would funnel the visitor out of the page the moment the tour ends.
       signup_cta: EVERY_ANCHOR,

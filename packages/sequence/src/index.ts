@@ -33,6 +33,7 @@ export {
   type SequenceRunSnapshot,
 } from './sequence.machine.ts'
 export {
+  CENTERED_CAPTION_MIDLINE,
   currentStep,
   isActive,
   progress,

@@ -60,9 +60,12 @@ export function demoRunPhase(value: StateValue): DemoRunPhase {
 
 // Which controls a tutorial step leaves interactive — the ONE derivation the chrome may gate from.
 // Exhaustive over the beats, so a beat added to the scenario without a gating row is a compile
-// error. Two beats deliberately widen past their own anchor. The neuron-reuse beat opens the whole
+// error. Three beats deliberately widen past their own anchor. The neuron-reuse beat opens the whole
 // write flow rather than one button: drawing is only its first press, and the split and launch
-// that finish the drawn diary are the beat's own work. The closing CTA beat opens EVERYTHING —
+// that finish the drawn diary are the beat's own work. The decorating beat opens the catalog rows
+// beside its own button for the same reason — the beat is the round trip through the sheet, and a
+// visitor who may press only the one row the ring happens to sit on is being shown a slideshow.
+// The closing CTA beat opens EVERYTHING —
 // `null` below means "the whole room": its caption is a valediction over a playroom that is
 // already free, so a visitor who presses anything but the highlighted CTA simply starts playing
 // instead of being funneled out. The skip affordance is not listed because it is not a
@@ -77,7 +80,7 @@ const TUTORIAL_INTERACTIVE: Readonly<Record<DemoBeatId, readonly DemoAnchor[] | 
   recall: ['recall-action'],
   gist_rise: ['time-month-action'],
   color: [],
-  ornament_taster: ['decorate-action'],
+  ornament_taster: ['decorate-action', 'ornament-row-action'],
   signup_cta: null,
 }
 

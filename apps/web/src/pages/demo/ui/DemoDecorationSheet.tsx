@@ -1,7 +1,9 @@
 import { ORNAMENT_GROUP_TITLES, ORNAMENT_NAMES, ornamentName } from '@cosimosi/store/i18n'
 import { Sheet, cx } from '@cosimosi/ui'
 
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
+import type { DemoAnchor } from '../model/anchors.ts'
 import { isDemoAnchorInteractive, type DemoRunPhase } from '../model/run-machine.ts'
 import { ornamentRendererKey, type DemoTaste } from '../model/use-demo-run.ts'
 
@@ -9,6 +11,10 @@ export interface DemoDecorationSheetProps {
   readonly open: boolean
   readonly phase: DemoRunPhase
   readonly taste: DemoTaste
+  /** False while the decorating beat is still waiting for something to be tried on: the way out of a
+   *  surface a tutorial step is staged inside stays inert until the step's own work is done, exactly
+   *  as the writing sheet's dismiss does. */
+  readonly canClose: boolean
   readonly onApplyBackground: (rendererKey: string | null) => void
   readonly onApplyBodyShape: (rendererKey: string | null) => void
   readonly onApplyPalette: (on: boolean) => void
@@ -32,12 +38,16 @@ export function DemoDecorationSheet({
   open,
   phase,
   taste,
+  canClose,
   onApplyBackground,
   onApplyBodyShape,
   onApplyPalette,
   onClose,
 }: DemoDecorationSheetProps) {
-  const pressable = isDemoAnchorInteractive(phase, 'decorate-action')
+  // The rows answer to the ROW anchor, not to the button that opened the sheet: the decorating beat
+  // walks its ring in here, and the whole catalog stays pressable while it does — the ring points at
+  // one row as the example, it does not narrow the beat to that row.
+  const pressable = isDemoAnchorInteractive(phase, 'ornament-row-action')
   const ornamentIds = Object.keys(ORNAMENT_NAMES)
   const groups = [
     {
@@ -58,11 +68,12 @@ export function DemoDecorationSheet({
     <Sheet
       open={open}
       onClose={onClose}
+      closeDisabled={!canClose}
       title={m.store_panel_title()}
       closeLabel={m.store_panel_close()}
     >
       <div className="flex flex-col gap-5">
-        {groups.map((group) => (
+        {groups.map((group, groupIndex) => (
           <section key={group.kind} aria-label={ORNAMENT_GROUP_TITLES[group.kind]()}>
             <h3 className="px-3 pb-1 text-xs font-medium tracking-wide text-text-muted">
               {ORNAMENT_GROUP_TITLES[group.kind]()}
@@ -74,9 +85,9 @@ export function DemoDecorationSheet({
                 disabled={!pressable}
                 onApply={() => group.apply(null)}
               />
-              {group.ids.map((ornamentId) => {
+              {group.ids.map((ornamentId, rowIndex) => {
                 const rendererKey = ornamentRendererKey(ornamentId)
-                return (
+                const row = (
                   <DemoOrnamentRow
                     key={ornamentId}
                     label={ornamentName(ornamentId)}
@@ -84,6 +95,16 @@ export function DemoDecorationSheet({
                     disabled={!pressable}
                     onApply={() => group.apply(rendererKey)}
                   />
+                )
+                // The one row the beat's ring can point at: the first real background, whose change
+                // the whole sky answers — an anchor on every row would register the id many times,
+                // and one on the 기본 row would highlight "change nothing".
+                return groupIndex === 0 && rowIndex === 0 ? (
+                  <SequenceAnchor key={ornamentId} id={'ornament-row-action' satisfies DemoAnchor}>
+                    {row}
+                  </SequenceAnchor>
+                ) : (
+                  row
                 )
               })}
             </ul>
