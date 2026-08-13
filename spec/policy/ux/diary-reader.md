@@ -52,7 +52,13 @@ nothing applied; an ambiguous failure closes the jump rather than offer a one-cl
 A closed card is the diary's date, a length-bounded preview of its body, the count of stars born from
 it, and its distinct mood dots — nothing else, and no title field exists at any layer ([D6]). Writing
 friction is the thing the product fights, so the card carries the recognition load instead of asking
-for a headline. The dots are the diary's distinct moods in the palette's own declaration order, capped
+for a headline.
+
+**Every card is the same height, and the preview is exactly one line, cut with an ellipsis.** Three
+single lines — date, preview, footer — is what makes a grid of cards read as a grid rather than as a
+ragged wall, and it lets the eye run down a column of dates without the rows shifting under it. A
+second preview line bought a little more text at the cost of the one thing the grid was for; what the
+one line cannot hold, opening the entry does. The dots are the diary's distinct moods in the palette's own declaration order, capped
 with a `+N` remainder; a diary whose memories were all let go shows a count of `0`, no dots, and never
 `NEUTRAL`'s colour — the absence of a recorded feeling is not a feeling ([M3][I1]).
 
@@ -101,10 +107,19 @@ already says, at the top of a page whose first job is to be read. The claim itse
 dropping the sentence: it is enforced by the props ([D11] — the list has no cost, quote or spend field,
 and no action slot at all).
 
+## Reaching the end of the archive says nothing
+
+The list speaks only while it is **fetching**. There is no closing line under the last card: running
+out of cards announces itself, and a sentence saying so takes the reader's eye off the writing to tell
+them what they can already see. The last page and a paused scroll therefore look the same — which they
+are, to a reader who has stopped scrolling.
+
 ## The header: the way out on the left, the page's name in the middle
 
 The way back to the universe sits at the **left** end of the header and the page's name is **centred**
-on the line, with the 목록/달력 toggle at the right end. A title that began a row of controls read as
+on the line, with the 목록/달력 toggle at the right end. The way out wears the product-wide back form —
+a bare left arrow and its destination, no fill and no rim (design-language §6) — so it reads as the
+room's door rather than as an action taken on the page. A title that began a row of controls read as
 the first item in that row; centred, it reads as the name of the place. The way out leads because that
 is where a reader reaches for one, and because the archive is a page people arrive at and leave from
 rather than one they act on. The same three-part header is the account home's ([64]), so leaving any
@@ -157,8 +172,19 @@ press performs, so it announces what it does rather than only what it shows. The
 **not** a condition: it narrows nothing, so it is absent from 조건 지우기 and from the "filtered to
 nothing" state — clearing conditions must not turn the archive back over.
 
-**The star count is a picker over a closed scale** — any count, none left, each exact count, and the
-top count and above. `encode.max_memories` is what a split can hold, so the top choice is
+**The star count is a bounded choice behind a button, not a platform picker** — any count, none left,
+each exact count, and the top count and above. Every other condition on this line is a button, and a
+recessed field well among them was the one borrowed object on the row (design-language §6); the
+trigger shows the choice it is holding, and names what that choice counts. Its list hangs from the
+trigger's **right** edge, because the control sits at the end of the row and a panel growing rightward
+runs off the screen.
+
+**A condition that is narrowing the archive is LIT.** The feelings toggle and the star count wear the
+accent while they are on, in the same language a chosen mood chip already speaks. A row of identically
+quiet buttons cannot say which of them is currently hiding entries, and leaves the reader to read every
+label to find out — which is the same failure the folded mood panel is guarded against. Only the
+conditions that **narrow** light up: the order steers the list without hiding anything, so it stays
+quiet however it is set, exactly as it is absent from 조건 지우기. `encode.max_memories` is what a split can hold, so the top choice is
 "that many or more" rather than an exact number. **Zero is a real choice, not the absence of one**: a
 diary whose every memory was let go still lists ([I1]), and asking for exactly those is a question the
 archive can answer. A choice the build does not offer — a hand-edited link — leaves the archive
@@ -178,7 +204,8 @@ single day is the calendar.
 
 The calendar is a **view of `/diary`, not a destination**. The list is the default, a two-option toggle
 (목록 / 달력) is the only way in — it rides beside the 일기장 title, because it names which shape the page is
-in right now — and every other reader affordance survives the switch: the header, the 지운 일기 way back, the
+in right now, and **a press anywhere on it lands on the other shape**, since aiming at the correct half
+is work a choice between two never needed (design-language §6) — and every other reader affordance survives the switch: the header, the 지운 일기 way back, the
 search and filter controls, the star deep-link consumer and the deletion mount all stay
 mounted, so entering the calendar drops nothing. Only the body swaps. There is no new route and no new
 screen. The **order toggle** is the one thing withheld while the calendar shows — it orders the list, and

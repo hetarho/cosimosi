@@ -127,12 +127,13 @@ export function DiaryList({
           </View>
         )
       }}
+      // Only the FETCH speaks. Reaching the end of the archive announces itself — there are no more
+      // rows — and a line saying so under the last one only takes the reader's eye off the writing
+      // to tell them what they can already see.
       ListFooterComponent={
         isLoadingMore ? (
           <Text style={styles.footerNote}>{m.diary_reader_loading_more()}</Text>
-        ) : hasMore ? null : (
-          <Text style={styles.footerNote}>{m.diary_reader_archive_end()}</Text>
-        )
+        ) : null
       }
     />
   )

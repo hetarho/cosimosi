@@ -126,7 +126,7 @@ describe('DiaryList (mobile)', () => {
     expect(view.getByText('[coffee and rain]')).toBeTruthy()
   })
 
-  it('replaces the load-more button with the two scroll-end states ([D7])', () => {
+  it('replaces the load-more button with the in-flight state alone ([D7])', () => {
     const loading = renderList({
       diaries: [joyful('d1', [])],
       hasMore: true,
@@ -134,7 +134,9 @@ describe('DiaryList (mobile)', () => {
     })
     expect(loading.getByText(m.diary_reader_loading_more())).toBeTruthy()
 
+    // Reaching the end of the archive says nothing: there are simply no more rows, and a line under
+    // the last one would only tell the reader what they can already see.
     const ended = renderList({ diaries: [joyful('d1', [])], hasMore: false })
-    expect(ended.getByText(m.diary_reader_archive_end())).toBeTruthy()
+    expect(ended.queryByText(m.diary_reader_loading_more())).toBeNull()
   })
 })

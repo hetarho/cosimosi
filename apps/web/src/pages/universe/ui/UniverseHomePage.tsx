@@ -17,7 +17,15 @@ import {
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
 import { useSequenceRun } from '@cosimosi/sequence/react'
-import { Button, DecorateIcon, DiaryIcon, IconButton, SettingsIcon, Tooltip } from '@cosimosi/ui'
+import {
+  Button,
+  DecorateIcon,
+  DiaryIcon,
+  ICON_SIZE_LG,
+  IconButton,
+  SettingsIcon,
+  Tooltip,
+} from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 import { useDecorationRequestStore } from '@cosimosi/store'
 import {
@@ -212,7 +220,11 @@ export function UniverseHomePage({
                 ground is `drop-shadow-md` — a dark halo hugging the strokes, the way the balance above
                 takes its legibility — so the controls are round, borderless, and lit only by that
                 shadow. Each still carries its name in `label` and a tooltip, which §8 makes mandatory
-                the moment an icon stands without one. */}
+                the moment an icon stands without one.
+                The glyphs take the LARGER cut while the buttons keep their box: with no rim and no
+                plate the drawing IS the whole control, and at body-text size it read as a mark
+                printed on the sky rather than as something to press. The box is the touch target and
+                is deliberately unchanged. */}
             <div className="pointer-events-auto flex flex-col gap-2 drop-shadow-md">
               <Tooltip content={m.universe_home_settings()} side="left">
                 <IconButton
@@ -220,7 +232,7 @@ export function UniverseHomePage({
                   color="neutral"
                   className="rounded-full"
                   label={m.universe_home_settings()}
-                  icon={<SettingsIcon />}
+                  icon={<SettingsIcon size={ICON_SIZE_LG} />}
                   onClick={() => onOpenMe?.()}
                 />
               </Tooltip>
@@ -230,7 +242,7 @@ export function UniverseHomePage({
                   color="neutral"
                   className="rounded-full"
                   label={m.store_open_action()}
-                  icon={<DecorateIcon />}
+                  icon={<DecorateIcon size={ICON_SIZE_LG} />}
                   onClick={requestDecoration}
                 />
               </Tooltip>
@@ -240,7 +252,7 @@ export function UniverseHomePage({
                   color="neutral"
                   className="rounded-full"
                   label={m.diary_reader_title()}
-                  icon={<DiaryIcon />}
+                  icon={<DiaryIcon size={ICON_SIZE_LG} />}
                   onClick={() => onOpenReader?.()}
                 />
               </Tooltip>

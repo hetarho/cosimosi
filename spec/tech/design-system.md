@@ -167,7 +167,8 @@ The **icon set** (`primitives/icons.tsx` + `.native`) is a primitive like any ot
 a Phosphor glyph is named: it exports icons by product meaning (`DiaryIcon`, `TwinkleSmallIcon`, `DeleteIcon` for 지우기,
 `ResetIcon` for 조건 초기화 — the way back out of a narrowed view, which restores nothing and destroys nothing —
 `StarActionsIcon` for a star's own actions gathered behind one control, …), so
-swapping a glyph or the whole family never reaches a slice. Two meanings may share a glyph and stay two exports —
+swapping a glyph or the whole family never reaches a slice. `BackIcon` is the one every surface's way out
+takes, so the arrow that means "return the way you came" is bound once rather than chosen per header. Two meanings may share a glyph and stay two exports —
 `StarActionsIcon` and `SettingsIcon` are both the gear today, because a slice asks for the star's actions rather than for
 a gear, and rebinding either one later is a change in this one file. Web takes ink from `currentColor`; native,
 which has none to inherit, takes a token colour prop. Native imports per glyph — Metro does not
@@ -194,6 +195,15 @@ panel, so it carries no `aria-controls` and a reader hears a checked state rathe
 All options stay visible, which is what separates it from `Select`. Roving focus keeps the group to one
 tab stop; a `value` outside the item set falls back to the first segment as the focus anchor, so a
 caller bug can never leave the group keyboard-unreachable.
+
+`toggle` is its **second shape**, for exactly two items: the same track and the same thumb, but ONE
+control, so a press lands on the other option wherever on it the press falls. It is then a `switch`,
+not a radiogroup — a press on the option already held changes the value, which is the one thing a
+radio must never do — and the held option rides in the accessible name (`"<name>: <held label>"`),
+because a bare checked/unchecked leaves a reader guessing which of two named states "on" is. The
+labels inside become `aria-hidden` ink: the control above them owns the press and the name. With
+three or more items, or one, the flag is ignored and the radiogroup renders — the shape is the honest
+model only where the choice really is binary. Design-language §6 owns why.
 
 The held choice is carried by a **thumb** — a translucent raised lens with a specular hairline, sliding
 beneath the labels — because ink weight alone cannot say _which one_ at a glance: the step from
@@ -228,7 +238,8 @@ showing, where the keyboard sits inside it, and the three ways out (a choice, Es
 closes the list before it acts, so a command that opens another surface never leaves this one hanging over it. Placement
 is **stated** (`side` / `align`) — the same stance `Tooltip` takes — and here nothing is measured at all, because the
 list stays inside its trigger's own box: a menu is wider than the icon that opens it, and only the composition site knows
-which way there is room. **Escape is stopped inside the list**, and bound with a NATIVE listener on the panel rather than
+which way there is room. That is a real obligation on the caller, not a formality — a control near the right edge of a
+toolbar must be given `align="end"`, or the panel grows off the screen and the primitive will not notice. **Escape is stopped inside the list**, and bound with a NATIVE listener on the panel rather than
 React's `onKeyDown`: a `Menu` composed inside a `Dialog` sits under that dialog's focus trap, whose own Escape closes the
 whole surface, and React delegates from the tree's root, so a synthetic handler would run only after the trap's listener
 on an ancestor had already closed the dialog. Dismissing returns focus to the trigger, the one element a caller is
@@ -261,7 +272,7 @@ Hand-rolled (no headless-UI dependency):
   its own focus), so `useFocusTrap` is web-only.
 - Disabled controls are conveyed visually and semantically (`disabled` / RN
   `accessibilityState`). A loading control is disabled and `aria-busy`.
-- Select is a **bounded choice**, and the platform control is kept rather than rebuilt: web renders a real
+- Select is a **bounded choice among fields**, and there the platform control is kept rather than rebuilt: web renders a real
   `<select>`, so the option menu, type-ahead, keyboard model and every assistive-tech affordance are
   inherited and correct. It carries the same field contract as TextField — label association, one
   `aria-describedby` carrying description then error, `aria-invalid` when invalid, and `ariaLabel` for a
@@ -269,6 +280,11 @@ Hand-rolled (no headless-UI dependency):
   (`accessibilityState.expanded`, `accessibilityValue` for the current label) opening an RN `Modal`
   option list whose options carry `accessibilityState.selected`; `Modal` manages its own focus, exactly
   as `Dialog` does, so `useFocusTrap` stays web-only. Dismissing the list leaves the value unchanged.
+  A bounded choice standing in a row of **buttons** rather than a column of fields takes `Menu` behind a
+  `Button` instead, for the reason design-language §6 gives: the field well is the one borrowed object on
+  such a line. The inherited platform behaviour is then given up knowingly, and the trigger owes the
+  reader what the well used to say — the field's name and the held choice, together, in its accessible
+  name.
 - Tabs are controlled (`value` + `onValueChange`) so navigation state remains in the app layer. Web exposes a
   labelled `tablist`, `tab`/`tabpanel` relationships, selected state, roving focus, ArrowLeft/ArrowRight wrapping,
   and Home/End movement. Native exposes the same values and labels as a horizontally scrollable

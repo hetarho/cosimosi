@@ -11,7 +11,15 @@ import {
 import { classifyErrorRecovery } from '@cosimosi/errors'
 import type { Diary } from '@cosimosi/memory'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
-import { Button, DeleteIcon, Dialog, IconButton, SegmentedControl, Tooltip } from '@cosimosi/ui'
+import {
+  BackIcon,
+  Button,
+  DeleteIcon,
+  Dialog,
+  IconButton,
+  SegmentedControl,
+  Tooltip,
+} from '@cosimosi/ui'
 import {
   classifyPaidActionError,
   createPaidActionSession,
@@ -422,13 +430,30 @@ export function DiaryReaderBlock({
           universe sits where a reader reaches for a way back. A three-cell grid rather than
           `justify-between`: the middle cell is centred on the HEADER, so the title does not drift as
           the controls beside it change width. Which shape of the archive is showing keeps its place
-          beside the title — it names what this page IS right now ([D12]). */}
+          beside the title — it names what this page IS right now ([D12]).
+
+          The way back wears no plate and no rim — a left arrow and its name, nothing else. A filled
+          or bordered button there reads as an ACTION taken on this page, competing with the title it
+          sits beside; going back is the room's door, and a door is not a thing to do here. Pulled
+          left by its own padding so the glyph, not the padding, lines up with the content beneath. */}
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-        <Button color="neutral" size="sm" onClick={exit} disabled={phase === 'recalling'}>
+        <Button
+          variant="text"
+          color="neutral"
+          size="sm"
+          className="-ml-3"
+          leadingIcon={<BackIcon />}
+          onClick={exit}
+          disabled={phase === 'recalling'}
+        >
           {m.diary_reader_back()}
         </Button>
         <h1 className="text-center text-lg font-medium text-text">{m.diary_reader_title()}</h1>
+        {/* `toggle`: there are exactly two shapes of the archive, so a press anywhere on the control
+            lands on the other one. Aiming at the correct half — and pressing the half already held,
+            which did nothing — was work this choice never needed ([D12]). */}
         <SegmentedControl
+          toggle
           ariaLabel={m.calendar_view_label()}
           value={view}
           onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}

@@ -1,1 +1,1 @@
-export { TwinkleBalanceHud } from './ui/TwinkleBalanceHud.tsx'
+export { TwinkleBalanceHud, TwinkleBalanceDetail } from './ui/TwinkleBalanceHud.tsx'

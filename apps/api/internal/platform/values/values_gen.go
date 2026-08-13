@@ -312,7 +312,7 @@ const (
 	DiaryReaderBodyPreviewLength          = 100
 	DiaryReaderRowMoodDotMax              = 4
 	DiaryReaderInfiniteScrollRootMarginPx = 400
-	DiaryReaderRowEstimateHeightPx        = 114
+	DiaryReaderRowEstimateHeightPx        = 92
 	DiaryReaderRowOverscan                = 4
 	DiaryReaderRowGapPx                   = 8
 	DiaryReaderRowMinWidthPx              = 288

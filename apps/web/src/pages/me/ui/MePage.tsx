@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 
-import { Button, Tabs } from '@cosimosi/ui'
+import { BackIcon, Button, Tabs } from '@cosimosi/ui'
 
 import { AchievementList } from '../../../features/achievement-list/index.ts'
 import { AccountProfile } from '../../../features/account-profile/index.ts'
@@ -51,8 +51,19 @@ export function MePage({ activeTab, onTabChange, onExit }: MePageProps) {
             centred on the HEADER and does not drift with the width of the control beside it — and an
             empty third cell, because nothing belongs opposite the way out. */}
         <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          {/* The way back wears no plate and no rim — a left arrow and its name, nothing else: a
+              filled or bordered button there reads as an ACTION taken on this page, competing with
+              the title beside it, and going back is the room's door rather than a thing to do here.
+              Pulled left by its own padding so the glyph lines up with the content beneath. */}
           <div className="justify-self-start">
-            <Button color="neutral" size="sm" onClick={onExit}>
+            <Button
+              variant="text"
+              color="neutral"
+              size="sm"
+              className="-ml-3"
+              leadingIcon={<BackIcon />}
+              onClick={onExit}
+            >
               {m.me_back()}
             </Button>
           </div>

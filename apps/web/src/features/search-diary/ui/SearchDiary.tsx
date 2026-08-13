@@ -3,14 +3,16 @@ import { useId } from 'react'
 import type { GetDiariesInput } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 import { MOODS, moodColor } from '@cosimosi/emotion'
+import { DIARY_MEMORY_COUNT_ALL } from '@cosimosi/memory'
 import { useDiaryConditions, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import {
   Button,
+  DropdownIcon,
   IconButton,
+  Menu,
   NewestFirstIcon,
   OldestFirstIcon,
   ResetIcon,
-  Select,
   TextField,
   Tooltip,
 } from '@cosimosi/ui'
@@ -54,6 +56,12 @@ export function SearchDiary({
   const conditions = useDiaryConditions(value, onChange)
   const moodPanelId = useId()
   const selectedMoods = conditions.moods.length
+  const memoryCountLabel = diaryMemoryCountLabel(conditions.memoryCount, VALUES.encode.maxMemories)
+  // A narrowing control that is ON is LIT, in the same accent the chosen mood chips wear: a row of
+  // identically quiet buttons cannot say which of them is currently hiding entries, and the reader
+  // is left to read each label to find out. Only the conditions that NARROW light up — the order
+  // steers the list without hiding anything, so it stays quiet however it is set.
+  const countNarrowed = conditions.memoryCount !== DIARY_MEMORY_COUNT_ALL
   const sortAction = conditions.oldestFirst
     ? m.diary_reader_sort_to_newest()
     : m.diary_reader_sort_to_oldest()
@@ -96,8 +104,10 @@ export function SearchDiary({
           </Button>
         )}
 
+        {/* Lit while feelings are chosen, for the same reason the count below is: the folded panel
+            already keeps the number in the label, and the colour is what finds it at a glance. */}
         <Button
-          color="neutral"
+          color={selectedMoods > 0 ? 'primary' : 'neutral'}
           size="sm"
           aria-expanded={moodsOpen}
           aria-controls={moodsOpen ? moodPanelId : undefined}
@@ -108,21 +118,37 @@ export function SearchDiary({
             : m.diary_search_mood_toggle()}
         </Button>
 
-        {/* How many stars a diary still carries. A `<select>` rather than a row of chips: the choices
-            are a short ordered scale, and spending five slots of the toolbar on a number would give
-            the count more of the line than the keyword. */}
-        <div className="w-36 shrink-0">
-          <Select
-            size="sm"
-            ariaLabel={m.diary_search_memory_count_label()}
-            value={conditions.memoryCount}
-            onValueChange={conditions.setMemoryCount}
-            items={conditions.memoryCountOptions.map((option) => ({
-              value: option,
-              label: diaryMemoryCountLabel(option, VALUES.encode.maxMemories),
-            }))}
-          />
-        </div>
+        {/* How many stars a diary still carries. A short ordered scale behind one control rather than
+            a row of chips: spending five slots of the toolbar on a number would give the count more
+            of the line than the keyword.
+            The design system's own menu, not the platform `<select>`: every other condition on this
+            line is a button in the product's material, and a native field well among them read as a
+            control borrowed from somewhere else. The trigger SHOWS the choice it is holding and
+            NAMES what that choice is about, so the visible label is inside the spoken one.
+            The list hangs from the trigger's RIGHT edge: this control sits at the end of the
+            conditions row, and a panel wider than its trigger growing rightward runs off the screen
+            — `Menu` states its placement rather than measuring for it, so the side with room is the
+            composition site's to name (design-system §4). */}
+        <Menu
+          ariaLabel={m.diary_search_memory_count_label()}
+          side="bottom"
+          align="end"
+          trigger={
+            <Button
+              color={countNarrowed ? 'primary' : 'neutral'}
+              size="sm"
+              aria-label={`${m.diary_search_memory_count_label()}: ${memoryCountLabel}`}
+              trailingIcon={<DropdownIcon />}
+            >
+              {memoryCountLabel}
+            </Button>
+          }
+          items={conditions.memoryCountOptions.map((option) => ({
+            value: option,
+            label: diaryMemoryCountLabel(option, VALUES.encode.maxMemories),
+            onSelect: () => conditions.setMemoryCount(option),
+          }))}
+        />
 
         {conditions.hasConditions && (
           <Tooltip content={m.diary_reader_clear_conditions()}>

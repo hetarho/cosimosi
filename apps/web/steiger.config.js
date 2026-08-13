@@ -113,16 +113,20 @@ export default defineConfig([
     },
   },
   {
-    // The stardust economy vertical: a persistent balance-HUD feature and an earn guide composed by
-    // the stardust overlay widget (mounted by the universe page), a REUSABLE cost-display feature the
-    // recall-flow and star-detail (gist) widgets compose before a spend, and the ledger tab the /me
-    // page composes. Low/single references are the FSD grain here — a feature is one user surface
-    // (§3.1), not a slice to merge away. Scoped so a genuinely insignificant future slice still gets
-    // flagged.
+    // The stardust economy vertical: a persistent balance-HUD feature, the earn guide and the way to
+    // come by more, all composed by the stardust overlay widget (mounted by the universe page) into
+    // the one 별가루 panel that reading opens; a REUSABLE cost-display feature the recall-flow and
+    // star-detail (gist) widgets compose before a spend; and the ledger tab the /me page composes.
+    // Low/single references are the FSD grain here — a feature is one user surface (§3.1), not a
+    // slice to merge away. charge-twinkle is deliberately in the list while it performs nothing:
+    // acquiring 별가루 is its own act with its own future `api`, and folding a placeholder into the
+    // widget now would mean unpicking it the day the path exists. Scoped so a genuinely insignificant
+    // future slice still gets flagged.
     files: [
       './src/features/twinkle-balance-hud/**',
       './src/features/spend-cost-display/**',
       './src/features/earn-twinkle/**',
+      './src/features/charge-twinkle/**',
       './src/features/twinkle-ledger/**',
       './src/widgets/stardust/**',
     ],

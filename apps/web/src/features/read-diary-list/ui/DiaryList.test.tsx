@@ -192,15 +192,15 @@ describe('DiaryList (web)', () => {
     )
   })
 
-  it('replaces the load-more button with the two scroll-end states ([D7])', () => {
+  it('replaces the load-more button with the in-flight state alone ([D7])', () => {
     const loading = html({ diaries: [joyful('d1', [])], hasMore: true, isLoadingMore: true })
     expect(loading).toContain(m.diary_reader_loading_more())
-    expect(loading).not.toContain(m.diary_reader_archive_end())
 
+    // Reaching the end of the archive says nothing: there are simply no more cards, and a line under
+    // the last one would only tell the reader what they can already see.
     cleanup()
-    expect(html({ diaries: [joyful('d1', [])], hasMore: false })).toContain(
-      m.diary_reader_archive_end(),
-    )
+    const ended = html({ diaries: [joyful('d1', [])], hasMore: false })
+    expect(ended).not.toContain(m.diary_reader_loading_more())
   })
 
   it('marks the keyword only through the injected body renderer ([D10])', () => {

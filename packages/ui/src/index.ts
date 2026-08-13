@@ -90,9 +90,13 @@ export { IconButton, type IconButtonProps } from './primitives/icon-button.tsx'
 // The icon set — product meanings, not glyph names (icons.tsx owns the binding).
 export {
   ICON_SIZE,
+  ICON_SIZE_LG,
+  AddIcon,
+  BackIcon,
   DecorateIcon,
   DeleteIcon,
   DiaryIcon,
+  DropdownIcon,
   FreeViewIcon,
   NewestFirstIcon,
   NoticeIcon,

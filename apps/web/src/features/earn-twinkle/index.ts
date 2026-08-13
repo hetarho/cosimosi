@@ -1,2 +1,2 @@
-export { EarnGuideSheet } from './ui/EarnGuideSheet.tsx'
+export { EarnGuideSections } from './ui/EarnGuideSections.tsx'
 export { WriteEarnFeedback } from './ui/WriteEarnFeedback.tsx'

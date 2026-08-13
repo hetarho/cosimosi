@@ -5,15 +5,36 @@ import type { SegmentedControlOwnProps } from './types.ts'
 
 export type SegmentedControlProps = SegmentedControlOwnProps
 
+// The track both shapes wear. `inline-grid` with equal auto columns is what actually makes the
+// segments the same width, which is what lets the thumb be one translate with nothing measured. Flex
+// cannot do it here: a flex item's automatic minimum is its own content, and a shrink-to-fit
+// container has no free space left for `flex-grow` to even out — the segments keep their label widths
+// and the thumb lands beside the one it is meant to be under.
+const TRACK =
+  'relative inline-grid auto-cols-fr grid-flow-col rounded-xl border border-border bg-surface p-1'
+
+const LABEL =
+  // `relative` lifts the label above the thumb sliding beneath it; the equal widths come from the
+  // track's grid columns.
+  'relative rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors'
+
 // A bounded choice whose options all stay visible. It is a RADIOGROUP, not a tablist: the segments
 // select a value, they do not swap a panel — so nothing here carries aria-controls, and a reader
 // hears "1 of 2 selected" rather than a tab position.
+//
+// `toggle` is the SECOND shape, for a choice between exactly two: the same track and the same
+// sliding thumb, but ONE control rather than two, so a press lands on the other option wherever on
+// it the press falls. It stops being a radiogroup there and becomes a switch, because that is what
+// it now is — a press on the option already held changes the value, which is the one thing a radio
+// must never do. Its accessible name carries the option currently held, so the state a reader hears
+// is the label they can see rather than a bare on/off whose polarity they would have to guess.
 export function SegmentedControl({
   items,
   value,
   onValueChange,
   ariaLabel,
   disabled = false,
+  toggle = false,
 }: SegmentedControlProps) {
   const refs = useRef(new Map<string, HTMLButtonElement>())
 
@@ -21,6 +42,45 @@ export function SegmentedControl({
   // stands in as the focus anchor so the group keeps one tab stop and the arrows still walk it.
   const selectedIndex = items.findIndex((item) => item.value === value)
   const anchorIndex = selectedIndex === -1 ? 0 : selectedIndex
+
+  const [first, second] = items
+  if (toggle && first && second && items.length === 2) {
+    const held = selectedIndex === -1 ? undefined : items[selectedIndex]
+    const other = selectedIndex === 1 ? first : second
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={selectedIndex === 1}
+        aria-label={held ? `${ariaLabel}: ${held.label}` : ariaLabel}
+        disabled={disabled}
+        onClick={() => onValueChange(other.value)}
+        className={cx(
+          TRACK,
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50',
+        )}
+        style={
+          {
+            '--segment-count': items.length,
+            '--segment-index': anchorIndex,
+          } as CSSProperties
+        }
+      >
+        {selectedIndex !== -1 && <span aria-hidden className="segment-thumb" />}
+        {items.map((item) => (
+          // The labels are the switch's two states, not two controls: the button above owns the
+          // press and the name, so these are ink only.
+          <span
+            key={item.value}
+            aria-hidden
+            className={cx(LABEL, item.value === value ? 'text-text' : 'text-text-muted')}
+          >
+            {item.label}
+          </span>
+        ))}
+      </button>
+    )
+  }
 
   const move = (event: KeyboardEvent<HTMLButtonElement>, direction: -1 | 1) => {
     if (disabled) return
@@ -40,12 +100,7 @@ export function SegmentedControl({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      // `inline-grid` with equal auto columns is what actually makes the segments the same width,
-      // which is what lets the thumb be one translate with nothing measured. Flex cannot do it here:
-      // a flex item's automatic minimum is its own content, and a shrink-to-fit container has no
-      // free space left for `flex-grow` to even out — the segments keep their label widths and the
-      // thumb lands beside the one it is meant to be under.
-      className="relative inline-grid auto-cols-fr grid-flow-col rounded-xl border border-border bg-surface p-1"
+      className={TRACK}
       style={
         {
           '--segment-count': items.length,
@@ -78,9 +133,8 @@ export function SegmentedControl({
               if (event.key === 'ArrowRight' || event.key === 'ArrowDown') move(event, 1)
             }}
             className={cx(
-              // `relative` lifts the label above the thumb sliding beneath it; the equal widths come
-              // from the group's grid columns.
-              'relative rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50',
+              LABEL,
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50',
               selected ? 'text-text' : 'text-text-muted hover:text-text',
             )}
           >

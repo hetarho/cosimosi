@@ -248,7 +248,12 @@ export function DiaryList({
                   >
                     {diary.diaryDate}
                   </time>
-                  <span className="line-clamp-2 text-sm text-text-muted">
+                  {/* ONE line, cut with an ellipsis. Every card then stands the same height —
+                      date, preview, footer, each a single line — so a grid of them reads as a grid
+                      rather than as a ragged wall, and the eye can run down a column of dates
+                      without the rows shifting under it. What the preview cannot hold, opening the
+                      entry does. */}
+                  <span className="line-clamp-1 text-sm text-text-muted">
                     {renderBodyText ? renderBodyText(preview) : preview}
                   </span>
                   <DiaryRowFooter memories={diary.memories} />
@@ -259,13 +264,13 @@ export function DiaryList({
         })}
       </ul>
       <div ref={sentinelRef} aria-hidden className="h-px" />
+      {/* Only the FETCH speaks. Reaching the end of the archive announces itself — there are no more
+          cards — and a line saying so under the last one only takes the reader's eye off the writing
+          to tell them what they can already see. */}
       {isLoadingMore && (
         <p role="status" className="pb-2 text-center text-sm text-text-muted">
           {m.diary_reader_loading_more()}
         </p>
-      )}
-      {!hasMore && !isLoadingMore && (
-        <p className="pb-2 text-center text-sm text-text-subtle">{m.diary_reader_archive_end()}</p>
       )}
     </div>
   )

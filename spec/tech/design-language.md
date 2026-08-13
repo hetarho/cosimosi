@@ -213,6 +213,13 @@ The primitive API is plan 09's and does not change here; this is how those primi
   through the chrome standing on it. The HUD toolbar is where "one contained button per group" is
   felt hardest, and it honours the rule at the floor by carrying none — the home screen's one
   committing action, 일기 쓰기, is outlined too, at the largest size instead of at the heaviest fill.
+- **The way back out of a place is a bare left arrow and its name — one form, everywhere.** No fill, no
+  rim: `variant="text"`, `color="neutral"`, `BackIcon` leading, the destination as the label, pulled
+  left by its own horizontal padding so the glyph rather than the padding lines up with the content
+  beneath. A filled or bordered control in that corner reads as an **action taken on this page**,
+  competing with the title beside it, and going back is the room's door rather than a thing to do
+  here. The arrow points **left** on every surface because every back navigation in the product
+  returns the way it came. The label names where it goes ("우주로 돌아가기"), never the gesture.
 - **Fields** are recessed wells: a carved inner shadow, a hairline rim, the scene faintly readable
   through them. Colour never enters the fill — validation rides the border and the focus ring.
 - **A bounded choice is a picker, and it wears the same well.** The affordance says the set is closed —
@@ -223,6 +230,23 @@ The primitive API is plan 09's and does not change here; this is how those primi
   read as one family. React Native has no such element, so there the field opens a modal option list —
   ours, so it borrows the dialog's manners: dismissing changes nothing, and the current value is marked.
   Where a chip row would sprawl across a small screen, the picker collapses it.
+- **Among fields it is a picker; among buttons it is a menu.** The rule above holds wherever the choice
+  stands in a **form** — a column of labelled fields, where a recessed well is what every neighbour
+  already is. On a **toolbar**, where every neighbour is a button, the same well is the one borrowed
+  object on the line: it wears the OS's chrome rather than the product's, and the eye finds it before
+  the controls that matter more. There the choice is a `Menu` behind a `Button` that **shows what it
+  holds** — the accessible name is the field's name and the held choice together, so the visible label
+  stays inside the spoken one, and the list keeps the dialog's manners (Escape closes, a press
+  elsewhere closes, focus returns to the trigger). What is inherited from the platform is given up
+  knowingly; what is bought is a line that reads as one product.
+- **A choice between exactly two, where both stay visible, is a switch — not two radios.** The
+  `SegmentedControl`'s `toggle` shape keeps the track and the sliding thumb and makes the whole control
+  **one press that lands on the other option**. Aiming at the correct half is work a binary choice never
+  needed, and a press on the half already held did nothing at all — which is a dead press on the most
+  obvious target on the control. It stops being a radiogroup there and says so: `role="switch"`, with
+  the held option carried in the accessible name, because a bare on/off leaves a reader guessing which
+  of two named states "on" is. Three or more options stay a radiogroup, where selecting yourself is
+  exactly what a press should do.
 - **Badges** are outline-first: colour lives in the rim, the text, and an optional dot; the fill
   stays a whisper. Over the raw universe they raise their fill (`data-on-scene`) so small text keeps
   its contrast.
@@ -269,6 +293,11 @@ The primitive API is plan 09's and does not change here; this is how those primi
 - One size: `ICON_SIZE` (16px) unless a specimen says otherwise, and `currentColor` so the icon takes
   the ink of the control around it. Native has no inherited colour, so each native icon takes an
   explicit token colour, defaulting to the neutral text token.
+- **`ICON_SIZE_LG` (20px) is the one exception, and it is for a glyph standing alone.** Beside a label
+  the icon only clarifies, so it takes the ink size of the words it sits with. In an icon-only control
+  with no rim and no plate — the HUD's column over the live sky — the drawing **is** the whole control,
+  and at 16px it reads as a mark printed on the scene rather than as something to press. Only the ink
+  grows: the button keeps its box, so the touch target never changes with the glyph.
 - `aria-hidden` on every icon. An icon-only control carries its name in `label`; an unlabeled icon
   is a guess the user has to make.
 - Icons clarify a label, they do not replace one — except in a dense toolbar, where the tooltip is

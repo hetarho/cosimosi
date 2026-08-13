@@ -32,4 +32,13 @@ describe('TwinkleBalanceHud (web)', () => {
       expect(html).not.toContain(word)
     }
   })
+
+  it('is itself the way into what the figures are about, in both compositions', () => {
+    const html = renderToString(createElement(TwinkleBalanceHud))
+    // Two forms, one for each width, and BOTH are the press — there is no separate mark beside the
+    // numbers to aim at, and no form of this reading that only looks back at the reader.
+    const openers = html.match(/aria-haspopup="dialog"/g) ?? []
+    expect(openers).toHaveLength(2)
+    expect(html).toContain(`aria-label="${m.twinkle_balance_title()}"`)
+  })
 })

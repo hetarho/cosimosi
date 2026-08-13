@@ -18,6 +18,12 @@ refreshes whenever a spend or earn resolves; it never polls (§2.7).
 별가루 is a use-restricted sub-kind of it — not a second currency. So the general kind carries the plain name and only
 the restricted one is qualified.
 
+**The HUD is itself the way into the 별가루 panel.** Pressing the figures — in either of the HUD's two compositions —
+opens what they are about: how much is held, the way to come by more, and how it gathers on its own. A separate mark
+beside the numbers asking "what is this?" put a second, smaller thing in the corner to aim at, while the numbers were
+already what the reader was looking at. The panel's order is the reader's question order — held, then acquired, then
+earned — because someone who opens a balance is usually short of it.
+
 **Where a total appears is a judgment, not a convenience.** The HUD shows the derived total, because the paying actions
 over the canvas are recalls and a recall really can draw 작은 별가루 → 별가루. The `/me` stardust tab shows **no total**,
 because that is the surface a purchase is contemplated from and an ornament prices against 별가루 alone ([P9]) — a sum
@@ -42,13 +48,18 @@ actions.
 
 ## A shortfall opens the earn guide, never a purchase and never a dead end
 
-When a spend would exceed what may pay for it, the cost display states the shortfall and opens the **earn guide**
-([G3]). Everyday remembering from the daily 작은 별가루 never reaches this path ([G5][M5]). A spend refused at commit
+When a spend would exceed what may pay for it, the cost display states the shortfall and opens the **별가루 panel** —
+the same surface the balance HUD opens, whose earn guide ([G3]) is the part that answers a shortfall. Everyday remembering from the daily 작은 별가루 never reaches this path ([G5][M5]). A spend refused at commit
 because balance or authoritative depth changed after its exact-stage quote recovers into the same path — it re-quotes, it
 does not dead-end.
 
-**There is no purchase path in v2.** Payment (스토어/PG) is deferred to v3 (PRD §8.3) and was removed rather than
-disabled: a button that cannot succeed is worse than no button, and a recovery flow pointing at one is worse still.
+**There is no purchase path in v2.** Payment (스토어/PG) is deferred to v3 (PRD §8.3).
+
+**The panel still carries the way to get more, disabled and saying why.** A reader looking at a balance they have run
+down needs to know whether more is coming at all, and silence is a different answer from "아직" — the absent control read
+as "this is all there will ever be", which is not what is true. So the control is present, **disabled**, with the reason
+in plain words beside it. This is deliberately narrow: nothing points a **recovery flow** at it, and nothing pretends it
+can succeed. A shortfall still recovers into the earn paths below, never into this button.
 
 ## Earn is the daily refill · 일기 작성 · 업적 · 친구 초대 — and no login bonus
 
@@ -60,12 +71,12 @@ The one-time signup bonus ([U11]) is deliberately **not** listed. Naming a grant
 cannot receive again, would read as an offer.
 
 There is **no login or attendance bonus** anywhere — the daily 작은 별가루 refill plays that role by design. The guide is
-reachable both from a shortfall and from a restrained proactive affordance, so a reader who is merely curious how 별가루
-gathers does not have to run out first.
+reachable both from a shortfall and from the balance HUD itself, so a reader who is merely curious how 별가루 gathers
+does not have to run out first.
 
 ## No meaning-layer or placement control
 
-The balance HUD, the cost display, the earn guide and the stardust tab show and read Twinkle only ([I11]). No emotion,
+The balance HUD, the 별가루 panel it opens, the cost display and the stardust tab show and read Twinkle only ([I11]). No emotion,
 position, strength, or any meaning-layer word crosses these surfaces, and none of them mutates a `Diary` ([I2]) — the
 economy gates _access_ to a recall, never _what the memory is_.
 

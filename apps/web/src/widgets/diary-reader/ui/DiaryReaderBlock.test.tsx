@@ -116,9 +116,12 @@ describe('DiaryReaderBlock — the archive’s two shapes ([D12][A1])', () => {
   it('offers the two-option toggle and reports the chosen view to its host', async () => {
     const onViewChange = vi.fn()
     mount('list', { onViewChange })
-    await userEvent
-      .setup()
-      .click(await screen.findByRole('radio', { name: m.calendar_view_action() }))
+    // ONE control, not two: it is a switch showing which shape is held, so a press anywhere on it
+    // lands on the other one — the reader never has to aim at the correct half.
+    const toggle = await screen.findByRole('switch', {
+      name: `${m.calendar_view_label()}: ${m.calendar_list_view_action()}`,
+    })
+    await userEvent.setup().click(toggle)
     expect(onViewChange).toHaveBeenCalledWith('calendar')
   })
 
@@ -136,7 +139,11 @@ describe('DiaryReaderBlock — the archive’s two shapes ([D12][A1])', () => {
     await waitFor(() => expect(calendar.container.querySelector('.grid-cols-7')).not.toBeNull())
     expect(screen.queryByRole('button', { name: m.diary_reader_sort_to_oldest() })).toBeNull()
     // The rest of the conditions survive the switch — only the ORDER is withheld ([D12]).
-    expect(screen.queryByLabelText(m.diary_search_memory_count_label())).not.toBeNull()
+    expect(
+      screen.queryByRole('button', {
+        name: new RegExp(`^${m.diary_search_memory_count_label()}:`),
+      }),
+    ).not.toBeNull()
   })
 
   it('issues no calendar read at all while the list is showing', async () => {

@@ -51,6 +51,20 @@ function Host({
   )
 }
 
+// The count control names what it is about and shows what it holds, so its accessible name is the
+// two together — a query by the bare label would match neither it nor the menu it opens.
+const countTrigger = () =>
+  screen.getByRole('button', { name: new RegExp(`^${m.diary_search_memory_count_label()}:`) })
+
+async function chooseCount(user: ReturnType<typeof userEvent.setup>, option: string) {
+  await user.click(countTrigger())
+  await user.click(
+    screen.getByRole('menuitem', {
+      name: diaryMemoryCountLabel(option, VALUES.encode.maxMemories),
+    }),
+  )
+}
+
 describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', () => {
   it('carries no card of its own, so the archive is the only framed thing on the page', () => {
     const { container } = render(<Host />)
@@ -78,7 +92,11 @@ describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', ()
     render(<Host sortable={false} />)
     expect(screen.queryByRole('button', { name: m.diary_reader_sort_to_oldest() })).toBeNull()
     // Every other condition survives: only the ORDER belongs to the list ([D12]).
-    expect(screen.queryByLabelText(m.diary_search_memory_count_label())).not.toBeNull()
+    expect(
+      screen.queryByRole('button', {
+        name: new RegExp(`^${m.diary_search_memory_count_label()}:`),
+      }),
+    ).not.toBeNull()
   })
 
   it('bounds the read on both sides for an exact star count', async () => {
@@ -86,7 +104,7 @@ describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', ()
     const seen: GetDiariesInput[] = []
     render(<Host onQuery={(query) => seen.push(query)} />)
 
-    await user.selectOptions(screen.getByLabelText(m.diary_search_memory_count_label()), '2')
+    await chooseCount(user, '2')
     expect(seen.at(-1)).toMatchObject({ minMemories: 2, maxMemories: 2 })
   })
 
@@ -96,10 +114,7 @@ describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', ()
     const top = VALUES.encode.maxMemories
     render(<Host onQuery={(query) => seen.push(query)} />)
 
-    await user.selectOptions(
-      screen.getByLabelText(m.diary_search_memory_count_label()),
-      `${String(top)}+`,
-    )
+    await chooseCount(user, `${String(top)}+`)
     expect(seen.at(-1)?.minMemories).toBe(top)
     expect(seen.at(-1)?.maxMemories).toBeUndefined()
   })
@@ -109,7 +124,7 @@ describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', ()
     const seen: GetDiariesInput[] = []
     render(<Host onQuery={(query) => seen.push(query)} />)
 
-    await user.selectOptions(screen.getByLabelText(m.diary_search_memory_count_label()), '0')
+    await chooseCount(user, '0')
     // Not "no bound": 0 is the condition, so both sides are present and both are zero.
     expect(seen.at(-1)).toMatchObject({ minMemories: 0, maxMemories: 0 })
   })
@@ -145,14 +160,15 @@ describe('SearchDiary — the archive’s conditions on one line ([D8][D9])', ()
     expect(screen.queryByRole('button', { name: m.diary_reader_clear_conditions() })).toBeNull()
   })
 
-  it('offers every count the split contract allows, each naming itself', () => {
+  it('offers every count the split contract allows, each naming itself', async () => {
+    const user = userEvent.setup()
     render(<Host />)
-    const select = screen.getByLabelText(m.diary_search_memory_count_label())
-    const labels = Array.from(select.querySelectorAll('option')).map((option) => option.textContent)
+    await user.click(countTrigger())
+    const labels = screen.getAllByRole('menuitem').map((item) => item.textContent)
     const top = VALUES.encode.maxMemories
 
-    // all + 0…top-1 + "top and above". The field carries no visible label, so each option has to say
-    // what it counts on its own — which is what the shared projection is for.
+    // all + 0…top-1 + "top and above". The control carries no visible label of its own, so each
+    // choice has to say what it counts — which is what the shared projection is for.
     expect(labels).toHaveLength(top + 2)
     expect(labels[0]).toBe(diaryMemoryCountLabel('all', top))
     expect(labels.at(-1)).toBe(diaryMemoryCountLabel(`${String(top)}+`, top))

@@ -4,7 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetAdminSelfQueryOptions } from '@cosimosi/api-client'
-import { Button, Card } from '@cosimosi/ui'
+import { BackIcon, Button, Card } from '@cosimosi/ui'
 
 import { ModelSelectSection, ProviderKeysSection } from '../../../features/admin-ai-config/index.ts'
 import { JobsSection } from '../../../features/admin-jobs/index.ts'
@@ -57,11 +57,22 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-6 bg-bg px-4 py-8 text-text">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{m.admin_title()}</h1>
-        <Button variant="outlined" color="neutral" size="sm" onClick={onExit}>
+      {/* The way back sits ABOVE the page's name and on the left, wearing no plate and no rim — a
+          left arrow and its name. Every back navigation in the product now reads the same, and a
+          bordered button opposite the title read as an operator ACTION rather than as the door out.
+          Pulled left by its own padding so the glyph lines up with the content beneath. */}
+      <header className="flex flex-col items-start gap-2">
+        <Button
+          variant="text"
+          color="neutral"
+          size="sm"
+          className="-ml-3"
+          leadingIcon={<BackIcon />}
+          onClick={onExit}
+        >
           {m.admin_back()}
         </Button>
+        <h1 className="text-xl font-semibold">{m.admin_title()}</h1>
       </header>
 
       <div role="tablist" aria-label={m.admin_title()} className="flex flex-wrap gap-1">

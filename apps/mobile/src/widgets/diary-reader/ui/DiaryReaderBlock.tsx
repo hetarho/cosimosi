@@ -419,7 +419,11 @@ export function DiaryReaderBlock({
           {m.diary_reader_back()}
         </Button>
         <Text style={styles.title}>{m.diary_reader_title()}</Text>
+        {/* `toggle`: there are exactly two shapes of the archive, so a press anywhere on the control
+            lands on the other one. Aiming at the correct half — and pressing the half already held,
+            which did nothing — was work this choice never needed ([D12]). */}
         <SegmentedControl
+          toggle
           ariaLabel={m.calendar_view_label()}
           value={view}
           onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}

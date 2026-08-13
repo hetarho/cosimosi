@@ -1,10 +1,13 @@
 import {
   ArrowCounterClockwiseIcon,
+  ArrowLeftIcon,
   ArrowsOutCardinalIcon,
   BookOpenIcon,
+  CaretDownIcon,
   GearSixIcon,
   InfoIcon,
   PaletteIcon,
+  PlusIcon,
   PushPinIcon,
   SortAscendingIcon,
   SortDescendingIcon,
@@ -26,6 +29,14 @@ export type IconProps = IconOwnProps & { className?: string }
  * why `IconButton` requires a `label` (design-language §8).
  */
 export const ICON_SIZE = 16
+
+/**
+ * The larger cut, for a glyph standing ALONE as a control — an icon-only button whose whole meaning
+ * is the drawing, with no label beside it to share the reading. It is the same button box (`size`
+ * on `IconButton` owns that); only the ink inside grows, because at 16 a lone glyph over a live sky
+ * reads as a mark rather than as a thing to press.
+ */
+export const ICON_SIZE_LG = 20
 
 /** SMALL Twinkle — the daily recall allowance. The lighter of the two densities. */
 export function TwinkleSmallIcon({ size = ICON_SIZE, className }: IconProps) {
@@ -95,4 +106,24 @@ export function NewestFirstIcon({ size = ICON_SIZE, className }: IconProps) {
 /** 오래된순 — the oldest of a list at the top. */
 export function OldestFirstIcon({ size = ICON_SIZE, className }: IconProps) {
   return <SortAscendingIcon aria-hidden size={size} className={className} />
+}
+
+/**
+ * 돌아가기 — the way back to the place this one was opened from.
+ *
+ * It points LEFT rather than up or out, because every back navigation in the product returns along
+ * the way it came; a slice asks for the way back, never for an arrow.
+ */
+export function BackIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <ArrowLeftIcon aria-hidden size={size} className={className} />
+}
+
+/** A list of choices waiting under a control — the mark that says a press opens one. */
+export function DropdownIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <CaretDownIcon aria-hidden size={size} className={className} />
+}
+
+/** 더하기 — this control adds one more of the thing beside it. */
+export function AddIcon({ size = ICON_SIZE, className }: IconProps) {
+  return <PlusIcon aria-hidden size={size} className={className} />
 }

@@ -205,7 +205,7 @@ export const VALUES = {
     bodyPreviewLength: 100,
     rowMoodDotMax: 4,
     infiniteScrollRootMarginPx: 400,
-    rowEstimateHeightPx: 114,
+    rowEstimateHeightPx: 92,
     rowOverscan: 4,
     rowGapPx: 8,
     rowMinWidthPx: 288,

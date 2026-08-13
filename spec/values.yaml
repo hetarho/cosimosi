@@ -641,12 +641,11 @@ diary_reader:
   # screen of prefetch, so the list grows before the reader reaches the bottom.
   infinite_scroll_root_margin_px: 400
   # [D6] The web list windows its rows, and these three drive that window. The height a CLOSED row is
-  # assumed to have before it has been measured — one date line, two clamped preview lines and the
-  # star/mood footer, measured at 114px in a browser at the reader's max width. Only the
-  # not-yet-rendered part of the archive uses it (every mounted row reports its real height), so being
-  # wrong costs scrollbar stability rather than layout: an estimate below the truth makes the page grow
-  # under the reader as rows are measured.
-  row_estimate_height_px: 114
+  # assumed to have before it has been measured — one date line, ONE clamped preview line and the
+  # star/mood footer, measured at 92px in a browser at the reader's max width. Every row carries the
+  # same three single lines, so this is the height every row actually has rather than an average over
+  # a ragged list; it stays an estimate only in that a mounted row still reports its own measurement.
+  row_estimate_height_px: 92
   # Rows kept mounted beyond each edge of the viewport. Enough that an ordinary flick never exposes a
   # blank band, small enough that the mounted count stays a viewport's worth rather than an archive's.
   row_overscan: 4
@@ -655,8 +654,8 @@ diary_reader:
   row_gap_px: 8
   # [D6] The narrowest a web archive column may become before the grid drops a column. The list grows
   # its column count by dividing the measured width by this, so the archive gains columns as the
-  # window widens instead of stepping at named breakpoints — a card holds a date, two clamped preview
-  # lines and the star/mood footer, and below this the preview stops being a preview.
+  # window widens instead of stepping at named breakpoints — a card holds a date, ONE clamped preview
+  # line and the star/mood footer, and below this the preview stops being a preview.
   row_min_width_px: 288
   # The mobile FlatList onEndReachedThreshold: a ratio of visible length, not pixels, which is why it
   # cannot share the key above.

@@ -20,7 +20,9 @@ The way back to the universe sits at the **left** end of the header and the titl
 line, naming the **open tab** rather than the account home in general. With the tab strip directly
 beneath it, a fixed 나 said nothing the strip did not already say, while the open tab's name is the one
 fact the header can add about where the reader is. The same three-part header is the diary reader's
-([47]), so leaving any supporting surface is the same gesture in the same corner.
+([47]), so leaving any supporting surface is the same gesture in the same corner — down to the control
+itself, which wears the product-wide back form: a bare left arrow and its destination, no fill and no
+rim (design-language §6).
 
 The feeling-colors tab is the emotion-color editor and owns the whole surface, rather than sharing a
 row of the profile tab. At rest it shows only what the thirteen moods currently wear: one swatch and

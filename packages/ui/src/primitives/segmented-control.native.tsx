@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 
 import { useReducedMotion } from '../a11y/use-reduced-motion.native.ts'
 import { color, radius, space } from '../native-styles.ts'
@@ -24,6 +24,12 @@ interface SegmentBox {
  * percentage, so the thumb reads each segment's own measured box instead of a fraction of the track:
  * that keeps the segments at their label widths, so the control still hugs its content rather than
  * stretching across whatever row it sits in.
+ *
+ * `toggle` is the SECOND shape, mirroring the web sibling: for a choice between exactly two, the
+ * whole track becomes ONE press that lands on the other option. It stops being a radiogroup there
+ * and becomes a switch — a press on the option already held changes the value, which is the one
+ * thing a radio must never do — and its label carries the option currently held, so the state a
+ * reader hears is the one they can see.
  */
 export function SegmentedControl({
   items,
@@ -31,12 +37,15 @@ export function SegmentedControl({
   onValueChange,
   ariaLabel,
   disabled = false,
+  toggle = false,
 }: SegmentedControlProps) {
   const reducedMotion = useReducedMotion()
   const [boxes, setBoxes] = useState<readonly (SegmentBox | undefined)[]>([])
   const selectedIndex = items.findIndex((item) => item.value === value)
   const [offset] = useState(() => new Animated.Value(0))
   const selectedBox = selectedIndex === -1 ? undefined : boxes[selectedIndex]
+  const [first, second] = items
+  const asSwitch = toggle && first !== undefined && second !== undefined && items.length === 2
 
   useEffect(() => {
     if (!selectedBox) return
@@ -53,18 +62,69 @@ export function SegmentedControl({
     return () => travel.stop()
   }, [selectedBox, offset, reducedMotion])
 
+  // Each segment reports its own box whichever shape is showing — the thumb reads the same
+  // measurements either way.
+  const measure = (index: number) => (event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout
+    setBoxes((current) => {
+      const held = current[index]
+      if (held && held.x === x && held.width === width) return current
+      const next = [...current]
+      next[index] = { x, width }
+      return next
+    })
+  }
+
+  // Hidden until its segment has been measured, and while the value is outside the set — a thumb
+  // under the first segment would tell the eye a selection `accessibilityState` denies.
+  const thumb = selectedBox && (
+    <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={[styles.thumb, { width: selectedBox.width, transform: [{ translateX: offset }] }]}
+    />
+  )
+
+  if (asSwitch) {
+    const held = selectedIndex === -1 ? undefined : items[selectedIndex]
+    const other = selectedIndex === 1 ? first : second
+    return (
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: selectedIndex === 1, disabled }}
+        accessibilityLabel={held ? `${ariaLabel}: ${held.label}` : ariaLabel}
+        disabled={disabled}
+        onPress={() => onValueChange(other.value)}
+        style={({ pressed }) => [
+          styles.group,
+          pressed && styles.pressed,
+          disabled && styles.disabled,
+        ]}
+      >
+        {thumb}
+        {items.map((item, index) => (
+          // The labels are the switch's two states, not two controls: the press and the name belong
+          // to the track above, so these are ink only.
+          <View
+            key={item.value}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            onLayout={measure(index)}
+            style={styles.segment}
+          >
+            <Text style={[styles.label, item.value === value && styles.selectedLabel]}>
+              {item.label}
+            </Text>
+          </View>
+        ))}
+      </Pressable>
+    )
+  }
+
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={ariaLabel} style={styles.group}>
-      {/* Hidden until its segment has been measured, and while the value is outside the set — a thumb
-          under the first segment would tell the eye a selection `accessibilityState` denies. */}
-      {selectedBox && (
-        <Animated.View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-          style={[styles.thumb, { width: selectedBox.width, transform: [{ translateX: offset }] }]}
-        />
-      )}
+      {thumb}
       {items.map((item, index) => {
         const selected = item.value === value
         return (
@@ -75,16 +135,7 @@ export function SegmentedControl({
             accessibilityLabel={item.label}
             disabled={disabled}
             onPress={() => onValueChange(item.value)}
-            onLayout={(event) => {
-              const { x, width } = event.nativeEvent.layout
-              setBoxes((current) => {
-                const held = current[index]
-                if (held && held.x === x && held.width === width) return current
-                const next = [...current]
-                next[index] = { x, width }
-                return next
-              })
-            }}
+            onLayout={measure(index)}
             style={({ pressed }) => [
               styles.segment,
               pressed && styles.pressed,

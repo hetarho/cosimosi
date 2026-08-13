@@ -262,4 +262,11 @@ export interface SegmentedControlOwnProps {
   /** Accessible name for the group, so the choice is never announced unlabelled. */
   ariaLabel: string
   disabled?: boolean
+  /**
+   * Turn the control into a SWITCH: one press anywhere on it lands on the other option, rather than
+   * each segment selecting itself. For a choice between exactly two — where a press on the option
+   * already held is a press that does nothing, and aiming at the right half is work the reader
+   * should not have to do. Requires `items.length === 2`; ignored otherwise.
+   */
+  toggle?: boolean
 }
