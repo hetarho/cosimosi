@@ -690,8 +690,10 @@ func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T
 	}
 	store := NewStore(pool.PgxPool())
 	cutoff := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	oldIDs := make([]string, 0, 3)
 	for i := 0; i < 3; i++ {
 		id := fmt.Sprintf("%s-old-%d", base, i)
+		oldIDs = append(oldIDs, id)
 		if _, err := store.EnqueueJob(ctx, scope, memory.Job{
 			ID: id, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: memory.JobStatusPending,
 			NextRunAt: cutoff, CreatedAt: cutoff,
@@ -738,14 +740,37 @@ func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T
 		t.Fatalf("terminalize retention fixture failed: %v", err)
 	}
 
-	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 2 {
-		t.Fatalf("first purge = (%d, %v), want (2, nil)", purged, err)
+	// This is the queue's one global scan, and which rows a batch reaches is a property of the whole
+	// table — which every package sharing this database writes to. So the sweep's own return value
+	// is read only for the bound it promises, and the rest is read off this test's fixtures: a batch
+	// of two cannot clear three of them in one pass, and repeated sweeps must still arrive at all
+	// three.
+	oldFixturesLeft := func() int {
+		t.Helper()
+		var remaining int
+		if err := pool.PgxPool().QueryRow(ctx, `
+			SELECT count(*) FROM jobs WHERE user_id = $1 AND id = ANY($2::text[])`,
+			userID, oldIDs).Scan(&remaining); err != nil {
+			t.Fatalf("inspect old terminal fixtures failed: %v", err)
+		}
+		return remaining
 	}
-	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 1 {
-		t.Fatalf("second purge = (%d, %v), want (1, nil)", purged, err)
+	const sweepLimit = 6
+	for sweep, remaining := 1, len(oldIDs); remaining > 0; sweep++ {
+		if sweep > sweepLimit {
+			t.Fatalf("%d bounded sweeps left %d old fixtures unreached", sweepLimit, remaining)
+		}
+		purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2)
+		if err != nil || purged > 2 {
+			t.Fatalf("sweep %d purged = (%d, %v), want at most the batch size", sweep, purged, err)
+		}
+		remaining = oldFixturesLeft()
+		if sweep == 1 && remaining == 0 {
+			t.Fatalf("one sweep of two cleared all %d old fixtures", len(oldIDs))
+		}
 	}
-	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 0 {
-		t.Fatalf("third purge = (%d, %v), want (0, nil)", purged, err)
+	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged > 2 {
+		t.Fatalf("sweep past the last old fixture = (%d, %v), want at most the batch size", purged, err)
 	}
 	var kept int
 	if err := pool.PgxPool().QueryRow(ctx, `
