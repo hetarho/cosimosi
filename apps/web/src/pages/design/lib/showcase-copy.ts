@@ -245,7 +245,6 @@ export const T = {
     'The decorative field behind everything, chosen as two things rather than one. A MOTE is what a single particle is — its form, its size and its colour. A FIELD is the space they fill — where they sit, how many there are, and how their light moves, so "packed", "barely there" and "nothing at all" are rows like any other. Any mote goes into any field, and the pair is a backdrop. It carries no memory, no feeling and no strength, which is exactly why it is free to change.',
   backdropMoteBench: 'Mote — one particle',
   backdropFieldBench: 'Field — the space they fill',
-  backdropPresets: 'Named pairs',
   backdropSky: 'Emotion sky',
   backdropAxisForm: 'Form',
   backdropAxisSize: 'Mote size',
@@ -256,7 +255,7 @@ export const T = {
   backdropAxisTwinkle: 'Twinkle',
   backdropTwinkleValue: (rate: number, depth: number) =>
     `${rate.toFixed(2)}× speed · ${Math.round(depth * 100)}% swing`,
-  backdropMoteSize: 'Magnify',
+  backdropMoteSize: 'Mote size',
   backdropCost: 'Fixed cost',
   backdropCostValue: (triangles: number) => `${triangles.toLocaleString('en-US')} tris`,
   backdropCostOver: (ceiling: number) =>

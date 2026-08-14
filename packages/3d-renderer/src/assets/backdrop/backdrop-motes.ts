@@ -6,10 +6,10 @@ import type { BackdropToneKey } from './backdrop-life.ts'
 
 // MOTE — one of the two catalogues a backdrop is chosen from (the other is the FIELD).
 //
-// A mote is ONE decorative particle: its form, how big it is drawn, and what colour it is. Those three
-// travel together because they are the same question — a large warm ring and a tiny grey pinprick are
-// two looks, not one look with two settings — and separating them would leave a picker whose rows are
-// not things anyone can recognise.
+// A mote is ONE decorative particle: what it is drawn as, and what colour it is. Those two travel
+// together because they are the same question — a violet ring and a grey speck are two looks, not one
+// look with two settings — while HOW BIG it is drawn is picked over the whole catalogue, since every
+// form is worth seeing at every size.
 //
 // Where the motes sit, how many of them there are and how they twinkle belong to the field: a mote
 // knows nothing about the space it is scattered through, which is why either catalogue can grow
@@ -172,44 +172,50 @@ export interface BackdropMote {
   readonly blurb: string
   /** The geometry it is drawn as. */
   readonly form: BackdropMoteFormKey
-  /** Multiplies the world size every mote is drawn at. */
-  readonly size: number
   /** The colour its brightness is spent on. */
   readonly tone: BackdropToneKey
 }
 
+/** The sizes a mote may be drawn at, as whole multiples of its own geometry.
+ *
+ *  Size is picked rather than authored into a row. A form and a colour are what a particle IS, and
+ *  every one of them is worth seeing at every size — baking one in would fork the catalogue into a
+ *  large version and a small version of the same idea. Whole steps because the difference between
+ *  1.6 and 1.8 is not a decision anyone can make by looking. */
+export const BACKDROP_MOTE_SIZES = [1, 2, 3, 4] as const
+
+export type BackdropMoteSize = (typeof BACKDROP_MOTE_SIZES)[number]
+
+/** The size an undecorated universe draws its motes at — the geometry's own. */
+export const DEFAULT_BACKDROP_MOTE_SIZE: BackdropMoteSize = 1
+
 /**
  * The motes a backdrop can be built from — the first of the two pickers.
  *
- * The catalogue spreads across all three of a mote's properties at once, because that is how the eye
- * reads them: a row is a large violet ring or a tiny grey speck, never "form 4 at size 1.8". Sizes stay
- * inside roughly a quarter to two and a half, which is the range where a mote still reads as a mote —
- * below it the field is invisible, above it the particles start competing with the universe's own stars.
+ * A row is a form and a colour together, because that is how the eye reads a particle: a violet ring
+ * or a grey speck, never "form 4 in tone 6". Every row is distinct in one of those two, so no two rows
+ * are the same look — and how big it is drawn is chosen separately, over all of them at once.
  */
 export const BACKDROP_MOTES = [
   {
     key: 'pinprick',
     label: 'Pinprick',
-    blurb:
-      'The plain distant star: a small cool-white dot, and the field every other row is read against.',
+    blurb: 'The plain distant star: a cool-white dot, and the row every other one is read against.',
     form: 'grain',
-    size: 1,
     tone: 'starlight',
   },
   {
     key: 'orb',
     label: 'Orb',
-    blurb: 'A round white ball, big enough that the roundness itself is the look.',
+    blurb: 'A round white ball — the one form bought for its roundness rather than its outline.',
     form: 'orb',
-    size: 2,
     tone: 'starlight',
   },
   {
     key: 'ash-speck',
     label: 'Ash Speck',
-    blurb: 'Tiny and grey — present, and spending almost nothing on being seen.',
+    blurb: 'Grey, and dim with it — present, and spending almost nothing on being seen.',
     form: 'grain',
-    size: 0.7,
     tone: 'ash',
   },
   {
@@ -217,7 +223,6 @@ export const BACKDROP_MOTES = [
     label: 'Ice Spark',
     blurb: 'A hard cold-white point, the crispest dot in the set.',
     form: 'grain',
-    size: 0.9,
     tone: 'ice',
   },
   {
@@ -225,7 +230,6 @@ export const BACKDROP_MOTES = [
     label: 'Ember Dust',
     blurb: 'Warm amber dust — air between the viewer and the light rather than vacuum.',
     form: 'grain',
-    size: 1,
     tone: 'ember',
   },
   {
@@ -233,7 +237,6 @@ export const BACKDROP_MOTES = [
     label: 'Galaxy Dust',
     blurb: 'Dust that warms toward the centre and cools at the rim, so distance reads as colour.',
     form: 'grain',
-    size: 0.8,
     tone: 'duotone',
   },
   {
@@ -241,7 +244,6 @@ export const BACKDROP_MOTES = [
     label: 'Rose Mote',
     blurb: 'A soft pink dot: decorative on purpose, borrowing nothing from an astronomy photo.',
     form: 'grain',
-    size: 1.2,
     tone: 'rose',
   },
   {
@@ -249,15 +251,13 @@ export const BACKDROP_MOTES = [
     label: 'Pixel',
     blurb: 'A square dot, each in its own hue — the field reads as printed rather than lit.',
     form: 'pixel',
-    size: 1,
     tone: 'spectrum',
   },
   {
     key: 'ember-chip',
     label: 'Ember Chip',
-    blurb: 'A small warm shard catching the light on one facet at a time.',
+    blurb: 'A warm shard catching the light on one facet at a time.',
     form: 'shard',
-    size: 0.8,
     tone: 'ember',
   },
   {
@@ -265,7 +265,6 @@ export const BACKDROP_MOTES = [
     label: 'Prism Shard',
     blurb: 'The same angular chip, each one its own colour — the field glints as the camera moves.',
     form: 'shard',
-    size: 1.1,
     tone: 'spectrum',
   },
   {
@@ -273,31 +272,27 @@ export const BACKDROP_MOTES = [
     label: 'Ice Needle',
     blurb: 'A long cold sliver standing on end — a sky caught mid-shower.',
     form: 'needle',
-    size: 2,
     tone: 'ice',
   },
   {
     key: 'wide-streak',
     label: 'Wide Streak',
-    blurb: 'Light stretched sideways and drawn long, the way a wide lens stretches a star.',
+    blurb: 'Light stretched sideways, the way a wide lens stretches a star.',
     form: 'streak',
-    size: 2.2,
     tone: 'starlight',
   },
   {
     key: 'diffraction',
     label: 'Diffraction',
-    blurb: 'A large crossed sparkle — a star seen through a real aperture, arms and all.',
+    blurb: 'A crossed sparkle — a star seen through a real aperture, arms and all.',
     form: 'jack',
-    size: 1.6,
     tone: 'starlight',
   },
   {
     key: 'violet-sparkle',
     label: 'Violet Sparkle',
-    blurb: 'The same crossed arms in cool violet, drawn larger still.',
+    blurb: 'The same crossed arms in cool violet.',
     form: 'jack',
-    size: 2.2,
     tone: 'violet',
   },
   {
@@ -305,7 +300,6 @@ export const BACKDROP_MOTES = [
     label: 'Snow Fleck',
     blurb: 'A flat cold fleck that flickers as it turns edge-on.',
     form: 'plate',
-    size: 0.9,
     tone: 'ice',
   },
   {
@@ -313,15 +307,13 @@ export const BACKDROP_MOTES = [
     label: 'Ember Bokeh',
     blurb: 'A warm out-of-focus ring — a point light a lens could not resolve.',
     form: 'bokeh',
-    size: 1.2,
     tone: 'ember',
   },
   {
     key: 'violet-bokeh',
     label: 'Violet Bokeh',
-    blurb: 'The same ring, wider and violet, hollow enough to see the field through it.',
+    blurb: 'The same ring in violet, hollow enough to see the field through it.',
     form: 'bokeh',
-    size: 1.8,
     tone: 'violet',
   },
 ] as const satisfies readonly BackdropMote[]

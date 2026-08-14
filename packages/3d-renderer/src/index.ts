@@ -59,22 +59,13 @@ export {
   GIST_INSTANCE_TINT,
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
-// The backdrop: a MOTE (one particle's form · size · colour) poured into a FIELD (where they sit, how
-// many, how they twinkle). Two catalogues, and every pair of rows is a backdrop; the named pairs are
-// the themes.
-export {
-  BACKDROP_THEMES,
-  BACKDROP_TRIANGLE_CEILING,
-  DEFAULT_BACKDROP_PAIR,
-  DEFAULT_BACKDROP_THEME,
-  backdropTriangleCost,
-  resolveBackdropTheme,
-  type BackdropTheme,
-  type BackdropThemeKey,
-} from './assets/backdrop/backdrop-themes.ts'
+// The backdrop: a MOTE (one particle's form · colour) poured into a FIELD (where they sit, how many,
+// how they twinkle) at a chosen size. Two catalogues, and every pair of rows is a backdrop.
 export {
   BACKDROP_MOTES,
+  BACKDROP_MOTE_SIZES,
   DEFAULT_BACKDROP_MOTE,
+  DEFAULT_BACKDROP_MOTE_SIZE,
   MOTE_RADIUS,
   backdropMoteFormTriangles,
   backdropMoteTriangles,
@@ -84,7 +75,9 @@ export {
   type BackdropMoteForm,
   type BackdropMoteFormKey,
   type BackdropMoteKey,
+  type BackdropMoteSize,
 } from './assets/backdrop/backdrop-motes.ts'
+export { BACKDROP_TRIANGLE_CEILING, backdropTriangleCost } from './assets/backdrop/backdrop-cost.ts'
 export {
   BACKDROP_FIELDS,
   DEFAULT_BACKDROP_FIELD,

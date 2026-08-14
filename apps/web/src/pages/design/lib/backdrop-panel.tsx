@@ -4,11 +4,12 @@ import { VALUES } from '@cosimosi/config'
 import {
   BACKDROP_FIELDS,
   BACKDROP_MOTES,
-  BACKDROP_THEMES,
+  BACKDROP_MOTE_SIZES,
   BACKDROP_TRIANGLE_CEILING,
   CameraControls,
   DEFAULT_BACKDROP_FIELD,
   DEFAULT_BACKDROP_MOTE,
+  DEFAULT_BACKDROP_MOTE_SIZE,
   InstancedNodeLayer,
   PostFX,
   STAR_INSTANCE_BRIGHTNESS,
@@ -27,6 +28,7 @@ import {
   useSkin,
   type BackdropFieldKey,
   type BackdropMoteKey,
+  type BackdropMoteSize,
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
@@ -46,9 +48,10 @@ import { T } from './showcase-copy.ts'
  * The backdrop bench: one mote poured into one field, with a handful of real stars in front of it.
  *
  * Two pickers rather than one, because a backdrop is two independent choices. The mote row answers
- * what a single particle is — form, size, colour — and the field row answers what space they fill:
- * where they sit, how many, how their light moves. Every pair is a backdrop, so the bench is the
- * product of the two catalogues rather than a list, and the named pairs are shortcuts into it.
+ * what a single particle is — its form and its colour — and the field row answers what space they
+ * fill: where they sit, how many, how their light moves. Every pair is a backdrop, so the bench is the
+ * product of the two catalogues rather than a list. Size sits with the other frame controls, since it
+ * applies to whichever mote is chosen.
  *
  * The stars are the point of the frame. A backdrop is only judgeable against what it sits behind — a
  * field that looks gorgeous empty can still bury a memory's own light, or leave the scene so bare
@@ -58,17 +61,14 @@ import { T } from './showcase-copy.ts'
  * The sky switch is here for the same reason: half of what a field does is decide how much of the sky
  * behind it survives, and that can only be seen by taking the sky away.
  *
- * Free combination means the bench can build a pair no product surface may wear: the triangle ceiling
- * binds the named pairs, and here it is REPORTED instead — a mote of four times the topology in the
- * densest field is a real answer to "why not both", and the number is how that answer arrives.
+ * Free combination means the bench can build a pair that spends more than the backdrop's share of the
+ * frame. The ceiling is REPORTED rather than enforced here — the costliest form in the densest field is
+ * a real question, and seeing what it would cost is how the answer arrives.
  */
 
 /** Bench magnification: the stars are read at arm's length, not from the universe's own distance. */
 const STAR_MAGNIFICATION = 2.6
 const REFERENCE_SHAPE = 'facet'
-/** How far the motes may be enlarged for inspection. A mote is a few pixels at the universe's own
- *  distance, so a form — a ring, a cross, a dash — can only be told from a dot by growing it. */
-const MOTE_MAGNIFICATIONS = [1, 3, 6] as const
 
 /** One bench row: the numbered candidates of a catalogue, so a look can be named by its place. */
 function BenchRow<Item extends { readonly key: string; readonly label: string }>({
@@ -119,7 +119,7 @@ export function BackdropPanel() {
   const [fieldKey, setFieldKey] = useState<BackdropFieldKey>(DEFAULT_BACKDROP_FIELD)
   const [sky, setSky] = useState(true)
   const [animate, setAnimate] = useState(true)
-  const [magnification, setMagnification] = useState<number>(1)
+  const [moteSize, setMoteSize] = useState<BackdropMoteSize>(DEFAULT_BACKDROP_MOTE_SIZE)
   const mote = resolveBackdropMote(moteKey)
   const field = resolveBackdropField(fieldKey)
   const cost = backdropTriangleCost(mote, field, VALUES.rendering.starFieldCount)
@@ -150,20 +150,20 @@ export function BackdropPanel() {
             <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
               {T.backdropMoteSize}
             </span>
-            {MOTE_MAGNIFICATIONS.map((preset) => (
+            {BACKDROP_MOTE_SIZES.map((size) => (
               <button
-                key={preset}
+                key={size}
                 type="button"
-                onClick={() => setMagnification(preset)}
-                aria-pressed={preset === magnification}
+                onClick={() => setMoteSize(size)}
+                aria-pressed={size === moteSize}
                 className={cx(
                   'inline-flex size-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors',
-                  preset === magnification
+                  size === moteSize
                     ? 'border-primary text-text'
                     : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
                 )}
               >
-                {preset}×
+                {size}×
               </button>
             ))}
           </div>
@@ -172,10 +172,10 @@ export function BackdropPanel() {
         <div className="aspect-4/3 overflow-hidden rounded-2xl border border-border bg-bg">
           <BackdropStage
             mote={mote.key}
+            moteSize={moteSize}
             field={field.key}
             sky={sky}
             animate={animate}
-            magnification={magnification}
           />
         </div>
 
@@ -187,8 +187,8 @@ export function BackdropPanel() {
         <dl className="grid gap-2 text-xs text-text-subtle sm:grid-cols-4">
           {[
             { term: T.backdropAxisForm, detail: mote.form },
-            { term: T.backdropAxisSize, detail: `${mote.size}×` },
             { term: T.backdropAxisTone, detail: mote.tone },
+            { term: T.backdropAxisSize, detail: `${moteSize}×` },
             { term: T.backdropCost, detail: T.backdropCostValue(cost) },
             { term: T.backdropAxisScatter, detail: field.scatter },
             { term: T.backdropAxisDensity, detail: `${field.density}×` },
@@ -208,24 +208,6 @@ export function BackdropPanel() {
         {overCeiling ? (
           <p className="text-xs text-warning">{T.backdropCostOver(BACKDROP_TRIANGLE_CEILING)}</p>
         ) : null}
-
-        {/* The named pairs, last: they are shortcuts into the product above rather than a third axis,
-            so the two catalogues stay the thing being reviewed. */}
-        <BenchRow
-          title={T.backdropPresets}
-          items={BACKDROP_THEMES}
-          activeKey={
-            BACKDROP_THEMES.find((theme) => theme.mote === mote.key && theme.field === field.key)
-              ?.key ?? ''
-          }
-          onPick={(key) => {
-            const preset = BACKDROP_THEMES.find((theme) => theme.key === key)
-            if (!preset) return
-            setMoteKey(preset.mote)
-            setFieldKey(preset.field)
-          }}
-          blurbOf={(item) => item.blurb}
-        />
       </div>
     </SkinProvider>
   )
@@ -233,16 +215,16 @@ export function BackdropPanel() {
 
 function BackdropStage({
   mote,
+  moteSize,
   field,
   sky,
   animate,
-  magnification,
 }: {
   mote: BackdropMoteKey
+  moteSize: BackdropMoteSize
   field: BackdropFieldKey
   sky: boolean
   animate: boolean
-  magnification: number
 }) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
@@ -261,7 +243,7 @@ function BackdropStage({
       clearColor={skin.sky.night}
     >
       {sky ? <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={!moving} /> : null}
-      <StarField mote={mote} field={field} sizeScale={magnification} reducedMotion={!moving} />
+      <StarField mote={mote} moteSize={moteSize} field={field} reducedMotion={!moving} />
       <ReferenceStars memories={scene.memories} positions={positions} animate={moving} />
       <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />

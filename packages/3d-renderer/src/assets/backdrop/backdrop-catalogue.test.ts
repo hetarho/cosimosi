@@ -4,13 +4,7 @@ import * as THREE from 'three/webgpu'
 
 import { VALUES } from '@cosimosi/config'
 
-import {
-  BACKDROP_THEMES,
-  BACKDROP_TRIANGLE_CEILING,
-  DEFAULT_BACKDROP_THEME,
-  backdropTriangleCost,
-  resolveBackdropTheme,
-} from './backdrop-themes.ts'
+import { BACKDROP_TRIANGLE_CEILING, backdropTriangleCost } from './backdrop-cost.ts'
 import {
   BACKDROP_FIELDS,
   DEFAULT_BACKDROP_FIELD,
@@ -20,7 +14,9 @@ import {
 import { backdropBrightness, backdropTint } from './backdrop-life.ts'
 import {
   BACKDROP_MOTES,
+  BACKDROP_MOTE_SIZES,
   DEFAULT_BACKDROP_MOTE,
+  DEFAULT_BACKDROP_MOTE_SIZE,
   backdropMoteFormTriangles,
   backdropMoteTriangles,
   createBackdropMoteForm,
@@ -49,13 +45,11 @@ describe('backdrop mote catalogue', () => {
     }
   })
 
-  // Below the floor the field is invisible; above the ceiling the decoration starts competing with the
-  // universe's own stars, which is the one thing the backdrop may never do.
-  it('keeps every mote inside the size band a particle reads in', () => {
-    for (const mote of BACKDROP_MOTES) {
-      expect(mote.size, mote.key).toBeGreaterThanOrEqual(0.25)
-      expect(mote.size, mote.key).toBeLessThanOrEqual(2.5)
-    }
+  // Size is chosen over the whole catalogue rather than authored per row, so a row must be a look on
+  // its own: no two may share a form AND a colour, or the picker offers the same particle twice.
+  it('keeps every row distinct in its form or its colour', () => {
+    const looks = BACKDROP_MOTES.map((mote) => `${mote.form}:${mote.tone}`)
+    expect(new Set(looks).size).toBe(looks.length)
   })
 
   it('stays inside the mote radius, so one form cannot quietly outsize another', () => {
@@ -63,6 +57,7 @@ describe('backdrop mote catalogue', () => {
       const { geometry } = createBackdropMoteForm(mote.form)
       geometry.computeBoundingSphere()
       // The directional forms reach further along their long axis by design; nothing reaches past it.
+      // Drawing larger is an instance scale, so this bound holds at every chosen size.
       expect(geometry.boundingSphere?.radius, mote.form).toBeLessThanOrEqual(0.25)
       geometry.dispose()
     }
@@ -72,10 +67,16 @@ describe('backdrop mote catalogue', () => {
     expect(resolveBackdropMote('no-such-mote').key).toBe(DEFAULT_BACKDROP_MOTE)
   })
 
-  it('leaves the default mote plain: the round dot at its own size', () => {
-    const mote = resolveBackdropMote(DEFAULT_BACKDROP_MOTE)
-    expect(mote.form).toBe('grain')
-    expect(mote.size).toBe(1)
+  it('leaves the default mote plain: the round dot at its geometry size', () => {
+    expect(resolveBackdropMote(DEFAULT_BACKDROP_MOTE).form).toBe('grain')
+    expect(DEFAULT_BACKDROP_MOTE_SIZE).toBe(1)
+  })
+
+  // Whole steps, because the difference between 1.6 and 1.8 is not a decision anyone can make by
+  // looking — and the first step has to be the geometry's own size or nothing renders as authored.
+  it('offers whole size steps, starting at the geometry size', () => {
+    expect([...BACKDROP_MOTE_SIZES]).toEqual([1, 2, 3, 4])
+    for (const size of BACKDROP_MOTE_SIZES) expect(Number.isInteger(size)).toBe(true)
   })
 })
 
@@ -152,65 +153,47 @@ describe('backdrop field catalogue', () => {
   })
 })
 
-// A named theme is one row from each catalogue and nothing else — the pairs a product surface may
-// wear, which is why the triangle ceiling binds here rather than over the free product of the two.
-describe('backdrop themes', () => {
-  it('keeps every theme key unique', () => {
-    const keys = BACKDROP_THEMES.map((theme) => theme.key)
-    expect(new Set(keys).size).toBe(keys.length)
-  })
-
-  it('names a real mote and a real field in every pair', () => {
-    for (const theme of BACKDROP_THEMES) {
-      expect(resolveBackdropMote(theme.mote).key, theme.key).toBe(theme.mote)
-      expect(resolveBackdropField(theme.field).key, theme.key).toBe(theme.field)
-    }
+// Cost is the one fact that belongs to a PAIR: the field decides how many motes there are, the mote
+// decides how many triangles one of them is, and only their product is a number.
+describe('backdrop cost', () => {
+  it('counts a pair as how many motes the field places times one mote of that form', () => {
+    const mote = resolveBackdropMote(DEFAULT_BACKDROP_MOTE)
+    const field = resolveBackdropField(DEFAULT_BACKDROP_FIELD)
+    expect(backdropTriangleCost(mote, field, 100)).toBe(
+      backdropMoteCount(field, 100) * backdropMoteTriangles(mote),
+    )
   })
 
   // The backdrop is paid on every surface that mounts a universe, every frame, whether or not a single
-  // memory exists — a pair that reaches for density AND topology has to fail here rather than ship an
-  // invisible per-frame cliff.
-  it('keeps every named pair under the fixed triangle ceiling at the web count', () => {
-    for (const theme of BACKDROP_THEMES) {
-      const cost = backdropTriangleCost(
-        resolveBackdropMote(theme.mote),
-        resolveBackdropField(theme.field),
-        WEB_COUNT,
-      )
-      expect(cost, `${theme.key} draws ${cost} triangles`).toBeLessThanOrEqual(
-        BACKDROP_TRIANGLE_CEILING,
-      )
-    }
+  // memory exists. The pair a surface renders when nothing has been chosen is the one that must fit;
+  // a bench combination that exceeds the ceiling is a reported number, not a failure.
+  it('keeps the pair an undecorated universe wears under the fixed triangle ceiling', () => {
+    const cost = backdropTriangleCost(
+      resolveBackdropMote(DEFAULT_BACKDROP_MOTE),
+      resolveBackdropField(DEFAULT_BACKDROP_FIELD),
+      WEB_COUNT,
+    )
+    expect(cost, `the default pair draws ${cost} triangles`).toBeLessThanOrEqual(
+      BACKDROP_TRIANGLE_CEILING,
+    )
   })
 
-  it('spends nothing on the pair with no field', () => {
-    const empty = resolveBackdropTheme('void')
-    expect(
-      backdropTriangleCost(
-        resolveBackdropMote(empty.mote),
-        resolveBackdropField(empty.field),
-        WEB_COUNT,
-      ),
-    ).toBe(0)
+  it('spends nothing on the field that has no motes', () => {
+    const cost = backdropTriangleCost(
+      resolveBackdropMote(DEFAULT_BACKDROP_MOTE),
+      resolveBackdropField('empty'),
+      WEB_COUNT,
+    )
+    expect(cost).toBe(0)
   })
 
-  it('falls back to the default theme for an unknown key', () => {
-    expect(resolveBackdropTheme('no-such-theme').key).toBe(DEFAULT_BACKDROP_THEME)
-  })
-
-  // The shipped backdrop is the reference every other pair is judged against, so it stays the plain
-  // one: the round dot at its own size, full density, its own clock per mote.
-  it('opens on the plain pair', () => {
-    const active = resolveBackdropTheme(DEFAULT_BACKDROP_THEME)
-    expect(active.mote).toBe(DEFAULT_BACKDROP_MOTE)
-    expect(active.field).toBe(DEFAULT_BACKDROP_FIELD)
-  })
-
-  it('counts a pair as how many motes the field places times one mote of that form', () => {
-    const mote = resolveBackdropMote('pinprick')
-    const field = resolveBackdropField('even')
-    expect(backdropTriangleCost(mote, field, 100)).toBe(
-      backdropMoteCount(field, 100) * backdropMoteTriangles(mote),
+  // Drawing a mote larger is an instance scale, not more geometry — so the size picker can never move
+  // the frame's vertex budget, which is what makes it free to offer at all.
+  it('does not change with the size a mote is drawn at', () => {
+    const mote = resolveBackdropMote('orb')
+    const field = resolveBackdropField(DEFAULT_BACKDROP_FIELD)
+    expect(backdropTriangleCost(mote, field, WEB_COUNT)).toBe(
+      backdropMoteCount(field, WEB_COUNT) * backdropMoteFormTriangles(mote.form),
     )
   })
 })

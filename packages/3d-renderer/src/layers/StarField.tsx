@@ -6,40 +6,35 @@ import * as THREE from 'three/webgpu'
 import { VALUES } from '@cosimosi/config'
 
 import {
-  DEFAULT_BACKDROP_THEME,
-  resolveBackdropTheme,
-  type BackdropThemeKey,
-} from '../assets/backdrop/backdrop-themes.ts'
-import {
+  DEFAULT_BACKDROP_FIELD,
   backdropMoteCount,
   resolveBackdropField,
   type BackdropFieldKey,
 } from '../assets/backdrop/backdrop-fields.ts'
 import { backdropBrightness, backdropTint } from '../assets/backdrop/backdrop-life.ts'
 import {
+  DEFAULT_BACKDROP_MOTE,
+  DEFAULT_BACKDROP_MOTE_SIZE,
   createBackdropMoteForm,
   resolveBackdropMote,
   type BackdropMoteKey,
+  type BackdropMoteSize,
 } from '../assets/backdrop/backdrop-motes.ts'
 import { scatterBackdrop } from '../assets/backdrop/backdrop-scatter.ts'
 import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 
 export interface StarFieldProps {
-  /** Which named backdrop the field wears — a mote poured into a field. */
-  readonly theme?: BackdropThemeKey
-  /** Overrides the theme's particle: form, size and colour. */
+  /** Which particle: what it is drawn as, and what colour it is. */
   readonly mote?: BackdropMoteKey
-  /** Overrides the theme's space: where the motes sit, how many, and how they twinkle. */
+  /** How big that particle is drawn, as a whole multiple of its own geometry. */
+  readonly moteSize?: BackdropMoteSize
+  /** Which space: where the motes sit, how many, and how they twinkle. */
   readonly field?: BackdropFieldKey
   /** Number of background motes BEFORE the field's density; defaults to the web density. */
   readonly count?: number
   /** Outer shell radius — the field fills the volume out to here. Bound by the backdrop nesting
    *  invariant (camera zoom-out limit < this < sky sphere < far plane), not by taste. */
   readonly radius?: number
-  /** Bench magnification over the mote's own size. A field is tuned to be seen from inside a
-   *  universe, where one mote is a few pixels; a review surface reads it at arm's length and needs to
-   *  enlarge the motes to judge a FORM by. Production leaves this at 1. */
-  readonly sizeScale?: number
   /** Freeze the field's motion to a static frame. */
   readonly reducedMotion?: boolean
 }
@@ -60,25 +55,23 @@ export const STAR_FIELD_PROFILE = {
 export type StarFieldProfile = (typeof STAR_FIELD_PROFILE)[keyof typeof STAR_FIELD_PROFILE]
 
 // Shared R3F layer: the decorative field behind everything — the universe backdrop every emotion sky
-// wears. It carries no domain data at all, so what it looks like is free: a mote (form · size ·
-// colour) is poured into a field (place · density · twinkle) and the whole thing is rebuilt from the
-// pair. Unlit on purpose — these read as light points, not as objects the scene lights.
+// wears. It carries no domain data at all, so what it looks like is free: a mote (form · colour) is
+// poured into a field (place · density · twinkle) at a chosen size, and the whole thing is rebuilt
+// from those three. Unlit on purpose — these read as light points, not as objects the scene lights.
 //
 // The shell reaches past the camera's zoom-out limit so the field still wraps the view from the
 // farthest framing instead of shrinking into a clump at screen centre.
 export function StarField({
-  theme = DEFAULT_BACKDROP_THEME,
-  mote,
-  field,
+  mote = DEFAULT_BACKDROP_MOTE,
+  moteSize = DEFAULT_BACKDROP_MOTE_SIZE,
+  field = DEFAULT_BACKDROP_FIELD,
   count = STAR_FIELD_PROFILE.web.count,
   radius = STAR_FIELD_PROFILE.web.radius,
-  sizeScale = 1,
   reducedMotion = false,
 }: StarFieldProps) {
   const ref = useRef<THREE.InstancedMesh>(null)
-  const preset = resolveBackdropTheme(theme)
-  const activeMote = resolveBackdropMote(mote ?? preset.mote)
-  const activeField = resolveBackdropField(field ?? preset.field)
+  const activeMote = resolveBackdropMote(mote)
+  const activeField = resolveBackdropField(field)
   const moteCount = backdropMoteCount(activeField, count)
   const form = useMemo(() => createBackdropMoteForm(activeMote.form), [activeMote.form])
   const time = useMemo(() => uniform(0), [])
@@ -114,13 +107,8 @@ export function StarField({
   ])
 
   const placed = useMemo(
-    () =>
-      scatterBackdrop(activeField.scatter, {
-        count: moteCount,
-        radius,
-        sizeScale: activeMote.size * sizeScale,
-      }),
-    [activeField.scatter, activeMote.size, moteCount, radius, sizeScale],
+    () => scatterBackdrop(activeField.scatter, { count: moteCount, radius, sizeScale: moteSize }),
+    [activeField.scatter, moteCount, moteSize, radius],
   )
 
   useEffect(() => {
