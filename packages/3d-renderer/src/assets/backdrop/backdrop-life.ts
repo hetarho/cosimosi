@@ -4,11 +4,16 @@ import * as THREE from 'three/webgpu'
 import { iridescent } from '../../shader-art/finish.ts'
 import { asFloatNode, asVec3Node } from '../../tsl.ts'
 
-// LIFE and TONE — the third and fourth axes a backdrop theme composes (scatter · mote · life · tone).
+// LIFE and TONE — the graphs the two backdrop catalogues draw from.
 //
-// LIFE is how a mote's brightness moves, TONE is what colour that brightness is spent on. They are
-// separate axes because the two questions are independent: a field can sparkle hard in one colour or
-// breathe slowly through several, and every combination is a look someone might want.
+// LIFE is how a mote's brightness moves and belongs to the FIELD (a field decides where the motes sit,
+// how many there are and how they twinkle); TONE is what colour that brightness is spent on and
+// belongs to the MOTE (a mote is one particle's form, size and colour). They are separate because the
+// two questions are independent: a field can sparkle hard in one colour or breathe slowly through
+// several, and every combination is a look someone might want.
+//
+// A field also carries two scalars over its life mode — how fast it twinkles and how far — so "barely
+// twinkling" and "twinkling frantically" are rows in the field catalogue rather than six more modes.
 //
 // Both read PER-MOTE numbers from a hash of the instance id rather than from a CPU buffer, because a
 // material never sees an instance — there is one graph for the whole field, and the only thing that
@@ -16,9 +21,17 @@ import { asFloatNode, asVec3Node } from '../../tsl.ts'
 // independent draw, which is what keeps a field from pulsing as one organism.
 
 export type BackdropLifeKey = 'shimmer' | 'blitz' | 'calm' | 'still' | 'wave' | 'strobe'
-export type BackdropToneKey = 'starlight' | 'ember' | 'ice' | 'ash' | 'duotone' | 'spectrum'
+export type BackdropToneKey =
+  'starlight' | 'ember' | 'ice' | 'ash' | 'rose' | 'violet' | 'duotone' | 'spectrum'
 
-export interface BackdropFieldInputs {
+/** How a field bends its life mode: `rate` scales the mode's own clock, `depth` fades the swing back
+ *  toward `still` — so `depth: 0` holds every mote at its own steady brightness. */
+export interface BackdropTwinkle {
+  readonly rate?: number
+  readonly depth?: number
+}
+
+export interface BackdropGraphInputs {
   /** Seconds, host-timed — frozen to one still frame under reduced motion. */
   readonly time: unknown
   /** The mote's world position over the shell radius, so it lies inside the unit ball. */
@@ -42,7 +55,7 @@ function graded(pulse: unknown, floorGlow: unknown, dim: unknown) {
     .mul(asFloatNode(dim))
 }
 
-const LIFE_BUILDERS: Record<BackdropLifeKey, (inputs: BackdropFieldInputs) => unknown> = {
+const LIFE_BUILDERS: Record<BackdropLifeKey, (inputs: BackdropGraphInputs) => unknown> = {
   // Starlight: every mote on its own phase, rate, pulse shape and steady glow, so nothing sweeps
   // through the field in order. The ranges stay moderate on purpose — a steep exponent spends most
   // of each cycle near the floor, and the field reads as dead dots instead of a shimmering sky.
@@ -113,6 +126,8 @@ const TONE_COLORS = {
   ember: 0xffb478,
   ice: 0xdaf6ff,
   ash: 0x9aa0b0,
+  rose: 0xffb2d0,
+  violet: 0xc0a6ff,
   core: 0xffd9a0,
   rim: 0x7fa8ff,
 } as const
@@ -122,7 +137,7 @@ function toneColor(hex: number) {
   return vec3(color.r, color.g, color.b)
 }
 
-const TONE_BUILDERS: Record<BackdropToneKey, (inputs: BackdropFieldInputs) => unknown> = {
+const TONE_BUILDERS: Record<BackdropToneKey, (inputs: BackdropGraphInputs) => unknown> = {
   // Cool white — the colour a sky of distant stars already is, and the one that leaves the emotion
   // sky behind it as the only source of hue in frame.
   starlight: () => toneColor(TONE_COLORS.starlight),
@@ -136,6 +151,14 @@ const TONE_BUILDERS: Record<BackdropToneKey, (inputs: BackdropFieldInputs) => un
   // Grey, and dim with it: the field is present but spends almost nothing, so anything coloured in
   // frame belongs to the universe.
   ash: () => toneColor(TONE_COLORS.ash),
+
+  // Warm pink. The one tone that is unmistakably a CHOICE rather than a reading of a real sky, which
+  // is what makes it worth having: a field can be decorative without borrowing an astronomy photo.
+  rose: () => toneColor(TONE_COLORS.rose),
+
+  // Cool violet — the far end of the same choice, and the tone that sits closest to the night without
+  // disappearing into it.
+  violet: () => toneColor(TONE_COLORS.violet),
 
   // Warm at the core, cool at the rim — the depth cue a galaxy is read by. Distance is the mix
   // factor, so the gradient is a property of the SPACE rather than of any mote.
@@ -152,12 +175,27 @@ const TONE_BUILDERS: Record<BackdropToneKey, (inputs: BackdropFieldInputs) => un
     iridescent(moteHash(7.7).mul(TAU), { baseHue: 0.58, range: 0.42, sat: 0.38, val: 1 }),
 }
 
-/** The brightness graph for one life mode — a float node, roughly 0..1. */
-export function backdropBrightness(key: BackdropLifeKey, inputs: BackdropFieldInputs) {
-  return asFloatNode((LIFE_BUILDERS[key] ?? LIFE_BUILDERS.shimmer)(inputs))
+/**
+ * The brightness graph for one life mode — a float node, roughly 0..1.
+ *
+ * `rate` scales the mode's clock rather than each mode's own rate draw, so one number speeds up every
+ * mode identically — including `wave`, whose phase comes from place rather than from a per-mote hash.
+ * `depth` fades the result back toward `still`, which is the same graph holding each mote at its own
+ * steady brightness: a shallow twinkle is therefore the SAME field barely moving, not a dimmer one.
+ */
+export function backdropBrightness(
+  key: BackdropLifeKey,
+  inputs: BackdropGraphInputs,
+  { rate = 1, depth = 1 }: BackdropTwinkle = {},
+) {
+  const clocked =
+    rate === 1 ? inputs : { ...inputs, time: asFloatNode(inputs.time).mul(float(rate)) }
+  const pulse = asFloatNode((LIFE_BUILDERS[key] ?? LIFE_BUILDERS.shimmer)(clocked))
+  if (depth >= 1) return pulse
+  return asFloatNode(mix(asFloatNode(LIFE_BUILDERS.still(clocked)), pulse, float(depth)))
 }
 
 /** The tint graph for one tone mode — a linear rgb node. */
-export function backdropTint(key: BackdropToneKey, inputs: BackdropFieldInputs) {
+export function backdropTint(key: BackdropToneKey, inputs: BackdropGraphInputs) {
   return asVec3Node((TONE_BUILDERS[key] ?? TONE_BUILDERS.starlight)(inputs))
 }

@@ -2,10 +2,21 @@ import * as THREE from 'three/webgpu'
 
 import { VALUES } from '@cosimosi/config'
 
-// MOTE — the second of the four axes a backdrop theme composes (scatter · mote · life · tone).
+import type { BackdropToneKey } from './backdrop-life.ts'
+
+// MOTE — one of the two catalogues a backdrop is chosen from (the other is the FIELD).
 //
-// A mote is the geometry ONE decorative particle is drawn as, instanced across the whole field. Two
-// facts shape every form here.
+// A mote is ONE decorative particle: its form, how big it is drawn, and what colour it is. Those three
+// travel together because they are the same question — a large warm ring and a tiny grey pinprick are
+// two looks, not one look with two settings — and separating them would leave a picker whose rows are
+// not things anyone can recognise.
+//
+// Where the motes sit, how many of them there are and how they twinkle belong to the field: a mote
+// knows nothing about the space it is scattered through, which is why either catalogue can grow
+// without touching the other, and why every pair of rows is a backdrop.
+//
+// FORMS come first. A mote is the geometry a particle is drawn as, instanced across the whole field,
+// and two facts shape every form here.
 //
 // The first is size: a mote covers a handful of pixels, so tessellation buys nothing but the
 // silhouette. Every form is authored from the twenty flat faces of an icosahedron downward, and the
@@ -16,8 +27,8 @@ import { VALUES } from '@cosimosi/config'
 // camera looks down its axis. That is a property of the look, not a defect to correct: the field is
 // large and the camera slow, so a themed field reads as a sky of streaks with a few dots in it.
 
-export type BackdropMoteKey =
-  'grain' | 'pixel' | 'shard' | 'needle' | 'streak' | 'jack' | 'plate' | 'bokeh'
+export type BackdropMoteFormKey =
+  'grain' | 'orb' | 'pixel' | 'shard' | 'needle' | 'streak' | 'jack' | 'plate' | 'bokeh'
 
 /** World radius of one mote before the per-instance distance scaling. */
 export const MOTE_RADIUS = 0.18
@@ -28,7 +39,7 @@ const ELONGATION = 2.6
 /** The thin cross-section a directional form keeps, so its width never competes with its length. */
 const FILAMENT_WIDTH = 0.32
 
-export interface BackdropMote {
+export interface BackdropMoteForm {
   /** A fresh geometry — the caller owns disposal. */
   readonly geometry: THREE.BufferGeometry
   /** Forms with no interior need both faces drawn, or half the field vanishes at every angle. */
@@ -59,12 +70,21 @@ function jackGeometry(): THREE.BufferGeometry {
   return geometry
 }
 
-const MOTE_BUILDERS: Record<BackdropMoteKey, () => BackdropMote> = {
+const FORM_BUILDERS: Record<BackdropMoteFormKey, () => BackdropMoteForm> = {
   // The round dot. Twenty faces already give a rounder outline than a UV sphere of five times the
   // triangles, because a UV sphere spends most of them crowding the poles — where a one-pixel dot
   // has none to spare.
   grain: () => ({
     geometry: new THREE.IcosahedronGeometry(MOTE_RADIUS, VALUES.rendering.starFieldMoteDetail),
+    doubleSided: false,
+    additive: false,
+  }),
+
+  // A ball rather than a dot: one subdivision past the grain, which is what it takes for a silhouette
+  // to read as ROUND once a mote is drawn large enough to have a silhouette at all. Four times the
+  // grain's triangles, so it belongs to the fields that place few motes.
+  orb: () => ({
+    geometry: new THREE.IcosahedronGeometry(MOTE_RADIUS, VALUES.rendering.starFieldMoteDetail + 1),
     doubleSided: false,
     additive: false,
   }),
@@ -130,15 +150,198 @@ const MOTE_BUILDERS: Record<BackdropMoteKey, () => BackdropMote> = {
 }
 
 /** Build one mote form. A fresh geometry per call — an instanced layer disposes what it was handed. */
-export function createBackdropMote(key: BackdropMoteKey): BackdropMote {
-  return (MOTE_BUILDERS[key] ?? MOTE_BUILDERS.grain)()
+export function createBackdropMoteForm(key: BackdropMoteFormKey): BackdropMoteForm {
+  return (FORM_BUILDERS[key] ?? FORM_BUILDERS.grain)()
 }
 
 /** How many triangles one mote of this form draws — the number a field's cost is counted in. */
-export function backdropMoteTriangles(key: BackdropMoteKey): number {
-  const { geometry } = createBackdropMote(key)
+export function backdropMoteFormTriangles(key: BackdropMoteFormKey): number {
+  const { geometry } = createBackdropMoteForm(key)
   const index = geometry.getIndex()
   const triangles = (index ? index.count : geometry.getAttribute('position').count) / 3
   geometry.dispose()
   return triangles
+}
+
+export interface BackdropMote {
+  /** Stable id (kebab-case). */
+  readonly key: string
+  /** Display name. */
+  readonly label: string
+  /** One line on what one particle becomes. */
+  readonly blurb: string
+  /** The geometry it is drawn as. */
+  readonly form: BackdropMoteFormKey
+  /** Multiplies the world size every mote is drawn at. */
+  readonly size: number
+  /** The colour its brightness is spent on. */
+  readonly tone: BackdropToneKey
+}
+
+/**
+ * The motes a backdrop can be built from — the first of the two pickers.
+ *
+ * The catalogue spreads across all three of a mote's properties at once, because that is how the eye
+ * reads them: a row is a large violet ring or a tiny grey speck, never "form 4 at size 1.8". Sizes stay
+ * inside roughly a quarter to two and a half, which is the range where a mote still reads as a mote —
+ * below it the field is invisible, above it the particles start competing with the universe's own stars.
+ */
+export const BACKDROP_MOTES = [
+  {
+    key: 'pinprick',
+    label: 'Pinprick',
+    blurb:
+      'The plain distant star: a small cool-white dot, and the field every other row is read against.',
+    form: 'grain',
+    size: 1,
+    tone: 'starlight',
+  },
+  {
+    key: 'orb',
+    label: 'Orb',
+    blurb: 'A round white ball, big enough that the roundness itself is the look.',
+    form: 'orb',
+    size: 2,
+    tone: 'starlight',
+  },
+  {
+    key: 'ash-speck',
+    label: 'Ash Speck',
+    blurb: 'Tiny and grey — present, and spending almost nothing on being seen.',
+    form: 'grain',
+    size: 0.7,
+    tone: 'ash',
+  },
+  {
+    key: 'ice-spark',
+    label: 'Ice Spark',
+    blurb: 'A hard cold-white point, the crispest dot in the set.',
+    form: 'grain',
+    size: 0.9,
+    tone: 'ice',
+  },
+  {
+    key: 'ember-dust',
+    label: 'Ember Dust',
+    blurb: 'Warm amber dust — air between the viewer and the light rather than vacuum.',
+    form: 'grain',
+    size: 1,
+    tone: 'ember',
+  },
+  {
+    key: 'galaxy-dust',
+    label: 'Galaxy Dust',
+    blurb: 'Dust that warms toward the centre and cools at the rim, so distance reads as colour.',
+    form: 'grain',
+    size: 0.8,
+    tone: 'duotone',
+  },
+  {
+    key: 'rose-mote',
+    label: 'Rose Mote',
+    blurb: 'A soft pink dot: decorative on purpose, borrowing nothing from an astronomy photo.',
+    form: 'grain',
+    size: 1.2,
+    tone: 'rose',
+  },
+  {
+    key: 'pixel',
+    label: 'Pixel',
+    blurb: 'A square dot, each in its own hue — the field reads as printed rather than lit.',
+    form: 'pixel',
+    size: 1,
+    tone: 'spectrum',
+  },
+  {
+    key: 'ember-chip',
+    label: 'Ember Chip',
+    blurb: 'A small warm shard catching the light on one facet at a time.',
+    form: 'shard',
+    size: 0.8,
+    tone: 'ember',
+  },
+  {
+    key: 'prism-shard',
+    label: 'Prism Shard',
+    blurb: 'The same angular chip, each one its own colour — the field glints as the camera moves.',
+    form: 'shard',
+    size: 1.1,
+    tone: 'spectrum',
+  },
+  {
+    key: 'ice-needle',
+    label: 'Ice Needle',
+    blurb: 'A long cold sliver standing on end — a sky caught mid-shower.',
+    form: 'needle',
+    size: 2,
+    tone: 'ice',
+  },
+  {
+    key: 'wide-streak',
+    label: 'Wide Streak',
+    blurb: 'Light stretched sideways and drawn long, the way a wide lens stretches a star.',
+    form: 'streak',
+    size: 2.2,
+    tone: 'starlight',
+  },
+  {
+    key: 'diffraction',
+    label: 'Diffraction',
+    blurb: 'A large crossed sparkle — a star seen through a real aperture, arms and all.',
+    form: 'jack',
+    size: 1.6,
+    tone: 'starlight',
+  },
+  {
+    key: 'violet-sparkle',
+    label: 'Violet Sparkle',
+    blurb: 'The same crossed arms in cool violet, drawn larger still.',
+    form: 'jack',
+    size: 2.2,
+    tone: 'violet',
+  },
+  {
+    key: 'snow-fleck',
+    label: 'Snow Fleck',
+    blurb: 'A flat cold fleck that flickers as it turns edge-on.',
+    form: 'plate',
+    size: 0.9,
+    tone: 'ice',
+  },
+  {
+    key: 'ember-bokeh',
+    label: 'Ember Bokeh',
+    blurb: 'A warm out-of-focus ring — a point light a lens could not resolve.',
+    form: 'bokeh',
+    size: 1.2,
+    tone: 'ember',
+  },
+  {
+    key: 'violet-bokeh',
+    label: 'Violet Bokeh',
+    blurb: 'The same ring, wider and violet, hollow enough to see the field through it.',
+    form: 'bokeh',
+    size: 1.8,
+    tone: 'violet',
+  },
+] as const satisfies readonly BackdropMote[]
+
+export type BackdropMoteKey = (typeof BACKDROP_MOTES)[number]['key']
+
+/** The mote an undecorated universe wears. */
+export const DEFAULT_BACKDROP_MOTE: BackdropMoteKey = 'pinprick'
+
+/** Resolve a mote key. An unknown or retired key falls back to the DEFAULT by name, not to whatever
+ *  sits first in the catalogue, so reordering the rows cannot change what a stale key renders as. */
+export function resolveBackdropMote(key: string): (typeof BACKDROP_MOTES)[number] {
+  return (
+    BACKDROP_MOTES.find((mote) => mote.key === key) ??
+    BACKDROP_MOTES.find((mote) => mote.key === DEFAULT_BACKDROP_MOTE) ??
+    BACKDROP_MOTES[0]
+  )
+}
+
+/** How many triangles one mote of this row draws. */
+export function backdropMoteTriangles(mote: BackdropMote): number {
+  return backdropMoteFormTriangles(mote.form)
 }

@@ -59,32 +59,48 @@ export {
   GIST_INSTANCE_TINT,
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
-// The backdrop catalogue: what the decorative field behind the universe looks like as a whole,
-// arranged from the four backdrop axes (scatter · mote · life · tone).
+// The backdrop: a MOTE (one particle's form · size · colour) poured into a FIELD (where they sit, how
+// many, how they twinkle). Two catalogues, and every pair of rows is a backdrop; the named pairs are
+// the themes.
 export {
   BACKDROP_THEMES,
   BACKDROP_TRIANGLE_CEILING,
+  DEFAULT_BACKDROP_PAIR,
   DEFAULT_BACKDROP_THEME,
-  backdropMoteCount,
   backdropTriangleCost,
   resolveBackdropTheme,
   type BackdropTheme,
   type BackdropThemeKey,
 } from './assets/backdrop/backdrop-themes.ts'
 export {
-  backdropBrightness,
-  backdropTint,
-  type BackdropFieldInputs,
-  type BackdropLifeKey,
-  type BackdropToneKey,
-} from './assets/backdrop/backdrop-life.ts'
-export {
+  BACKDROP_MOTES,
+  DEFAULT_BACKDROP_MOTE,
   MOTE_RADIUS,
+  backdropMoteFormTriangles,
   backdropMoteTriangles,
-  createBackdropMote,
+  createBackdropMoteForm,
+  resolveBackdropMote,
   type BackdropMote,
+  type BackdropMoteForm,
+  type BackdropMoteFormKey,
   type BackdropMoteKey,
 } from './assets/backdrop/backdrop-motes.ts'
+export {
+  BACKDROP_FIELDS,
+  DEFAULT_BACKDROP_FIELD,
+  backdropMoteCount,
+  resolveBackdropField,
+  type BackdropField,
+  type BackdropFieldKey,
+} from './assets/backdrop/backdrop-fields.ts'
+export {
+  backdropBrightness,
+  backdropTint,
+  type BackdropGraphInputs,
+  type BackdropLifeKey,
+  type BackdropToneKey,
+  type BackdropTwinkle,
+} from './assets/backdrop/backdrop-life.ts'
 export {
   scatterBackdrop,
   seededRandom,

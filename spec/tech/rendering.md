@@ -117,14 +117,27 @@ distance so every shell keeps roughly one on-screen size, and the twinkle's phas
 are each an independent per-instance hash — a shared rate or a smooth phase walk makes the whole field pulse as one
 travelling wave. Reduced motion freezes both that twinkle clock and the field's slow spin.
 
+**A backdrop is two choices, not one.** `BACKDROP_MOTES` says what one particle is — its form, its size, its
+colour — and `BACKDROP_FIELDS` says what space they fill: where they sit, how many there are, and how their light
+moves (a life mode plus two scalars over it, how fast it twinkles and how far, so "barely twinkling" and
+"frantic" are rows rather than more modes). Neither constrains the other, so the set of possible backdrops is
+their **product**, and `BACKDROP_THEMES` is only the named pairs — it carries no parameter of its own. Anything
+neither catalogue offers goes into an axis, where it multiplies across every pair, rather than into a row.
+
 **Backdrop budget.** Count and radius are `rendering.star_field_count[_mobile]` / `star_field_radius[_mobile]`, taken as
 one bundle (`STAR_FIELD_PROFILE.web` / `.mobile`, re-exported with the latent tessellation as `UNIVERSE_BACKDROP`) so a
 surface can never wear one platform's count with the other's radius. `UniverseSceneLayers` REQUIRES that bundle — a host
 that forgets would silently put the web budget on a phone — and the standalone mobile design/test mounts pass
 `STAR_FIELD_PROFILE.mobile` / `LATENT_FIELD_SEGMENTS.mobile` for the same reason: diagnostics must measure the device's
-budget. Each mote is an `IcosahedronGeometry` at `star_field_mote_detail` (0 → 20 triangles), not a UV sphere: a mote
-covers a handful of pixels, so tessellation buys only the silhouette, and a UV sphere of equal count crowds most of its
-triangles at the poles. A camera-facing impostor quad (2 triangles) was spiked and **rejected** — it renders correctly,
+budget. `BACKDROP_TRIANGLE_CEILING` (128k at the web count) binds the **named pairs** — the only backdrops a product
+surface can wear — and is checked per pair, because cost is `density × the mote's own topology` and neither catalogue
+can promise it alone. The design bench combines the two freely and **reports** the number instead, flagging a pair that
+would exceed the ceiling: a form of four times the topology poured into the densest field is a real answer to "why not
+both", and seeing the cost is how that answer arrives. The plain mote form is an `IcosahedronGeometry` at
+`star_field_mote_detail` (0 → 20 triangles), not a UV sphere: a mote covers a handful of pixels, so tessellation buys
+only the silhouette, and a UV sphere of equal count crowds most of its triangles at the poles. The `orb` form is the one
+that pays a subdivision more (4× the triangles) because it is bought for its ROUNDNESS rather than its silhouette — it is
+drawn large, and at that size facets show — which is exactly why it belongs to the fields that place few motes. A camera-facing impostor quad (2 triangles) was spiked and **rejected** — it renders correctly,
 but spreading each mote's light over a soft additive disc changes the sky's grain and would need the twinkle re-tuned to
 match, and it converts the backdrop from an opaque depth-writing draw into a sorted transparent one. The latent field
 keeps its sphere mote at `latent_star_segments[_mobile]` (web 6, mobile 4).
