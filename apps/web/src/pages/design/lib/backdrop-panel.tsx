@@ -67,7 +67,7 @@ export function BackdropPanel() {
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
-          {BACKDROP_THEMES.map((theme) => {
+          {BACKDROP_THEMES.map((theme, index) => {
             const selected = theme.key === active.key
             return (
               <button
@@ -83,6 +83,7 @@ export function BackdropPanel() {
                     : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
                 )}
               >
+                <span className="mr-1.5 tabular-nums opacity-60">{index + 1}</span>
                 {theme.label}
               </button>
             )

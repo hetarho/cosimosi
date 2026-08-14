@@ -110,7 +110,7 @@ function SkyStage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {SKY_EFFECTS.map((entry) => {
+        {SKY_EFFECTS.map((entry, index) => {
           const selected = entry.key === effectKey
           return (
             <button
@@ -126,6 +126,7 @@ function SkyStage() {
                   : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
               )}
             >
+              <span className="mr-1.5 tabular-nums opacity-60">{index + 1}</span>
               {entry.label}
             </button>
           )

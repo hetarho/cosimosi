@@ -152,7 +152,7 @@ export function StarShapePanel() {
             {m.test_harness_star_shape_control()}
           </h3>
           <div className="flex flex-wrap gap-2">
-            {STAR_SHAPES.map((entry) => {
+            {STAR_SHAPES.map((entry, index) => {
               const copy = STAR_SHAPE_COPY[entry.key]
               return (
                 <button
@@ -168,6 +168,7 @@ export function StarShapePanel() {
                       : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
                   )}
                 >
+                  <span className="mr-1.5 tabular-nums opacity-60">{index + 1}</span>
                   {copy.name()}
                 </button>
               )

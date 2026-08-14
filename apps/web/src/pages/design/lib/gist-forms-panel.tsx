@@ -65,7 +65,7 @@ export function GistShapePanel() {
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
-          {GIST_SHAPES.map((shape) => {
+          {GIST_SHAPES.map((shape, index) => {
             const selected = shape.key === active.key
             return (
               <button
@@ -81,6 +81,7 @@ export function GistShapePanel() {
                     : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
                 )}
               >
+                <span className="mr-1.5 tabular-nums opacity-60">{index + 1}</span>
                 {T.gistForms[shape.key].name}
               </button>
             )
