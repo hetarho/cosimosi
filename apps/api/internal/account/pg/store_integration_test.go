@@ -42,7 +42,7 @@ func TestMoodColorWriteKeepsOnePerUserAndMovesAggregateAtomically(t *testing.T) 
 	userA := base + "-a"
 	userB := base + "-b"
 	userC := base + "-c"
-	cleanupAccountTestRows(t, pool, userA, userB, userC)
+	claimMoodColorAggregate(t, pool, []account.Mood{account.MoodJoy, account.MoodCalm}, userA, userB, userC)
 	store := NewStore(pool.PgxPool())
 	scopeA := mustUserScope(t, userA)
 	scopeB := mustUserScope(t, userB)
@@ -128,7 +128,7 @@ func TestMoodColorStatsBreakAnEqualTieByFirstArrival(t *testing.T) {
 	base := fmt.Sprintf("test-mood-color-tie-%d", time.Now().UnixNano())
 	early := base + "-early"
 	late := base + "-late"
-	cleanupAccountTestRows(t, pool, early, late)
+	claimMoodColorAggregate(t, pool, []account.Mood{account.MoodStress}, early, late)
 	store := NewStore(pool.PgxPool())
 
 	// A violet at bucket 10 and a teal at bucket 5: the later arrival sits at the LOWER bucket
@@ -372,7 +372,18 @@ func openAccountTestPool(t *testing.T) *platformdb.Pool {
 	return pool
 }
 
-func cleanupAccountTestRows(t *testing.T, pool *platformdb.Pool, userIDs ...string) {
+// mood_color_counts carries no user_id, so a test asserting on the aggregate projection cannot
+// scope its expectations to its own users — it can only own the moods it names. Claiming a mood
+// empties its aggregate rows before the test runs and again afterwards, which makes the projection
+// deterministic no matter what a package running beside this one leaves in the shared database.
+// The rule the other side of that bargain: no test outside this file may seed mood_color_counts
+// under a claimed mood.
+func claimMoodColorAggregate(
+	t *testing.T,
+	pool *platformdb.Pool,
+	moods []account.Mood,
+	userIDs ...string,
+) {
 	t.Helper()
 
 	for _, userID := range userIDs {
@@ -380,7 +391,14 @@ func cleanupAccountTestRows(t *testing.T, pool *platformdb.Pool, userIDs ...stri
 			t.Fatal("cleanup requires a user id")
 		}
 	}
-	t.Cleanup(func() {
+	if len(moods) == 0 {
+		t.Fatal("claiming the mood color aggregate requires at least one mood")
+	}
+	claimed := make([]string, 0, len(moods))
+	for _, mood := range moods {
+		claimed = append(claimed, string(mood))
+	}
+	purge := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -389,14 +407,14 @@ func cleanupAccountTestRows(t *testing.T, pool *platformdb.Pool, userIDs ...stri
 				t.Fatalf("cleanup mood_colors failed: %v", err)
 			}
 		}
-		if _, err := pool.PgxPool().Exec(ctx, `
-			DELETE FROM mood_color_counts counts
-			WHERE NOT EXISTS (
-				SELECT 1 FROM mood_colors colors
-				WHERE colors.mood = counts.mood AND colors.color = counts.color
-			)
-		`); err != nil {
+		if _, err := pool.PgxPool().Exec(
+			ctx,
+			"DELETE FROM mood_color_counts WHERE mood = ANY($1::text[])",
+			claimed,
+		); err != nil {
 			t.Fatalf("cleanup mood_color_counts failed: %v", err)
 		}
-	})
+	}
+	purge()
+	t.Cleanup(purge)
 }

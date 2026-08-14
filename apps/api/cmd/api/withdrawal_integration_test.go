@@ -177,10 +177,14 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		keepJobID,
 		now,
 	)
+	// The aggregate has no user column, so the account store's projection tests own whole moods and
+	// empty them around themselves. This row has to sit under a mood none of them claims, or the two
+	// packages — which run side by side against one database — erase each other's fixtures.
+	const aggregateMood = "EMPTINESS"
 	aggregateColor := fmt.Sprintf("#%06x", uint64(time.Now().UnixNano())&0xffffff)
 	if _, err := pool.PgxPool().Exec(ctx, `
 		INSERT INTO mood_color_counts (mood, hue_bucket, color, count)
-		VALUES ('CALM', 5, $1, 7)`, aggregateColor); err != nil {
+		VALUES ($1, 5, $2, 7)`, aggregateMood, aggregateColor); err != nil {
 		t.Fatalf("seed anonymous mood color aggregate failed: %v", err)
 	}
 	t.Cleanup(func() {
@@ -188,7 +192,8 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		defer cleanupCancel()
 		if _, err := pool.PgxPool().Exec(
 			cleanupCtx,
-			"DELETE FROM mood_color_counts WHERE mood = 'CALM' AND color = $1",
+			"DELETE FROM mood_color_counts WHERE mood = $1 AND color = $2",
+			aggregateMood,
 			aggregateColor,
 		); err != nil {
 			t.Errorf("cleanup anonymous mood color aggregate failed: %v", err)
@@ -293,7 +298,8 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 	var anonymousCount int64
 	if err := pool.PgxPool().QueryRow(
 		ctx,
-		"SELECT count FROM mood_color_counts WHERE mood = 'CALM' AND color = $1",
+		"SELECT count FROM mood_color_counts WHERE mood = $1 AND color = $2",
+		aggregateMood,
 		aggregateColor,
 	).Scan(&anonymousCount); err != nil || anonymousCount != 7 {
 		t.Fatalf(
