@@ -11,6 +11,11 @@ data/
 .codex/
 project.inlang/cache/
 
+# Lint-probe fixtures are deliberate rule violations; a live probe workspace or a crashed probe's
+# leftovers must never fail an unrelated scan (quality-gates §Probe hermeticity).
+.probe-*/
+__boundary_probe_*/
+
 # Package-manager lockfiles are owned by the package manager.
 pnpm-lock.yaml
 apps/mobile/ios/Podfile.lock

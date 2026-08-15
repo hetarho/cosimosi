@@ -33,7 +33,10 @@ const crossImportRules = [
 
 export default defineConfig([
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    // The probe-fixture patterns keep gate runs hermetic: a live `.probe-ws-*` workspace under the
+    // app root, or a crashed probe's leftovers, must never fail an unrelated scan (quality-gates
+    // §Probe hermeticity).
+    ignores: ['dist/**', 'node_modules/**', '**/.probe-*/**', '**/__boundary_probe_*/**'],
   },
   {
     // React's own rules, including the React Compiler diagnostics — the compiler surfaces them

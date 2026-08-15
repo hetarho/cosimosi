@@ -4,19 +4,19 @@
 // wired — and this one is the whole of [I13] for the demo: it is what makes an unauthenticated,
 // rule-exempt sandbox unable to reach the real code path rather than merely discouraged from it.
 //
-// It writes throwaway files under apps/web/src/pages/demo, runs ESLint on them, and asserts each
-// forbidden import is reported and each permitted one is not. The files are removed either way.
+// The fixtures live in a hermetic `.probe-ws-*` workspace (see probe-workspace.mjs), mirrored at the
+// demo's own path so the path-scoped block applies, and are linted with the app's real ESLint config.
+// No production scanner root ever contains them, so a concurrent `pnpm lint`/`check` cannot sweep
+// them up (quality-gates §Probe hermeticity).
 //
 //   node scripts/probe-demo-isolation.mjs
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { execFileSync } from 'node:child_process'
+import { join } from 'node:path'
 
 import { fail, ok, repoRoot, section } from './lib.mjs'
+import { createProbeWorkspace, createWorkspaceLinter } from './probe-workspace.mjs'
 
 const webRoot = join(repoRoot, 'apps/web')
-const probeDir = mkdtempSync(join(webRoot, 'src/pages/demo/.probe-'))
 
 // Each case is one line the demo must not be able to write, and the reason it closes something.
 const forbidden = [
@@ -49,46 +49,44 @@ const permitted = [
   "import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'",
 ]
 
-function lintLine(line, index) {
-  const file = join(probeDir, `probe-${index}.ts`)
-  writeFileSync(file, `${line}\n`)
-  try {
-    execFileSync('npx', ['eslint', '--no-ignore', '--format', 'json', relative(webRoot, file)], {
-      cwd: webRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    return []
-  } catch (error) {
-    const stdout = error.stdout ?? ''
-    if (!stdout.trim().startsWith('['))
-      fail(`eslint failed to run on the probe:\n${stdout}\n${error.stderr ?? ''}`)
-    const [result] = JSON.parse(stdout)
-    return (result?.messages ?? []).filter((message) => message.ruleId === 'no-restricted-imports')
-  }
-}
+const fixtureFile = (index) => `src/pages/demo/probe-${index}.ts`
+const restrictedReports = (messages) =>
+  (messages ?? []).filter((message) => message.ruleId === 'no-restricted-imports')
 
 section('demo isolation probe')
-try {
-  const missed = []
-  forbidden.forEach(([line, why], index) => {
-    if (lintLine(line, index).length === 0) missed.push(`${line}  (${why})`)
-  })
 
-  const blocked = []
-  permitted.forEach((line, index) => {
-    if (lintLine(line, forbidden.length + index).length > 0) blocked.push(line)
-  })
+const workspace = createProbeWorkspace(webRoot)
+let failure = ''
+try {
+  forbidden.forEach(([line], index) => workspace.write(fixtureFile(index), `${line}\n`))
+  permitted.forEach((line, index) =>
+    workspace.write(fixtureFile(forbidden.length + index), `${line}\n`),
+  )
+
+  const linter = await createWorkspaceLinter(workspace, webRoot, join(webRoot, 'eslint.config.js'))
+  const reports = await linter.lintFiles(['src/pages/demo/*.ts'])
+
+  const missed = forbidden
+    .filter((_, index) => restrictedReports(reports.get(fixtureFile(index))).length === 0)
+    .map(([line, why]) => `${line}  (${why})`)
+  const blocked = permitted.filter(
+    (line, index) =>
+      restrictedReports(reports.get(fixtureFile(forbidden.length + index))).length > 0,
+  )
 
   if (missed.length) {
-    fail(`the demo block let these through:\n  ${missed.join('\n  ')}`)
+    failure = `the demo block let these through:\n  ${missed.join('\n  ')}`
+  } else if (blocked.length) {
+    failure = `the demo block wrongly refused these:\n  ${blocked.join('\n  ')}`
+  } else {
+    ok(
+      `${forbidden.length} forbidden import(s) refused, ${permitted.length} permitted import(s) allowed`,
+    )
   }
-  if (blocked.length) {
-    fail(`the demo block wrongly refused these:\n  ${blocked.join('\n  ')}`)
-  }
-  ok(
-    `${forbidden.length} forbidden import(s) refused, ${permitted.length} permitted import(s) allowed`,
-  )
+} catch (error) {
+  failure = `eslint failed to run on the probe:\n${error.stack ?? error}`
 } finally {
-  rmSync(probeDir, { recursive: true, force: true })
+  workspace.dispose()
 }
+
+if (failure) fail(failure)

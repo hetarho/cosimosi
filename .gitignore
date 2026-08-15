@@ -27,3 +27,7 @@ project.inlang/cache/
 
 # Claude Code local runtime state (machine/session-specific — never commit)
 .claude/scheduled_tasks.lock
+
+# Lint-probe fixture trees (transient; a crashed probe may leave one behind)
+.probe-*/
+__boundary_probe_*/

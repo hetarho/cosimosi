@@ -97,9 +97,14 @@ const GENERIC_SEGMENTS = new Set([
   'misc',
 ])
 
+// Lint-probe fixture trees are deliberate rule violations; a crashed probe's leftovers must never
+// fail an unrelated scan (quality-gates §Probe hermeticity).
+const PROBE_FIXTURE_DIR = /^(\.probe-|__boundary_probe_)/
+
 function walkFiles(dir) {
   if (!existsSync(dir)) return []
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory() && PROBE_FIXTURE_DIR.test(entry.name)) return []
     const path = join(dir, entry.name)
     return entry.isDirectory() ? walkFiles(path) : [path]
   })
@@ -108,7 +113,7 @@ function walkFiles(dir) {
 function walkDirectories(dir) {
   if (!existsSync(dir)) return []
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    if (!entry.isDirectory()) return []
+    if (!entry.isDirectory() || PROBE_FIXTURE_DIR.test(entry.name)) return []
     const path = join(dir, entry.name)
     return [path, ...walkDirectories(path)]
   })

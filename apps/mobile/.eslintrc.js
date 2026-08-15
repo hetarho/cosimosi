@@ -29,6 +29,10 @@ module.exports = {
   root: true,
   extends: '@react-native',
   plugins: ['boundaries'],
+  // The probe-fixture patterns keep gate runs hermetic: a live `.probe-ws-*` workspace under the
+  // app root, or a crashed probe's leftovers, must never fail an unrelated scan (quality-gates
+  // §Probe hermeticity).
+  ignorePatterns: ['**/.probe-*/**', '**/__boundary_probe_*/**'],
   settings: {
     'boundaries/elements': [
       { type: 'app', pattern: 'src/app/**/*', mode: 'full' },

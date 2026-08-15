@@ -90,7 +90,17 @@ const COMPILER_MODEL_DEFERRED = {
 }
 
 export default defineConfig([
-  { ignores: ['**/node_modules/**', '**/dist/**', ...GENERATED] },
+  // The probe-fixture patterns keep gate runs hermetic: a crashed lint probe's leftovers must never
+  // fail an unrelated scan (quality-gates §Probe hermeticity).
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.probe-*/**',
+      '**/__boundary_probe_*/**',
+      ...GENERATED,
+    ],
+  },
   {
     files: ['packages/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

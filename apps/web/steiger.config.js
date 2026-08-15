@@ -4,7 +4,9 @@ import fsd from '@feature-sliced/steiger-plugin'
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    // The probe-fixture patterns keep gate runs hermetic: a crashed lint probe's leftovers must
+    // never fail an unrelated scan (quality-gates §Probe hermeticity).
+    ignores: ['**/*.test.ts', '**/*.test.tsx', '**/.probe-*/**', '**/__boundary_probe_*/**'],
   },
   {
     // The universe scene scaffold. The domain-mirror stores, rendering-projection logic, and the
