@@ -132,7 +132,7 @@ func TestDecorateBuysOnlyTheUnownedAndAppliesEveryKind(t *testing.T) {
 	if len(h.gate.spends) != 1 || h.gate.spends[0].amount != wantSpent {
 		t.Errorf("spends = %+v, want one debit of %d", h.gate.spends, wantSpent)
 	}
-	if len(applied) != 2 {
+	if len(applied) != len(store.AllOrnamentKinds()) {
 		t.Fatalf("applied = %+v, want one entry per kind", applied)
 	}
 	if len(h.repo.ownerships[h.scope.UserID()]) != 2 {
@@ -213,7 +213,7 @@ func TestDecorateFreeSelectionCostsNothingAndKeepsAbsenceAsTheDefault(t *testing
 	if spent != 0 || len(h.repo.selections[h.scope.UserID()]) != 0 {
 		t.Errorf("revert = spent %d, rows %+v, want free and rowless", spent, h.repo.selections[h.scope.UserID()])
 	}
-	if len(applied) != 2 {
+	if len(applied) != len(store.AllOrnamentKinds()) {
 		t.Errorf("revert answered %+v, want one default entry per kind", applied)
 	}
 	// The bought ornament stays owned — reverting a look never gives money back ([P9][I1]).

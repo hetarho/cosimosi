@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_ORNAMENT_IDS, type Ornament } from './ornament.ts'
+import type { OrnamentIDsByKind } from './ornament-preview-store.ts'
 import { ornamentCost, saveVerdict, unownedTotal } from './save-eligibility.ts'
 
 function row(partial: Partial<Ornament> & Pick<Ornament, 'id' | 'kind'>): Ornament {
@@ -39,10 +40,14 @@ const CATALOG: readonly Ornament[] = [
   row({ id: 'star_shader.geode', kind: 'STAR_SHADER', price: 600 }),
 ]
 
-const CONFIRMED = {
-  BACKGROUND: DEFAULT_ORNAMENT_IDS.BACKGROUND,
-  STAR_SHADER: DEFAULT_ORNAMENT_IDS.STAR_SHADER,
-} as const
+/** A whole selection: every kind at its default, with the named ones overridden. Written this way
+ *  rather than as a literal per case because a selection is exhaustive by type — spelling five kinds
+ *  into a dozen literals would make every future kind a test-wide edit and say nothing extra. */
+function preview(overrides: Partial<OrnamentIDsByKind> = {}): OrnamentIDsByKind {
+  return { ...DEFAULT_ORNAMENT_IDS, ...overrides }
+}
+
+const CONFIRMED = preview()
 
 describe('ornament cost', () => {
   // Ownership shows up as the ABSENCE of a price, so there is no boolean for a badge to render.
@@ -56,18 +61,13 @@ describe('ornament cost', () => {
 describe('unowned total', () => {
   it('counts only the previewed rows that are unowned and priced', () => {
     expect(
-      unownedTotal(CATALOG, {
-        BACKGROUND: 'background.lightfall',
-        STAR_SHADER: 'star_shader.geode',
-      }),
+      unownedTotal(
+        CATALOG,
+        preview({ BACKGROUND: 'background.lightfall', STAR_SHADER: 'star_shader.geode' }),
+      ),
     ).toBe(900)
     // Owned and free rows contribute nothing — wearing something you own is not a transaction.
-    expect(
-      unownedTotal(CATALOG, {
-        BACKGROUND: 'background.grainstorm',
-        STAR_SHADER: DEFAULT_ORNAMENT_IDS.STAR_SHADER,
-      }),
-    ).toBe(0)
+    expect(unownedTotal(CATALOG, preview({ BACKGROUND: 'background.grainstorm' }))).toBe(0)
   })
 })
 
@@ -90,7 +90,7 @@ describe('save verdict', () => {
     expect(
       saveVerdict({
         catalog: CATALOG,
-        previewed: { ...CONFIRMED, BACKGROUND: 'background.grainstorm' },
+        previewed: preview({ BACKGROUND: 'background.grainstorm' }),
         confirmed: CONFIRMED,
         generalBalance: 0,
         balanceLoaded: true,
@@ -102,7 +102,10 @@ describe('save verdict', () => {
     expect(
       saveVerdict({
         catalog: CATALOG,
-        previewed: { BACKGROUND: 'background.lightfall', STAR_SHADER: 'star_shader.geode' },
+        previewed: preview({
+          BACKGROUND: 'background.lightfall',
+          STAR_SHADER: 'star_shader.geode',
+        }),
         confirmed: CONFIRMED,
         generalBalance: 900,
         balanceLoaded: true,
@@ -116,7 +119,10 @@ describe('save verdict', () => {
     expect(
       saveVerdict({
         catalog: CATALOG,
-        previewed: { BACKGROUND: 'background.lightfall', STAR_SHADER: 'star_shader.geode' },
+        previewed: preview({
+          BACKGROUND: 'background.lightfall',
+          STAR_SHADER: 'star_shader.geode',
+        }),
         confirmed: CONFIRMED,
         generalBalance: 300,
         balanceLoaded: true,
@@ -132,7 +138,10 @@ describe('save verdict', () => {
     expect(
       saveVerdict({
         catalog: CATALOG,
-        previewed: { BACKGROUND: 'background.lightfall', STAR_SHADER: 'star_shader.geode' },
+        previewed: preview({
+          BACKGROUND: 'background.lightfall',
+          STAR_SHADER: 'star_shader.geode',
+        }),
         confirmed: CONFIRMED,
         generalBalance: 0,
         balanceLoaded: false,
@@ -144,7 +153,7 @@ describe('save verdict', () => {
     expect(
       saveVerdict({
         catalog: CATALOG,
-        previewed: { ...CONFIRMED, BACKGROUND: 'background.floating-lines' },
+        previewed: preview({ BACKGROUND: 'background.floating-lines' }),
         confirmed: CONFIRMED,
         generalBalance: 10_000,
         balanceLoaded: true,

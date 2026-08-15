@@ -30,14 +30,21 @@ service StoreService {
   rpc Decorate(DecorateRequest) returns (DecorateResponse);
 }
 
-// The surfaces decoration opens. Closed at two — a sky, and the body shape a memory is shown as.
-// They are the staging
-// layer, and nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
+// The surfaces decoration opens. Closed at five — a sky, the body shape a memory is shown as, the
+// body shape its summary is shown as, and the two halves of the decorative dust between them: one
+// speck's look, and the space the specks are scattered through. They are the staging layer, and
+// nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
 // expressible as a kind at all.
+//
+// Every name is the SURFACE, never the renderer's own noun for the look that fills it: the wire
+// says which surface is being dressed and carries an opaque id for the rest.
 enum OrnamentKind {
   ORNAMENT_KIND_UNSPECIFIED = 0;
   ORNAMENT_KIND_BACKGROUND = 1;
   ORNAMENT_KIND_STAR_SHADER = 2;
+  ORNAMENT_KIND_GIST_SHADER = 3;
+  ORNAMENT_KIND_MOTE = 4;
+  ORNAMENT_KIND_MOTE_FIELD = 5;
 }
 
 // How a row is come by. FREE is owned by everyone with no ownership row anywhere; ACHIEVEMENT is
@@ -87,6 +94,9 @@ message GetSelectionResponse {
 message DecorateRequest {
   string background_ornament_id = 1;
   string star_shader_ornament_id = 2;
+  string gist_shader_ornament_id = 3;
+  string mote_ornament_id = 4;
+  string mote_field_ornament_id = 5;
 }
 
 message DecorateResponse {

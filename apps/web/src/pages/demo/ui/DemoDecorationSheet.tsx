@@ -5,7 +5,11 @@ import { SequenceAnchor } from '../../../features/highlight-next-control/index.t
 import { m } from '../../../shared/i18n/index.ts'
 import type { DemoAnchor } from '../model/anchors.ts'
 import { isDemoAnchorInteractive, type DemoRunPhase } from '../model/run-machine.ts'
-import { ornamentRendererKey, type DemoTaste } from '../model/use-demo-run.ts'
+import {
+  ornamentRendererKey,
+  type DemoTaste,
+  type DemoTasteOrnament,
+} from '../model/use-demo-run.ts'
 
 export interface DemoDecorationSheetProps {
   readonly open: boolean
@@ -15,11 +19,35 @@ export interface DemoDecorationSheetProps {
    *  surface a tutorial step is staged inside stays inert until the step's own work is done, exactly
    *  as the writing sheet's dismiss does. */
   readonly canClose: boolean
-  readonly onApplyBackground: (rendererKey: string | null) => void
-  readonly onApplyBodyShape: (rendererKey: string | null) => void
+  /** One handler for every group rather than one per kind: the group list is derived from the
+   *  catalog below, so a kind added there must not also need a prop added here. */
+  readonly onApplyOrnament: (surface: DemoTasteOrnament, rendererKey: string | null) => void
   readonly onApplyPalette: (on: boolean) => void
   readonly onClose: () => void
 }
+
+/**
+ * The groups, in the panel's order: which kind, which id prefix its rows carry, and which taste
+ * field the choice lands in.
+ *
+ * The kinds are named here rather than read off `ORNAMENT_GROUP_TITLES`'s keys because each one has
+ * to be bound to a taste field anyway, and a derived list with a hand-kept binding beside it would
+ * be the same table written twice. The `satisfies` is what keeps it honest: a kind the shipped panel
+ * groups by and this list forgot is a type error at the title lookup, not a silently missing group.
+ */
+const DEMO_GROUPS = [
+  { kind: 'BACKGROUND', prefix: 'background.', surface: 'background' },
+  { kind: 'STAR_SHADER', prefix: 'star_shader.', surface: 'bodyShape' },
+  { kind: 'GIST_SHADER', prefix: 'gist_shader.', surface: 'summaryShape' },
+  // `mote.` and `mote_field.` are distinct prefixes precisely because the dot is part of them: a
+  // mote-field id never starts with the mote's prefix, so the two filters cannot overlap.
+  { kind: 'MOTE', prefix: 'mote.', surface: 'mote' },
+  { kind: 'MOTE_FIELD', prefix: 'mote_field.', surface: 'moteField' },
+] as const satisfies readonly {
+  readonly kind: keyof typeof ORNAMENT_GROUP_TITLES
+  readonly prefix: string
+  readonly surface: DemoTasteOrnament
+}[]
 
 // pages/demo ui: 우주 꾸미기, in the PRODUCT's shapes — the same Sheet, the same group headings,
 // the same full catalog of names, apply-on-select against the live universe beside it. Like the
@@ -39,8 +67,7 @@ export function DemoDecorationSheet({
   phase,
   taste,
   canClose,
-  onApplyBackground,
-  onApplyBodyShape,
+  onApplyOrnament,
   onApplyPalette,
   onClose,
 }: DemoDecorationSheetProps) {
@@ -49,20 +76,12 @@ export function DemoDecorationSheet({
   // one row as the example, it does not narrow the beat to that row.
   const pressable = isDemoAnchorInteractive(phase, 'ornament-row-action')
   const ornamentIds = Object.keys(ORNAMENT_NAMES)
-  const groups = [
-    {
-      kind: 'BACKGROUND' as const,
-      applied: taste.background,
-      apply: onApplyBackground,
-      ids: ornamentIds.filter((id) => id.startsWith('background.')),
-    },
-    {
-      kind: 'STAR_SHADER' as const,
-      applied: taste.bodyShape,
-      apply: onApplyBodyShape,
-      ids: ornamentIds.filter((id) => id.startsWith('star_shader.')),
-    },
-  ]
+  const groups = DEMO_GROUPS.map((group) => ({
+    kind: group.kind,
+    applied: taste[group.surface],
+    apply: (rendererKey: string | null) => onApplyOrnament(group.surface, rendererKey),
+    ids: ornamentIds.filter((id) => id.startsWith(group.prefix)),
+  }))
 
   return (
     <Sheet

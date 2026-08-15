@@ -268,6 +268,9 @@ const (
 const (
 	StoreBackgroundPrice = 300
 	StoreStarShaderPrice = 600
+	StoreGistShaderPrice = 500
+	StoreMotePrice       = 200
+	StoreMoteFieldPrice  = 300
 )
 
 // achievement

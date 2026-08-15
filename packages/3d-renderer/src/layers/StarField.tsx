@@ -9,23 +9,23 @@ import {
   DEFAULT_BACKDROP_FIELD,
   backdropMoteCount,
   resolveBackdropField,
-  type BackdropFieldKey,
 } from '../assets/backdrop/backdrop-fields.ts'
 import { backdropBrightness, backdropTint } from '../assets/backdrop/backdrop-life.ts'
 import {
   DEFAULT_BACKDROP_MOTE,
   createBackdropMoteForm,
   resolveBackdropMote,
-  type BackdropMoteKey,
 } from '../assets/backdrop/backdrop-motes.ts'
 import { scatterBackdrop } from '../assets/backdrop/backdrop-scatter.ts'
 import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 
 export interface StarFieldProps {
-  /** Which particle: what it is drawn as, and what colour it is. */
-  readonly mote?: BackdropMoteKey
-  /** Which space: where the motes sit, how many, and how they twinkle. */
-  readonly field?: BackdropFieldKey
+  /** Which particle: what it is drawn as, and what colour it is. A decoration choice, not a domain
+   *  fact — so it is a plain key, and an unknown or retired one resolves to the undecorated mote
+   *  rather than blanking the sky. */
+  readonly mote?: string
+  /** Which space: where the motes sit, how many, and how they twinkle. Resolved the same way. */
+  readonly field?: string
   /** Number of background motes BEFORE the field's density; defaults to the web density. */
   readonly count?: number
   /** Outer shell radius — the field fills the volume out to here. Bound by the backdrop nesting

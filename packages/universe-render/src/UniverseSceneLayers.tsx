@@ -112,7 +112,15 @@ export function UniverseSceneLayers({
         reducedMotion={reducedMotion}
         rateRef={advanceSkyRate}
       />
-      <StarField {...backdrop.starField} reducedMotion={reducedMotion} />
+      {/* The backdrop is two worn choices poured together — a mote (form · colour) into a mote
+          field (place · density · twinkle) — over this platform's own count and radius, which are a
+          budget rather than a taste and so are never for sale. */}
+      <StarField
+        {...backdrop.starField}
+        mote={wearing.MOTE}
+        field={wearing.MOTE_FIELD}
+        reducedMotion={reducedMotion}
+      />
       {/* Emotion color field: additive mood-color blend behind the latent field and bodies
           (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
       <NebulaField
@@ -152,7 +160,8 @@ export function UniverseSceneLayers({
         intensity={VALUES.rendering.gistRiseLayerFog}
       />
       <GistStarLayer
-        key={`gist-${paletteVersion}`}
+        key={`gist-${paletteVersion}-${wearing.GIST_SHADER}`}
+        shape={wearing.GIST_SHADER}
         positions={bridge.coordinates}
         memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NODE_INDEX}
         onSelect={selectGist}

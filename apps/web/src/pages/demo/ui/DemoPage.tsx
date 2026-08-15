@@ -17,7 +17,12 @@ import {
   syncDemoRunMachine,
   tutorialInteractiveAnchors,
 } from '../model/run-machine.ts'
-import { DEMO_TIME_JUMPS, shiftDemoDate, useDemoRun } from '../model/use-demo-run.ts'
+import {
+  DEMO_TIME_JUMPS,
+  shiftDemoDate,
+  useDemoRun,
+  type DemoTasteOrnament,
+} from '../model/use-demo-run.ts'
 import { DemoDecorationSheet } from './DemoDecorationSheet.tsx'
 import { DemoEntryReader } from './DemoEntryReader.tsx'
 import { DemoHud } from './DemoHud.tsx'
@@ -367,16 +372,9 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // A tried-on ornament applies at once — a selection simply IS the sky now ([Z8] discharged by
   // absence: no preview, no save, no total). Nothing is reported here: what finishes the decorating
   // beat is the trip back out to the universe, which is where the change is actually seen.
-  const onApplyBackground = useCallback(
-    (rendererKey: string | null) => {
-      demo.taste({ background: rendererKey })
-      setDecorateTasted(true)
-    },
-    [demo],
-  )
-  const onApplyBodyShape = useCallback(
-    (rendererKey: string | null) => {
-      demo.taste({ bodyShape: rendererKey })
+  const onApplyOrnament = useCallback(
+    (surface: DemoTasteOrnament, rendererKey: string | null) => {
+      demo.taste({ [surface]: rendererKey })
       setDecorateTasted(true)
     },
     [demo],
@@ -533,8 +531,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         phase={phase}
         taste={state.taste}
         canClose={phaseKey !== 'ornament_taster' || decorateTasted}
-        onApplyBackground={onApplyBackground}
-        onApplyBodyShape={onApplyBodyShape}
+        onApplyOrnament={onApplyOrnament}
         onApplyPalette={onApplyPalette}
         onClose={onCloseDecoration}
       />

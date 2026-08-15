@@ -119,6 +119,7 @@ var catalog = []Achievement{
 	{ID: "ornament_8", Axis: AxisDecoration, Condition: condition(CounterOrnamentOwned, 8), Reward: tierReward(RewardTier2)},
 	{ID: "ornament_15", Axis: AxisDecoration, Condition: condition(CounterOrnamentOwned, 15), Reward: tierReward(RewardTier2)},
 	{ID: "ornament_kind_2", Axis: AxisDecoration, Condition: condition(CounterOrnamentKindVariety, 2), Reward: tierReward(RewardTier1)},
+	{ID: "ornament_kind_5", Axis: AxisDecoration, Condition: condition(CounterOrnamentKindVariety, 5), Reward: tierReward(RewardTier3)},
 }
 
 // catalogByID indexes the table for lookup. Building it at import makes a duplicate id a panic on

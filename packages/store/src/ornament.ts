@@ -5,7 +5,7 @@ import {
   type OrnamentSelection as WireSelection,
 } from '@cosimosi/api-client'
 
-// The frontend's ornament vocabulary: the two decoration kinds, the catalog row as the UI reads it,
+// The frontend's ornament vocabulary: the five decoration kinds, the catalog row as the UI reads it,
 // and the id↔registry-key translation the renderer needs. Shared by both apps rather than copied
 // into each, because a per-app copy of this mapping would let one app drift from the other's idea of
 // which sky a selection means.
@@ -14,7 +14,7 @@ import {
 // what it looks like belongs to the renderer's registries. This module holds the split, never the
 // looks — no color, size, brightness or seed passes through here ([V10][I11]).
 
-export type OrnamentKind = 'BACKGROUND' | 'STAR_SHADER'
+export type OrnamentKind = 'BACKGROUND' | 'STAR_SHADER' | 'GIST_SHADER' | 'MOTE' | 'MOTE_FIELD'
 
 /** How a row is come by. FREE is owned by everyone; ACHIEVEMENT is unbuyable at any price. */
 export type OrnamentAcquisition = 'FREE' | 'PURCHASE' | 'ACHIEVEMENT'
@@ -37,14 +37,26 @@ export interface OrnamentSelection {
   readonly ornamentId: string
 }
 
-export const ORNAMENT_KINDS: readonly OrnamentKind[] = ['BACKGROUND', 'STAR_SHADER']
+/** The kinds in the order every surface lists them — the server's read order, so the panel's groups
+ *  and the catalog's rows cannot disagree about which comes first. */
+export const ORNAMENT_KINDS: readonly OrnamentKind[] = [
+  'BACKGROUND',
+  'STAR_SHADER',
+  'GIST_SHADER',
+  'MOTE',
+  'MOTE_FIELD',
+]
 
-/** Each kind's free default, mirroring the owning registry's own default — DEFAULT_SKY_EFFECT and
- *  DEFAULT_STAR_SHAPE. Absence of a selection IS the default, so these are what a boot renders
- *  before the read lands, and what the server coerces an unknown stored id to. */
+/** Each kind's free default, mirroring the owning registry's own default — DEFAULT_SKY_EFFECT,
+ *  DEFAULT_STAR_SHAPE, DEFAULT_GIST_SHAPE, DEFAULT_BACKDROP_MOTE and DEFAULT_BACKDROP_FIELD.
+ *  Absence of a selection IS the default, so these are what a boot renders before the read lands,
+ *  and what the server coerces an unknown stored id to. */
 export const DEFAULT_ORNAMENT_IDS: Readonly<Record<OrnamentKind, string>> = {
   BACKGROUND: 'background.grainient',
   STAR_SHADER: 'star_shader.facet',
+  GIST_SHADER: 'gist_shader.halo',
+  MOTE: 'mote.pinprick',
+  MOTE_FIELD: 'mote_field.even',
 }
 
 export function ornamentKindPrefix(kind: OrnamentKind): string {
@@ -110,6 +122,12 @@ function toOrnamentKind(kind: WireKind): OrnamentKind | null {
       return 'BACKGROUND'
     case WireKind.STAR_SHADER:
       return 'STAR_SHADER'
+    case WireKind.GIST_SHADER:
+      return 'GIST_SHADER'
+    case WireKind.MOTE:
+      return 'MOTE'
+    case WireKind.MOTE_FIELD:
+      return 'MOTE_FIELD'
     default:
       return null
   }

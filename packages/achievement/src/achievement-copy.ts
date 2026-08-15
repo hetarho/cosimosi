@@ -100,6 +100,10 @@ const ACHIEVEMENT_COPY: Record<string, AchievementCopy> = {
     title: m.achievement_ornament_kind_2_title,
     body: m.achievement_ornament_kind_2_body,
   },
+  ornament_kind_5: {
+    title: m.achievement_ornament_kind_5_title,
+    body: m.achievement_ornament_kind_5_body,
+  },
 }
 
 // An id with no copy entry falls back to a plain label and KEEPS its progress and its claim button.

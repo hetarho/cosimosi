@@ -44,6 +44,9 @@ rendering:
   # Active universe ambiance skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS).
   # The retired flat presets are gone; `emotion` is the shared web/mobile sky-sphere skin.
   active_skin: emotion
+  # (Which gist body, which mote and which mote field the universe wears are NOT values: they are
+  # per-user ornament selections, and each kind's undecorated look is its own registry's DEFAULT_*
+  # constant — the same place DEFAULT_SKY_EFFECT and DEFAULT_STAR_SHAPE already live.)
   # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget. It is the CEILING the
   # adaptive sampler below steps up to, never the ratio a struggling device is held at.
   max_pixel_ratio: 2
@@ -533,8 +536,12 @@ twinkle:
 # Universe decoration (plan 71): what an ornament costs, priced BY KIND — there is no per-row
 # price anywhere, so a single number moves a whole kind. Ornament ids, the catalog's rows and
 # their acquisition paths are content and live as a Go table in the store context; the shader and
-# sky constants a row resolves to are the renderer's visual grammar. Only these two scalars are
+# sky constants a row resolves to are the renderer's visual grammar. Only these scalars are
 # tuning.
+#
+# The five prices are graded by WHAT A ROW TOUCHES, not by how it was authored: a row that redraws
+# the one body a memory is costs the most, a row that changes the whole sky costs the middle, and a
+# row that changes only the decorative dust between them costs the least.
 store:
   # [P9][G3] The GENERAL Twinkle price of any purchasable background. The entry price: three
   # launched diaries at twinkle.earn_write, so a few days of writing buys the first sky.
@@ -543,6 +550,18 @@ store:
   # changes the star itself, the one body a memory is. Still inside a week of writing, so the
   # scarcer kind is a decision rather than a wall.
   star_shader_price: 600
+  # [P9] The price of any purchasable gist body look. Under the star shape deliberately: a gist is
+  # the summary a memory becomes, so it is the second body a writer meets and should not be the
+  # dearer of the two.
+  gist_shader_price: 500
+  # [P9] The price of any purchasable mote — one particle's form and colour. The cheapest kind: a
+  # mote is the smallest thing decoration can change, and it is the row a first-time decorator is
+  # most likely to try, so it sits under a single day of writing.
+  mote_price: 200
+  # [P9] The price of any purchasable mote field — where the motes sit, how many, and how they
+  # twinkle. Level with a background, because that is what it is the other half of: the two
+  # together are the whole backdrop.
+  mote_field_price: 300
 
 # Achievements (plan 74): the reward a tier resolves to, and the one cross-context condition
 # threshold. Catalog rows (ids, axes, targets, the axis→counter mapping, the two ornament

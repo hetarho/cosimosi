@@ -57,10 +57,13 @@ stars are built from. The `SkinKey` union does **not** grow for either — a ski
 bare-night clear color, none of which is ever sellable, and the `emotion` skin's authored `sky.effect` is what the
 default background ornament id mirrors (asserted from the fixture in `assets/ornament-ids.test.ts`).
 
-### The two selection seams (plan 71)
+### The five selection seams (plan 71)
 
 Both apps' canvas widgets read the applied selection through `useAppliedOrnaments()` (`@cosimosi/store/react`) and hand
-the two registry keys down as props:
+the registry keys down as props. There is one seam per `OrnamentKind`, and the same three rules hold at every one of
+them: the prop is a plain `string` (the key arrives as an opaque decoration id from outside the renderer), the
+resolution and the retired-key fallback happen **inside** the registry that owns the look (§3.4 — the visual vocabulary
+never crosses back out), and the builder gets no writable handle to anything meaning-bearing.
 
 - **Sky.** `SkySphere`'s `effect` prop takes a plain `string` rather than the narrow `SkyEffectKey` union, because the
   key arrives as an opaque decoration id from outside the renderer; `resolveSkyEffect` performs the resolution and the
@@ -71,6 +74,14 @@ the two registry keys down as props:
   and disposes the material. `StarShapeOptions` carries `animate` alone — the builder has **no writable handle** to
   tint, brightness, seed or the layer-applied scale, and `EMISSIVE_GAIN` is not a shape field, so a bought shape cannot
   lift a faded star back over the bloom threshold ([V2][F1][I11]).
+- **Gist body.** `GistStarLayer` takes `shape` and builds `createGistShapeBodySource(shape)`, remounting only itself
+  through `gist-${paletteVersion}-${shape}`. It is **one choice for the whole layer**, never one per memory ([V5]), and
+  every entry reads the same tint + softness channels — so a swap changes how a summary is lit and nothing about which
+  summaries there are or how deep they have risen.
+- **Backdrop.** `StarField` takes `mote` and `field`, the two halves of a backdrop, and rebuilds its geometry, material
+  and scatter from them. What it does **not** take from a selection is `count` and `radius`: those come from
+  `UNIVERSE_BACKDROP.<platform>`, because they are this device's budget and the backdrop nesting invariant, not a
+  taste. A mote field can empty the sky (`mote_field.empty`, density 0) but cannot raise the instance ceiling.
 
 Until the selection read lands, each kind shows its own default — the same picture an undecorated universe shows.
 
@@ -580,14 +591,14 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
-- **Which diffuse look is a catalogue key, not a layer decision.** `GistStarLayer` builds its body from
-  `createGistShapeBodySource(DEFAULT_GIST_SHAPE)` — one key out of the `gist-shapes.ts` catalogue the design bench
-  renders, so a look chosen by eye reaches the universe by naming a row rather than by re-typing a TSL graph into the
-  layer. It is **one choice for the whole universe** ([V5] again — a gist has no shape identity of its own) and every
-  entry reads the same tint + softness channels, so the key is the only line that moves when a gist ornament later
-  selects one per user. It is **not** a value: like `DEFAULT_SKY_EFFECT` and `DEFAULT_STAR_SHAPE`, the undecorated look
-  is owned by its own registry. The two "the universe as it is" design panels (web `states-panel`, mobile
-  `universe-panel`) take the same default, so they cannot drift from what a universe actually renders.
+- **Which diffuse look is a worn ornament, not a layer decision.** `GistStarLayer` builds its body from
+  `createGistShapeBodySource(shape)` — one key out of the `gist-shapes.ts` catalogue the design bench renders, sold as
+  the `GIST_SHADER` kind, so a look chosen by eye reaches a universe by being picked in 꾸미기 rather than by re-typing
+  a TSL graph into the layer. It is **one choice for the whole universe** ([V5] again — a gist has no shape identity of
+  its own) and every entry reads the same tint + softness channels, so the worn key is the only thing that moves. The
+  undecorated look is **not** a value: like `DEFAULT_SKY_EFFECT` and `DEFAULT_STAR_SHAPE`, it is owned by its own
+  registry as `DEFAULT_GIST_SHAPE`. The two "the universe as it is" design panels (web `states-panel`, mobile
+  `universe-panel`) take that same default, so they cannot drift from what an undecorated universe renders.
 - **The gap depth cue is `BandFog`** — horizontal `DoubleSide` additive glow discs across the z 18–27 gap,
   visible from above and below, raycast-invisible, and depth-write-free (peak at the gap center, zero at both band edges;
   intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the boundary, never a wall and never a

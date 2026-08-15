@@ -67,8 +67,11 @@ export interface UniverseSceneState {
   readonly newNeuronIds: readonly string[]
   readonly paletteVersion: number
   readonly skyStops: ReturnType<typeof universeEmotionSlices>
-  /** What this universe wears ([P4]) — the resolved decoration ids, preview-aware. */
-  readonly wearing: Readonly<Record<Extract<OrnamentKind, 'BACKGROUND' | 'STAR_SHADER'>, string>>
+  /** What this universe wears ([P4]) — the resolved registry key per kind, preview-aware. Every
+   *  kind, not a hand-picked subset: a kind the store publishes and this scene has no layer for is
+   *  the store's problem to answer for, and narrowing here would hide it until a panel row did
+   *  nothing. */
+  readonly wearing: Readonly<Record<OrnamentKind, string>>
   /** The clock the SCENE projects at (see below) — not necessarily the committed read clock. */
   readonly sceneTime: string | null
   /** Whether the universe is held flat right now ([U3]'s two ways of holding it). */

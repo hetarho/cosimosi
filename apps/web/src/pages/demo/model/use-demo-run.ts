@@ -42,17 +42,33 @@ export const DEMO_TIME_JUMPS = {
   month: VALUES.demo.timeTravelMonthDays,
 } as const
 
-// The taste is three renderer keys and a boolean — no id kept, no ownership, no total. A catalog id
-// arrives as `<kind-prefix>.<key>`, and the renderer key is the part after the dot, so this page
-// resolves it with `ornamentRendererKey` below rather than importing `@cosimosi/store` (whose barrel
-// also carries the pricing functions — and [Z8] is only structural while there is no path to them).
+// The taste is one renderer key per decorated surface plus a boolean — no id kept, no ownership, no
+// total. A catalog id arrives as `<kind-prefix>.<key>`, and the renderer key is the part after the
+// dot, so this page resolves it with `ornamentRendererKey` below rather than importing
+// `@cosimosi/store` (whose barrel also carries the pricing functions — and [Z8] is only structural
+// while there is no path to them).
+//
+// `null` on any of them means "as it comes", the row the sheet heads each group with: the taster has
+// no revert machine, so the way back to the undecorated look has to be a choosable row and therefore
+// a representable state.
 export interface DemoTaste {
   readonly background: string | null
   /** Named for what the visitor is shown — the shape a memory takes. The renderer's own word for it
    *  is rendering vocabulary and belongs on the other side of the projection (§3.4). */
   readonly bodyShape: string | null
+  /** The shape a memory's SUMMARY takes, once it has risen. Named the same way `bodyShape` is —
+   *  for what the visitor is shown, not for the registry the key comes from (§3.4). */
+  readonly summaryShape: string | null
+  /** One speck of the decorative dust behind everything: what it is drawn as, and its colour. */
+  readonly mote: string | null
+  /** The space those specks are scattered through: where they sit, how many, how they twinkle. */
+  readonly moteField: string | null
   readonly palette: boolean
 }
+
+/** The taste fields a decoration group writes — every DemoTaste key except the free palette
+ *  toggle, which is not an ornament and has its own control. */
+export type DemoTasteOrnament = Exclude<keyof DemoTaste, 'palette'>
 
 /** The renderer key inside a catalog ornament id (`background.soft-aurora` → `soft-aurora`). */
 export function ornamentRendererKey(ornamentId: string): string {
@@ -104,7 +120,14 @@ interface DemoRunState {
   readonly taste: DemoTaste
 }
 
-const NO_TASTE: DemoTaste = { background: null, bodyShape: null, palette: false }
+const NO_TASTE: DemoTaste = {
+  background: null,
+  bodyShape: null,
+  summaryShape: null,
+  mote: null,
+  moteField: null,
+  palette: false,
+}
 
 function freshRun(today: string, draw01: number, runId: string): DemoRunState {
   const set = pickDemoDiarySet(DEMO_DIARY_SETS, draw01)

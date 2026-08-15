@@ -51,9 +51,14 @@ ornament_ownerships (user_id, ornament_id, acquired_via, acquired_at)
 
 ornament_selections (user_id, kind, ornament_id, selected_at)
     PRIMARY KEY (user_id, kind)
-    CHECK (kind IN ('BACKGROUND', 'STAR_SHADER'))
+    CHECK (kind IN ('BACKGROUND', 'STAR_SHADER', 'GIST_SHADER', 'MOTE', 'MOTE_FIELD'))
     CHECK (ornament_id LIKE lower(kind) || '.%')
 ```
+
+The kind set was widened from two to five by `00028_store_ornament_kinds.sql`, and that migration is **only** the
+`CHECK` predicate: the prefix rule, the primary key and the absence-means-default convention were written against the
+KIND rather than against the two that existed, so no row is rewritten, backfilled or granted. `ornament_ownerships`
+needed no DDL at all — it has no `kind` column.
 
 Four load-bearing absences and two load-bearing constraints:
 
@@ -181,7 +186,7 @@ inventory-shaped message; no equip method. `Ornament` carries exactly
 
 `internal/store/testdata/ornament-ids.json` lists every published id per kind plus each kind's default. **One file,
 read by both runtimes** — `internal/store/catalog_test.go` asserts the Go catalog against it, and
-`packages/3d-renderer/src/assets/ornament-ids.test.ts` asserts the two registries and their defaults against it (plus
+`packages/3d-renderer/src/assets/ornament-ids.test.ts` asserts the five registries and their defaults against it (plus
 that the `emotion` skin's authored `sky.effect` is the default background). A renamed or dropped registry key therefore
 fails a test on each runtime, and there is no second copy to keep byte-identical.
 

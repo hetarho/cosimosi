@@ -68,8 +68,11 @@ var moodRecordedMembers = []string{
 }
 
 // ornamentKindDecoratedMembers mirrors store's closed OrnamentKind set, asserted 1:1 at the
-// composition root the same way.
-var ornamentKindDecoratedMembers = []string{"BACKGROUND", "STAR_SHADER"}
+// composition root the same way. Its length is also the ornament_kind_variety ceiling, which is why
+// a kind added there lands in the catalog's capstone review rather than quietly widening a family.
+var ornamentKindDecoratedMembers = []string{
+	"BACKGROUND", "STAR_SHADER", "GIST_SHADER", "MOTE", "MOTE_FIELD",
+}
 
 // The families and their indexes are built once at import, not per call: every lookup below is on a
 // path the tracking use-case's RecordProgress takes for EVERY counter write, so rebuilding a slice

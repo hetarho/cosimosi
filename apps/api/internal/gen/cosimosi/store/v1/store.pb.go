@@ -21,16 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// The surfaces decoration opens. Closed at two — a sky, and the body shape a memory is shown as.
-// They are the staging
-// layer, and nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
+// The surfaces decoration opens. Closed at five — a sky, the body shape a memory is shown as, the
+// body shape its summary is shown as, and the two halves of the decorative dust between them: one
+// speck's look, and the space the specks are scattered through. They are the staging layer, and
+// nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
 // expressible as a kind at all.
+//
+// Every name is the SURFACE, never the renderer's own noun for the look that fills it: the wire
+// says which surface is being dressed and carries an opaque id for the rest.
 type OrnamentKind int32
 
 const (
 	OrnamentKind_ORNAMENT_KIND_UNSPECIFIED OrnamentKind = 0
 	OrnamentKind_ORNAMENT_KIND_BACKGROUND  OrnamentKind = 1
 	OrnamentKind_ORNAMENT_KIND_STAR_SHADER OrnamentKind = 2
+	OrnamentKind_ORNAMENT_KIND_GIST_SHADER OrnamentKind = 3
+	OrnamentKind_ORNAMENT_KIND_MOTE        OrnamentKind = 4
+	OrnamentKind_ORNAMENT_KIND_MOTE_FIELD  OrnamentKind = 5
 )
 
 // Enum value maps for OrnamentKind.
@@ -39,11 +46,17 @@ var (
 		0: "ORNAMENT_KIND_UNSPECIFIED",
 		1: "ORNAMENT_KIND_BACKGROUND",
 		2: "ORNAMENT_KIND_STAR_SHADER",
+		3: "ORNAMENT_KIND_GIST_SHADER",
+		4: "ORNAMENT_KIND_MOTE",
+		5: "ORNAMENT_KIND_MOTE_FIELD",
 	}
 	OrnamentKind_value = map[string]int32{
 		"ORNAMENT_KIND_UNSPECIFIED": 0,
 		"ORNAMENT_KIND_BACKGROUND":  1,
 		"ORNAMENT_KIND_STAR_SHADER": 2,
+		"ORNAMENT_KIND_GIST_SHADER": 3,
+		"ORNAMENT_KIND_MOTE":        4,
+		"ORNAMENT_KIND_MOTE_FIELD":  5,
 	}
 )
 
@@ -437,6 +450,9 @@ type DecorateRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	BackgroundOrnamentId string                 `protobuf:"bytes,1,opt,name=background_ornament_id,json=backgroundOrnamentId,proto3" json:"background_ornament_id,omitempty"`
 	StarShaderOrnamentId string                 `protobuf:"bytes,2,opt,name=star_shader_ornament_id,json=starShaderOrnamentId,proto3" json:"star_shader_ornament_id,omitempty"`
+	GistShaderOrnamentId string                 `protobuf:"bytes,3,opt,name=gist_shader_ornament_id,json=gistShaderOrnamentId,proto3" json:"gist_shader_ornament_id,omitempty"`
+	MoteOrnamentId       string                 `protobuf:"bytes,4,opt,name=mote_ornament_id,json=moteOrnamentId,proto3" json:"mote_ornament_id,omitempty"`
+	MoteFieldOrnamentId  string                 `protobuf:"bytes,5,opt,name=mote_field_ornament_id,json=moteFieldOrnamentId,proto3" json:"mote_field_ornament_id,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -481,6 +497,27 @@ func (x *DecorateRequest) GetBackgroundOrnamentId() string {
 func (x *DecorateRequest) GetStarShaderOrnamentId() string {
 	if x != nil {
 		return x.StarShaderOrnamentId
+	}
+	return ""
+}
+
+func (x *DecorateRequest) GetGistShaderOrnamentId() string {
+	if x != nil {
+		return x.GistShaderOrnamentId
+	}
+	return ""
+}
+
+func (x *DecorateRequest) GetMoteOrnamentId() string {
+	if x != nil {
+		return x.MoteOrnamentId
+	}
+	return ""
+}
+
+func (x *DecorateRequest) GetMoteFieldOrnamentId() string {
+	if x != nil {
+		return x.MoteFieldOrnamentId
 	}
 	return ""
 }
@@ -563,17 +600,23 @@ const file_cosimosi_store_v1_store_proto_rawDesc = "" +
 	"\x14GetSelectionResponse\x12D\n" +
 	"\n" +
 	"selections\x18\x01 \x03(\v2$.cosimosi.store.v1.OrnamentSelectionR\n" +
-	"selections\"~\n" +
+	"selections\"\x94\x02\n" +
 	"\x0fDecorateRequest\x124\n" +
 	"\x16background_ornament_id\x18\x01 \x01(\tR\x14backgroundOrnamentId\x125\n" +
-	"\x17star_shader_ornament_id\x18\x02 \x01(\tR\x14starShaderOrnamentId\"{\n" +
+	"\x17star_shader_ornament_id\x18\x02 \x01(\tR\x14starShaderOrnamentId\x125\n" +
+	"\x17gist_shader_ornament_id\x18\x03 \x01(\tR\x14gistShaderOrnamentId\x12(\n" +
+	"\x10mote_ornament_id\x18\x04 \x01(\tR\x0emoteOrnamentId\x123\n" +
+	"\x16mote_field_ornament_id\x18\x05 \x01(\tR\x13moteFieldOrnamentId\"{\n" +
 	"\x10DecorateResponse\x12B\n" +
 	"\tselection\x18\x01 \x03(\v2$.cosimosi.store.v1.OrnamentSelectionR\tselection\x12#\n" +
-	"\rspent_twinkle\x18\x02 \x01(\x03R\fspentTwinkle*j\n" +
+	"\rspent_twinkle\x18\x02 \x01(\x03R\fspentTwinkle*\xbf\x01\n" +
 	"\fOrnamentKind\x12\x1d\n" +
 	"\x19ORNAMENT_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ORNAMENT_KIND_BACKGROUND\x10\x01\x12\x1d\n" +
-	"\x19ORNAMENT_KIND_STAR_SHADER\x10\x02*\xa3\x01\n" +
+	"\x19ORNAMENT_KIND_STAR_SHADER\x10\x02\x12\x1d\n" +
+	"\x19ORNAMENT_KIND_GIST_SHADER\x10\x03\x12\x16\n" +
+	"\x12ORNAMENT_KIND_MOTE\x10\x04\x12\x1c\n" +
+	"\x18ORNAMENT_KIND_MOTE_FIELD\x10\x05*\xa3\x01\n" +
 	"\x13OrnamentAcquisition\x12$\n" +
 	" ORNAMENT_ACQUISITION_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19ORNAMENT_ACQUISITION_FREE\x10\x01\x12!\n" +

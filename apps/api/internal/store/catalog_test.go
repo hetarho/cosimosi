@@ -37,7 +37,9 @@ func readOrnamentIDFixture(t *testing.T) ornamentIDFixture {
 func catalogIDsByKind(t *testing.T) map[store.OrnamentKind][]string {
 	t.Helper()
 	byKind := map[store.OrnamentKind][]string{}
-	for _, kind := range []store.OrnamentKind{store.KindBackground, store.KindStarShader} {
+	// Seeded from the DECLARED set, so a kind with no rows yet still shows up as an empty list the
+	// fixture has to agree with, instead of vanishing from the comparison.
+	for _, kind := range store.AllOrnamentKinds() {
 		byKind[kind] = nil
 	}
 	for _, ornament := range store.Ornaments() {
@@ -96,7 +98,7 @@ func TestEveryKindHasExactlyOneFreeRowAndItIsTheDefault(t *testing.T) {
 			free[ornament.Kind] = append(free[ornament.Kind], ornament.ID)
 		}
 	}
-	for _, kind := range []store.OrnamentKind{store.KindBackground, store.KindStarShader} {
+	for _, kind := range store.AllOrnamentKinds() {
 		ids := free[kind]
 		if len(ids) != 1 {
 			t.Fatalf("%s free rows = %v, want exactly one", kind, ids)
@@ -108,8 +110,9 @@ func TestEveryKindHasExactlyOneFreeRowAndItIsTheDefault(t *testing.T) {
 	}
 }
 
-// [P11] 아주 가끔: exactly two rows are achievement-only, one per kind, so the pairing with the two
-// ornament capstones is 1:1.
+// [P11] 아주 가끔: exactly two rows are achievement-only, at most one in any kind, so the pairing
+// with the two ornament capstones is 1:1. Two, not one per kind: an achievement-only row exists
+// because a capstone pays it, so most kinds have none and no kind may have two.
 func TestExactlyTwoAchievementRowsOnePerKind(t *testing.T) {
 	t.Parallel()
 	byKind := map[store.OrnamentKind][]store.OrnamentID{}
@@ -133,6 +136,12 @@ func TestPriceResolvesByKindAndOnlyForPurchasableRows(t *testing.T) {
 	wantPrice := map[store.OrnamentKind]int{
 		store.KindBackground: values.StoreBackgroundPrice,
 		store.KindStarShader: values.StoreStarShaderPrice,
+		store.KindGistShader: values.StoreGistShaderPrice,
+		store.KindMote:       values.StoreMotePrice,
+		store.KindMoteField:  values.StoreMoteFieldPrice,
+	}
+	if len(wantPrice) != len(store.AllOrnamentKinds()) {
+		t.Fatalf("priced kinds = %d, declared kinds = %d", len(wantPrice), len(store.AllOrnamentKinds()))
 	}
 	for _, ornament := range store.Ornaments() {
 		want := 0

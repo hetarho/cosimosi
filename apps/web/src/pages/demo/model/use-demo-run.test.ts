@@ -345,10 +345,21 @@ describe('the demo run', () => {
     launchDraft(result)
     const before = result.current.scene.memories
 
-    act(() => result.current.taste({ background: 'soft-aurora', bodyShape: 'prism' }))
+    act(() =>
+      result.current.taste({
+        background: 'soft-aurora',
+        bodyShape: 'prism',
+        summaryShape: 'corona',
+        mote: 'ember-bokeh',
+        moteField: 'milky-way',
+      }),
+    )
     expect(result.current.state.taste).toEqual({
       background: 'soft-aurora',
       bodyShape: 'prism',
+      summaryShape: 'corona',
+      mote: 'ember-bokeh',
+      moteField: 'milky-way',
       palette: false,
     })
     // Decoration cannot touch meaning: no position, size, brightness, emotion or seed moved.

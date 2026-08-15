@@ -89,6 +89,9 @@ func (s *Server) Decorate(
 	requested := store.Selection{
 		store.KindBackground: store.OrnamentID(req.Msg.GetBackgroundOrnamentId()),
 		store.KindStarShader: store.OrnamentID(req.Msg.GetStarShaderOrnamentId()),
+		store.KindGistShader: store.OrnamentID(req.Msg.GetGistShaderOrnamentId()),
+		store.KindMote:       store.OrnamentID(req.Msg.GetMoteOrnamentId()),
+		store.KindMoteField:  store.OrnamentID(req.Msg.GetMoteFieldOrnamentId()),
 	}
 	applied, spent, err := s.service.Decorate(ctx, scope, requested)
 	if err != nil {
@@ -115,12 +118,23 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 	return scope, nil
 }
 
+// protoKind maps the domain's closed kind set onto the wire enum. Every declared kind must appear
+// here: an unmapped one leaves as UNSPECIFIED, which proto3 JSON omits entirely and every client
+// drops rather than guesses — so the rows of a whole kind would vanish from the panel with no error
+// anywhere. `server_test.go` walks `store.AllOrnamentKinds()` against this, because the `default`
+// arm below cannot tell a missing case from a genuinely unknown value.
 func protoKind(kind store.OrnamentKind) storev1.OrnamentKind {
 	switch kind {
 	case store.KindBackground:
 		return storev1.OrnamentKind_ORNAMENT_KIND_BACKGROUND
 	case store.KindStarShader:
 		return storev1.OrnamentKind_ORNAMENT_KIND_STAR_SHADER
+	case store.KindGistShader:
+		return storev1.OrnamentKind_ORNAMENT_KIND_GIST_SHADER
+	case store.KindMote:
+		return storev1.OrnamentKind_ORNAMENT_KIND_MOTE
+	case store.KindMoteField:
+		return storev1.OrnamentKind_ORNAMENT_KIND_MOTE_FIELD
 	default:
 		return storev1.OrnamentKind_ORNAMENT_KIND_UNSPECIFIED
 	}

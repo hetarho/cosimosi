@@ -27,6 +27,10 @@ export interface GistRiseEvent {
 
 export interface GistStarLayerProps {
   readonly positions: CoordinateBufferRef
+  /** The gist-shape registry key this universe wears — a decoration choice, not a domain fact, and
+   *  ONE choice for the whole layer rather than one per memory ([V5]). Unknown keys resolve to the
+   *  shipped body, so a retired shape never blanks the neocortex. */
+  readonly shape?: string
   /** Engram id → sim node slot (the node index's episodic map) — the x, y source per frame. */
   readonly memoryIndexById: Readonly<Record<string, number>>
   /** A gist pick: read-only, routes to the ViewSemantic surface ([R8]) — never 회고하기. It names
@@ -217,14 +221,15 @@ export function gistSelectionAt(snapshot: GistRenderSnapshot, index: number): Gi
 // moves no instance so nothing plays (A8).
 export function GistStarLayer({
   positions,
+  shape = DEFAULT_GIST_SHAPE,
   memoryIndexById,
   onSelect,
   onStageRise,
 }: GistStarLayerProps) {
   // The look the whole neocortical layer wears — one key out of the gist catalogue, never per
-  // memory ([V5]). Undecorated for now, and whichever row an ornament later names reads the same
-  // two channels below, so this stays the only line that would move.
-  const bodySource = useMemo(() => createGistShapeBodySource(DEFAULT_GIST_SHAPE), [])
+  // memory ([V5]). Whichever row the worn ornament names reads the same two channels below, so a
+  // live swap rebuilds this source and nothing else.
+  const bodySource = useMemo(() => createGistShapeBodySource(shape), [shape])
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
 

@@ -10,8 +10,9 @@ import (
 
 // The catalog is CODE, not a table — there is nothing per-user about which ornaments exist, so a
 // table would only be a second place for the renderer's registries to drift from. Membership is a
-// rule, never a count: one row per id the two registries publish
-// (the renderer's SKY_EFFECTS and STAR_SHAPES registries), with no number declared or asserted anywhere. testdata/ornament-ids.json is what
+// rule, never a count: one row per id the five registries publish
+// (the renderer's SKY_EFFECTS, STAR_SHAPES, GIST_SHAPES, BACKDROP_MOTES and BACKDROP_FIELDS
+// registries), with no number declared or asserted anywhere. testdata/ornament-ids.json is what
 // keeps this list and those registries from parting: ONE file, read by both runtimes, so a renamed or
 // dropped key fails a test on each.
 //
@@ -29,10 +30,25 @@ const (
 	// the registry as the bench baseline (it IS the primitive body source) without being what a
 	// universe opens on.
 	DefaultStarShaderOrnamentID OrnamentID = "star_shader.facet"
+	// DefaultGistShaderOrnamentID mirrors DEFAULT_GIST_SHAPE — the original shipped gist body, so an
+	// undecorated universe's summaries look exactly as they did before this kind existed.
+	DefaultGistShaderOrnamentID OrnamentID = "gist_shader.halo"
+	// DefaultMoteOrnamentID mirrors DEFAULT_BACKDROP_MOTE: the plain distant speck, the row every
+	// other one is read against.
+	DefaultMoteOrnamentID OrnamentID = "mote.pinprick"
+	// DefaultMoteFieldOrnamentID mirrors DEFAULT_BACKDROP_FIELD: the plain sky, evenly filled.
+	DefaultMoteFieldOrnamentID OrnamentID = "mote_field.even"
 )
 
-// ornamentKinds is the closed set in the order every read answers in.
-var ornamentKinds = []OrnamentKind{KindBackground, KindStarShader}
+// ornamentKinds is the closed set in the order every read answers in — the panel's group order, so
+// it descends from what a memory IS toward the dust behind it.
+var ornamentKinds = []OrnamentKind{
+	KindBackground,
+	KindStarShader,
+	KindGistShader,
+	KindMote,
+	KindMoteField,
+}
 
 // kindDefaults and kindPrices are the two per-kind facts the catalog resolves. A price BY KIND is
 // what makes [P9]'s "no per-row price" structural: one number moves a whole kind, and there is no
@@ -41,10 +57,16 @@ var (
 	kindDefaults = map[OrnamentKind]OrnamentID{
 		KindBackground: DefaultBackgroundOrnamentID,
 		KindStarShader: DefaultStarShaderOrnamentID,
+		KindGistShader: DefaultGistShaderOrnamentID,
+		KindMote:       DefaultMoteOrnamentID,
+		KindMoteField:  DefaultMoteFieldOrnamentID,
 	}
 	kindPrices = map[OrnamentKind]int{
 		KindBackground: values.StoreBackgroundPrice,
 		KindStarShader: values.StoreStarShaderPrice,
+		KindGistShader: values.StoreGistShaderPrice,
+		KindMote:       values.StoreMotePrice,
+		KindMoteField:  values.StoreMoteFieldPrice,
 	}
 )
 
@@ -52,9 +74,11 @@ var (
 // own default is FREE; the two pinned capstone rewards are ACHIEVEMENT; everything else is bought
 // at its kind's price.
 //
-// The two ACHIEVEMENT rows — one per kind — are the only unbuyable ones. `store` never
-// names the achievement that pays them: the direction is one-way, so there is no achievement id
-// here to drift from the other catalog.
+// The two ACHIEVEMENT rows are the only unbuyable ones, and they stayed two when the kinds went
+// from two to five: an achievement-only row exists because a capstone pays it, so a kind gets one
+// when an achievement is written for it and not because the kind arrived. `store` never names the
+// achievement that pays them either — the direction is one-way, so there is no achievement id here
+// to drift from the other catalog.
 var ornamentAcquisitions = map[OrnamentID]OrnamentAcquisition{
 	"background.grainient":       AcquisitionFree,
 	"background.grainstorm":      AcquisitionPurchase,
@@ -79,6 +103,38 @@ var ornamentAcquisitions = map[OrnamentID]OrnamentAcquisition{
 	"star_shader.plasma":  AcquisitionPurchase,
 	"star_shader.contour": AcquisitionPurchase,
 	"star_shader.haze":    AcquisitionPurchase,
+
+	"gist_shader.halo":   AcquisitionFree,
+	"gist_shader.bead":   AcquisitionPurchase,
+	"gist_shader.ring":   AcquisitionPurchase,
+	"gist_shader.corona": AcquisitionPurchase,
+	"gist_shader.echo":   AcquisitionPurchase,
+	"gist_shader.pearl":  AcquisitionPurchase,
+	"gist_shader.lens":   AcquisitionPurchase,
+
+	"mote.pinprick":    AcquisitionFree,
+	"mote.orb":         AcquisitionPurchase,
+	"mote.ice-spark":   AcquisitionPurchase,
+	"mote.ember-dust":  AcquisitionPurchase,
+	"mote.galaxy-dust": AcquisitionPurchase,
+	"mote.rose-mote":   AcquisitionPurchase,
+	"mote.pixel":       AcquisitionPurchase,
+	"mote.ember-chip":  AcquisitionPurchase,
+	"mote.prism-shard": AcquisitionPurchase,
+	"mote.ice-needle":  AcquisitionPurchase,
+	"mote.wide-streak": AcquisitionPurchase,
+	"mote.diffraction": AcquisitionPurchase,
+	"mote.ember-bokeh": AcquisitionPurchase,
+
+	"mote_field.even":      AcquisitionFree,
+	"mote_field.sparse":    AcquisitionPurchase,
+	"mote_field.packed":    AcquisitionPurchase,
+	"mote_field.empty":     AcquisitionPurchase,
+	"mote_field.milky-way": AcquisitionPurchase,
+	"mote_field.spiral":    AcquisitionPurchase,
+	"mote_field.dome":      AcquisitionPurchase,
+	"mote_field.haze":      AcquisitionPurchase,
+	"mote_field.frantic":   AcquisitionPurchase,
 }
 
 var (

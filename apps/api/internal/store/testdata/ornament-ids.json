@@ -2,7 +2,10 @@
   "note": "The ornament id vocabulary, shared by the Go catalog and the renderer registries. Read by BOTH runtimes: apps/api/internal/store/catalog_test.go and packages/3d-renderer/src/assets/ornament-ids.test.ts. One file, so byte-identity is not something to guard. The lists' lengths are derived, never asserted as numbers.",
   "defaults": {
     "BACKGROUND": "background.grainient",
-    "STAR_SHADER": "star_shader.facet"
+    "STAR_SHADER": "star_shader.facet",
+    "GIST_SHADER": "gist_shader.halo",
+    "MOTE": "mote.pinprick",
+    "MOTE_FIELD": "mote_field.even"
   },
   "ids": {
     "BACKGROUND": [
@@ -30,6 +33,41 @@
       "star_shader.prism",
       "star_shader.spire",
       "star_shader.urchin"
+    ],
+    "GIST_SHADER": [
+      "gist_shader.bead",
+      "gist_shader.corona",
+      "gist_shader.echo",
+      "gist_shader.halo",
+      "gist_shader.lens",
+      "gist_shader.pearl",
+      "gist_shader.ring"
+    ],
+    "MOTE": [
+      "mote.diffraction",
+      "mote.ember-bokeh",
+      "mote.ember-chip",
+      "mote.ember-dust",
+      "mote.galaxy-dust",
+      "mote.ice-needle",
+      "mote.ice-spark",
+      "mote.orb",
+      "mote.pinprick",
+      "mote.pixel",
+      "mote.prism-shard",
+      "mote.rose-mote",
+      "mote.wide-streak"
+    ],
+    "MOTE_FIELD": [
+      "mote_field.dome",
+      "mote_field.empty",
+      "mote_field.even",
+      "mote_field.frantic",
+      "mote_field.haze",
+      "mote_field.milky-way",
+      "mote_field.packed",
+      "mote_field.sparse",
+      "mote_field.spiral"
     ]
   }
 }

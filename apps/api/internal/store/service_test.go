@@ -232,12 +232,18 @@ func TestSelectionAnswersOneEntryPerKindAndCoercesUnknownIDs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Selection failed: %v", err)
 	}
-	if len(selection) != 2 {
+	if len(selection) != len(store.AllOrnamentKinds()) {
 		t.Fatalf("selection = %+v, want one entry per kind", selection)
 	}
-	wantDefaults := map[store.OrnamentKind]store.OrnamentID{
-		store.KindBackground: store.DefaultBackgroundOrnamentID,
-		store.KindStarShader: store.DefaultStarShaderOrnamentID,
+	// Built from the declared set rather than spelled out, so a kind added to the enum is checked
+	// here the moment it exists instead of being quietly absent from the expectation.
+	wantDefaults := map[store.OrnamentKind]store.OrnamentID{}
+	for _, kind := range store.AllOrnamentKinds() {
+		id, ok := store.DefaultOrnamentID(kind)
+		if !ok {
+			t.Fatalf("kind %q has no default", kind)
+		}
+		wantDefaults[kind] = id
 	}
 	for _, entry := range selection {
 		if entry.OrnamentID != wantDefaults[entry.Kind] {

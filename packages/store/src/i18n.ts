@@ -22,4 +22,7 @@ export { ORNAMENT_NAMES } from './ornament-names.ts'
 export const ORNAMENT_GROUP_TITLES = {
   BACKGROUND: m.store_group_background_title,
   STAR_SHADER: m.store_group_star_shader_title,
+  GIST_SHADER: m.store_group_gist_shader_title,
+  MOTE: m.store_group_mote_title,
+  MOTE_FIELD: m.store_group_mote_field_title,
 } as const

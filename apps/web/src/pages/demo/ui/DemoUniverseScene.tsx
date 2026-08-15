@@ -125,10 +125,13 @@ function DemoCanvasHost({
   )
 
   const neuronCount = graph.neurons.length
-  // Bloom and the camera's field of view stay the fixed skin's: the taster sells a background and a
-  // body shape, and those two were deliberately left outside the catalog.
+  // Bloom and the camera's field of view stay the fixed skin's: the taster offers every kind the
+  // catalog has, and those two were deliberately left outside it.
   const skyEffect = taste.background ?? undefined
   const bodyShape = taste.bodyShape ?? undefined
+  const summaryShape = taste.summaryShape ?? undefined
+  const mote = taste.mote ?? undefined
+  const moteField = taste.moteField ?? undefined
 
   return (
     <UniverseCanvas
@@ -144,7 +147,7 @@ function DemoCanvasHost({
         reducedMotion={reducedMotion}
         rateRef={advanceSkyRate}
       />
-      <StarField reducedMotion={reducedMotion} />
+      <StarField mote={mote} field={moteField} reducedMotion={reducedMotion} />
       <NebulaField
         key={`nebula-${paletteVersion()}`}
         positions={bridge.coordinates}
@@ -177,7 +180,8 @@ function DemoCanvasHost({
         intensity={VALUES.rendering.gistRiseLayerFog}
       />
       <GistStarLayer
-        key={`gist-${paletteVersion()}`}
+        key={`gist-${paletteVersion()}-${summaryShape ?? 'default'}`}
+        shape={summaryShape}
         positions={bridge.coordinates}
         memoryIndexById={nodeIndex.episodicMemories ?? EMPTY_NEURON_INDEX}
         onSelect={selectGist}

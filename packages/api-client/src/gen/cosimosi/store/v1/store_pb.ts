@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/store/v1/store.proto.
  */
 export const file_cosimosi_store_v1_store: GenFile = /*@__PURE__*/
-  fileDesc("Ch1jb3NpbW9zaS9zdG9yZS92MS9zdG9yZS5wcm90bxIRY29zaW1vc2kuc3RvcmUudjEiEwoRR2V0Q2F0YWxvZ1JlcXVlc3QiuwEKCE9ybmFtZW50EhMKC29ybmFtZW50X2lkGAEgASgJEi0KBGtpbmQYAiABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSOwoLYWNxdWlzaXRpb24YAyABKA4yJi5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEFjcXVpc2l0aW9uEg0KBXByaWNlGAQgASgDEg0KBW93bmVkGAUgASgIEhAKCHNlbGVjdGVkGAYgASgIIkQKEkdldENhdGFsb2dSZXNwb25zZRIuCglvcm5hbWVudHMYASADKAsyGy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudCIVChNHZXRTZWxlY3Rpb25SZXF1ZXN0IlcKEU9ybmFtZW50U2VsZWN0aW9uEi0KBGtpbmQYASABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSEwoLb3JuYW1lbnRfaWQYAiABKAkiUAoUR2V0U2VsZWN0aW9uUmVzcG9uc2USOAoKc2VsZWN0aW9ucxgBIAMoCzIkLmNvc2ltb3NpLnN0b3JlLnYxLk9ybmFtZW50U2VsZWN0aW9uIlIKD0RlY29yYXRlUmVxdWVzdBIeChZiYWNrZ3JvdW5kX29ybmFtZW50X2lkGAEgASgJEh8KF3N0YXJfc2hhZGVyX29ybmFtZW50X2lkGAIgASgJImIKEERlY29yYXRlUmVzcG9uc2USNwoJc2VsZWN0aW9uGAEgAygLMiQuY29zaW1vc2kuc3RvcmUudjEuT3JuYW1lbnRTZWxlY3Rpb24SFQoNc3BlbnRfdHdpbmtsZRgCIAEoAypqCgxPcm5hbWVudEtpbmQSHQoZT1JOQU1FTlRfS0lORF9VTlNQRUNJRklFRBAAEhwKGE9STkFNRU5UX0tJTkRfQkFDS0dST1VORBABEh0KGU9STkFNRU5UX0tJTkRfU1RBUl9TSEFERVIQAiqjAQoTT3JuYW1lbnRBY3F1aXNpdGlvbhIkCiBPUk5BTUVOVF9BQ1FVSVNJVElPTl9VTlNQRUNJRklFRBAAEh0KGU9STkFNRU5UX0FDUVVJU0lUSU9OX0ZSRUUQARIhCh1PUk5BTUVOVF9BQ1FVSVNJVElPTl9QVVJDSEFTRRACEiQKIE9STkFNRU5UX0FDUVVJU0lUSU9OX0FDSElFVkVNRU5UEAMyqQIKDFN0b3JlU2VydmljZRJeCgpHZXRDYXRhbG9nEiQuY29zaW1vc2kuc3RvcmUudjEuR2V0Q2F0YWxvZ1JlcXVlc3QaJS5jb3NpbW9zaS5zdG9yZS52MS5HZXRDYXRhbG9nUmVzcG9uc2UiA5ACARJkCgxHZXRTZWxlY3Rpb24SJi5jb3NpbW9zaS5zdG9yZS52MS5HZXRTZWxlY3Rpb25SZXF1ZXN0GicuY29zaW1vc2kuc3RvcmUudjEuR2V0U2VsZWN0aW9uUmVzcG9uc2UiA5ACARJTCghEZWNvcmF0ZRIiLmNvc2ltb3NpLnN0b3JlLnYxLkRlY29yYXRlUmVxdWVzdBojLmNvc2ltb3NpLnN0b3JlLnYxLkRlY29yYXRlUmVzcG9uc2VCyQEKFWNvbS5jb3NpbW9zaS5zdG9yZS52MUIKU3RvcmVQcm90b1ABWj5naXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvc3RvcmUvdjE7c3RvcmV2MaICA0NTWKoCEUNvc2ltb3NpLlN0b3JlLlYxygIRQ29zaW1vc2lcU3RvcmVcVjHiAh1Db3NpbW9zaVxTdG9yZVxWMVxHUEJNZXRhZGF0YeoCE0Nvc2ltb3NpOjpTdG9yZTo6VjFiBnByb3RvMw");
+  fileDesc("Ch1jb3NpbW9zaS9zdG9yZS92MS9zdG9yZS5wcm90bxIRY29zaW1vc2kuc3RvcmUudjEiEwoRR2V0Q2F0YWxvZ1JlcXVlc3QiuwEKCE9ybmFtZW50EhMKC29ybmFtZW50X2lkGAEgASgJEi0KBGtpbmQYAiABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSOwoLYWNxdWlzaXRpb24YAyABKA4yJi5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEFjcXVpc2l0aW9uEg0KBXByaWNlGAQgASgDEg0KBW93bmVkGAUgASgIEhAKCHNlbGVjdGVkGAYgASgIIkQKEkdldENhdGFsb2dSZXNwb25zZRIuCglvcm5hbWVudHMYASADKAsyGy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudCIVChNHZXRTZWxlY3Rpb25SZXF1ZXN0IlcKEU9ybmFtZW50U2VsZWN0aW9uEi0KBGtpbmQYASABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSEwoLb3JuYW1lbnRfaWQYAiABKAkiUAoUR2V0U2VsZWN0aW9uUmVzcG9uc2USOAoKc2VsZWN0aW9ucxgBIAMoCzIkLmNvc2ltb3NpLnN0b3JlLnYxLk9ybmFtZW50U2VsZWN0aW9uIq0BCg9EZWNvcmF0ZVJlcXVlc3QSHgoWYmFja2dyb3VuZF9vcm5hbWVudF9pZBgBIAEoCRIfChdzdGFyX3NoYWRlcl9vcm5hbWVudF9pZBgCIAEoCRIfChdnaXN0X3NoYWRlcl9vcm5hbWVudF9pZBgDIAEoCRIYChBtb3RlX29ybmFtZW50X2lkGAQgASgJEh4KFm1vdGVfZmllbGRfb3JuYW1lbnRfaWQYBSABKAkiYgoQRGVjb3JhdGVSZXNwb25zZRI3CglzZWxlY3Rpb24YASADKAsyJC5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudFNlbGVjdGlvbhIVCg1zcGVudF90d2lua2xlGAIgASgDKr8BCgxPcm5hbWVudEtpbmQSHQoZT1JOQU1FTlRfS0lORF9VTlNQRUNJRklFRBAAEhwKGE9STkFNRU5UX0tJTkRfQkFDS0dST1VORBABEh0KGU9STkFNRU5UX0tJTkRfU1RBUl9TSEFERVIQAhIdChlPUk5BTUVOVF9LSU5EX0dJU1RfU0hBREVSEAMSFgoST1JOQU1FTlRfS0lORF9NT1RFEAQSHAoYT1JOQU1FTlRfS0lORF9NT1RFX0ZJRUxEEAUqowEKE09ybmFtZW50QWNxdWlzaXRpb24SJAogT1JOQU1FTlRfQUNRVUlTSVRJT05fVU5TUEVDSUZJRUQQABIdChlPUk5BTUVOVF9BQ1FVSVNJVElPTl9GUkVFEAESIQodT1JOQU1FTlRfQUNRVUlTSVRJT05fUFVSQ0hBU0UQAhIkCiBPUk5BTUVOVF9BQ1FVSVNJVElPTl9BQ0hJRVZFTUVOVBADMqkCCgxTdG9yZVNlcnZpY2USXgoKR2V0Q2F0YWxvZxIkLmNvc2ltb3NpLnN0b3JlLnYxLkdldENhdGFsb2dSZXF1ZXN0GiUuY29zaW1vc2kuc3RvcmUudjEuR2V0Q2F0YWxvZ1Jlc3BvbnNlIgOQAgESZAoMR2V0U2VsZWN0aW9uEiYuY29zaW1vc2kuc3RvcmUudjEuR2V0U2VsZWN0aW9uUmVxdWVzdBonLmNvc2ltb3NpLnN0b3JlLnYxLkdldFNlbGVjdGlvblJlc3BvbnNlIgOQAgESUwoIRGVjb3JhdGUSIi5jb3NpbW9zaS5zdG9yZS52MS5EZWNvcmF0ZVJlcXVlc3QaIy5jb3NpbW9zaS5zdG9yZS52MS5EZWNvcmF0ZVJlc3BvbnNlQskBChVjb20uY29zaW1vc2kuc3RvcmUudjFCClN0b3JlUHJvdG9QAVo+Z2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3N0b3JlL3YxO3N0b3JldjGiAgNDU1iqAhFDb3NpbW9zaS5TdG9yZS5WMcoCEUNvc2ltb3NpXFN0b3JlXFYx4gIdQ29zaW1vc2lcU3RvcmVcVjFcR1BCTWV0YWRhdGHqAhNDb3NpbW9zaTo6U3RvcmU6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message cosimosi.store.v1.GetCatalogRequest
@@ -160,6 +160,21 @@ export type DecorateRequest = Message<"cosimosi.store.v1.DecorateRequest"> & {
    * @generated from field: string star_shader_ornament_id = 2;
    */
   starShaderOrnamentId: string;
+
+  /**
+   * @generated from field: string gist_shader_ornament_id = 3;
+   */
+  gistShaderOrnamentId: string;
+
+  /**
+   * @generated from field: string mote_ornament_id = 4;
+   */
+  moteOrnamentId: string;
+
+  /**
+   * @generated from field: string mote_field_ornament_id = 5;
+   */
+  moteFieldOrnamentId: string;
 };
 
 /**
@@ -196,10 +211,14 @@ export const DecorateResponseSchema: GenMessage<DecorateResponse> = /*@__PURE__*
   messageDesc(file_cosimosi_store_v1_store, 7);
 
 /**
- * The surfaces decoration opens. Closed at two — a sky, and the body shape a memory is shown as.
- * They are the staging
- * layer, and nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
+ * The surfaces decoration opens. Closed at five — a sky, the body shape a memory is shown as, the
+ * body shape its summary is shown as, and the two halves of the decorative dust between them: one
+ * speck's look, and the space the specks are scattered through. They are the staging layer, and
+ * nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
  * expressible as a kind at all.
+ *
+ * Every name is the SURFACE, never the renderer's own noun for the look that fills it: the wire
+ * says which surface is being dressed and carries an opaque id for the rest.
  *
  * @generated from enum cosimosi.store.v1.OrnamentKind
  */
@@ -218,6 +237,21 @@ export enum OrnamentKind {
    * @generated from enum value: ORNAMENT_KIND_STAR_SHADER = 2;
    */
   STAR_SHADER = 2,
+
+  /**
+   * @generated from enum value: ORNAMENT_KIND_GIST_SHADER = 3;
+   */
+  GIST_SHADER = 3,
+
+  /**
+   * @generated from enum value: ORNAMENT_KIND_MOTE = 4;
+   */
+  MOTE = 4,
+
+  /**
+   * @generated from enum value: ORNAMENT_KIND_MOTE_FIELD = 5;
+   */
+  MOTE_FIELD = 5,
 }
 
 /**

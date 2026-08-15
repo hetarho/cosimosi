@@ -58,12 +58,24 @@ func TestBothReadsRefuseAnUnauthenticatedRequest(t *testing.T) {
 	}
 }
 
+// Walked over the DECLARED set, never a hand-listed pair. An unmapped kind leaves as UNSPECIFIED,
+// which proto3 JSON omits and every client drops rather than guesses — so the rows of a whole kind
+// disappear from the panel with no error on either side. The `default` arm in protoKind cannot tell
+// a forgotten case from a genuinely unknown value; this loop can.
 func TestEveryDomainKindAndAcquisitionHasAWireValue(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []store.OrnamentKind{store.KindBackground, store.KindStarShader} {
-		if protoKind(kind) == storev1.OrnamentKind_ORNAMENT_KIND_UNSPECIFIED {
+	seen := map[storev1.OrnamentKind]store.OrnamentKind{}
+	for _, kind := range store.AllOrnamentKinds() {
+		wire := protoKind(kind)
+		if wire == storev1.OrnamentKind_ORNAMENT_KIND_UNSPECIFIED {
 			t.Errorf("kind %q has no wire value", kind)
+			continue
 		}
+		// Two kinds sharing a wire value would answer one kind's rows under the other's heading.
+		if other, dup := seen[wire]; dup {
+			t.Errorf("kinds %q and %q share the wire value %v", other, kind, wire)
+		}
+		seen[wire] = kind
 	}
 	for _, acquisition := range []store.OrnamentAcquisition{
 		store.AcquisitionFree,
@@ -97,6 +109,21 @@ func TestTheWireCannotNameAUserAnAchievementOrAnyVisualParameter(t *testing.T) {
 	selectionFields := (&storev1.OrnamentSelection{}).ProtoReflect().Descriptor().Fields()
 	if selectionFields.Len() != 2 {
 		t.Fatalf("OrnamentSelection fields = %d, want exactly 2", selectionFields.Len())
+	}
+
+	// DecorateRequest is one named field per kind — the shape that makes a duplicate or unknown kind
+	// unrepresentable. It only holds while the fields and the kinds stay in step: a kind with no
+	// field of its own could never be saved, and the panel would silently revert it on every save.
+	decorateFields := (&storev1.DecorateRequest{}).ProtoReflect().Descriptor().Fields()
+	if decorateFields.Len() != len(store.AllOrnamentKinds()) {
+		t.Fatalf("DecorateRequest fields = %d, want one per kind (%d)",
+			decorateFields.Len(), len(store.AllOrnamentKinds()))
+	}
+	for _, kind := range store.AllOrnamentKinds() {
+		want := strings.ToLower(string(kind)) + "_ornament_id"
+		if decorateFields.ByName(protoreflect.Name(want)) == nil {
+			t.Errorf("DecorateRequest has no %q field for kind %q", want, kind)
+		}
 	}
 
 	file := (&storev1.Ornament{}).ProtoReflect().Descriptor().ParentFile()

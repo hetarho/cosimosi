@@ -17,29 +17,39 @@ field, and no JSON column, so a meaning-bearing write has nowhere to go. Bloom a
 the catalog, permanently and in every kind, because a lower bloom threshold makes every star read brighter — which is
 forgetting visually undone.
 
-**There are exactly two kinds: `BACKGROUND` and `STAR_SHADER`** — the sky the universe hangs in, and the body shape a
-memory is shown as. The set is closed in the Go enum, the DDL `CHECK` and the proto at once, so a third kind cannot
-appear without one reviewed change touching all three. Nothing meaning-bearing is expressible as a kind at all.
+**There are exactly five kinds: `BACKGROUND`, `STAR_SHADER`, `GIST_SHADER`, `MOTE` and `MOTE_FIELD`** — the sky the
+universe hangs in, the body shape a memory is shown as, the body shape its summary is shown as, and the two halves of
+the decorative dust between them: one speck's look, and the space the specks are scattered through. The set is closed
+in the Go enum, the DDL `CHECK` and the proto at once, so a sixth kind cannot appear without one reviewed change
+touching all three. Nothing meaning-bearing is expressible as a kind at all.
+
+**A kind names the surface, never the look that fills it.** `STAR_SHADER` and `GIST_SHADER` are the two bodies;
+`MOTE` and `MOTE_FIELD` are the two halves of the backdrop. The renderer's own nouns for what a row resolves to —
+`StarShape`, `GistShape`, `BackdropMote`, `BackdropField` — stay on the far side of the projection and appear in no Go
+type, table, or proto message. That is why the id prefix is `star_shader.` rather than `star_shape.`: the server can
+say which surface is being dressed and nothing more.
 
 **A feeling's color is not for sale** ([P10] as amended). 감정 색은 사고파는 대상이 아니다: the per-mood override lives
 in `mood_colors`, is free, and is edited from its own surface — it is not an ornament, has no id in this catalog, and
 no price key can exist for it.
 
-**The catalog is code, and its membership is a rule rather than a count.** One row per id the renderer's two
+**The catalog is code, and its membership is a rule rather than a count.** One row per id the renderer's five
 registries publish, derived at implement time and pinned by a fixture both runtimes read. No number of rows is
 declared or asserted anywhere; adding a sky to the renderer adds a purchasable ornament by construction.
 
-**A price is a function of the kind, never of the row** ([P9]). `store.background_price` and `store.star_shader_price`
-are the whole price table, resolved **server-side** before a response leaves — so one number moves a whole kind, a
-per-row price is unrepresentable, and no client ever holds the table. Ornaments are bought with `GENERAL` Twinkle
-only; `SMALL` may never fund one, which the ledger's own `CHECK` enforces.
+**A price is a function of the kind, never of the row** ([P9]). The five `store.*_price` keys are the whole price
+table, resolved **server-side** before a response leaves — so one number moves a whole kind, a per-row price is
+unrepresentable, and no client ever holds the table. They are graded by what a row touches: a body costs more than a
+sky, and a sky more than the dust behind it. Ornaments are bought with `GENERAL` Twinkle only; `SMALL` may never fund
+one, which the ledger's own `CHECK` enforces.
 
 **Each kind has exactly one free row, and it is that kind's default.** Free means owned by everyone with **no
 ownership row ever written** — so there is no signup grant, no backfill, and nothing to migrate. Absence of a
 selection row **is** the default.
 
-**Two rows are achievement-only, one per kind, and they are unbuyable at any price** ([P11]). They carry no price and
-report zero. The catalog refuses a purchase of one; it does not merely omit a button. `store` never names the
+**Two rows are achievement-only and unbuyable at any price** ([P11]) — at most one in any kind, and most kinds have
+none: a row is achievement-only because a capstone pays it, so kinds do not acquire one merely by existing. They carry
+no price and report zero. The catalog refuses a purchase of one; it does not merely omit a button. `store` never names the
 achievement that pays a row — the direction is one-way, so there is no id to drift.
 
 **Ownership is permanent** ([P9]). Acquired once, by purchase or by achievement; there is no expiry, no quantity, no
@@ -48,8 +58,8 @@ column, not a rule someone keeps. The single delete is the user's own withdrawal
 names — which hard-deletes that user's ownership and selection rows and no one else's.
 
 **Exactly one ornament is applied per kind**, and that is a primary-key fact `(user_id, kind)` rather than an
-application check. A selection's id must carry its kind's prefix (`background.` · `star_shader.`), refused by the
-schema, so a selection can never hold a foreign kind's id.
+application check. A selection's id must carry its kind's prefix (`background.` · `star_shader.` · `gist_shader.` ·
+`mote.` · `mote_field.`), refused by the schema, so a selection can never hold a foreign kind's id.
 
 **A read always answers, a write never guesses.** The selection read returns one entry per kind, coercing an absent
 row and an unknown or retired stored id to that kind's default — so a client boot is deterministic and a retired

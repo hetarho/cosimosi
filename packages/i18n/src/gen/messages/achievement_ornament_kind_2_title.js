@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Achievement_Ornament_Kind_2_TitleInputs */
 
 const en_achievement_ornament_kind_2_title = /** @type {(inputs: Achievement_Ornament_Kind_2_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Both kinds`)
+	return /** @type {LocalizedString} */ (`Two surfaces changed`)
 };
 
 const ko_achievement_ornament_kind_2_title = /** @type {(inputs: Achievement_Ornament_Kind_2_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`두 종류 다`)
+	return /** @type {LocalizedString} */ (`두 군데를 바꿈`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Both kinds" |
+* | "Two surfaces changed" |
 *
 * @param {Achievement_Ornament_Kind_2_TitleInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

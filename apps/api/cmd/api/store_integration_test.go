@@ -62,7 +62,7 @@ func TestDecorateBuysAndDebitsInOneTransaction(t *testing.T) {
 	if spent != price {
 		t.Errorf("spent = %d, want the catalog price %d", spent, price)
 	}
-	if len(applied) != 2 {
+	if len(applied) != len(store.AllOrnamentKinds()) {
 		t.Errorf("applied = %+v, want one entry per kind", applied)
 	}
 	if owned := countStoreRows(t, ctx, pool, "ornament_ownerships", userID); owned != 1 {

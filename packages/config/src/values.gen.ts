@@ -169,6 +169,9 @@ export const VALUES = {
   store: {
     backgroundPrice: 300,
     starShaderPrice: 600,
+    gistShaderPrice: 500,
+    motePrice: 200,
+    moteFieldPrice: 300,
   },
   achievement: {
     rewardTier1: 50,

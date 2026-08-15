@@ -111,19 +111,19 @@ cosimosi는 _기억 신경과학의 엔그램 이론에서 영감을 받아_, �
 
 > **지원 컨텍스트**(§3.1 규칙 ⑦) — `account` · `store` · `achievement` · `demo`.
 
-| 개념 (KR)      | 코드 (= UL, 모든 레이어)                       | 사용자 표시 (시적) | 정의                                                                                                                              |
-| -------------- | ---------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| 사용자         | `User` (`users`)                               | —                  | 계정 주체. `Nickname`·`Email`·`Timezone`·`Locale` 보유. 모든 데이터의 격리 단위([U1]).                                            |
-| 인증 수단      | `AuthProvider` (`auth_providers`)              | —                  | `GOOGLE` / `PASSWORD`. 한 `User`에 복수 연결 가능([U5]).                                                                          |
-| 초대           | `Invite` (`invites`)                           | —                  | 초대 링크 토큰. `inviter`·`invitee`·`rewarded_at`. 보상은 유효 가입 판정 후([G6]).                                                |
-| 장식 아이템    | `Ornament`                                     | 우주 꾸미기 아이템 | 카탈로그(**테이블 아님 — Go 코드**). `OrnamentKind` + 획득 경로. 가격은 종류가 정한다. `GENERAL` 별가루로만 구매·영구 소유([P9]). |
-| 장식 종류      | `OrnamentKind`                                 | —                  | `BACKGROUND`(배경) / `STAR_SHADER`(별 셰이더) 둘로 닫힘. 감정 색은 꾸미기가 아니다([P10]).                                        |
-| 소유           | `OrnamentOwnership` (`ornament_ownerships`)    | —                  | 구매·업적으로 획득한 영구 소유 이력. **UI에 "보관함"으로 노출하지 않는다**([P7]).                                                 |
-| 적용 상태      | `OrnamentSelection` (`ornament_selections`)    | 지금 내 우주       | 종류별 현재 적용값 1개. 저장 시점에 확정([P8]).                                                                                   |
-| 업적           | `Achievement`                                  | 업적               | 정적 정의 — 조건·보상. 카탈로그는 **테이블 아님 — Go 코드**([A2]).                                                                |
-| 업적 진행      | `AchievementProgress` (`achievement_progress`) | —                  | 사용자별 진행도·달성 시각·**수령 여부**([A4]).                                                                                    |
-| 데모 시나리오  | `DemoScenario`                                 | —                  | **FE 전용·DB 없음.** 고정 시퀀스 정의([Z3]).                                                                                      |
-| 데모 일기 세트 | `DemoDiarySet`                                 | —                  | **FE 전용·DB 없음.** 뉴런이 겹치도록 설계된 일기 3편 묶음([Z4]).                                                                  |
+| 개념 (KR)      | 코드 (= UL, 모든 레이어)                       | 사용자 표시 (시적) | 정의                                                                                                                                   |
+| -------------- | ---------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 사용자         | `User` (`users`)                               | —                  | 계정 주체. `Nickname`·`Email`·`Timezone`·`Locale` 보유. 모든 데이터의 격리 단위([U1]).                                                 |
+| 인증 수단      | `AuthProvider` (`auth_providers`)              | —                  | `GOOGLE` / `PASSWORD`. 한 `User`에 복수 연결 가능([U5]).                                                                               |
+| 초대           | `Invite` (`invites`)                           | —                  | 초대 링크 토큰. `inviter`·`invitee`·`rewarded_at`. 보상은 유효 가입 판정 후([G6]).                                                     |
+| 장식 아이템    | `Ornament`                                     | 우주 꾸미기 아이템 | 카탈로그(**테이블 아님 — Go 코드**). `OrnamentKind` + 획득 경로. 가격은 종류가 정한다. `GENERAL` 별가루로만 구매·영구 소유([P9]).      |
+| 장식 종류      | `OrnamentKind`                                 | —                  | `BACKGROUND`·`STAR_SHADER`·`GIST_SHADER`·`MOTE`·`MOTE_FIELD` 다섯으로 닫힘 — 이름은 꾸며지는 자리다. 감정 색은 꾸미기가 아니다([P10]). |
+| 소유           | `OrnamentOwnership` (`ornament_ownerships`)    | —                  | 구매·업적으로 획득한 영구 소유 이력. **UI에 "보관함"으로 노출하지 않는다**([P7]).                                                      |
+| 적용 상태      | `OrnamentSelection` (`ornament_selections`)    | 지금 내 우주       | 종류별 현재 적용값 1개. 저장 시점에 확정([P8]).                                                                                        |
+| 업적           | `Achievement`                                  | 업적               | 정적 정의 — 조건·보상. 카탈로그는 **테이블 아님 — Go 코드**([A2]).                                                                     |
+| 업적 진행      | `AchievementProgress` (`achievement_progress`) | —                  | 사용자별 진행도·달성 시각·**수령 여부**([A4]).                                                                                         |
+| 데모 시나리오  | `DemoScenario`                                 | —                  | **FE 전용·DB 없음.** 고정 시퀀스 정의([Z3]).                                                                                           |
+| 데모 일기 세트 | `DemoDiarySet`                                 | —                  | **FE 전용·DB 없음.** 뉴런이 겹치도록 설계된 일기 3편 묶음([Z4]).                                                                       |
 
 > **우주 시적 표현(별·우주먼지·바다·성운·별자리·영혼)은 사용자 표시 카피일 뿐 — 코드·DB·proto·도메인엔 안 쓴다.** 별자리·잠재 뉴런·성운은 어느 코드 레이어에도 타입이 없다(창발/렌더링/파생). 2-저장(`Hippocampus`/`Neocortex`)도 좌표 규약이지 별도 엔티티가 아니다.
 

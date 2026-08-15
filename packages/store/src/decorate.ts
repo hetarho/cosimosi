@@ -28,6 +28,9 @@ export async function requestDecorate(
   const response = await decorate(transport, {
     backgroundOrnamentId: previewed.BACKGROUND,
     starShaderOrnamentId: previewed.STAR_SHADER,
+    gistShaderOrnamentId: previewed.GIST_SHADER,
+    moteOrnamentId: previewed.MOTE,
+    moteFieldOrnamentId: previewed.MOTE_FIELD,
   })
   if (scopeKey === null || currentScopeKey() !== scopeKey) return null
   return {

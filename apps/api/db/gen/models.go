@@ -215,7 +215,7 @@ type OrnamentOwnership struct {
 
 type OrnamentSelection struct {
 	UserID string
-	// closed set, owned by the store domain: BACKGROUND | STAR_SHADER — the two staging-layer surfaces decoration opens. A feeling's color is not one of them: mood_colors owns that, and an emotion color is not for sale ([P10] as amended).
+	// closed set, owned by the store domain: BACKGROUND | STAR_SHADER | GIST_SHADER | MOTE | MOTE_FIELD — the staging-layer surfaces decoration opens. Every name is the SURFACE, never the renderer's own noun for the look that fills it. A feeling's color is not one of them: mood_colors owns that, and an emotion color is not for sale ([P10] as amended).
 	Kind       string
 	OrnamentID string
 	SelectedAt pgtype.Timestamptz
