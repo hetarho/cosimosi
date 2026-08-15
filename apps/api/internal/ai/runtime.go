@@ -106,12 +106,13 @@ func fingerprint(source string, cfg CapabilityConfig) string {
 // beside the network-bound AI call it precedes — and guarantees a SetAIConfig takes effect
 // immediately, including in the separate worker process (both read the same table).
 type ResolvingAdapters struct {
-	source *RuntimeConfigSource
-	meter  *Meter
-	logger *log.Logger
-	mu     sync.Mutex
-	fp     string
-	built  *Adapters
+	source      *RuntimeConfigSource
+	meter       *Meter
+	logger      *log.Logger
+	httpClients HTTPClients
+	mu          sync.Mutex
+	fp          string
+	built       *Adapters
 }
 
 func (r *ResolvingAdapters) current(ctx context.Context) (Adapters, error) {
@@ -130,7 +131,9 @@ func (r *ResolvingAdapters) current(ctx context.Context) (Adapters, error) {
 	if r.built != nil && fp == r.fp {
 		return *r.built, nil
 	}
-	adapters, err := NewAdapters(FactoryOptions{LLM: llm, Embedding: emb, Meter: r.meter})
+	adapters, err := NewAdapters(FactoryOptions{
+		LLM: llm, Embedding: emb, Meter: r.meter, HTTPClients: r.httpClients,
+	})
 	if err != nil {
 		return Adapters{}, err
 	}
@@ -152,11 +155,15 @@ func (r *ResolvingAdapters) current(ctx context.Context) (Adapters, error) {
 // The Mode label is static ("runtime db→env→mock"); the concrete provider a given call uses is
 // whatever the current config resolves to. logger (nil-safe) reports each rebuild's resolved mode,
 // so a runtime degradation to env/mock is visible in the process log.
-func NewResolvingAdapters(source *RuntimeConfigSource, meter *Meter, logger *log.Logger) Adapters {
+func NewResolvingAdapters(source *RuntimeConfigSource, meter *Meter, logger *log.Logger, clients ...HTTPClients) Adapters {
 	if meter == nil {
 		meter = NewMeter()
 	}
-	r := &ResolvingAdapters{source: source, meter: meter, logger: logger}
+	var httpClients HTTPClients
+	if len(clients) > 0 {
+		httpClients = clients[0]
+	}
+	r := &ResolvingAdapters{source: source, meter: meter, logger: logger, httpClients: httpClients}
 	return Adapters{
 		Extractor:       resolvingExtractor{r},
 		Embedder:        resolvingEmbedder{r},

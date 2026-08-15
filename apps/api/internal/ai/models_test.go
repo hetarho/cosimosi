@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 )
 
@@ -28,7 +29,12 @@ func TestModelListerRegistryMirrorsFactorySlotSemantics(t *testing.T) {
 		got = cfg
 		return []ModelInfo{{ID: "glm-x"}}, nil
 	})
-	models, err := ListLLMModels(ctx, CapabilityConfig{Provider: " glm ", APIKey: "k", Model: "ignored-by-listing"})
+	httpClient := &http.Client{}
+	models, err := ListLLMModels(
+		ctx,
+		CapabilityConfig{Provider: " glm ", APIKey: "k", Model: "ignored-by-listing"},
+		httpClient,
+	)
 	if err != nil {
 		t.Fatalf("registered lister dispatch: %v", err)
 	}
@@ -37,5 +43,8 @@ func TestModelListerRegistryMirrorsFactorySlotSemantics(t *testing.T) {
 	}
 	if got.APIKey != "k" {
 		t.Fatalf("lister config = %+v, want the API key passed through", got)
+	}
+	if got.HTTPClient != httpClient {
+		t.Fatal("lister did not receive the composition-root HTTP client")
 	}
 }

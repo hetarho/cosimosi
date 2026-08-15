@@ -44,7 +44,12 @@ import (
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
-const workerPollInterval = time.Second
+const (
+	// These are deployment network budgets, kept in the worker composition root.
+	workerDeepSeekHTTPTimeout  = 60 * time.Second
+	workerVoyageHTTPTimeout    = 30 * time.Second
+	workerDirectoryHTTPTimeout = 5 * time.Second
+)
 
 type withdrawalComposition struct {
 	scheduler account.WithdrawalSweepScheduler
@@ -117,7 +122,10 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		decrypter = box
 	}
 	adminStore := adminpg.NewStore(pool.PgxPool())
-	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter(), logger)
+	aiHTTPClients := workerAIHTTPClients()
+	adapters := ai.NewResolvingAdapters(
+		ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter(), logger, aiHTTPClients,
+	)
 	accountStore := accountpg.NewStore(pool.PgxPool())
 	withdrawalAdapters, err := newWithdrawalComposition(
 		pool,
@@ -128,7 +136,7 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	if err != nil {
 		return nil, "", err
 	}
-	directory, err := newWorkerAccountDirectory()
+	directory, err := newWorkerAccountDirectory(&http.Client{Timeout: workerDirectoryHTTPTimeout})
 	if err != nil {
 		return nil, "", err
 	}
@@ -156,7 +164,7 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		memoryStore,
 		adapters.Embedder,
 		adapters.Semanticizer,
-		workerPollInterval,
+		jobqueue.DefaultPollInterval,
 		logger,
 		map[memory.JobKind]jobqueue.Handler[memory.Job]{
 			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),
@@ -258,7 +266,7 @@ type workerAccountDirectory interface {
 	account.CredentialDirectory
 }
 
-func newWorkerAccountDirectory() (workerAccountDirectory, error) {
+func newWorkerAccountDirectory(httpClient *http.Client) (workerAccountDirectory, error) {
 	baseURL := os.Getenv("SUPABASE_PROJECT_URL")
 	if baseURL == "" {
 		baseURL = os.Getenv("SUPABASE_URL")
@@ -266,7 +274,7 @@ func newWorkerAccountDirectory() (workerAccountDirectory, error) {
 	if directory, ok := platformsupabase.NewDirectory(
 		baseURL,
 		os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
-		&http.Client{Timeout: 5 * time.Second},
+		httpClient,
 	); ok {
 		return directory, nil
 	}
@@ -279,6 +287,17 @@ func newWorkerAccountDirectory() (workerAccountDirectory, error) {
 		)
 	}
 	return platformsupabase.Fake{}, nil
+}
+
+func workerAIHTTPClients() ai.HTTPClients {
+	return ai.HTTPClients{
+		LLMByProvider: map[string]*http.Client{
+			"deepseek": {Timeout: workerDeepSeekHTTPTimeout},
+		},
+		EmbeddingByProvider: map[string]*http.Client{
+			"voyage": {Timeout: workerVoyageHTTPTimeout},
+		},
+	}
 }
 
 type workerNoInviteGranter struct{}

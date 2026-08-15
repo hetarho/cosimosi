@@ -4,9 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-)
 
-const aiAdapterCacheMaxEntries = 1024
+	"github.com/cosimosi/api/internal/platform/values"
+)
 
 func stableHash(parts ...any) string {
 	hash := sha256.New()
@@ -26,7 +26,7 @@ type boundedCache[V any] struct {
 
 func newBoundedCache[V any](max int) boundedCache[V] {
 	if max <= 0 {
-		max = aiAdapterCacheMaxEntries
+		max = values.AiAdapterCacheMaxEntries
 	}
 	return boundedCache[V]{
 		max:     max,

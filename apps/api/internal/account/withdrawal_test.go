@@ -417,14 +417,14 @@ func TestWithdrawalStatusCacheIsBoundedAndMutationFencesOldMisses(t *testing.T) 
 		t.Fatal("status read that began before invalidation repopulated the cache")
 	}
 
-	for index := range withdrawalStatusCacheMaxEntries + 1 {
+	for index := range values.AccountWithdrawalStatusCacheMaxEntries + 1 {
 		cache.replace(fmt.Sprintf("user-%d", index), time.Time{}, false, now)
 	}
-	if len(cache.entries) != withdrawalStatusCacheMaxEntries {
+	if len(cache.entries) != values.AccountWithdrawalStatusCacheMaxEntries {
 		t.Fatalf(
 			"cache entries = %d, want bounded at %d",
 			len(cache.entries),
-			withdrawalStatusCacheMaxEntries,
+			values.AccountWithdrawalStatusCacheMaxEntries,
 		)
 	}
 	if _, exists := cache.entries["user-0"]; exists {

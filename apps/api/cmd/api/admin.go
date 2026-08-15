@@ -122,12 +122,12 @@ func (a adminAccountDirectory) EmailFor(ctx context.Context, userID string) (str
 
 // newAccountDirectory selects one platform concrete shared by account and admin through their
 // separate composition-root adapters.
-func newAccountDirectory() accountDirectorySource {
+func newAccountDirectory(httpClient *http.Client) accountDirectorySource {
 	baseURL := os.Getenv("SUPABASE_PROJECT_URL")
 	if baseURL == "" {
 		baseURL = os.Getenv("SUPABASE_URL")
 	}
-	if sb, ok := platformsupabase.NewDirectory(baseURL, os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), &http.Client{Timeout: 5 * time.Second}); ok {
+	if sb, ok := platformsupabase.NewDirectory(baseURL, os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), httpClient); ok {
 		return sb
 	}
 	return platformsupabase.Fake{}
@@ -226,8 +226,9 @@ func (a adminJobHealth) Health(ctx context.Context) (admin.JobHealth, error) {
 // Every lookup/vendor failure is normalized to admin.ErrModelListingUnavailable (with the cause
 // in the message) so the console degrades to manual entry instead of surfacing an internal error.
 type aiModelCatalog struct {
-	reader    ai.ConfigReader
-	decrypter ai.KeyDecrypter
+	reader      ai.ConfigReader
+	decrypter   ai.KeyDecrypter
+	httpClients ai.HTTPClients
 }
 
 func (c aiModelCatalog) ListModels(ctx context.Context, capability admin.AICapability, provider string) ([]admin.ProviderModel, error) {
@@ -247,9 +248,9 @@ func (c aiModelCatalog) ListModels(ctx context.Context, capability admin.AICapab
 	var models []ai.ModelInfo
 	switch capability {
 	case admin.CapabilityLLM:
-		models, err = ai.ListLLMModels(ctx, cfg)
+		models, err = ai.ListLLMModels(ctx, cfg, c.httpClients.ForLLM(provider))
 	case admin.CapabilityEmbedding:
-		models, err = ai.ListEmbeddingModels(ctx, cfg)
+		models, err = ai.ListEmbeddingModels(ctx, cfg, c.httpClients.ForEmbedding(provider))
 	default:
 		return nil, admin.ErrUnknownCapability
 	}

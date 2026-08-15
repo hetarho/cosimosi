@@ -40,6 +40,17 @@ func TestNewEnforcesDimensionContractAtConstruction(t *testing.T) {
 	}
 }
 
+func TestNewUsesInjectedHTTPClient(t *testing.T) {
+	httpClient := &http.Client{}
+	client, err := New(ai.ProviderConfig{APIKey: "key", HTTPClient: httpClient})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if client.(*Client).http != httpClient {
+		t.Fatal("New did not preserve the composition-root HTTP client")
+	}
+}
+
 // The voyage-4 family is selectable via COSIMOSI_EMBEDDING_MODEL: each size honors
 // ai.embedding_dim and takes output_dimension, so wiring must accept all three.
 func TestNewAcceptsVoyage4Family(t *testing.T) {

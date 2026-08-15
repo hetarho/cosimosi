@@ -20,11 +20,13 @@ newcomer can find the right group without scrolling 600 lines of YAML; when the 
 - `errors`: toast auto-dismiss timing for the error surface.
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
-- `account`: profile and nickname bounds, invite capability limits.
+- `account`: profile and nickname bounds, invite capability limits, withdrawal retention, and process-local
+  withdrawal-status cache bounds.
 - `rendering`: universe skin, renderer budgets, and awaken/spotlight choreography tuning.
 - `ui`: responsive-sheet breakpoint, gesture thresholds, height bounds, and settle timing.
 - `nebula`: latent-field sampling and blend knobs for the semantic backdrop.
-- `ai`: embedding vector dimension, real-adapter token/call caps, and worker retry/backoff caps.
+- `ai`: embedding vector dimension, real-adapter token/call/cache caps, and job retry/backoff/retention bounds.
+- `worker`: terminal-job cleanup cadence and per-claim maintenance batch size.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
   intensity.
 - `palette`: mood-colour editing bounds and recommendation limits.
@@ -71,6 +73,17 @@ arrays/maps, nested arrays, nested maps, and mixed-type scalar maps with clear `
 `pnpm gen` runs values generation before message, token, proto, and sql generation.
 
 ## 4. What stays out
+
+Classify a new numeric knob by ownership before placing it:
+
+- Product behavior or cache policy that must be identical in every process/build belongs in `spec/values.yaml`.
+  Current backend examples are the withdrawal-status cache TTL/capacity, AI adapter-cache capacity, and terminal-job
+  cleanup cadence/batch size.
+- Deployment-shaped network and lifecycle budgets stay as named arguments at each `cmd/*` composition root. HTTP
+  client timeouts are injected into Supabase admission/directory and into the specific AI provider whose existing
+  transport budget they replace; capability-wide clients must not overwrite another provider's SDK policy.
+- Protocol and structural safety bounds stay beside the protocol implementation with an invariant comment. Examples
+  include vendor-response byte caps, bounded error-body drains, and fixed vector-shape validation.
 
 Do not put these in `spec/values.yaml`:
 

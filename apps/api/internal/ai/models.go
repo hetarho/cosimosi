@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 )
@@ -41,10 +42,10 @@ func RegisterEmbeddingModelLister(name string, lister ModelLister) {
 
 // ListLLMModels / ListEmbeddingModels resolve a provider's lister with the same
 // unknown / recognized-but-unimplemented semantics as the client factories.
-func ListLLMModels(ctx context.Context, cfg CapabilityConfig) ([]ModelInfo, error) {
+func ListLLMModels(ctx context.Context, cfg CapabilityConfig, clients ...*http.Client) ([]ModelInfo, error) {
 	name := strings.ToLower(strings.TrimSpace(cfg.Provider))
 	if lister, ok := llmModelListers[name]; ok {
-		return lister(ctx, providerConfig(cfg))
+		return lister(ctx, providerConfig(cfg, firstHTTPClient(clients)))
 	}
 	if slices.Contains(llmProviderSlots, name) {
 		return nil, fmt.Errorf("%w: llm provider %q", ErrProviderNotImplemented, cfg.Provider)
@@ -52,13 +53,20 @@ func ListLLMModels(ctx context.Context, cfg CapabilityConfig) ([]ModelInfo, erro
 	return nil, fmt.Errorf("%w: llm provider %q", ErrUnknownProvider, cfg.Provider)
 }
 
-func ListEmbeddingModels(ctx context.Context, cfg CapabilityConfig) ([]ModelInfo, error) {
+func ListEmbeddingModels(ctx context.Context, cfg CapabilityConfig, clients ...*http.Client) ([]ModelInfo, error) {
 	name := strings.ToLower(strings.TrimSpace(cfg.Provider))
 	if lister, ok := embeddingModelListers[name]; ok {
-		return lister(ctx, providerConfig(cfg))
+		return lister(ctx, providerConfig(cfg, firstHTTPClient(clients)))
 	}
 	if slices.Contains(embeddingProviderSlots, name) {
 		return nil, fmt.Errorf("%w: embedding provider %q", ErrProviderNotImplemented, cfg.Provider)
 	}
 	return nil, fmt.Errorf("%w: embedding provider %q", ErrUnknownProvider, cfg.Provider)
+}
+
+func firstHTTPClient(clients []*http.Client) *http.Client {
+	if len(clients) == 0 {
+		return nil
+	}
+	return clients[0]
 }

@@ -278,12 +278,12 @@ func TestBoundedCacheEvictsOldestEntries(t *testing.T) {
 func TestMeteredLLMSeamCacheIsBounded(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
 	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
-	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(aiAdapterCacheMaxEntries+10, fixedNow)))
+	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(values.AiAdapterCacheMaxEntries+10, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
 	}
 	day := fixedNow()
-	for i := 0; i < aiAdapterCacheMaxEntries+1; i++ {
+	for i := 0; i < values.AiAdapterCacheMaxEntries+1; i++ {
 		if _, err := extractor.Split(ctx, fmt.Sprintf("market-%d", i), day, nil); err != nil {
 			t.Fatalf("Split %d failed: %v", i, err)
 		}
@@ -291,7 +291,7 @@ func TestMeteredLLMSeamCacheIsBounded(t *testing.T) {
 	if _, err := extractor.Split(ctx, "market-0", day, nil); err != nil {
 		t.Fatalf("evicted Split failed: %v", err)
 	}
-	if client.calls != aiAdapterCacheMaxEntries+2 {
+	if client.calls != values.AiAdapterCacheMaxEntries+2 {
 		t.Fatalf("client calls = %d, want oldest entry evicted and reloaded", client.calls)
 	}
 }

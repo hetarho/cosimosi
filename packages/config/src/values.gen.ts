@@ -21,6 +21,8 @@ export const VALUES = {
     nicknameMaxLength: 24,
     inviteLinkTtlDays: 7,
     withdrawalRetentionDays: 30,
+    withdrawalStatusCacheTtlMs: 5000,
+    withdrawalStatusCacheMaxEntries: 4096,
   },
   rendering: {
     activeSkin: "emotion",
@@ -94,11 +96,16 @@ export const VALUES = {
     embeddingDim: 1024,
     perCallTokenCap: 7000,
     dailyCallCap: 200,
+    adapterCacheMaxEntries: 1024,
     jobMaxAttempts: 5,
     jobBackoffBaseMs: 60000,
     jobLeaseMs: 300000,
     jobMaxClaims: 20,
     jobTerminalRetentionDays: 30,
+  },
+  worker: {
+    cleanupIntervalS: 3600,
+    cleanupBatchSize: 100,
   },
   emotion: {
     moodValence: {"joy":0.82,"calm":0.62,"sad":-0.78,"anger":-0.76,"fear":-0.82,"love":0.9,"neutral":0,"excitement":0.78,"gratitude":0.76,"relief":0.68,"stress":-0.7,"tired":-0.55,"emptiness":-0.68},

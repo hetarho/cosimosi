@@ -3,6 +3,7 @@ package anthropic
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -207,6 +208,14 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
+func jsonResponse(body string) *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
 type errorBody struct {
 	err error
 }
@@ -241,6 +250,42 @@ func TestNewSelectsModel(t *testing.T) {
 	}
 	if got := client.(*Client).model; got != "claude-custom" {
 		t.Fatalf("model = %q, want override", got)
+	}
+}
+
+func TestNewUsesInjectedHTTPClient(t *testing.T) {
+	called := false
+	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		called = true
+		return jsonResponse(`{"id":"msg_1","type":"message","role":"assistant","model":"claude-opus-4-8","content":[{"type":"text","text":"{\"ok\":true}"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}`), nil
+	})}
+	client, err := New(ai.ProviderConfig{APIKey: "k", HTTPClient: httpClient})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if _, err := client.CompleteJSON(context.Background(), ai.LLMRequest{
+		Prompt: "x", MaxOutputTokens: 1200,
+	}); err != nil {
+		t.Fatalf("CompleteJSON failed: %v", err)
+	}
+	if !called {
+		t.Fatal("New did not pass the composition-root HTTP client to the SDK")
+	}
+}
+
+func TestListModelsUsesInjectedHTTPClient(t *testing.T) {
+	called := false
+	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		called = true
+		return jsonResponse(`{"data":[{"type":"model","id":"claude-a","display_name":"Claude A","created_at":"2026-01-01T00:00:00Z","capabilities":{"structured_outputs":{"supported":true}}}],"has_more":false,"first_id":"claude-a","last_id":"claude-a"}`), nil
+	})}
+	if _, err := ListModels(context.Background(), ai.ProviderConfig{
+		APIKey: "k", HTTPClient: httpClient,
+	}); err != nil {
+		t.Fatalf("ListModels failed: %v", err)
+	}
+	if !called {
+		t.Fatal("ListModels did not pass the composition-root HTTP client to the SDK")
 	}
 }
 

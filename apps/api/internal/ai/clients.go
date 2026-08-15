@@ -1,14 +1,17 @@
 package ai
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 // ProviderConfig is the vendor-neutral construction input the factory hands to a
-// provider client's constructor. It carries only runtime identity/config — never a
-// spec/values.yaml key: API keys and model ids are env/secrets. The endpoint is
-// NOT config — each adapter owns its own endpoint.
+// provider client's constructor. API keys and model ids are runtime identity; the
+// HTTP client is deployment policy injected by cmd/*. Endpoints remain adapter-owned.
 type ProviderConfig struct {
-	APIKey string
-	Model  string // optional override; empty selects the provider's recorded default
+	APIKey     string
+	Model      string // optional override; empty selects the provider's recorded default
+	HTTPClient *http.Client
 }
 
 type JSONSchema map[string]any

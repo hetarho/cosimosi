@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func TestProductionWorkerRejectsMissingCredentialDirectory(t *testing.T) {
 	t.Setenv("SUPABASE_PROJECT_URL", "")
 	t.Setenv("SUPABASE_URL", "")
 	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "")
-	if _, err := newWorkerAccountDirectory(); err == nil {
+	if _, err := newWorkerAccountDirectory(http.DefaultClient); err == nil {
 		t.Fatal("production worker accepted missing Supabase Admin API credentials")
 	}
 }

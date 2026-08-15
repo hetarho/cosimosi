@@ -10,8 +10,6 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
-const terminalJobCleanupBatchSize int32 = 100
-
 var ErrDuplicateJobHandler = errors.New("memory worker job handler kind is already registered")
 
 type WorkerConfig struct {
@@ -84,12 +82,14 @@ func NewJobRunner(
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
-	maintained := maintenanceQueue{
-		JobQueue: queue,
-		cleaner:  cleaner,
-		now:      now,
-		backoff:  cfg.BackoffBase,
-		logger:   cfg.Logger,
+	maintained := &maintenanceQueue{
+		JobQueue:         queue,
+		cleaner:          cleaner,
+		now:              now,
+		backoff:          cfg.BackoffBase,
+		logger:           cfg.Logger,
+		cleanupInterval:  time.Duration(values.WorkerCleanupIntervalS) * time.Second,
+		cleanupBatchSize: int32(values.WorkerCleanupBatchSize),
 	}
 	handlers := map[string]jobqueue.Handler[Job]{
 		string(JobKindEmbed):       NewEmbedJobHandler(embedder, sources, embeddingWriter),
@@ -126,23 +126,41 @@ func NewJobRunner(
 // trigger for something the user cannot ask for a second time.
 type maintenanceQueue struct {
 	JobQueue
-	cleaner TerminalJobCleaner
-	now     func() time.Time
-	backoff time.Duration
-	logger  *log.Logger
+	cleaner          TerminalJobCleaner
+	now              func() time.Time
+	backoff          time.Duration
+	logger           *log.Logger
+	cleanupInterval  time.Duration
+	cleanupBatchSize int32
+	nextCleanupAt    time.Time
 }
 
-func (q maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, error) {
-	if q.cleaner != nil {
-		cutoff := now.Add(-time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour)
-		if _, err := q.cleaner.PurgeTerminalJobs(ctx, cutoff, terminalJobCleanupBatchSize); err != nil && q.logger != nil {
-			q.logger.Printf("terminal job cleanup failed: %v", err)
-		}
-	}
+func (q *maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, error) {
+	q.cleanupTerminalJobs(ctx, now)
 	return q.JobQueue.ClaimDue(ctx, now)
 }
 
-func (q maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
+func (q *maintenanceQueue) cleanupTerminalJobs(ctx context.Context, now time.Time) {
+	if q.cleaner == nil || (!q.nextCleanupAt.IsZero() && now.Before(q.nextCleanupAt)) {
+		return
+	}
+	// A partial batch or error advances the maintenance window. A full batch leaves the
+	// schedule due, allowing exactly one more bounded batch on the next product claim.
+	q.nextCleanupAt = now.Add(q.cleanupInterval)
+	cutoff := now.Add(-time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour)
+	purged, err := q.cleaner.PurgeTerminalJobs(ctx, cutoff, q.cleanupBatchSize)
+	if err != nil {
+		if q.logger != nil {
+			q.logger.Printf("terminal job cleanup failed: %v", err)
+		}
+		return
+	}
+	if purged >= int(q.cleanupBatchSize) {
+		q.nextCleanupAt = now
+	}
+}
+
+func (q *maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
 	if !retriedIndefinitely(job.Kind) {
 		return q.JobQueue.Fail(ctx, job, nextAttempts)
 	}

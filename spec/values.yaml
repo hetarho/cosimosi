@@ -39,6 +39,10 @@ account:
   # A withdrawn account remains restorable for this many real-clock UTC days before its
   # user-owned sweep may hard-delete it. Independent from diary-release retention.
   withdrawal_retention_days: 30
+  # Withdrawal admission rechecks the authoritative account status after this short window.
+  withdrawal_status_cache_ttl_ms: 5000
+  # Process-local withdrawal-status entries retained before least-recently-used eviction.
+  withdrawal_status_cache_max_entries: 4096
 
 rendering:
   # Active universe ambiance skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS).
@@ -290,6 +294,8 @@ ai:
   per_call_token_cap: 7000
   # Real AI adapters meter billable calls per user on a UTC calendar-day window.
   daily_call_cap: 200
+  # Maximum identical-input responses retained by each process-local real-adapter cache.
+  adapter_cache_max_entries: 1024
   # Worker failures retry this many total attempts before the row is kept as failed.
   job_max_attempts: 5
   # Exponential worker retry base: base * 2^attempts, with no jitter for deterministic tests.
@@ -306,6 +312,13 @@ ai:
   # real-clock days, then removed in bounded batches by the worker loop. This governs
   # identity/revision-only job metadata, never Diary or memory source retention.
   job_terminal_retention_days: 30
+
+worker:
+  # Real-clock cadence for scanning terminal job metadata after the previous scan drains.
+  cleanup_interval_s: 3600
+  # Maximum terminal rows removed by one maintenance pass; a full pass drains one more batch
+  # on the next claim, while product claims continue between batches.
+  cleanup_batch_size: 100
 
 emotion:
   # Mood coordinates are domain facts, stored on each memory at launch time.

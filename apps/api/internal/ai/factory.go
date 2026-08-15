@@ -3,6 +3,7 @@ package ai
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -116,14 +117,30 @@ type Adapters struct {
 }
 
 type FactoryOptions struct {
-	LLM       CapabilityConfig
-	Embedding CapabilityConfig
-	Meter     *Meter
+	LLM         CapabilityConfig
+	Embedding   CapabilityConfig
+	Meter       *Meter
+	HTTPClients HTTPClients
 
 	// Pre-built clients bypass registry selection — used by tests and by callers that
 	// inject a client directly. When set, the matching CapabilityConfig key is ignored.
 	LLMClient       LLMClient
 	EmbeddingClient EmbeddingClient
+}
+
+// HTTPClients are deployment-owned vendor transports. Provider adapters own request
+// shape and endpoints; composition roots own network timeout policy.
+type HTTPClients struct {
+	LLMByProvider       map[string]*http.Client
+	EmbeddingByProvider map[string]*http.Client
+}
+
+func (c HTTPClients) ForLLM(provider string) *http.Client {
+	return c.LLMByProvider[strings.ToLower(strings.TrimSpace(provider))]
+}
+
+func (c HTTPClients) ForEmbedding(provider string) *http.Client {
+	return c.EmbeddingByProvider[strings.ToLower(strings.TrimSpace(provider))]
 }
 
 func NewAdaptersFromEnv(opts FactoryOptions) (Adapters, error) {
@@ -158,7 +175,7 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	llmMode := "real"
 	if llmClient == nil {
 		if opts.LLM.APIKey != "" {
-			client, err := newLLMClient(opts.LLM)
+			client, err := newLLMClient(opts.LLM, opts.HTTPClients.ForLLM(opts.LLM.Provider))
 			if err != nil {
 				return Adapters{}, err
 			}
@@ -175,7 +192,10 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	embeddingMode := "real"
 	if embeddingClient == nil {
 		if opts.Embedding.APIKey != "" {
-			client, err := newEmbeddingClient(opts.Embedding)
+			client, err := newEmbeddingClient(
+				opts.Embedding,
+				opts.HTTPClients.ForEmbedding(opts.Embedding.Provider),
+			)
 			if err != nil {
 				return Adapters{}, err
 			}
@@ -246,10 +266,10 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	}, nil
 }
 
-func newLLMClient(cfg CapabilityConfig) (LLMClient, error) {
+func newLLMClient(cfg CapabilityConfig, httpClient *http.Client) (LLMClient, error) {
 	name := strings.ToLower(strings.TrimSpace(cfg.Provider))
 	if factory, ok := llmProviders[name]; ok {
-		return factory(providerConfig(cfg))
+		return factory(providerConfig(cfg, httpClient))
 	}
 	if slices.Contains(llmProviderSlots, name) {
 		return nil, fmt.Errorf("%w: llm provider %q", ErrProviderNotImplemented, cfg.Provider)
@@ -257,10 +277,10 @@ func newLLMClient(cfg CapabilityConfig) (LLMClient, error) {
 	return nil, fmt.Errorf("%w: llm provider %q", ErrUnknownProvider, cfg.Provider)
 }
 
-func newEmbeddingClient(cfg CapabilityConfig) (EmbeddingClient, error) {
+func newEmbeddingClient(cfg CapabilityConfig, httpClient *http.Client) (EmbeddingClient, error) {
 	name := strings.ToLower(strings.TrimSpace(cfg.Provider))
 	if factory, ok := embeddingProviders[name]; ok {
-		return factory(providerConfig(cfg))
+		return factory(providerConfig(cfg, httpClient))
 	}
 	if slices.Contains(embeddingProviderSlots, name) {
 		return nil, fmt.Errorf("%w: embedding provider %q", ErrProviderNotImplemented, cfg.Provider)
@@ -268,8 +288,8 @@ func newEmbeddingClient(cfg CapabilityConfig) (EmbeddingClient, error) {
 	return nil, fmt.Errorf("%w: embedding provider %q", ErrUnknownProvider, cfg.Provider)
 }
 
-func providerConfig(cfg CapabilityConfig) ProviderConfig {
-	return ProviderConfig{APIKey: cfg.APIKey, Model: cfg.Model}
+func providerConfig(cfg CapabilityConfig, httpClient *http.Client) ProviderConfig {
+	return ProviderConfig{APIKey: cfg.APIKey, Model: cfg.Model, HTTPClient: httpClient}
 }
 
 // ValidateLLMProvider / ValidateEmbeddingProvider report whether a provider slot is known and

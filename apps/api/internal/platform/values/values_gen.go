@@ -27,10 +27,12 @@ const (
 
 // account
 const (
-	AccountNicknameMinLength       = 2
-	AccountNicknameMaxLength       = 24
-	AccountInviteLinkTtlDays       = 7
-	AccountWithdrawalRetentionDays = 30
+	AccountNicknameMinLength               = 2
+	AccountNicknameMaxLength               = 24
+	AccountInviteLinkTtlDays               = 7
+	AccountWithdrawalRetentionDays         = 30
+	AccountWithdrawalStatusCacheTtlMs      = 5000
+	AccountWithdrawalStatusCacheMaxEntries = 4096
 )
 
 // rendering
@@ -141,11 +143,18 @@ const (
 	AiEmbeddingDim             = 1024
 	AiPerCallTokenCap          = 7000
 	AiDailyCallCap             = 200
+	AiAdapterCacheMaxEntries   = 1024
 	AiJobMaxAttempts           = 5
 	AiJobBackoffBaseMs         = 60000
 	AiJobLeaseMs               = 300000
 	AiJobMaxClaims             = 20
 	AiJobTerminalRetentionDays = 30
+)
+
+// worker
+const (
+	WorkerCleanupIntervalS = 3600
+	WorkerCleanupBatchSize = 100
 )
 
 // emotion

@@ -13,19 +13,25 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/observability"
 )
 
 const (
-	supabaseAuthHTTPTimeout = 3 * time.Second
-	apiShutdownTimeout      = 5 * time.Second
-	reporterFlushTimeout    = 2 * time.Second
+	// Network and shutdown budgets are deployment policy, not product tuning:
+	// they stay named at the composition root and are passed to the adapters.
+	supabaseAuthHTTPTimeout      = 3 * time.Second
+	supabaseDirectoryHTTPTimeout = 5 * time.Second
+	apiDeepSeekHTTPTimeout       = 60 * time.Second
+	apiVoyageHTTPTimeout         = 30 * time.Second
+	apiShutdownTimeout           = 5 * time.Second
+	reporterFlushTimeout         = 2 * time.Second
 )
 
 func main() {
 	logger := log.Default()
-	handlerOptions := authHandlerOptions(logger)
+	handlerOptions := authHandlerOptions(logger, &http.Client{Timeout: supabaseAuthHTTPTimeout})
 	reporter, err := observability.NewReporterFromEnv()
 	if err != nil {
 		logger.Fatalf("configure observability reporter: %v", err)
@@ -82,14 +88,12 @@ func serveHTTPServer(ctx context.Context, server *http.Server, logger *log.Logge
 	}
 }
 
-func authHandlerOptions(logger *log.Logger) []platform.HandlerOption {
+func authHandlerOptions(logger *log.Logger, httpClient *http.Client) []platform.HandlerOption {
 	if devVerifier, ok := devAuthVerifier(); ok {
 		logger.Print("COSIMOSI_DEV_AUTH is on: accepting dev fake-token bearers — never enable in production")
 		return []platform.HandlerOption{platform.WithAuthVerifier(devVerifier)}
 	}
-	verifier, ok, err := platform.NewSupabaseJWTVerifierFromEnv(&http.Client{
-		Timeout: supabaseAuthHTTPTimeout,
-	})
+	verifier, ok, err := platform.NewSupabaseJWTVerifierFromEnv(httpClient)
 	if err != nil {
 		logger.Fatalf("configure Supabase auth verifier: %v", err)
 	}
@@ -98,6 +102,21 @@ func authHandlerOptions(logger *log.Logger) []platform.HandlerOption {
 		return nil
 	}
 	return []platform.HandlerOption{platform.WithAuthVerifier(verifier)}
+}
+
+func apiAIHTTPClients() ai.HTTPClients {
+	return ai.HTTPClients{
+		LLMByProvider: map[string]*http.Client{
+			"deepseek": {Timeout: apiDeepSeekHTTPTimeout},
+		},
+		EmbeddingByProvider: map[string]*http.Client{
+			"voyage": {Timeout: apiVoyageHTTPTimeout},
+		},
+	}
+}
+
+func apiDirectoryHTTPClient() *http.Client {
+	return &http.Client{Timeout: supabaseDirectoryHTTPTimeout}
 }
 
 // port reads PORT from the environment (runtime config, not a tuning constant),

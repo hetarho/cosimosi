@@ -56,7 +56,7 @@ func New(cfg ai.ProviderConfig) (ai.LLMClient, error) {
 	if m := strings.TrimSpace(cfg.Model); m != "" {
 		model = m
 	}
-	return &Client{api: sdk.NewClient(option.WithAPIKey(key)), model: sdk.Model(model)}, nil
+	return &Client{api: sdk.NewClient(providerOptions(cfg)...), model: sdk.Model(model)}, nil
 }
 
 func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMResponse, error) {
@@ -155,7 +155,7 @@ func listModels(ctx context.Context, cfg ai.ProviderConfig, opts ...option.Reque
 	if key == "" {
 		return nil, fmt.Errorf("anthropic: api key is required")
 	}
-	client := sdk.NewClient(append([]option.RequestOption{option.WithAPIKey(key)}, opts...)...)
+	client := sdk.NewClient(append(providerOptions(cfg), opts...)...)
 	page, err := client.Models.List(ctx, sdk.ModelListParams{Limit: sdk.Int(modelListLimit)})
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
@@ -178,4 +178,12 @@ func listModels(ctx context.Context, cfg ai.ProviderConfig, opts ...option.Reque
 		out = append(out, ai.ModelInfo{ID: id, DisplayName: m.DisplayName})
 	}
 	return out, nil
+}
+
+func providerOptions(cfg ai.ProviderConfig) []option.RequestOption {
+	opts := []option.RequestOption{option.WithAPIKey(strings.TrimSpace(cfg.APIKey))}
+	if cfg.HTTPClient != nil {
+		opts = append(opts, option.WithHTTPClient(cfg.HTTPClient))
+	}
+	return opts
 }

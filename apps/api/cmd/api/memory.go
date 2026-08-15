@@ -48,8 +48,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	meter := ai.NewMeter()
 	adminStore := adminpg.NewStore(pool.PgxPool())
 	cipher, decrypter := adminCipher(logger)
-	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger)
-	directory := newAccountDirectory()
+	aiHTTPClients := apiAIHTTPClients()
+	adapters := ai.NewResolvingAdapters(
+		ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger, aiHTTPClients,
+	)
+	directory := newAccountDirectory(apiDirectoryHTTPClient())
 	inviteGranter := &accountInviteRewardGranter{}
 	signupBonusGranter := &accountSignupBonusGranter{}
 	// The achievement recorder is bound at the end: a claim pays through twinkle and store, so the
@@ -182,12 +185,14 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return nil, noop, err
 	}
 	adminOption, err := adminServiceOption(adminDeps{
-		store:     adminStore,
-		twinkle:   twinkleService,
-		memory:    store,
-		meter:     meter,
-		cipher:    cipher,
-		models:    aiModelCatalog{reader: adminStore, decrypter: decrypter},
+		store:   adminStore,
+		twinkle: twinkleService,
+		memory:  store,
+		meter:   meter,
+		cipher:  cipher,
+		models: aiModelCatalog{
+			reader: adminStore, decrypter: decrypter, httpClients: aiHTTPClients,
+		},
 		directory: adminAccountDirectory{source: directory},
 	})
 	if err != nil {

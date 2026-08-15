@@ -12,6 +12,10 @@ import (
 
 var ErrNoJob = errors.New("job queue has no due job")
 
+// DefaultPollInterval is the deployment-shaped worker polling default. Composition roots pass it
+// explicitly so production and the opt-in development worker share one named fallback.
+const DefaultPollInterval = time.Second
+
 type Job interface {
 	JobID() string
 	JobUserID() string
@@ -67,7 +71,7 @@ func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config
 	}
 	pollInterval := cfg.PollInterval
 	if pollInterval <= 0 {
-		pollInterval = time.Second
+		pollInterval = DefaultPollInterval
 	}
 	now := cfg.Now
 	if now == nil {

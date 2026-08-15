@@ -11,11 +11,6 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
-const (
-	withdrawalStatusCacheTTL        = 5 * time.Second
-	withdrawalStatusCacheMaxEntries = 4096
-)
-
 type withdrawalStatusCacheEntry struct {
 	withdrawnAt time.Time
 	withdrawn   bool
@@ -97,11 +92,11 @@ func (c *withdrawalStatusCache) setLocked(
 	if entry, ok := c.entries[userID]; ok {
 		entry.withdrawnAt = withdrawnAt
 		entry.withdrawn = withdrawn
-		entry.expiresAt = now.Add(withdrawalStatusCacheTTL)
+		entry.expiresAt = now.Add(time.Duration(values.AccountWithdrawalStatusCacheTtlMs) * time.Millisecond)
 		c.recency.MoveToFront(entry.recency)
 		return
 	}
-	if len(c.entries) >= withdrawalStatusCacheMaxEntries {
+	if len(c.entries) >= values.AccountWithdrawalStatusCacheMaxEntries {
 		oldest := c.recency.Back()
 		if oldest != nil {
 			oldestUserID := oldest.Value.(string)
@@ -111,7 +106,7 @@ func (c *withdrawalStatusCache) setLocked(
 	entry := &withdrawalStatusCacheEntry{
 		withdrawnAt: withdrawnAt,
 		withdrawn:   withdrawn,
-		expiresAt:   now.Add(withdrawalStatusCacheTTL),
+		expiresAt:   now.Add(time.Duration(values.AccountWithdrawalStatusCacheTtlMs) * time.Millisecond),
 	}
 	entry.recency = c.recency.PushFront(userID)
 	c.entries[userID] = entry

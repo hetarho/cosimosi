@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -23,11 +24,33 @@ func TestRateLimitedErrorHonorsRetryAfterHint(t *testing.T) {
 	}
 }
 
+func TestHTTPClientsAreProviderSpecific(t *testing.T) {
+	deepSeek := &http.Client{}
+	voyage := &http.Client{}
+	clients := HTTPClients{
+		LLMByProvider:       map[string]*http.Client{"deepseek": deepSeek},
+		EmbeddingByProvider: map[string]*http.Client{"voyage": voyage},
+	}
+	if clients.ForLLM(" DeepSeek ") != deepSeek || clients.ForEmbedding("VOYAGE") != voyage {
+		t.Fatal("provider-specific HTTP clients did not normalize provider identifiers")
+	}
+	if clients.ForLLM("anthropic") != nil {
+		t.Fatal("DeepSeek timeout policy leaked into Anthropic's SDK-owned transport")
+	}
+}
+
 func TestFactorySelectsProvidersIndependentlyPerCapability(t *testing.T) {
 	llmStub := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
 	embStub := &fakeEmbeddingClient{}
-	RegisterLLMProvider("teststub", func(ProviderConfig) (LLMClient, error) { return llmStub, nil })
-	RegisterEmbeddingProvider("teststub", func(ProviderConfig) (EmbeddingClient, error) { return embStub, nil })
+	var gotLLMConfig, gotEmbeddingConfig ProviderConfig
+	RegisterLLMProvider("teststub", func(cfg ProviderConfig) (LLMClient, error) {
+		gotLLMConfig = cfg
+		return llmStub, nil
+	})
+	RegisterEmbeddingProvider("teststub", func(cfg ProviderConfig) (EmbeddingClient, error) {
+		gotEmbeddingConfig = cfg
+		return embStub, nil
+	})
 
 	t.Run("both keys absent select the mock per capability", func(t *testing.T) {
 		adapters, err := NewAdapters(FactoryOptions{})
@@ -62,16 +85,25 @@ func TestFactorySelectsProvidersIndependentlyPerCapability(t *testing.T) {
 	})
 
 	t.Run("both capabilities real and independent", func(t *testing.T) {
+		llmHTTPClient := &http.Client{}
+		embeddingHTTPClient := &http.Client{}
 		adapters, err := NewAdapters(FactoryOptions{
 			LLM:       CapabilityConfig{Provider: "teststub", APIKey: "key"},
 			Embedding: CapabilityConfig{Provider: "teststub", APIKey: "key"},
 			Meter:     newMeter(10, fixedNow),
+			HTTPClients: HTTPClients{
+				LLMByProvider:       map[string]*http.Client{"teststub": llmHTTPClient},
+				EmbeddingByProvider: map[string]*http.Client{"teststub": embeddingHTTPClient},
+			},
 		})
 		if err != nil {
 			t.Fatalf("NewAdapters failed: %v", err)
 		}
 		if adapters.Mode != "llm=teststub embedding=teststub" {
 			t.Fatalf("mode = %q, want llm=teststub embedding=teststub", adapters.Mode)
+		}
+		if gotLLMConfig.HTTPClient != llmHTTPClient || gotEmbeddingConfig.HTTPClient != embeddingHTTPClient {
+			t.Fatal("factory did not pass the composition-root HTTP clients to provider constructors")
 		}
 	})
 

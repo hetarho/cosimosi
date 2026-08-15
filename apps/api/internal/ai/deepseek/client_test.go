@@ -69,6 +69,17 @@ func TestCompleteJSONUsesDeepSeekJSONOutput(t *testing.T) {
 	}
 }
 
+func TestNewUsesInjectedHTTPClient(t *testing.T) {
+	httpClient := &http.Client{}
+	client, err := New(ai.ProviderConfig{APIKey: "key", HTTPClient: httpClient})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if client.(*Client).http != httpClient {
+		t.Fatal("New did not preserve the composition-root HTTP client")
+	}
+}
+
 // The requested schema is enforced locally on the response (stable JSON Output guarantees only
 // JSON syntax, not conformance), so a schema-violating object never crosses the LLMClient seam.
 // The schema exercises the keywords the port adapters actually emit.

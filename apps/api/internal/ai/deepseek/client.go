@@ -24,10 +24,11 @@ const providerName = "deepseek"
 // deepseek-v4-flash is the default general-purpose model for this adapter.
 // Deployments can select another current DeepSeek model through COSIMOSI_LLM_MODEL.
 const (
-	defaultModel           = "deepseek-v4-flash"
-	endpoint               = "https://api.deepseek.com/chat/completions"
-	modelsEndpoint         = "https://api.deepseek.com/models"
-	requestTimeout         = 60 * time.Second
+	defaultModel   = "deepseek-v4-flash"
+	endpoint       = "https://api.deepseek.com/chat/completions"
+	modelsEndpoint = "https://api.deepseek.com/models"
+	// Structural transport limits bound vendor-controlled payload memory and drain
+	// enough error bytes to preserve connection reuse; they are not product tuning.
 	maxResponseBytes       = 4 << 20
 	maxErrorBodyDrainBytes = 64 << 10
 )
@@ -57,11 +58,17 @@ func New(cfg ai.ProviderConfig) (ai.LLMClient, error) {
 	if configured := strings.TrimSpace(cfg.Model); configured != "" {
 		model = configured
 	}
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		// Direct package callers own their context deadline. Production roots always inject
+		// a client with an explicit deployment timeout.
+		httpClient = http.DefaultClient
+	}
 	return &Client{
 		apiKey:   key,
 		model:    model,
 		endpoint: endpoint,
-		http:     &http.Client{Timeout: requestTimeout},
+		http:     httpClient,
 	}, nil
 }
 
@@ -297,7 +304,12 @@ func retryAfter(resp *http.Response) time.Duration {
 // ListModels fetches the model ids DeepSeek currently serves — the OpenAI-compatible
 // GET /models sibling of the chat endpoint, same Bearer auth, same error taxonomy.
 func ListModels(ctx context.Context, cfg ai.ProviderConfig) ([]ai.ModelInfo, error) {
-	return listModels(ctx, modelsEndpoint, cfg, &http.Client{Timeout: requestTimeout})
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		// See New: production model listing receives the same root-owned client.
+		httpClient = http.DefaultClient
+	}
+	return listModels(ctx, modelsEndpoint, cfg, httpClient)
 }
 
 func listModels(ctx context.Context, url string, cfg ai.ProviderConfig, httpClient *http.Client) ([]ai.ModelInfo, error) {

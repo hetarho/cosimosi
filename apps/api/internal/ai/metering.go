@@ -163,7 +163,7 @@ func newMeteredLLMClient(inner LLMClient, meter *Meter) *meteredLLMClient {
 	return &meteredLLMClient{
 		inner: inner,
 		meter: meter,
-		cache: newBoundedCache[[]byte](aiAdapterCacheMaxEntries),
+		cache: newBoundedCache[[]byte](values.AiAdapterCacheMaxEntries),
 	}
 }
 
@@ -224,7 +224,7 @@ func newMeteredEmbeddingClient(inner EmbeddingClient, meter *Meter) *meteredEmbe
 	return &meteredEmbeddingClient{
 		inner: inner,
 		meter: meter,
-		cache: newBoundedCache[[][]float32](aiAdapterCacheMaxEntries),
+		cache: newBoundedCache[[][]float32](values.AiAdapterCacheMaxEntries),
 	}
 }
 

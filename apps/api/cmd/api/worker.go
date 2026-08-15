@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/cosimosi/api/internal/ai"
 
@@ -29,10 +28,7 @@ import (
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
-const (
-	envDevWorker          = "COSIMOSI_DEV_WORKER"
-	devWorkerPollInterval = time.Second
-)
+const envDevWorker = "COSIMOSI_DEV_WORKER"
 
 func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error) {
 	if !truthy(os.Getenv(envDevWorker)) {
@@ -61,7 +57,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		pool.Close()
 		return nil, err
 	}
-	directory := accountDirectoryAdapter{source: newAccountDirectory()}
+	directory := accountDirectoryAdapter{source: newAccountDirectory(apiDirectoryHTTPClient())}
 	accountService, err := account.NewService(account.ServiceDeps{
 		Store:              accountStore,
 		Directory:          directory,
@@ -79,7 +75,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		pool.Close()
 		return nil, err
 	}
-	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{})
+	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{HTTPClients: apiAIHTTPClients()})
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -95,7 +91,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		store,
 		adapters.Embedder,
 		adapters.Semanticizer,
-		devWorkerPollInterval,
+		jobqueue.DefaultPollInterval,
 		logger,
 		map[memory.JobKind]jobqueue.Handler[memory.Job]{
 			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),

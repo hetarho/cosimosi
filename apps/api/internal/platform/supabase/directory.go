@@ -20,6 +20,10 @@ import (
 
 var ErrDirectoryUnavailable = errors.New("supabase account directory is unavailable")
 
+// Compatibility fallback for direct platform-package callers. Production composition
+// roots always inject their named deployment timeout explicitly.
+const defaultDirectoryHTTPTimeout = 5 * time.Second
+
 // Account is account metadata owned by Supabase Auth. Product profile fields do not cross this
 // platform boundary.
 type Account struct {
@@ -138,7 +142,7 @@ func NewDirectory(baseURL string, serviceKey string, client *http.Client) (Direc
 		return Directory{}, false
 	}
 	if client == nil {
-		client = &http.Client{Timeout: 5 * time.Second}
+		client = &http.Client{Timeout: defaultDirectoryHTTPTimeout}
 	}
 	return Directory{baseURL: baseURL, serviceKey: serviceKey, client: client}, true
 }

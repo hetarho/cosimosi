@@ -31,9 +31,10 @@ const providerName = "voyage"
 // not DB, not admin-editable. A self-hosted/proxy override, if ever needed, would be
 // this adapter's own deliberate env seam.
 const (
-	defaultModel           = "voyage-4"
-	endpoint               = "https://api.voyageai.com/v1/embeddings"
-	requestTimeout         = 30 * time.Second
+	defaultModel = "voyage-4"
+	endpoint     = "https://api.voyageai.com/v1/embeddings"
+	// Structural drain bound preserves connection reuse without buffering an
+	// unbounded vendor error body; it is not product tuning.
 	maxErrorBodyDrainBytes = 64 << 10
 	// inputTypeDocument marks these as stored (recall/search) embeddings, not queries.
 	inputTypeDocument = "document"
@@ -107,13 +108,19 @@ func New(cfg ai.ProviderConfig) (ai.EmbeddingClient, error) {
 	if !contains(supported, dim) {
 		return nil, fmt.Errorf("voyage: model %q cannot produce dimension %d", model, dim)
 	}
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		// Direct package callers own their context deadline. Production roots always inject
+		// a client with an explicit deployment timeout.
+		httpClient = http.DefaultClient
+	}
 	return &Client{
 		apiKey:              key,
 		model:               model,
 		dim:                 dim,
 		endpoint:            endpoint,
 		sendOutputDimension: len(supported) > 1,
-		http:                &http.Client{Timeout: requestTimeout},
+		http:                httpClient,
 	}, nil
 }
 
