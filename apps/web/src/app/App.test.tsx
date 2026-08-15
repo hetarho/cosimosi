@@ -384,7 +384,7 @@ describe('web auth gate', () => {
       expect(html).toContain('Profile')
       expect(html).toContain('Achievements')
       expect(html).toContain('Diary management')
-      // 계정 is no longer a tab of its own — the account rows moved to the foot of the profile ([64]).
+      // Account rows belong at the foot of the profile rather than in a separate tab.
       expect(html).not.toContain('>Account<')
       // /me?tab=achievements lands on the LIST, not a placeholder. The panel element belongs to MePage
       // and was there before, so it proves nothing; what proves the real body mounted is the list's own

@@ -74,9 +74,8 @@ var (
 // own default is FREE; the two pinned capstone rewards are ACHIEVEMENT; everything else is bought
 // at its kind's price.
 //
-// The two ACHIEVEMENT rows are the only unbuyable ones, and they stayed two when the kinds went
-// from two to five: an achievement-only row exists because a capstone pays it, so a kind gets one
-// when an achievement is written for it and not because the kind arrived. `store` never names the
+// The two ACHIEVEMENT rows are the only unbuyable ones. An achievement-only row exists because a
+// capstone pays it, so a kind gets one only when an achievement is written for it. `store` never names the
 // achievement that pays them either — the direction is one-way, so there is no achievement id here
 // to drift from the other catalog.
 var ornamentAcquisitions = map[OrnamentID]OrnamentAcquisition{

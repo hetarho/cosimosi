@@ -20,7 +20,7 @@ export function demoDiaryPool(set: DemoDiarySet): readonly [DemoDiary, ...DemoDi
   return [first, ...rest, ...set.structure.extraDiaries]
 }
 
-// The per-diary draw inside a run ([Z4] as amended by change 10): free play keeps writing, one
+// The per-diary draw inside a run ([Z4]): free play keeps writing, one
 // prepared diary per press. Deterministic given the draw number and cycling — consecutive draws
 // never repeat a diary (the pool is at least four deep), and a visitor who outlasts the pool starts
 // over rather than hitting a wall. A negative or non-finite draw number clamps to the pool's start.

@@ -3,7 +3,7 @@ import { Button } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 
 // features/charge-twinkle ui ([G3]): the restrained write-earn confirmation. Writing a
-// diary earns Twinkle server-side (the write is the writing flow's, [27]); this only
+// diary earns Twinkle server-side through the writing flow; this only
 // renders the reward feedback when that launch resolves. No sales language, no decorative
 // emoji — a quiet acknowledgement the diarist can dismiss. The amount is generated config
 // (passed in, CC3); the balance HUD reflects the authoritative credit on refetch.

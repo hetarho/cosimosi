@@ -15,7 +15,7 @@ import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 
-// The five tabs of the account home, mirroring the web's ([64]). 계정 is NOT one of them: the identity,
+// The five tabs of the account home mirror the web. 계정 is NOT one of them: the identity,
 // the linked ways in, sign-out and withdrawal are facts about the same person the profile tab is
 // already about, and they sit at the FOOT of it instead.
 const meTabs = ['profile', 'mood-colors', 'stardust', 'achievements', 'diary'] as const

@@ -11,7 +11,7 @@ export interface CreateAppRouterOptions {
   /**
    * Reads the CURRENT auth session status at the moment a route's `beforeLoad` runs. A live
    * getter (not a captured value) so the `/` auth guard sees the settled status — the router is
-   * built once, but the session settles asynchronously. Sourced from the [04] facade in the
+   * built once, but the session settles asynchronously. Sourced from the auth facade in the
    * provider; the guard never touches Supabase or the session machine directly.
    */
   getSessionStatus: () => SessionStatus

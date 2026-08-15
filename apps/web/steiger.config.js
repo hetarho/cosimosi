@@ -54,7 +54,7 @@ export default defineConfig([
     },
   },
   {
-    // The decoration vertical (plan 73): two single-action features composed by one panel widget,
+    // The decoration vertical has two single-action features composed by one panel widget,
     // mounted by the universe page — the same one-action grain as writing-flow and universe-time
     // above. Previewing an ornament and saving the choice are two different acts with different
     // guarantees (one is inert and reversible, one is the epic's only durable write), so merging them
@@ -70,10 +70,10 @@ export default defineConfig([
     },
   },
   {
-    // The universe-time vertical (plan 31): three single-surface features composed by one widget,
-    // mounted by the universe page — the same one-action grain as writing-flow above. Epic C adds
-    // the second reference (recall-flow-ui opens confirm-time-sync); merging them away would undo
-    // the plan's slice shape. The clock entity is the vertical's pure domain mirror (substance in
+    // The universe-time vertical has three single-surface features composed by one widget,
+    // mounted by the universe page — the same one-action grain as writing-flow above. Recall flow
+    // supplies the second reference by opening confirm-time-sync; merging them away would erase
+    // the action boundaries. The clock entity is the vertical's pure domain mirror (substance in
     // @cosimosi/universe); every consumer (the canvas read, the HUD, the overlay) sits in a slice
     // this config already exempts, so the rule counts no references for it. Scoped so a genuinely
     // insignificant future slice still gets flagged.
@@ -89,7 +89,7 @@ export default defineConfig([
     },
   },
   {
-    // The star-detail vertical (plan 35): three single-surface read features composed by one panel
+    // The star-detail vertical has three single-surface read features composed by one panel
     // widget, mounted by the universe page — the same one-action grain as writing-flow. A feature
     // is one user surface (§3.1), not a slice to merge away; later references arrive as the panel's
     // hand-offs light up (the recall flow it opens, the gist view a gist selection routes to).
@@ -105,7 +105,7 @@ export default defineConfig([
     },
   },
   {
-    // The recall-flow vertical (plan 36): one feature slice composed by one flow widget, opened by
+    // The recall-flow vertical has one feature slice composed by one flow widget, opened by
     // the star-detail panel — the same one-action grain as writing-flow. A single reference is the
     // FSD grain here, not a slice to merge away. Scoped so a genuinely insignificant future slice
     // still gets flagged.
@@ -221,7 +221,7 @@ export default defineConfig([
     },
   },
   {
-    // Plan 51's two color actions are deliberately thin app-local UI over shared emotion logic:
+    // The two color actions are deliberately thin app-local UI over shared emotion logic:
     // the first-signin chooser is composed once by the profile gate, and the later editor once by
     // /me. Merging either into those hosts would erase the action boundary and web/mobile parity.
     // The mood-color entity is their one web-only projection for the conic random swatch; both
@@ -236,7 +236,7 @@ export default defineConfig([
     },
   },
   {
-    // The admin console vertical (plan 58): the one web-only /admin page composes four sectioned
+    // The admin console vertical's one web-only /admin page composes four sectioned
     // operator features — AI provider config, users + stardust grant, AI usage, and job health.
     // Each is one operator surface (§3.1: the page composes, never absorbs) and exists only there
     // BY DESIGN. Web-only (the parity rule is deliberately waived for this operational surface).
@@ -252,7 +252,7 @@ export default defineConfig([
     },
   },
   {
-    // The achievement vertical (plan 76): the /me tab's list and the session-long unlock notice. Two
+    // The achievement vertical has the /me tab's list and the session-long unlock notice. Two
     // slices because they are two user moments — one you go to and read, one that finds you once and
     // says nothing more — and each has exactly one host by design: the tab is composed by /me, the
     // notice host is mounted by the authenticated layout (which is also the guard that a signed-out
@@ -265,7 +265,7 @@ export default defineConfig([
     },
   },
   {
-    // The sequence-engine chrome (plan 78): three chrome slices composed by one guide widget, which
+    // The sequence-engine chrome has three slices composed by one guide widget, which
     // the host page mounts over whatever screen is beneath. Each is a distinct guarantee, not a
     // component — the highlight is decorative and may render nothing, the caption is the channel that
     // must never fail, and the skip is the one interactive element the chrome owns and the only slice
@@ -284,7 +284,7 @@ export default defineConfig([
     },
   },
   {
-    // The onboarding replay row (plan 80) is one user action — starting the tour again — hosted by the
+    // The onboarding replay row is one user action — starting the tour again — hosted by the
     // /me profile tab and nowhere else, by design: [O5] puts it in the settings page, and a second
     // entry point would be the "re-offer" the tour's own policy forbids. Merging it into the page would
     // put the request in a page and erase the action boundary. Scoped so a genuinely insignificant

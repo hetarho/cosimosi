@@ -71,7 +71,7 @@ export function SequenceSpotlight({ rect }: { rect: SequenceRect | null }) {
 }
 
 // Slice-local geometry: how far the ring stands off the control it circles. Visual language, not a
-// tuning value ([09] / [56]).
+// shared tuning value; it belongs only to this chrome.
 const RING_PADDING = 8
 
 const styles = StyleSheet.create({

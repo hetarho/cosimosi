@@ -131,7 +131,7 @@ export interface NavigationRootProps {
 }
 
 /**
- * The mobile auth gate ([U1][U4], §3.5): the authoritative stack is selected from the [04] session
+ * The mobile auth gate ([U1][U4], §3.5): the authoritative stack is selected from the auth session
  * snapshot via the same status→decision mapping the web `/` guard uses — a settled signed-out
  * (`signedOut`/`signingIn`/`expired`/`failed`) → the login stack; the initial `bootstrapping` → the
  * neutral splash (no signed-out flash); `authenticated` and `refreshing` → the universe stack. A

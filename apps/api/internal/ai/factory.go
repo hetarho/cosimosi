@@ -99,7 +99,7 @@ func RegisterEmbeddingProvider(name string, factory func(ProviderConfig) (Embedd
 
 // CapabilityConfig is one capability's runtime selection: which provider, its key,
 // and an optional model override. The provider's endpoint is NOT here — each adapter
-// owns its own endpoint (change 03).
+// owns its own endpoint.
 type CapabilityConfig struct {
 	Provider string
 	APIKey   string

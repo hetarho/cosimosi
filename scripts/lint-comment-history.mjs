@@ -1,23 +1,41 @@
 #!/usr/bin/env node
-// Comment-history lint (code-review 03, R006). spec/principle/code-comments.md says a comment explains *current* code
-// only — "never record process or history". /implement-job asks for a comment pass, but nothing executable enforces it,
-// so change-history ("used to be 280") and roadmap/process narration ("Epic A", "foundation shell") keep creeping into
-// source and turn the code into a project diary. This is a lightweight guard over active source roots: it flags a small
-// set of high-confidence narration markers found on comment lines. Tests/stories/fixtures are exempt (their narration
-// can be intentional). Keep the pattern set tight — a false positive breaks the whole `pnpm lint` gate.
+// A comment explains current code only — never process or history. This lightweight guard covers active source and
+// executable configuration, flagging a small set of high-confidence narration markers on comment lines.
+// Tests/stories/fixtures are exempt because their narration can be intentional. Keep the pattern set tight: a false
+// positive breaks the whole `pnpm lint` gate.
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative } from 'node:path'
 import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
 // `proto` is in scope because it is the ONE transport contract the Go server and both TS clients
 // share (§2.7): its comments propagate verbatim into generated code the guard below deliberately
 // exempts, so narration left here reaches three languages while staying invisible everywhere else.
-const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages', 'proto', 'scripts']
+const SOURCE_ROOTS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages', 'proto', 'scripts']
 // tests/stories/fixtures and generated Go (sqlc/proto/values) are exempt.
 const SKIP_FILE =
   /(\.(test|spec|stories|probe)\.(?:[mc]?[jt]sx?)$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
 const CODE_EXT = /\.(go|[mc]?[jt]sx?|sql|proto)$/
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  'gen',
+  'generated',
+  'vendor',
+])
+const ignoredDir = (name) =>
+  IGNORED_DIRS.has(name) || name.startsWith('.probe-') || name.startsWith('__boundary_probe_')
 // The guard necessarily contains its own negative fixtures and pattern documentation. The job
 // scaffolder has one narrower line exemption for the public CLI example that contains a source kind.
 const EXEMPT_FILES = new Set(['scripts/lint-comment-history.mjs'])
@@ -47,7 +65,10 @@ const NARRATION = [
   /\bEpic [A-Z]\b/,
   /\bplan[-\s]?\d/i,
   /\bjob[-\s]?\d/i,
-  /\bR0\d\d\b/,
+  /\b(?:change|refactor|review)[-\s]?\d/i,
+  /\bcode-review\/\d/i,
+  /\bR\d{3}\b/,
+  /\[\d{2}\]/,
   /\bT0\d{2,}\b/,
   /\bfoundation shell\b/i,
   /\bmid-flight\b/i,
@@ -71,6 +92,65 @@ const scopedHit = (line, file) =>
 const narrates = (line, file = '') =>
   hasComment(line, file) && (NARRATION.find((re) => re.test(line)) || scopedHit(line, file))
 
+const filesUnder = (root) => {
+  const files = new Set()
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (ignoredDir(entry.name)) continue
+        walk(path)
+      } else if (CODE_EXT.test(entry.name) && !SKIP_FILE.test(entry.name)) {
+        files.add(path)
+      }
+    }
+  }
+  const addTopLevelCode = (dir) => {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isFile() && CODE_EXT.test(entry.name) && !SKIP_FILE.test(entry.name)) {
+        files.add(join(dir, entry.name))
+      }
+    }
+  }
+
+  for (const sourceRoot of SOURCE_ROOTS) {
+    const path = join(root, sourceRoot)
+    if (existsSync(path)) walk(path)
+  }
+
+  // Build/lint/test configuration executes from the repository or an app root, outside src/.
+  addTopLevelCode(root)
+  const appsRoot = join(root, 'apps')
+  if (existsSync(appsRoot)) {
+    for (const app of readdirSync(appsRoot, { withFileTypes: true })) {
+      if (app.isDirectory()) addTopLevelCode(join(appsRoot, app.name))
+    }
+  }
+
+  return [...files]
+}
+
+const findProblems = (files, root) => {
+  const problems = []
+  for (const file of files) {
+    const lines = readFileSync(file, 'utf8').split('\n')
+    const repoRelative = relative(root, file)
+    if (EXEMPT_FILES.has(repoRelative)) continue
+    lines.forEach((line, index) => {
+      if (EXEMPT_LINES.get(repoRelative)?.test(line)) return
+      if (!hasComment(line, repoRelative)) return
+      const hit = NARRATION.find((re) => re.test(line)) || scopedHit(line, repoRelative)?.re
+      if (hit) {
+        problems.push(
+          `${repoRelative}:${index + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
+        )
+      }
+    })
+  }
+  return problems
+}
+
 // `--probe` self-test: proves the guard catches the process/plan forms and leaves the
 // allowed design-rationale anchors (requirement IDs, § section pointers) untouched.
 if (process.argv.includes('--probe')) {
@@ -82,7 +162,13 @@ if (process.argv.includes('--probe')) {
     ['// the write contract plan 20 shipped', 'proto/cosimosi/memory/v1/probe.proto'],
     ['\t// Link (plan 21) runs last', ''], // Go comment
     ['// Job 27 provides the implementation', ''],
+    ['// change 03 established this seam', ''],
+    ['// change-04 widened this list', ''],
+    ['// refactor 17 moved the adapter', ''],
+    ['// review 14 found this edge', ''],
+    ['// follow code-review/12 here', ''],
     ['// the R001 regression', ''],
+    ['// account rows stay together ([64])', ''],
     ['// the AI config reader (T010)', ''],
     ['// during Epic B the clock advances', ''],
     ['// this alias is scheduled for retirement next quarter', ''],
@@ -94,6 +180,7 @@ if (process.argv.includes('--probe')) {
   ]
   const mustAllow = [
     ['// keeps the Diary immutable [I2]', ''],
+    ['// preserves the privacy boundary [P4] and product value [V3]', ''],
     ['// surfaced for the awaken animation ([E7a])', ''],
     ['// atomically with the launch (§2.6)', ''],
     ['// bump the counter', ''], // no marker of any kind
@@ -109,51 +196,58 @@ if (process.argv.includes('--probe')) {
   ]
   const missed = mustCatch.filter(([l, f]) => !narrates(l, f))
   const falsePos = mustAllow.filter(([l, f]) => narrates(l, f))
-  if (missed.length || falsePos.length) {
+  const probeRoot = mkdtempSync(join(tmpdir(), 'cosimosi-comment-history-'))
+  let rootFailures = []
+  try {
+    mkdirSync(join(probeRoot, 'apps/web'), { recursive: true })
+    writeFileSync(join(probeRoot, 'eslint.config.mjs'), '// change 03 established this rule\n')
+    writeFileSync(join(probeRoot, 'apps/web/vite.config.ts'), '// account layout follows [64]\n')
+    const ignoredFiles = [
+      'apps/api/node_modules/ignored.go',
+      'apps/api/vendor/ignored.go',
+      'apps/api/generated/ignored.go',
+      'apps/api/dist/ignored.go',
+      'apps/api/build/ignored.go',
+      'apps/api/coverage/ignored.go',
+      'apps/api/gen/ignored.go',
+      'apps/api/.probe-stale/ignored.go',
+      'apps/api/internal/__boundary_probe_stale/ignored.go',
+    ]
+    for (const file of ignoredFiles) {
+      const path = join(probeRoot, file)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, '// review 14 should stay outside the scan\n')
+    }
+    const discovered = filesUnder(probeRoot).map((file) => relative(probeRoot, file))
+    const expectedConfigFiles = ['eslint.config.mjs', 'apps/web/vite.config.ts']
+    const missingRoots = expectedConfigFiles.filter((file) => !discovered.includes(file))
+    const configProblems = findProblems(filesUnder(probeRoot), probeRoot)
+    const missingDetections = expectedConfigFiles.filter(
+      (file) => !configProblems.some((problem) => problem.startsWith(`${file}:`)),
+    )
+    const scannedIgnoredFiles = ignoredFiles.filter((file) => discovered.includes(file))
+    rootFailures = [...missingRoots, ...missingDetections, ...scannedIgnoredFiles]
+  } finally {
+    rmSync(probeRoot, { recursive: true, force: true })
+  }
+  if (missed.length || falsePos.length || rootFailures.length) {
     for (const [l] of missed) console.error(`  \x1b[31m✗\x1b[0m should catch: ${l}`)
     for (const [l] of falsePos) console.error(`  \x1b[31m✗\x1b[0m should allow: ${l}`)
+    for (const failure of rootFailures)
+      console.error(`  \x1b[31m✗\x1b[0m config-root probe: ${failure}`)
     fail('comment-history probe failed')
   }
-  ok('probe caught every process/plan ref and allowed every rule/section anchor')
+  ok(
+    'probe caught every process/plan ref and both config roots; rule/section anchors stayed allowed',
+  )
   process.exit(0)
 }
 
-const files = []
-const walk = (dir) => {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name)
-    if (e.isDirectory()) {
-      if (e.name === 'node_modules' || e.name === 'dist' || e.name.startsWith('gen')) continue
-      walk(p)
-    } else if (CODE_EXT.test(e.name) && !SKIP_FILE.test(e.name)) {
-      files.push(p)
-    }
-  }
-}
-for (const g of SRC_GLOBS) {
-  const abs = join(repoRoot, g)
-  if (existsSync(abs)) walk(abs)
-}
+const files = filesUnder(repoRoot)
+const problems = findProblems(files, repoRoot)
 
-const problems = []
-for (const file of files) {
-  const lines = readFileSync(file, 'utf8').split('\n')
-  const relative = file.replace(repoRoot + '/', '')
-  if (EXEMPT_FILES.has(relative)) continue
-  lines.forEach((line, i) => {
-    if (EXEMPT_LINES.get(relative)?.test(line)) return
-    if (!hasComment(line, relative)) return
-    const hit = NARRATION.find((re) => re.test(line)) || scopedHit(line, relative)?.re
-    if (hit) {
-      problems.push(
-        `${relative}:${i + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
-      )
-    }
-  })
-}
-
-section('Comment-history — comments explain current code, not process/history (R006)')
-note(`scanned ${files.length} source files (tests/stories/fixtures exempt)`)
+section('Comment-history — comments explain current code, not process/history')
+note(`scanned ${files.length} source/config files (tests/stories/fixtures exempt)`)
 if (problems.length) {
   for (const p of problems) console.error(`  \x1b[31m✗\x1b[0m ${p}`)
   fail(

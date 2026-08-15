@@ -54,7 +54,7 @@ export interface AccountSession {
   signOut: () => Promise<void>
 }
 
-// The account section's whole data surface: the session snapshot already held by [04] plus the
+// The account section's whole data surface: the existing auth session snapshot plus the
 // facade's existing sign-out. `signOut` is stable for a facade identity, propagates the facade
 // error, and always clears the transient flag so a failed action never leaves the control disabled.
 // Routing remains the app gate's responsibility after the session settles signed out.

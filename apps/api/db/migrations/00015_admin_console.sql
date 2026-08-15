@@ -15,7 +15,7 @@ CREATE TABLE admin_users (
 -- capability): one row per provider ('openai' | 'gemini' | 'anthropic' | 'deepseek' | 'glm' |
 -- 'kimi' | 'voyage'). The key is stored ENCRYPTED (AES-GCM, key from LLM_KEY_ENCRYPTION_KEY) and is
 -- never returned by the read — only key_hint (a masked tail) is. There is no endpoint column:
--- each provider's endpoint is owned by its code adapter (change 03).
+-- each provider's endpoint is owned by its code adapter.
 CREATE TABLE ai_provider_keys (
     provider          TEXT PRIMARY KEY,
     api_key_encrypted BYTEA NOT NULL,

@@ -47,7 +47,7 @@ export interface DiaryDay {
 // flattening to (date, mood, weight) triples, because a written day whose diaries launched nothing or
 // whose memories were all let go arrives with an EMPTY `moods` list — in a flat list it would contribute
 // no row at all and become indistinguishable from a day never written, which is exactly the distinction
-// the neutral-outline mark rests on ([M3][X4]). The nesting is also [68]'s Go shape (DiaryDay/DiaryDayMood).
+// the neutral-outline mark rests on ([M3][X4]). The nesting matches the Go aggregate shape (DiaryDay/DiaryDayMood).
 //
 // `diaryDate` is carried as the verbatim `YYYY-MM-DD` string: `diary_date` is a user-entered LOCAL
 // calendar date with no time component, so parsing it into a Date would apply a UTC shift and could move

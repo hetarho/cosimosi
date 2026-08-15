@@ -104,7 +104,7 @@ export function UniverseSceneLayers({
 
   return (
     <>
-      {/* The enclosing emotion sky ([57]) is the one shipped backdrop: the universe's own emotions
+      {/* The enclosing emotion sky is the one shipped backdrop: the universe's own emotions
           drive its palette ramp ([I3], color only), while the canvas clears to the same bare night. */}
       <SkySphere
         stops={skyStops}
@@ -181,7 +181,7 @@ export function UniverseSceneLayers({
       <FrameTick onFrame={pump} />
       <AdaptiveDprLayer onPixelRatio={onPixelRatio} />
       {/* The sky holds still for the stars a cross-route action named; `StarLayer` lifts those stars
-          past the hold so they are what is left to look at ([47] the jump's arrival). */}
+          past the hold so they are what is left to look at when the jump arrives. */}
       <SpotlightDim reducedMotion={reducedMotion} />
       <PostFX bloom={bloom} />
     </>

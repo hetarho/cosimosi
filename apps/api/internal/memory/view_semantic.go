@@ -17,9 +17,8 @@ import (
 // to the SpendGate, not this unit (§CC2).
 
 var (
-	// ErrViewSemanticInputRequired rejects an empty memory id. It no longer covers a stage
-	// range: the caller names a memory and the server derives the depth, so there is no
-	// client-supplied stage left to be out of range.
+	// ErrViewSemanticInputRequired rejects an empty memory id. The caller names only a memory;
+	// the server derives the depth, so no client-supplied stage can be out of range.
 	ErrViewSemanticInputRequired = errors.New("view semantic requires a target id")
 	// ErrViewSemanticMemoryNotFound is returned when the target is not the caller's,
 	// does not exist, or is soft-deleted — a fully-deleted memory is invisible to the
@@ -122,8 +121,8 @@ func (s *Service) ViewSemantic(ctx context.Context, scope platform.UserScope, op
 	if memoryID == "" {
 		return ViewSemanticResult{}, ErrViewSemanticInputRequired
 	}
-	// Keyed on the memory alone. The stage is no longer part of the request, and folding the
-	// derived one in here would break the replay this fingerprint exists for: a retry after the
+	// Keyed on the memory alone. Folding the server-derived stage into this fingerprint would
+	// break the replay it exists for: a retry after the
 	// memory rose would hash differently and conflict instead of returning the committed read.
 	fingerprint := viewSemanticFingerprint(memoryID)
 

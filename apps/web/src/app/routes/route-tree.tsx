@@ -54,7 +54,7 @@ const DesignScreen = lazyRouteComponent(
 /**
  * Runtime inputs the route tree needs but that the app can't know until it
  * composes. `diagnosticsEnabled` decides whether the /test harness is reachable;
- * `getSessionStatus` is the live [04] auth-status accessor the `/`-subtree guard
+ * `getSessionStatus` is the auth facade's live status accessor that the `/`-subtree guard
  * reads in `beforeLoad` (never Supabase directly).
  */
 export interface RouterContext {

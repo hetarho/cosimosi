@@ -27,7 +27,7 @@ const providerName = "voyage"
 
 // defaultModel is the recorded Voyage model for this seam. voyage-4 defaults to a
 // 1024-dimension vector and supports the output_dimension parameter for others.
-// endpoint is adapter-owned vendor knowledge (change 03): it is not config — not env,
+// endpoint is adapter-owned vendor knowledge: it is not config — not env,
 // not DB, not admin-editable. A self-hosted/proxy override, if ever needed, would be
 // this adapter's own deliberate env seam.
 const (

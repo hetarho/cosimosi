@@ -44,7 +44,7 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
   }, [earnRequested, clearEarnRequest])
 
   // Write-earn feedback rides the writing flow's existing public launch-completion (the
-  // launched-neurons announce, [27]): a star-creating launch earned Twinkle server-side, so
+  // launched-neurons announcement): a star-creating launch earned Twinkle server-side, so
   // refetch the balance and show the restrained reward once. Composed, never rebuilt.
   const launchedNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
   const seenLaunchRef = useRef(launchedNeuronIds)

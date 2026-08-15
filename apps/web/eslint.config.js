@@ -71,8 +71,8 @@ export default defineConfig([
     //     bootstrap gates, the deep-link consumption).
     //
     // A file list, not a blanket off, is the whole point: a NEW file that reaches for either idiom
-    // fails the gate, and this list can only shrink. Removing an entry is a behavior-carrying
-    // refactor of that surface, which is why it is not this job's work.
+    // fails the gate, and this list can only shrink. Removing an entry changes that surface's
+    // behavior and therefore needs its own focused verification.
     files: [
       'src/app/providers/decoration-bootstrap.tsx',
       'src/app/providers/query-provider.tsx',

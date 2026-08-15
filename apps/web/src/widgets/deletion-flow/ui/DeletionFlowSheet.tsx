@@ -22,11 +22,12 @@ import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useDeletionDraftStore } from '@cosimosi/universe'
 
-// widgets/deletion-flow ([X1][X4]): the modal host over the running canvas (no renderer remount,
-// [23]) composing the three features. It owns the flow machine + the draft store and sequences each
+// widgets/deletion-flow ([X1][X4]): the modal host over the running canvas. The canvas stays mounted
+// while this widget composes the three features. It owns the flow machine + draft store and sequences
+// each
 // branch: full delete (confirm → Release → optimistic remove) and letting-go (say the words →
 // SuggestLetGo → approve → LetGo → optimistic seal). It imports only the domain mirrors (§3.4) —
-// never three or a visual entity — and opens on the shared deletion-target store, which lets it be
+// never `three` or a visual entity — and opens on the shared deletion-target store, which lets it be
 // mounted on both the universe and the diary-reader routes.
 export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
   const showError = useErrorToast()

@@ -10,7 +10,7 @@ import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 
 /**
- * The mobile login entry ([U3][U4]): the RN mirror of the web LoginPage over the SAME [04] facade
+ * The mobile login entry ([U3][U4]): the RN mirror of the web LoginPage over the SAME auth-facade
  * actions — parity by discipline, not a shared route package (§3.5). Sign-in and sign-up share
  * the provider actions while email-confirmation presentation stays in the local credential
  * machine; the session status set remains untouched. On reaching authenticated the profile gate

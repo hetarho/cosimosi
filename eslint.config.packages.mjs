@@ -54,17 +54,15 @@ const REACT_FILES = [
 const RENDERER_FRAME_MUTATION = { 'react-hooks/immutability': 'off' }
 
 // The two compiler-model rules, off for a NAMED LIST OF FILES rather than for `packages/**`. Fresh
-// count: 23 `refs` + 3 `set-state-in-effect` across the ten files below (job 133's baseline was 25
-// under a narrower file scope; the addition is the native canvas host's live-config write, which the
-// widened renderer scope above brought into view for the first time). Three idioms account for all of
-// them, and the same three carry the app's list in `apps/web/eslint.config.js`:
+// Current count: 23 `refs` + 3 `set-state-in-effect` across the ten files below. Three idioms
+// account for all of them, and the same three carry the app's list in `apps/web/eslint.config.js`:
 //
 //   latest-ref — `ref.current = latest` during render, read from a callback that must not
 //     re-subscribe when an identity moves. `packages/auth/src/react.ts:29-31` is the clearest case: a
 //     `useState` initializer there would run twice under StrictMode and orphan a live actor, a
 //     subscription and a refresh timer with no dispose handle. The native canvas host's
 //     `live.current = {...}` is the same shape and load-bearing for the same reason — the device
-//     effect must not re-key on config (job 136).
+//     effect must remain keyed to the device lifecycle rather than live config.
 //   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`.
 //   commit-and-fire effects — presence/exit animation (`packages/ui`'s `usePresence`) and effects that
 //     must notify and commit in one pass (`SessionScopeBoundary`, the sequence runner).

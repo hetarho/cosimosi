@@ -51,7 +51,7 @@ func New(cfg ai.ProviderConfig) (ai.LLMClient, error) {
 	if key == "" {
 		return nil, fmt.Errorf("anthropic: api key is required")
 	}
-	// No endpoint option: the SDK default is the adapter-owned endpoint (change 03).
+	// No endpoint option: the SDK default is the adapter-owned endpoint.
 	model := defaultModel
 	if m := strings.TrimSpace(cfg.Model); m != "" {
 		model = m

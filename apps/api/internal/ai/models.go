@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// The model-listing seam (change 04): which model ids a provider currently serves per capability,
+// The model-listing seam reports which model ids a provider currently serves per capability,
 // in vendor-neutral shape. It mirrors the client registries — a provider subpackage registers its
 // lister from init(), so this package never imports the vendor subpackages. The listing is
 // advisory input help for the admin console; nothing here validates or persists a selection.

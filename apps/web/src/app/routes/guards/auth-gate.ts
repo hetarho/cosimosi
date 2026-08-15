@@ -10,7 +10,7 @@ import { gateDecision, requiresSignIn, type SessionStatus } from '@cosimosi/auth
 //
 // A bootstrapping/refreshing (hold) or authenticated session passes — the authenticated layout then
 // renders the neutral hold or the universe from the LIVE snapshot, so a product read (GetUniverse)
-// never mounts for a signed-out session ([U1][A8]). Reads the status through the [04] facade accessor
+// never mounts for a signed-out session ([U1][A8]). Reads status through the auth facade's live accessor
 // in the router context; it never touches Supabase or the session machine.
 //
 // `from` carries the pathname only (not the full href): the login route replays it as a route `to`.

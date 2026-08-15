@@ -53,7 +53,7 @@ export function AccountSection() {
               size="sm"
               disabled={signingOut}
               onPress={() => {
-                // The rejected case is already surfaced on the [04] snapshot; the flag reset in
+                // The rejected case is already surfaced on the auth session snapshot; the flag reset in
                 // the api keeps the action usable.
                 signOut().catch(() => undefined)
               }}

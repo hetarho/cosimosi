@@ -8,7 +8,7 @@ import { setup } from 'xstate'
  * only asynchronous startup gate) leaves bootstrapping, then `ready`.
  *
  * Stack/route selection is NOT read from here — the auth gate (NavigationRoot) maps
- * the [04] session snapshot to a stack directly (no competing lifecycle authority).
+ * the auth session snapshot to a stack directly (no competing lifecycle authority).
  *
  * Context rule (spec/tech/state-machine.md): control state only — no session
  * objects, tokens, or server data. Those stay in the auth facade / Query cache.

@@ -34,7 +34,7 @@ export default defineConfig(({ command, mode }) => {
     // No React Compiler here yet, deliberately: the transform is correct and the build is green, but
     // it memoizes away this app's locale switching. Copy is read by calling `m.*()` during render —
     // a module-global the compiler cannot see change — so a memoized component keeps its first
-    // language forever. Job 144 measured it; making locale a real React input is the prerequisite.
+    // language forever. Locale must become a real React input before the compiler can be enabled.
     plugins: [react(), tailwindcss()],
     envDir,
     // Internal workspace packages export source directly (no build step) and are symlinked into

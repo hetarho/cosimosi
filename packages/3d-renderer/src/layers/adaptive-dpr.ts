@@ -3,7 +3,7 @@
  *
  * Pixel ratio is the quality lever this scene actually has: shading cost scales with its square,
  * and `frameloop="demand"` is off the table because the ambient sky and twinkle animation ARE the
- * product (code-review/12, Questions). drei's `PerformanceMonitor`/`AdaptiveDpr` would be the
+ * product. drei's `PerformanceMonitor`/`AdaptiveDpr` would be the
  * stock answer, but drei's WebGPU line is unfinished — so the walk is hand-rolled here, keeping
  * drei's flip-flop idea because the naive version of this oscillates (see `sampleAdaptiveDpr`).
  */
