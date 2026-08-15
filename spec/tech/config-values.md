@@ -21,7 +21,8 @@ newcomer can find the right group without scrolling 600 lines of YAML; when the 
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
 - `account`: profile and nickname bounds, invite capability limits.
-- `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
+- `rendering`: universe skin, renderer budgets, and awaken/spotlight choreography tuning.
+- `ui`: responsive-sheet breakpoint, gesture thresholds, height bounds, and settle timing.
 - `nebula`: latent-field sampling and blend knobs for the semantic backdrop.
 - `ai`: embedding vector dimension, real-adapter token/call caps, and worker retry/backoff caps.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion

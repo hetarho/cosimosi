@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { SHEET_GESTURE } from './sheet-geometry.ts'
 import { SHEET_VIEWPORT, isSheetShape, startsOnControl } from './sheet-shape.ts'
 
 /**
@@ -15,10 +16,10 @@ import { SHEET_VIEWPORT, isSheetShape, startsOnControl } from './sheet-shape.ts'
  * ceiling — and the short end keeps the title, the handle and the footer on screen, so a collapsed
  * sheet is still a sheet rather than a stub.
  */
-const TALLEST = 0.7
-const SHORTEST = 0.3
+const TALLEST = SHEET_GESTURE.tallestViewportRatio
+const SHORTEST = SHEET_GESTURE.shortestViewportRatio
 /** Pull past the short end this far and a release lets the sheet go entirely. */
-const DISMISS_PX = 72
+const DISMISS_PX = SHEET_GESTURE.resizeDismissPx
 /**
  * A shorter pull past the short end still lets go if it was thrown rather than nudged — but only past
  * `FLICK_PX`, because the first few pixels of any press cover the shortest distance in the shortest
@@ -28,12 +29,11 @@ const DISMISS_PX = 72
  * quick pull that stops at a legal height is someone making the sheet shorter in a hurry, and taking
  * it away from them would punish the hurry rather than read it.
  */
-const FLICK_PX = 24
-const FLICK_VELOCITY = 0.5
+const FLICK_PX = SHEET_GESTURE.flickPx
+const FLICK_VELOCITY = SHEET_GESTURE.flickVelocityPxPerMs
 /** Travel under which the gesture was a tap on the handle, not a drag of it. */
-const TAP_PX = 6
-/** Must match the sheet's leave animation in base.css — the throw and the unmount end together. */
-const SETTLE_MS = 200
+const TAP_PX = SHEET_GESTURE.tapPx
+const SETTLE_MS = SHEET_GESTURE.settleMs
 
 const THROWN: CSSProperties = {
   transform: 'translate3d(0, 100%, 0)',

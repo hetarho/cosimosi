@@ -193,8 +193,21 @@ rendering:
   latent_star_size: 0.12
   # Awaken flare pool ceiling: max concurrent birth flares rendered at once. A launch rarely births
   # more than a few new neurons; an overflowing burst is not lost — the excess flares on the next
-  # pass (the animation look/motion stays in code; only this pool cap is tuning).
+  # pass.
   awaken_capacity: 32
+  # Awaken-flare choreography. The fixed-capacity pool advances through a 0→1 life over this many
+  # seconds, peaks at this rendered scale, and clamps a resumed/backgrounded frame to this step so
+  # one large delta cannot skip the birth entirely. The sin-envelope shape stays rendering code.
+  awaken_duration_s: 1.1
+  awaken_peak_size: 0.9
+  awaken_max_step_s: 0.05
+  # Diary→universe spotlight choreography. The hold has its own clock because camera arrival can
+  # force-complete while a star settles; dim and lift are pre-tone-map exposure/brightness factors,
+  # and lambda is the per-frame exponential easing rate used in both directions.
+  spotlight_hold_s: 4.5
+  spotlight_fade_lambda: 3.4
+  spotlight_scene_dim: 0.22
+  spotlight_star_lift: 4
   # Gist-star (neocortical body, [V3][V5][V9]) instance scale range mapped from EffectiveStrength —
   # kept below the episodic star_size_* so a gist reads as a quieter echo of its memory.
   gist_star_size_min: 0.55
@@ -205,6 +218,28 @@ rendering:
   # Depth-cue haze intensity across the hippocampus↔neocortex gap (z 18–27, [V9]) — a restrained
   # rendering affordance marking the layer boundary, never a wall.
   gist_rise_layer_fog: 0.35
+
+ui:
+  # Responsive sheet geometry. Tailwind's `md` utility is 48rem; script consumers derive their
+  # media query and 768px comparison from this one rem value, while a chain test pins the remaining
+  # CSS/Tailwind anchors to it. 1rem = 16 CSS px for media-query breakpoint conversion.
+  sheet_breakpoint_rem: 48
+  # A modal-shaped bottom sheet dismisses after this much downward travel. The scrim-less resizable
+  # sheet has a separate, shorter overshoot threshold because its travel begins only after it has
+  # already reached its minimum height.
+  sheet_dialog_dismiss_px: 96
+  sheet_resize_dismiss_px: 72
+  # Shared release classification for both sheet gestures. Velocity is CSS pixels per millisecond;
+  # the distance floor prevents the first few pixels of an ordinary press from reading as a flick.
+  sheet_flick_px: 24
+  sheet_flick_velocity_px_per_ms: 0.5
+  # Gesture settle, CSS leave animation, and presence-unmount hold all complete together.
+  sheet_settle_ms: 200
+  # Resizable-sheet height bounds as viewport-height ratios, plus the maximum movement that still
+  # counts as the discrete tap alternative to dragging.
+  sheet_tallest_viewport_ratio: 0.7
+  sheet_shortest_viewport_ratio: 0.3
+  sheet_tap_px: 6
 
 nebula:
   # Emotion color field ([M4][M5]): each rendered memory bleeds its mood color into the ambient

@@ -32,9 +32,11 @@ package's `exports` conditions.
 | Web entry (web barrel)                             | `packages/ui/src/index.ts` (`exports` `default`)                   |
 | RN entry (native barrel)                           | `packages/ui/src/index.native.ts` (`exports` `react-native`)       |
 
-Apps depend on `@cosimosi/ui`; the package depends only on React (+ `react-dom` /
-`react-native` as platform peers). It imports **no** domain, cache, transport, or
-i18n package — enforced by `packages/ui/src/guards.test.ts`.
+Apps depend on `@cosimosi/ui`; the package depends on React (+ `react-dom` /
+`react-native` as platform peers) and the platform-pure generated `@cosimosi/config` values.
+It imports **no** domain, cache, transport, state-machine, or i18n package — enforced by
+`packages/ui/src/guards.test.ts`. Generated config is the narrow exception: interaction geometry
+may consume numeric tuning without learning product state or vocabulary.
 
 ## 2. Tokens — one source, two outputs
 
@@ -77,14 +79,17 @@ edit. `defaultThemeKey` selects the active one; the web boundary (`apps/web/src/
 on the document root so portalled chrome re-skins with the page, and React Native resolves the same
 registry statically through `native-styles.ts`.
 
-Every value in the theme-invariant groups is either geometry or timing. The one exception used to be
-elevation, which hardcoded a near-black; shadows now mix `var(--color-depth)`, and the glass
-material's lit edge mixes `var(--color-specular)`, so both follow the theme.
+Every value in the theme-invariant token groups is either visual geometry or visual timing. The one
+exception used to be elevation, which hardcoded a near-black; shadows now mix
+`var(--color-depth)`, and the glass material's lit edge mixes `var(--color-specular)`, so both
+follow the theme. Interaction geometry/timing that changes behavior is different: the sheet
+breakpoint, gesture thresholds, height bounds, and settle clock flow from `spec/values.yaml` →
+`@cosimosi/config`, with a chain test pinning the Tailwind/CSS syntax that cannot import TypeScript.
 `packages/ui/src/palette.test.ts` fails the build if a colour literal reappears below the palette
 layer, and `scripts/lint-style-escapes.mjs` fails it if one appears in a product slice.
 
 Design tokens / theme CSS are **not** `spec/values.yaml` config (values.yaml is for
-numeric product tuning). Tokens live in code, as a token map + generated CSS.
+numeric product and interaction tuning). Tokens live in code, as a token map + generated CSS.
 
 ## 3. Styling engines
 

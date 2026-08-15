@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import { VALUES } from '@cosimosi/config'
+
 // The universe's answer to "these ones, right now" (§3.2 data): a cross-route action names a handful
 // of episodic memories, and the scene holds the rest of the sky back so they can be seen. It is the
 // sibling of `pending-fly-target-store` — the camera goes there, and this is what makes arriving
@@ -31,7 +33,7 @@ export const useSpotlightStore = create<SpotlightState>()((set) => ({
  * Low enough that the lifted bodies are unmistakably the subject; not zero, because the universe has
  * to still be visibly there for them to be the subject OF something.
  */
-export const SPOTLIGHT_SCENE_DIM = 0.22
+export const SPOTLIGHT_SCENE_DIM = VALUES.rendering.spotlightSceneDim
 
 /**
  * What a spotlit memory's brightness channel is multiplied by. It composes with the dim rather than
@@ -42,11 +44,11 @@ export const SPOTLIGHT_SCENE_DIM = 0.22
  * and the extra light is spent desaturating the body toward white — which would trade away the
  * emotion colour it exists to carry ([I3]).
  */
-export const SPOTLIGHT_STAR_LIFT = 4
+export const SPOTLIGHT_STAR_LIFT = VALUES.rendering.spotlightStarLift
 
 /** How long the sky stays held after the spotlight is armed. Long enough to find the memories the
  *  camera flew to, short enough that it never becomes the state the universe is in. */
-export const SPOTLIGHT_HOLD_SECONDS = 4.5
+export const SPOTLIGHT_HOLD_SECONDS = VALUES.rendering.spotlightHoldS
 
 /** Exponential-damping rate for the fade in and out — a fade, not a switch. */
-export const SPOTLIGHT_FADE_LAMBDA = 3.4
+export const SPOTLIGHT_FADE_LAMBDA = VALUES.rendering.spotlightFadeLambda

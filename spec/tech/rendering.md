@@ -419,7 +419,9 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   the id list once and eases inside the frame callback; reduced motion gets the same darkness with no ramp, and the
   layer gives the light back on unmount. Its store cleanup is deferred one macrotask and cancelled by an immediate
   remount, so React StrictMode's development cleanup cannot erase a diary-armed spotlight before its first frame; the
-  cleanup also compares the observed id-list identity before clearing, so it cannot erase a newer arm.
+  cleanup also compares the observed id-list identity before clearing, so it cannot erase a newer arm. Hold/fade/dim/
+  lift are generated `rendering.spotlight_*` values; the store re-exports the established constant names so rendering
+  consumers share the seam without owning a copy.
 
 ## Star / neuron / filament bodies (plan 24 as-built)
 
@@ -521,7 +523,9 @@ seed anchor is a client presentation choice; the real neuron's final position is
   `features/launch-stars` launched-neurons store, which the always-mounted canvas reads and feeds here.
   A pool-limited overflow stays unclaimed and remains eligible on a later effect run. Once a pool-sized batch is
   attempted, the whole batch is claimed even if the latent field has fewer distinct unconsumed points: the represented
-  subset flares, while the shortfall stops instead of retrying an exhausted field on every dependency change.
+  subset flares, while the shortfall stops instead of retrying an exhausted field on every dependency change. The
+  flare's duration, peak scale, and maximum resumed-frame step are generated `rendering.awaken_*` values; the
+  `sin(πp)` envelope formula and visual body remain rendering code.
 - **Mobile (§3.5).** The field + layer are the shared package modules (`@cosimosi/universe` / `@cosimosi/universe-render`);
   the widget passes `rendering.latent_star_count_mobile` (reduced MVP count). No `*.native` sibling — the R3F host is
   already forked at the canvas level.
@@ -638,8 +642,10 @@ the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
 `latent_star_count`, `latent_star_count_mobile`, `latent_star_segments`, `latent_star_segments_mobile`,
-`latent_field_radius`, `latent_star_size`, and `awaken_capacity`
-(the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code), and the
+`latent_field_radius`, `latent_star_size`, `awaken_capacity`, `awaken_duration_s`, `awaken_peak_size`, and
+`awaken_max_step_s` (the awaken pool and its choreography tuning; the envelope formula stays in code),
+`spotlight_hold_s`, `spotlight_fade_lambda`, `spotlight_scene_dim`, and `spotlight_star_lift` (the diary-arrival
+spotlight clock and pre-tone-map light factors), and the
 plan-42 gist scalars `gist_star_size_min`/`gist_star_size_max` (the quieter `EffectiveStrength` → size range),
 `gist_star_diffuse` (the base softness of the diffuse gist body), `gist_rise_layer_fog` (the gap depth-cue haze).
 (Which gist look, which mote and which field a universe wears are **not** values — they are per-user ornament

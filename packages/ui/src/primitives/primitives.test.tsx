@@ -21,6 +21,7 @@ import { TextField } from './text-field.tsx'
 import { Toast } from './toast.tsx'
 import { Tooltip } from './tooltip.tsx'
 import { VisuallyHidden } from './visually-hidden.tsx'
+import { SHEET_GESTURE } from '../lib/sheet-geometry.ts'
 
 afterEach(cleanup)
 afterEach(() => vi.unstubAllGlobals())
@@ -358,9 +359,9 @@ describe('Dialog', () => {
   // back to the scene the surface is about. jsdom lays nothing out, so the panel is told how tall it
   // is — the gesture measures the sheet it starts from, and a 0-height panel has nothing to resize.
   describe('Sheet handle', () => {
-    /** 0.3 · 0.7 of jsdom's 768px viewport — the two ends the height is bounded by. */
-    const SHORTEST = Math.round(768 * 0.3)
-    const TALLEST = Math.round(768 * 0.7)
+    /** The generated viewport-ratio bounds applied to jsdom's 768px viewport. */
+    const SHORTEST = Math.round(768 * SHEET_GESTURE.shortestViewportRatio)
+    const TALLEST = Math.round(768 * SHEET_GESTURE.tallestViewportRatio)
 
     function renderResizableSheet(onClose: () => void, closeDisabled = false, height = 500) {
       // A fake layout that answers with the height the gesture last chose, since the gesture reads the

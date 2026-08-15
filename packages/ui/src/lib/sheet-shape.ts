@@ -1,10 +1,13 @@
+import { SHEET_BREAKPOINT } from './sheet-geometry.ts'
+
 /**
  * The width below which a surface with two shapes wears the bottom-sheet one — the `md:` switch in
- * `dialog.tsx` and `sheet.tsx`, read from script. Keep the three in step: a gesture only makes sense
- * on the shape that has a bottom edge to go out through, and reading the media query here is what
- * keeps a wide-screen pointer from dragging a panel that has nowhere to go.
+ * `dialog.tsx` and `sheet.tsx`, read from script. A gesture only makes sense on the shape that has a
+ * bottom edge to go out through, and reading the media query here is what keeps a wide-screen
+ * pointer from dragging a panel that has nowhere to go. The geometry chain test pins the remaining
+ * CSS/Tailwind anchors to the generated breakpoint.
  */
-export const SHEET_VIEWPORT = '(width < 48rem)'
+export const SHEET_VIEWPORT = `(width < ${SHEET_BREAKPOINT.rem}rem)`
 
 /**
  * Whether the sheet shape is the one on screen right now.

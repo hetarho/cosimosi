@@ -7,6 +7,7 @@ import {
   type SequenceProgress,
   type SequenceRect,
 } from '@cosimosi/sequence'
+import { SHEET_BREAKPOINT } from '@cosimosi/ui'
 
 import { SequenceSpotlight } from '../../../features/highlight-next-control/index.ts'
 import {
@@ -34,8 +35,8 @@ export interface SequenceGuideProps {
   readonly captionStyle?: 'edge' | 'center' | 'top' | 'attached'
 }
 
-/** Tailwind's `md`, i.e. the width at which `Dialog` stops being a bottom sheet and centres. */
-const WIDE_MIN_WIDTH_PX = 768
+/** The shared sheet breakpoint converted once from its generated rem source. */
+const WIDE_MIN_WIDTH_PX = SHEET_BREAKPOINT.px
 
 // widgets/sequence-guide ui: composes the three chrome features over whatever screen is beneath and
 // mounts nothing of its own. The host owns the actor and the outcome and passes a derived view down,

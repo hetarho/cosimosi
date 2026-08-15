@@ -781,8 +781,9 @@
  * reads as having come from somewhere rather than having replaced what was there. The bottom is that
  * edge on a narrow screen and the right on a wide one, which is where the Sheet itself sits.
  *
- * The leave is only possible because `usePresence` holds the element for the duration below — keep the
- * two in step. Reduced motion collapses both at the top of this file.
+ * The leave is only possible because `usePresence` holds the element for the duration below. The
+ * sheet-geometry chain test keeps that generated hold and this CSS duration in step. Reduced motion
+ * collapses both at the top of this file.
  */
 @keyframes edge-in-bottom {
   from {
@@ -846,8 +847,9 @@
  * The panel is a bottom sheet below the breakpoint and a centred modal above it, so its arrival
  * switches with its shape: a sheet comes up off the edge it lives on, while a modal has no edge to
  * come from and instead resolves in place, rising a few pixels out of a slight shrink. The same
- * `usePresence` hold and the same duration cover both — keep them in step with `EXIT_MS` in
- * dialog.tsx. Reduced motion collapses all of it at the top of this file.
+ * `usePresence` hold and the same duration cover both; the sheet-geometry chain test keeps the
+ * generated hold and these CSS declarations in step. Reduced motion collapses all of it at the top
+ * of this file.
  */
 @keyframes scrim-in {
   from {

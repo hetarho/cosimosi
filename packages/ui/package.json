@@ -59,6 +59,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@cosimosi/config": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "wanted-sans": "^1.0.3"
   }

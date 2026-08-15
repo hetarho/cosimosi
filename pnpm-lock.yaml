@@ -997,6 +997,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@cosimosi/config':
+        specifier: workspace:*
+        version: link:../config
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

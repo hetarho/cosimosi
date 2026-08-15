@@ -68,6 +68,13 @@ const (
 	RenderingLatentFieldRadius            = 56
 	RenderingLatentStarSize               = 0.12
 	RenderingAwakenCapacity               = 32
+	RenderingAwakenDurationS              = 1.1
+	RenderingAwakenPeakSize               = 0.9
+	RenderingAwakenMaxStepS               = 0.05
+	RenderingSpotlightHoldS               = 4.5
+	RenderingSpotlightFadeLambda          = 3.4
+	RenderingSpotlightSceneDim            = 0.22
+	RenderingSpotlightStarLift            = 4
 	RenderingGistStarSizeMin              = 0.55
 	RenderingGistStarSizeMax              = 1.8
 	RenderingGistStarDiffuse              = 0.55
@@ -103,6 +110,19 @@ var (
 		"lightfall":       0.84,
 		"pixel_blast":     0.88,
 	}
+)
+
+// ui
+const (
+	UiSheetBreakpointRem         = 48
+	UiSheetDialogDismissPx       = 96
+	UiSheetResizeDismissPx       = 72
+	UiSheetFlickPx               = 24
+	UiSheetFlickVelocityPxPerMs  = 0.5
+	UiSheetSettleMs              = 200
+	UiSheetTallestViewportRatio  = 0.7
+	UiSheetShortestViewportRatio = 0.3
+	UiSheetTapPx                 = 6
 )
 
 // nebula

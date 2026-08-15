@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useState, type CSSProperties, type PointerEvent } from 'react'
 
+import { SHEET_GESTURE } from './sheet-geometry.ts'
 import { isSheetShape, startsOnControl } from './sheet-shape.ts'
 
 /** Downward travel past which a release dismisses instead of springing back. */
-const DISMISS_PX = 96
+const DISMISS_PX = SHEET_GESTURE.dialogDismissPx
 /**
  * A shorter drag still dismisses if it was thrown rather than nudged — but only past `FLICK_PX`,
  * because the first few pixels of any press cover the shortest distance in the shortest time and
  * would otherwise read as the fastest flick of all.
  */
-const FLICK_PX = 24
-const FLICK_VELOCITY = 0.5
-/** Must match the sheet's leave animation in base.css — the throw and the unmount end together. */
-const SETTLE_MS = 200
+const FLICK_PX = SHEET_GESTURE.flickPx
+const FLICK_VELOCITY = SHEET_GESTURE.flickVelocityPxPerMs
+const SETTLE_MS = SHEET_GESTURE.settleMs
 
 const DRAGGING: CSSProperties = { transition: 'none' }
 const THROWN: CSSProperties = {

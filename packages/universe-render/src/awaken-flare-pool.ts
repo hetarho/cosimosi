@@ -1,13 +1,8 @@
-// The awaken flare's per-frame life, as a pure step over a fixed-size pool — so "an idle pool
-// writes nothing" is a unit test rather than something only a running canvas could show
-// (the navigation-latch precedent). Motion/look is code, never values.yaml [E7a]; only the pool
-// ceiling is tuning, and that stays with the component that sizes the pool.
+import { VALUES } from '@cosimosi/config'
 
-/** One flare's 0→1 arc peaks mid-life and hands off to the real cell-star as it closes. */
-const AWAKEN_DURATION_S = 1.1
-const AWAKEN_PEAK_SIZE = 0.9
-/** Cap the per-frame step so a large delta (a backgrounded tab resuming) can't skip a whole flare. */
-const AWAKEN_MAX_STEP_S = 0.05
+// The awaken flare's per-frame life, as a pure step over a fixed-size pool — so "an idle pool
+// writes nothing" is a unit test rather than something only a running canvas could show. The
+// envelope formula is rendering code; its duration, peak, and resume-step tuning are generated.
 
 export interface AwakenFlarePool {
   /** Rendered size per slot, mutated in place and read by the layer each frame. */
@@ -51,7 +46,8 @@ export function advanceAwakenFlares(pool: AwakenFlarePool, deltaSeconds: number)
   // Every inactive slot is already at zero — a completing flare zeroes its own — so there is
   // genuinely nothing to write.
   if (pool.activeCount === 0) return false
-  const step = Math.min(deltaSeconds, AWAKEN_MAX_STEP_S) / AWAKEN_DURATION_S
+  const step =
+    Math.min(deltaSeconds, VALUES.rendering.awakenMaxStepS) / VALUES.rendering.awakenDurationS
   for (let slot = 0; slot < pool.active.length; slot++) {
     if (!pool.active[slot]) continue
     const next = (pool.progress[slot] as number) + step
@@ -63,7 +59,7 @@ export function advanceAwakenFlares(pool: AwakenFlarePool, deltaSeconds: number)
       continue
     }
     pool.progress[slot] = next
-    pool.scales[slot] = Math.sin(next * Math.PI) * AWAKEN_PEAK_SIZE
+    pool.scales[slot] = Math.sin(next * Math.PI) * VALUES.rendering.awakenPeakSize
   }
   return true
 }

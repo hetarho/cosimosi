@@ -4,13 +4,11 @@ import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../a11y/use-focus-trap.ts'
 import { usePresence } from '../a11y/use-presence.ts'
 import { cx } from '../lib/cx.ts'
+import { SHEET_GESTURE } from '../lib/sheet-geometry.ts'
 import { useSheetDrag } from '../lib/use-sheet-drag.ts'
 import type { DialogOwnProps } from './types.ts'
 
 export type DialogProps = DialogOwnProps
-
-/** Must match `.dialog-leave` in base.css — the timer, not the animation, is what unmounts. */
-const EXIT_MS = 200
 
 /**
  * The surface that interrupts, in whichever shape the screen has room for: a centred modal on a wide
@@ -25,7 +23,7 @@ const EXIT_MS = 200
 export function Dialog({ open, ...rest }: DialogProps) {
   // Held one animation past the close so the surface can go back out the way it came in. The body
   // below mounts only while it is on screen, which is also what resets the swipe between openings.
-  const { present, phase } = usePresence(open, EXIT_MS)
+  const { present, phase } = usePresence(open, SHEET_GESTURE.settleMs)
 
   if (!present || typeof document === 'undefined') return null
 
@@ -87,7 +85,7 @@ function DialogSurface({
           'md:m-4 md:max-h-[calc(100dvh-2rem)] md:max-w-md md:rounded-2xl md:p-6',
           'focus-visible:outline-none',
           // A committed swipe carries the sheet out itself, so the leave animation stands down
-          // rather than fighting the transform for the same 200ms.
+          // rather than fighting the transform for the same generated settle interval.
           drag.flung ? undefined : leaving ? 'dialog-leave' : 'dialog-enter',
         )}
         style={drag.style}
