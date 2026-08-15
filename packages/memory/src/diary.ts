@@ -168,20 +168,6 @@ export function diaryMemoryCountOption(range: DiaryMemoryCountRange, maxMemories
   return DIARY_MEMORY_COUNT_ALL
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
-// entities/diary lib ([D8]): an inclusive date range is usable when each side is either absent or a
-// full ISO date, and the range does not run backwards. Both halves matter: a half-typed date and an
-// inverted range are each refused server-side, and a per-keystroke refusal would blank the archive
-// while someone is still typing.
-export function isDateRangeUsable(from: string, to: string): boolean {
-  const start = from.trim()
-  const end = to.trim()
-  if (start !== '' && !ISO_DATE.test(start)) return false
-  if (end !== '' && !ISO_DATE.test(end)) return false
-  return start === '' || end === '' || start <= end
-}
-
 // entities/diary lib: whether a condition that changed outside the field — a Back navigation, a
 // cleared filter — should replace what is currently typed. It must not when the incoming value is
 // merely the trimmed form of the draft, or committing would eat a trailing space mid-phrase and

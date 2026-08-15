@@ -21,9 +21,10 @@ import { cancelPendingTimeSyncConsent } from './time-sync-consent-store.ts'
 import { useUniverseClockStore } from './universe-clock-store.ts'
 
 /**
- * Clears every user-owned singleton in this package while the auth scope boundary withholds
- * consumers. Keep new read mirrors and cross-route channels registered here so account changes
- * cannot carry one user's state into another user's subtree.
+ * Clears account-owned mirrors, drafts, and cross-route channels while the auth scope boundary
+ * withholds consumers. Keep new account-scoped state registered here so account changes cannot carry
+ * one person's data into another person's subtree. Device preferences are excluded deliberately;
+ * `useUniverseViewStore` documents the view-mode choice it preserves across account switches.
  */
 export function resetUniverseUserState(): void {
   useEpisodicMemoryStore.getState().clear()

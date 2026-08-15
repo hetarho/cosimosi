@@ -17,7 +17,9 @@ tumble reads as scatter. The opening view is LEVEL rather than against an edge o
 both directions from the first moment — and the give is deliberately unequal, because the two directions are not worth
 the same: rising looks down onto the band the memories lie in and across at the gists above them, which is the view
 that shows the depth, while dipping only puts the near stars between the eye and everything else. 자유 모드 is one
-press away and stays chosen for the rest of the visit.
+press away. The choice is runtime-local device preference rather than account data: once changed, it survives route
+changes, sign-out, and account switches while that app/web process remains alive. A reload or app restart begins a
+fresh runtime in 고정 모드.
 
 **One control says which mode it is in, in words as well as in a glyph — and it is ONE control.** It sits in the
 universe's top-left corner — the space's own chrome, beside the clock rather than in the column of ways out of the

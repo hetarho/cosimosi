@@ -8,6 +8,16 @@ SELECT
     d.body,
     d.diary_date
 FROM diaries AS d
+LEFT JOIN LATERAL (
+  SELECT count(*)::int AS memory_count
+  FROM episodic_memories AS em_count
+  WHERE em_count.user_id = sqlc.arg(user_id)
+    AND em_count.diary_id = d.id
+    AND em_count.deleted_at IS NULL
+) AS live_memories ON (
+  sqlc.narg(min_memories)::int IS NOT NULL
+  OR sqlc.narg(max_memories)::int IS NOT NULL
+)
 WHERE d.user_id = sqlc.arg(user_id)
   AND (
     sqlc.narg(cursor_date)::date IS NULL
@@ -29,23 +39,11 @@ WHERE d.user_id = sqlc.arg(user_id)
   )
   AND (
     sqlc.narg(min_memories)::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_min
-      WHERE em_min.user_id = sqlc.arg(user_id)
-        AND em_min.diary_id = d.id
-        AND em_min.deleted_at IS NULL
-    ) >= sqlc.narg(min_memories)::int
+    OR live_memories.memory_count >= sqlc.narg(min_memories)::int
   )
   AND (
     sqlc.narg(max_memories)::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_max
-      WHERE em_max.user_id = sqlc.arg(user_id)
-        AND em_max.diary_id = d.id
-        AND em_max.deleted_at IS NULL
-    ) <= sqlc.narg(max_memories)::int
+    OR live_memories.memory_count <= sqlc.narg(max_memories)::int
   )
   AND NOT EXISTS (
     SELECT 1
@@ -62,6 +60,16 @@ SELECT
     d.body,
     d.diary_date
 FROM diaries AS d
+LEFT JOIN LATERAL (
+  SELECT count(*)::int AS memory_count
+  FROM episodic_memories AS em_count
+  WHERE em_count.user_id = sqlc.arg(user_id)
+    AND em_count.diary_id = d.id
+    AND em_count.deleted_at IS NULL
+) AS live_memories ON (
+  sqlc.narg(min_memories)::int IS NOT NULL
+  OR sqlc.narg(max_memories)::int IS NOT NULL
+)
 WHERE d.user_id = sqlc.arg(user_id)
   AND (
     sqlc.narg(cursor_date)::date IS NULL
@@ -83,23 +91,11 @@ WHERE d.user_id = sqlc.arg(user_id)
   )
   AND (
     sqlc.narg(min_memories)::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_min
-      WHERE em_min.user_id = sqlc.arg(user_id)
-        AND em_min.diary_id = d.id
-        AND em_min.deleted_at IS NULL
-    ) >= sqlc.narg(min_memories)::int
+    OR live_memories.memory_count >= sqlc.narg(min_memories)::int
   )
   AND (
     sqlc.narg(max_memories)::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_max
-      WHERE em_max.user_id = sqlc.arg(user_id)
-        AND em_max.diary_id = d.id
-        AND em_max.deleted_at IS NULL
-    ) <= sqlc.narg(max_memories)::int
+    OR live_memories.memory_count <= sqlc.narg(max_memories)::int
   )
   AND NOT EXISTS (
     SELECT 1

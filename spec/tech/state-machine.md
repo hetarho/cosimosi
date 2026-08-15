@@ -267,8 +267,10 @@ not a lifecycle**: there is no ordering between the two, nothing to enter or lea
 and no failure to route, so §3.2 keeps it out of the navigation machine, which owns
 `idle`/`focusing`/`flying` — states that genuinely exclude one another. One HUD control
 (`features/pin-universe-view`, mirrored on both apps) writes it and the canvas reads it; a store
-rather than a prop because React context does not cross the R3F reconciler (§5.2). The camera work
-this drives is [tech/rendering.md](rendering.md).
+rather than a prop because React context does not cross the R3F reconciler (§5.2). It is a
+runtime-local device preference, so the account-scope reset deliberately leaves it alone; sign-out,
+route changes and account switches preserve the last choice until a reload or app restart creates a
+fresh runtime. The camera work this drives is [tech/rendering.md](rendering.md).
 
 ### 6.5 `diaryReaderMachine` (the diary-reader jump)
 
@@ -276,6 +278,12 @@ this drives is [tech/rendering.md](rendering.md).
 태어난 별 보기" jump the reader owns (plan 47). Browsing the archive is free and
 data-driven (a `GetDiaries` infinite Query + the shared `useDiaryStore`), so it
 is the resting state, not a phase; only the jump spends and moves the clock:
+
+The archive query owns the ordered page segment of `useDiaryStore`; calendar/day reads contribute a
+separate union segment. Owner refreshes replace only their segment, so a day response remains
+available to cross-route consumers regardless of which query settles last. An enabled contributor's
+next result replaces its segment — including an empty result — so stale days can leave; disabled
+reads write nothing to the mirror.
 
 - the **selected/target diary id, the server quote, and the deep-link target**
   all ride outside the machine — the widget's local `jumpDiaryId`, the
@@ -367,14 +375,14 @@ Query owns the pages, the URL (web) or screen state (mobile) owns the conditions
 `diaryReaderMachine` still holds exactly the paid-jump phases. A machine here would be a second source
 of truth for a routed field and would need syncing back to the address bar (§3.2's rule, applied).
 
-The drafts exist for one reason worth stating: a condition the read would refuse must never be
-committed. `useDiaryConditions` debounces the keyword and both dates, withholds a keyword below the
-server minimum, withholds a half-typed or inverted range, and — when a condition changes behind it —
-adopts the new value **unless** the incoming value is merely the trimmed form of what is already typed.
-That last test is what keeps a commit from eating a trailing space mid-phrase or replacing the syllable
-a composing IME is still assembling. The rules themselves are pure functions in `@cosimosi/memory`
-(`isKeywordSearchable` · `isDateRangeUsable` · `shouldAdoptCommitted`), so both platforms search on
-identical terms and the rules are unit-tested without a DOM.
+The keyword draft exists for one reason worth stating: a condition the read would refuse must never be
+committed. `useDiaryConditions` debounces the keyword, withholds one below the server minimum, and —
+when a condition changes behind it — adopts the new value **unless** the incoming value is merely the
+trimmed form of what is already typed. That last test is what keeps a commit from eating a trailing
+space mid-phrase or replacing the syllable a composing IME is still assembling. Date bounds arrive as
+validated route or calendar-link data rather than editable drafts. The remaining draft rules are pure
+functions in `@cosimosi/memory` (`isKeywordSearchable` · `shouldAdoptCommitted`), so both platforms
+search on identical terms and the rules are unit-tested without a DOM.
 
 ### 6.8 `sequenceRunMachine` (the guided-step engine)
 

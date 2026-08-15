@@ -12,7 +12,7 @@ const diary = (id: string, memberIds: readonly string[]): Diary => ({
 })
 
 describe('useDiaryStore', () => {
-  beforeEach(() => useDiaryStore.getState().setAll([]))
+  beforeEach(() => useDiaryStore.getState().clear())
 
   it('keys diaries by id and preserves the arrival (reverse-chron) order', () => {
     useDiaryStore.getState().setAll([diary('d2', ['m1']), diary('d1', [])])
@@ -43,5 +43,46 @@ describe('useDiaryStore', () => {
     const state = useDiaryStore.getState()
     expect(state.ids).toEqual(['d1'])
     expect(state.byId['d1'].memories).toHaveLength(1)
+  })
+
+  it('retains a narrower read when the owning page settles later', () => {
+    useDiaryStore.getState().setAll([diary('d2', [])])
+    useDiaryStore.getState().add([diary('d9', ['m9'])])
+
+    useDiaryStore.getState().setAll([diary('d3', []), diary('d2', ['m2'])])
+
+    const state = useDiaryStore.getState()
+    expect(state.ids).toEqual(['d3', 'd2', 'd9'])
+    expect(state.byId['d9'].memories[0]?.episodicMemoryId).toBe('m9')
+    expect(state.byId['d2'].memories[0]?.episodicMemoryId).toBe('m2')
+  })
+
+  it('does nothing for an empty narrower read', () => {
+    useDiaryStore.getState().setAll([diary('d1', [])])
+    const before = useDiaryStore.getState()
+    useDiaryStore.getState().add([])
+    expect(useDiaryStore.getState()).toBe(before)
+  })
+
+  it('replaces a narrower read and removes its stale entries when it settles empty', () => {
+    useDiaryStore.getState().setAll([diary('owner', [])])
+    useDiaryStore.getState().replaceContributions([diary('picked-day', ['memory'])])
+
+    useDiaryStore.getState().replaceContributions([])
+
+    expect(useDiaryStore.getState()).toMatchObject({
+      ids: ['owner'],
+      contributedIds: [],
+    })
+    expect(useDiaryStore.getState().byId['picked-day']).toBeUndefined()
+  })
+
+  it('replaces one narrower day with another without retaining the old day', () => {
+    useDiaryStore.getState().replaceContributions([diary('day-a', [])])
+
+    useDiaryStore.getState().replaceContributions([diary('day-b', [])])
+
+    expect(useDiaryStore.getState().ids).toEqual(['day-b'])
+    expect(useDiaryStore.getState().byId['day-a']).toBeUndefined()
   })
 })

@@ -27,7 +27,14 @@ describe('resetUniverseUserState', () => {
     useNeuronStore.setState({ byId: { neuron: {} as never }, ids: ['neuron'] })
     useSynapseStore.setState({ byId: { synapse: {} as never }, ids: ['synapse'] })
     useUniverseClockStore.setState({ currentUniverseTime: '2026-07-22' })
-    useDiaryStore.setState({ byId: { diary: {} as never }, ids: ['diary'] })
+    useDiaryStore.setState({
+      byId: { diary: {} as never },
+      ids: ['diary'],
+      ownerById: { diary: {} as never },
+      ownerIds: ['diary'],
+      contributedById: { diary: {} as never },
+      contributedIds: ['diary'],
+    })
     useReleasedGroupsStore.setState({
       groups: [
         {
@@ -68,7 +75,14 @@ describe('resetUniverseUserState', () => {
     expect(useNeuronStore.getState()).toMatchObject({ byId: {}, ids: [] })
     expect(useSynapseStore.getState()).toMatchObject({ byId: {}, ids: [] })
     expect(useUniverseClockStore.getState().currentUniverseTime).toBeNull()
-    expect(useDiaryStore.getState()).toMatchObject({ byId: {}, ids: [] })
+    expect(useDiaryStore.getState()).toMatchObject({
+      byId: {},
+      ids: [],
+      ownerById: {},
+      ownerIds: [],
+      contributedById: {},
+      contributedIds: [],
+    })
     expect(useReleasedGroupsStore.getState().groups).toEqual([])
     expect(useRecallTargetStore.getState().memoryId).toBeNull()
     expect(useOpenDiaryTargetStore.getState().memoryId).toBeNull()

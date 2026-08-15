@@ -27,12 +27,24 @@ export interface DiaryArchiveOptions {
    *  it issues nothing and reports an empty archive rather than a pending one. */
   enabled?: boolean
   /**
-   * Whether this read OWNS the shared diary mirror. Exactly one read on a screen may: owning it is a
-   * replace, so a second, narrower read owning it too would erase the first's page. A read that does
-   * not own it still contributes its entries, because anything looked up by id — the deletion
-   * confirm's affected-star list — has to be able to find a diary this screen is showing.
+   * Whether this read OWNS the shared diary mirror. Exactly one read on a screen may: its settlements
+   * replace the owning page segment. A non-owner replaces a separate contribution segment, including
+   * when its enabled read settles empty; owner settlements do not erase that segment. Anything looked
+   * up by id — the deletion confirm's affected-star list — can therefore find every diary this screen
+   * is currently showing without retaining results that left the narrower read.
    */
   mirror?: boolean
+}
+
+export function syncDiaryArchiveMirror(
+  enabled: boolean,
+  mirror: boolean,
+  diaries: readonly Diary[],
+): void {
+  if (!enabled) return
+  const store = useDiaryStore.getState()
+  if (mirror) store.setAll(diaries)
+  else store.replaceContributions(diaries)
 }
 
 export function useDiaryArchive(
@@ -52,10 +64,8 @@ export function useDiaryArchive(
     [query.data],
   )
   useEffect(() => {
-    const store = useDiaryStore.getState()
-    if (mirror) store.setAll(diaries)
-    else if (diaries.length > 0) store.add(diaries)
-  }, [diaries, mirror])
+    syncDiaryArchiveMirror(enabled, mirror, diaries)
+  }, [diaries, enabled, mirror])
   // Deliberately re-created per render (useInfiniteQuery returns a fresh result object): a consumer
   // whose scroll observer depends on this identity re-attaches after every commit, which is what lets
   // it pick the sentinel back up once the loading state clears. Memoizing this would remove that.

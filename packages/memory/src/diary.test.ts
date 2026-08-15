@@ -8,7 +8,6 @@ import {
   diaryMoods,
   diaryPreview,
   highlightSegments,
-  isDateRangeUsable,
   isKeywordSearchable,
   shouldAdoptCommitted,
 } from './diary.ts'
@@ -154,27 +153,6 @@ describe('isKeywordSearchable', () => {
     expect(isKeywordSearchable('a', 2)).toBe(false)
     expect(isKeywordSearchable('  a  ', 2)).toBe(false)
     expect(isKeywordSearchable('커피', 2)).toBe(true)
-  })
-})
-
-describe('isDateRangeUsable', () => {
-  it('accepts an absent side', () => {
-    expect(isDateRangeUsable('', '')).toBe(true)
-    expect(isDateRangeUsable('2026-01-01', '')).toBe(true)
-    expect(isDateRangeUsable('', '2026-01-01')).toBe(true)
-  })
-
-  it('refuses a half-typed date, so typing a date is not a refused read per keystroke', () => {
-    for (const partial of ['2', '2026', '2026-0', '2026-01-', 'yesterday']) {
-      expect(isDateRangeUsable(partial, '')).toBe(false)
-      expect(isDateRangeUsable('', partial)).toBe(false)
-    }
-  })
-
-  it('refuses an inverted range and accepts an equal one', () => {
-    expect(isDateRangeUsable('2026-06-01', '2026-01-01')).toBe(false)
-    expect(isDateRangeUsable('2026-01-01', '2026-01-01')).toBe(true)
-    expect(isDateRangeUsable('2026-01-01', '2026-06-01')).toBe(true)
   })
 })
 

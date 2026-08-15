@@ -113,7 +113,7 @@ func TestEveryKindHasExactlyOneFreeRowAndItIsTheDefault(t *testing.T) {
 // [P11] 아주 가끔: exactly two rows are achievement-only, at most one in any kind, so the pairing
 // with the two ornament capstones is 1:1. Two, not one per kind: an achievement-only row exists
 // because a capstone pays it, so most kinds have none and no kind may have two.
-func TestExactlyTwoAchievementRowsOnePerKind(t *testing.T) {
+func TestExactlyTwoAchievementRowsWithAtMostOnePerKind(t *testing.T) {
 	t.Parallel()
 	byKind := map[store.OrnamentKind][]store.OrnamentID{}
 	for _, ornament := range store.Ornaments() {

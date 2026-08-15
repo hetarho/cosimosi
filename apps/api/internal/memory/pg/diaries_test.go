@@ -73,6 +73,104 @@ func TestDiaryPageIsReverseChronKeysetAndScoped(t *testing.T) {
 	}
 }
 
+func TestDiaryPageMemoryCountBoundsUseLiveSplitRefsAcrossPages(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-diary-count-bounds-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	joy, _ := memory.NewEmotion(memory.MoodJoy)
+	diaries := []memory.Diary{
+		{ID: base + "-oldest", Body: "one live memory", DiaryDate: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), CreatedAt: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)},
+		{ID: base + "-later-match", Body: "two live and one deleted", DiaryDate: time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC), CreatedAt: time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC)},
+		{ID: base + "-first-match", Body: "two live memories", DiaryDate: time.Date(2026, 6, 3, 0, 0, 0, 0, time.UTC), CreatedAt: time.Date(2026, 6, 3, 0, 0, 0, 0, time.UTC)},
+		{ID: base + "-newest", Body: "three live memories", DiaryDate: time.Date(2026, 6, 4, 0, 0, 0, 0, time.UTC), CreatedAt: time.Date(2026, 6, 4, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, diary := range diaries {
+		if _, err := store.InsertDiary(ctx, scope, diary); err != nil {
+			t.Fatalf("InsertDiary %s failed: %v", diary.ID, err)
+		}
+	}
+	liveCounts := []int{1, 2, 2, 3}
+	for diaryIndex, diary := range diaries {
+		for memoryIndex := range liveCounts[diaryIndex] {
+			id := fmt.Sprintf("%s-m-%d-%d", base, diaryIndex, memoryIndex)
+			if _, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+				ID: id, DiaryID: diary.ID, Name: id, CurrentText: id, Emotion: joy,
+				BaseStrength: 0.5, CreatedUniverseTime: diary.CreatedAt,
+			}); err != nil {
+				t.Fatalf("InsertEpisodicMemory %s failed: %v", id, err)
+			}
+		}
+	}
+	deletedID := base + "-deleted"
+	if _, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+		ID: deletedID, DiaryID: diaries[1].ID, Name: deletedID, CurrentText: deletedID, Emotion: joy,
+		BaseStrength: 0.5, CreatedUniverseTime: diaries[1].CreatedAt,
+	}); err != nil {
+		t.Fatalf("InsertEpisodicMemory deleted fixture failed: %v", err)
+	}
+	if _, err := pool.PgxPool().Exec(
+		ctx,
+		"UPDATE episodic_memories SET deleted_at = now() WHERE user_id = $1 AND id = $2",
+		userID,
+		deletedID,
+	); err != nil {
+		t.Fatalf("soft-delete fixture failed: %v", err)
+	}
+
+	exactlyTwo := 2
+	filter := memory.DiaryFilter{MinMemories: &exactlyTwo, MaxMemories: &exactlyTwo}
+	first, err := store.DiaryPage(ctx, scope, filter, memory.DiarySortNewest, nil, 1)
+	if err != nil {
+		t.Fatalf("DiaryPage first exact-count page failed: %v", err)
+	}
+	if len(first) != 1 || first[0].ID != diaries[2].ID {
+		t.Fatalf("first exact-count page = %s, want first-match", diagnosticValue(first))
+	}
+	cursor := &memory.DiaryCursor{DiaryDate: first[0].DiaryDate, ID: first[0].ID, Sort: memory.DiarySortNewest}
+	second, err := store.DiaryPage(ctx, scope, filter, memory.DiarySortNewest, cursor, 1)
+	if err != nil {
+		t.Fatalf("DiaryPage later exact-count page failed: %v", err)
+	}
+	if len(second) != 1 || second[0].ID != diaries[1].ID {
+		t.Fatalf("later exact-count page = %s, want later-match", diagnosticValue(second))
+	}
+	cursor = &memory.DiaryCursor{DiaryDate: second[0].DiaryDate, ID: second[0].ID, Sort: memory.DiarySortNewest}
+	remaining, err := store.DiaryPage(ctx, scope, filter, memory.DiarySortNewest, cursor, 1)
+	if err != nil {
+		t.Fatalf("DiaryPage after exact-count matches failed: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("rows after exact-count matches = %s, want none", diagnosticValue(remaining))
+	}
+
+	matchedIDs := []string{first[0].ID, second[0].ID}
+	refs, err := store.DiarySplitRefs(ctx, scope, matchedIDs)
+	if err != nil {
+		t.Fatalf("DiarySplitRefs for exact-count matches failed: %v", err)
+	}
+	refCounts := map[string]int{}
+	for _, ref := range refs {
+		if ref.EpisodicMemoryID == deletedID {
+			t.Fatalf("soft-deleted ref %q reached ListDiarySplitRefs", deletedID)
+		}
+		refCounts[ref.DiaryID]++
+	}
+	for _, id := range matchedIDs {
+		if refCounts[id] != exactlyTwo {
+			t.Fatalf("live split refs for %s = %d, want %d", id, refCounts[id], exactlyTwo)
+		}
+	}
+}
+
 func TestDiarySplitRefsExcludeSoftDeletedAndVerbatimBody(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

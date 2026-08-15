@@ -23,7 +23,6 @@ export {
   diaryMoods,
   diaryPreview,
   highlightSegments,
-  isDateRangeUsable,
   isKeywordSearchable,
   shouldAdoptCommitted,
   type Diary,

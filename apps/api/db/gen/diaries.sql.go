@@ -17,44 +17,42 @@ SELECT
     d.body,
     d.diary_date
 FROM diaries AS d
+LEFT JOIN LATERAL (
+  SELECT count(*)::int AS memory_count
+  FROM episodic_memories AS em_count
+  WHERE em_count.user_id = $1
+    AND em_count.diary_id = d.id
+    AND em_count.deleted_at IS NULL
+) AS live_memories ON (
+  $2::int IS NOT NULL
+  OR $3::int IS NOT NULL
+)
 WHERE d.user_id = $1
   AND (
-    $2::date IS NULL
-    OR (d.diary_date, d.id) > ($2::date, $3::text)
+    $4::date IS NULL
+    OR (d.diary_date, d.id) > ($4::date, $5::text)
   )
-  AND ($4::date IS NULL OR d.diary_date >= $4::date)
-  AND ($5::date IS NULL OR d.diary_date <= $5::date)
-  AND ($6::text IS NULL OR d.body ILIKE '%' || $6::text || '%')
+  AND ($6::date IS NULL OR d.diary_date >= $6::date)
+  AND ($7::date IS NULL OR d.diary_date <= $7::date)
+  AND ($8::text IS NULL OR d.body ILIKE '%' || $8::text || '%')
   AND (
-    cardinality($7::text[]) = 0
+    cardinality($9::text[]) = 0
     OR EXISTS (
       SELECT 1
       FROM episodic_memories AS em
       WHERE em.user_id = $1
         AND em.diary_id = d.id
         AND em.deleted_at IS NULL
-        AND em.mood = ANY($7::text[])
+        AND em.mood = ANY($9::text[])
     )
   )
   AND (
-    $8::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_min
-      WHERE em_min.user_id = $1
-        AND em_min.diary_id = d.id
-        AND em_min.deleted_at IS NULL
-    ) >= $8::int
+    $2::int IS NULL
+    OR live_memories.memory_count >= $2::int
   )
   AND (
-    $9::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_max
-      WHERE em_max.user_id = $1
-        AND em_max.diary_id = d.id
-        AND em_max.deleted_at IS NULL
-    ) <= $9::int
+    $3::int IS NULL
+    OR live_memories.memory_count <= $3::int
   )
   AND NOT EXISTS (
     SELECT 1
@@ -68,14 +66,14 @@ LIMIT $10
 
 type ListDiariesPageAscParams struct {
 	UserID      string
+	MinMemories pgtype.Int4
+	MaxMemories pgtype.Int4
 	CursorDate  pgtype.Date
 	CursorID    pgtype.Text
 	FromDate    pgtype.Date
 	ToDate      pgtype.Date
 	Keyword     pgtype.Text
 	Moods       []string
-	MinMemories pgtype.Int4
-	MaxMemories pgtype.Int4
 	PageLimit   int32
 }
 
@@ -88,14 +86,14 @@ type ListDiariesPageAscRow struct {
 func (q *Queries) ListDiariesPageAsc(ctx context.Context, arg ListDiariesPageAscParams) ([]ListDiariesPageAscRow, error) {
 	rows, err := q.db.Query(ctx, listDiariesPageAsc,
 		arg.UserID,
+		arg.MinMemories,
+		arg.MaxMemories,
 		arg.CursorDate,
 		arg.CursorID,
 		arg.FromDate,
 		arg.ToDate,
 		arg.Keyword,
 		arg.Moods,
-		arg.MinMemories,
-		arg.MaxMemories,
 		arg.PageLimit,
 	)
 	if err != nil {
@@ -123,44 +121,42 @@ SELECT
     d.body,
     d.diary_date
 FROM diaries AS d
+LEFT JOIN LATERAL (
+  SELECT count(*)::int AS memory_count
+  FROM episodic_memories AS em_count
+  WHERE em_count.user_id = $1
+    AND em_count.diary_id = d.id
+    AND em_count.deleted_at IS NULL
+) AS live_memories ON (
+  $2::int IS NOT NULL
+  OR $3::int IS NOT NULL
+)
 WHERE d.user_id = $1
   AND (
-    $2::date IS NULL
-    OR (d.diary_date, d.id) < ($2::date, $3::text)
+    $4::date IS NULL
+    OR (d.diary_date, d.id) < ($4::date, $5::text)
   )
-  AND ($4::date IS NULL OR d.diary_date >= $4::date)
-  AND ($5::date IS NULL OR d.diary_date <= $5::date)
-  AND ($6::text IS NULL OR d.body ILIKE '%' || $6::text || '%')
+  AND ($6::date IS NULL OR d.diary_date >= $6::date)
+  AND ($7::date IS NULL OR d.diary_date <= $7::date)
+  AND ($8::text IS NULL OR d.body ILIKE '%' || $8::text || '%')
   AND (
-    cardinality($7::text[]) = 0
+    cardinality($9::text[]) = 0
     OR EXISTS (
       SELECT 1
       FROM episodic_memories AS em
       WHERE em.user_id = $1
         AND em.diary_id = d.id
         AND em.deleted_at IS NULL
-        AND em.mood = ANY($7::text[])
+        AND em.mood = ANY($9::text[])
     )
   )
   AND (
-    $8::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_min
-      WHERE em_min.user_id = $1
-        AND em_min.diary_id = d.id
-        AND em_min.deleted_at IS NULL
-    ) >= $8::int
+    $2::int IS NULL
+    OR live_memories.memory_count >= $2::int
   )
   AND (
-    $9::int IS NULL
-    OR (
-      SELECT count(*)
-      FROM episodic_memories AS em_max
-      WHERE em_max.user_id = $1
-        AND em_max.diary_id = d.id
-        AND em_max.deleted_at IS NULL
-    ) <= $9::int
+    $3::int IS NULL
+    OR live_memories.memory_count <= $3::int
   )
   AND NOT EXISTS (
     SELECT 1
@@ -174,14 +170,14 @@ LIMIT $10
 
 type ListDiariesPageDescParams struct {
 	UserID      string
+	MinMemories pgtype.Int4
+	MaxMemories pgtype.Int4
 	CursorDate  pgtype.Date
 	CursorID    pgtype.Text
 	FromDate    pgtype.Date
 	ToDate      pgtype.Date
 	Keyword     pgtype.Text
 	Moods       []string
-	MinMemories pgtype.Int4
-	MaxMemories pgtype.Int4
 	PageLimit   int32
 }
 
@@ -197,14 +193,14 @@ type ListDiariesPageDescRow struct {
 func (q *Queries) ListDiariesPageDesc(ctx context.Context, arg ListDiariesPageDescParams) ([]ListDiariesPageDescRow, error) {
 	rows, err := q.db.Query(ctx, listDiariesPageDesc,
 		arg.UserID,
+		arg.MinMemories,
+		arg.MaxMemories,
 		arg.CursorDate,
 		arg.CursorID,
 		arg.FromDate,
 		arg.ToDate,
 		arg.Keyword,
 		arg.Moods,
-		arg.MinMemories,
-		arg.MaxMemories,
 		arg.PageLimit,
 	)
 	if err != nil {

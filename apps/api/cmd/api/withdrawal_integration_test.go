@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
+	accounttestregistry "github.com/cosimosi/api/internal/account/testregistry"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
@@ -177,10 +178,12 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		keepJobID,
 		now,
 	)
-	// The aggregate has no user column, so the account store's projection tests own whole moods and
-	// empty them around themselves. This row has to sit under a mood none of them claims, or the two
-	// packages — which run side by side against one database — erase each other's fixtures.
-	const aggregateMood = "EMPTINESS"
+	aggregateMood, ok := accounttestregistry.MoodColorAggregateMoodFor(
+		accounttestregistry.MoodColorAggregateOwnerWithdrawalTest,
+	)
+	if !ok {
+		t.Fatal("withdrawal mood-color aggregate claim is not registered")
+	}
 	aggregateColor := fmt.Sprintf("#%06x", uint64(time.Now().UnixNano())&0xffffff)
 	if _, err := pool.PgxPool().Exec(ctx, `
 		INSERT INTO mood_color_counts (mood, hue_bucket, color, count)

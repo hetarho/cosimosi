@@ -8,6 +8,9 @@ import { create } from 'zustand'
 //
 // The camera reads it inside the canvas and the HUD control writes it outside; both reach this module
 // directly, because React context does not cross the R3F reconciler.
+//
+// This choice belongs to the device, not to an account. It deliberately survives sign-out and account
+// switches, unlike user-owned mirrors and flow drafts cleared by `resetUniverseUserState`.
 
 export type UniverseViewMode = 'pinned' | 'free'
 
@@ -19,8 +22,9 @@ export interface UniverseViewState {
 
 /**
  * `pinned` is the universe's resting shape: the two z-bands read as depth only while the horizon
- * holds still, so the flat view is what a person should arrive in. Free navigation is one press away
- * and stays for the rest of the visit.
+ * holds still, so the flat view is what a fresh device should arrive in. Free navigation is one press
+ * away and remains the runtime's device-side preference across route changes and account switches.
+ * A reload or app restart starts a fresh runtime in the pinned mode again.
  */
 export const UNIVERSE_DEFAULT_VIEW_MODE: UniverseViewMode = 'pinned'
 

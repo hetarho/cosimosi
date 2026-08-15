@@ -188,3 +188,12 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 - **백엔드 배포 검증은 staging/prod 공통** — 롤아웃 뒤 Environment variable `API_ORIGIN`의 `/health`와
   독립 기대값 `WEB_ORIGIN`을 사용한 preflight를 검사한다. 런타임 CORS 설정 자체를 기대값으로 재사용하지
   않으므로 잘못된 환경 origin도 실패한다.
+- **`view_semantic` 영수증 fingerprint 전환** — stage를 클라이언트 입력에서 제거한 버전을 올릴 때, 배포 전에
+  `SELECT count(*) FROM memory_paid_action_receipts WHERE action_kind = 'view_semantic';`로 기존 영수증을 확인한다.
+  롤아웃 전에 만들어진 행은 stage 포함 fingerprint라 같은 operation id 재시도 시 `ErrOperationConflict`가 난다.
+  조회 결과와 무관하게 먼저 기존 응답에 든 stage로 legacy fingerprint를 검증하고 추가 결제 없이 원래 응답을
+  replay하는 호환 릴리스를 **기존 request 계약 그대로** 테스트·배포한다. 모든 구버전 instance를 drain한 뒤 다시
+  count하고, 호환 경로가 legacy 행을 처리하는 상태에서만 stage 제거/fingerprint 전환 릴리스를 배포한다. 첫 count가
+  0이어도 구버전이 조회 직후 새 영수증을 만들 수 있으므로 이 2단계를 생략하지 않는다. 행을 수정하면 불변 영수증
+  계약이 깨지고, 일부든 전체든 삭제하면 idempotency가 사라져 재결제가 생길 수 있으므로 정합화/sweep으로
+  우회하지 않는다.

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
+	accounttestregistry "github.com/cosimosi/api/internal/account/testregistry"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 )
@@ -373,11 +374,9 @@ func openAccountTestPool(t *testing.T) *platformdb.Pool {
 }
 
 // mood_color_counts carries no user_id, so a test asserting on the aggregate projection cannot
-// scope its expectations to its own users — it can only own the moods it names. Claiming a mood
-// empties its aggregate rows before the test runs and again afterwards, which makes the projection
-// deterministic no matter what a package running beside this one leaves in the shared database.
-// The rule the other side of that bargain: no test outside this file may seed mood_color_counts
-// under a claimed mood.
+// scope its expectations to its own users — it can only own the moods registered to this package.
+// Claiming a mood empties its aggregate rows before the test runs and again afterwards, which makes
+// the projection deterministic beside other packages sharing the database.
 func claimMoodColorAggregate(
 	t *testing.T,
 	pool *platformdb.Pool,
@@ -396,6 +395,10 @@ func claimMoodColorAggregate(
 	}
 	claimed := make([]string, 0, len(moods))
 	for _, mood := range moods {
+		owner, ok := accounttestregistry.MoodColorAggregateOwnerOf(string(mood))
+		if !ok || owner != accounttestregistry.MoodColorAggregateOwnerAccountTests {
+			t.Fatalf("mood %q is not registered to account aggregate tests", mood)
+		}
 		claimed = append(claimed, string(mood))
 	}
 	purge := func() {
