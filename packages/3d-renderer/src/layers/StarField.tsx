@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { positionLocal, uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
@@ -14,11 +14,9 @@ import {
 import { backdropBrightness, backdropTint } from '../assets/backdrop/backdrop-life.ts'
 import {
   DEFAULT_BACKDROP_MOTE,
-  DEFAULT_BACKDROP_MOTE_SIZE,
   createBackdropMoteForm,
   resolveBackdropMote,
   type BackdropMoteKey,
-  type BackdropMoteSize,
 } from '../assets/backdrop/backdrop-motes.ts'
 import { scatterBackdrop } from '../assets/backdrop/backdrop-scatter.ts'
 import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
@@ -26,8 +24,6 @@ import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 export interface StarFieldProps {
   /** Which particle: what it is drawn as, and what colour it is. */
   readonly mote?: BackdropMoteKey
-  /** How big that particle is drawn, as a whole multiple of its own geometry. */
-  readonly moteSize?: BackdropMoteSize
   /** Which space: where the motes sit, how many, and how they twinkle. */
   readonly field?: BackdropFieldKey
   /** Number of background motes BEFORE the field's density; defaults to the web density. */
@@ -63,13 +59,22 @@ export type StarFieldProfile = (typeof STAR_FIELD_PROFILE)[keyof typeof STAR_FIE
 // farthest framing instead of shrinking into a clump at screen centre.
 export function StarField({
   mote = DEFAULT_BACKDROP_MOTE,
-  moteSize = DEFAULT_BACKDROP_MOTE_SIZE,
   field = DEFAULT_BACKDROP_FIELD,
   count = STAR_FIELD_PROFILE.web.count,
   radius = STAR_FIELD_PROFILE.web.radius,
   reducedMotion = false,
 }: StarFieldProps) {
-  const ref = useRef<THREE.InstancedMesh>(null)
+  const ref = useRef<THREE.InstancedMesh | null>(null)
+  // A fresh mesh starts at full count with zero matrices — every mote stacked at the origin, which
+  // reads as an emptied field. Hide it until the matrix effect fills it, so a rebuild cannot paint
+  // one frame of that clump. A stable callback ref, so an unrelated re-render can't reset the count.
+  const attach = useCallback((mesh: THREE.InstancedMesh | null) => {
+    ref.current = mesh
+    if (mesh) {
+      mesh.count = 0
+      mesh.visible = false
+    }
+  }, [])
   const activeMote = resolveBackdropMote(mote)
   const activeField = resolveBackdropField(field)
   const moteCount = backdropMoteCount(activeField, count)
@@ -107,10 +112,14 @@ export function StarField({
   ])
 
   const placed = useMemo(
-    () => scatterBackdrop(activeField.scatter, { count: moteCount, radius, sizeScale: moteSize }),
-    [activeField.scatter, moteCount, moteSize, radius],
+    () => scatterBackdrop(activeField.scatter, { count: moteCount, radius }),
+    [activeField.scatter, moteCount, radius],
   )
 
+  // Write the instance matrices once per scatter. `form` and `material` are dependencies because
+  // either one rebuilds the mesh through `args`, and the attach ref holds the rebuilt one at count 0
+  // until this runs: without them, picking a mote that only changes the colour — or only the
+  // geometry — would leave the field blank behind an unchanged scatter.
   useEffect(() => {
     const mesh = ref.current
     if (!mesh) return
@@ -125,16 +134,15 @@ export function StarField({
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)
     }
+    mesh.count = moteCount
     mesh.instanceMatrix.needsUpdate = true
-  }, [placed, moteCount])
+    mesh.visible = true
+  }, [placed, moteCount, form, material])
 
-  useEffect(
-    () => () => {
-      form.geometry.dispose()
-      material.dispose()
-    },
-    [form, material],
-  )
+  // One resource per effect: two motes can share a form and differ only in tone, and a material
+  // rebuilt for that new tone must not dispose the geometry the next mesh is still drawn from.
+  useEffect(() => () => form.geometry.dispose(), [form])
+  useEffect(() => () => material.dispose(), [material])
 
   const frozen = useRef(false)
   useFrame((_, delta) => {
@@ -155,6 +163,6 @@ export function StarField({
   if (moteCount === 0) return null
 
   return (
-    <instancedMesh ref={ref} args={[form.geometry, material, moteCount]} frustumCulled={false} />
+    <instancedMesh ref={attach} args={[form.geometry, material, moteCount]} frustumCulled={false} />
   )
 }

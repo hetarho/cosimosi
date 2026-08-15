@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { VALUES } from '@cosimosi/config'
 import {
   CameraControls,
+  DEFAULT_GIST_SHAPE,
   GIST_INSTANCE_DIFFUSE,
   GIST_INSTANCE_TINT,
   GIST_SHAPES,
@@ -56,7 +57,9 @@ import { T } from './showcase-copy.ts'
 const REFERENCE_SHAPE = 'facet'
 
 export function GistShapePanel() {
-  const [shapeKey, setShapeKey] = useState<GistShapeKey>('halo')
+  // Opens on the look an undecorated universe wears, so the bench starts from what a reviewer would
+  // see today rather than from whatever sits first in the catalogue.
+  const [shapeKey, setShapeKey] = useState<GistShapeKey>(DEFAULT_GIST_SHAPE)
   const [stars, setStars] = useState(true)
   const [animate, setAnimate] = useState(true)
   const active = resolveGistShape(shapeKey)
@@ -98,6 +101,9 @@ export function GistShapePanel() {
         </div>
 
         <p className="text-sm text-text-muted">{T.gistForms[active.key].detail}</p>
+        <p className="text-xs text-text-subtle">
+          {T.gistFormsActive(T.gistForms[DEFAULT_GIST_SHAPE].name)}
+        </p>
         <p className="text-xs text-text-subtle">{T.gistFormsLadder}</p>
       </div>
     </SkinProvider>
@@ -134,7 +140,7 @@ function GistShapeStage({
       {stars ? (
         <ReferenceStars memories={scene.memories} positions={positions} animate={moving} />
       ) : null}
-      <GistShapeLayer shape={shape} scene={scene} animate={moving} />
+      <GistShapeLayer shape={shape} scene={scene} />
       <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
@@ -142,17 +148,11 @@ function GistShapeStage({
 }
 
 // One instanced layer for the whole ladder, fed the production gist channels: the look swaps by
-// re-resolving the body, so nothing about how a stage projects onto its gist changes with it.
-function GistShapeLayer({
-  shape,
-  scene,
-  animate,
-}: {
-  shape: GistShapeKey
-  scene: GistShowcaseScene
-  animate: boolean
-}) {
-  const source = useMemo(() => createGistShapeBodySource(shape, { animate }), [shape, animate])
+// re-resolving the body, so nothing about how a stage projects onto its gist changes with it. No
+// motion switch reaches it — every look in the catalogue is a still graph, and the shipped body's
+// own grain is fixed in local space.
+function GistShapeLayer({ shape, scene }: { shape: GistShapeKey; scene: GistShowcaseScene }) {
+  const source = useMemo(() => createGistShapeBodySource(shape), [shape])
   const positions = useMemo<CoordinateBufferRef>(
     () => ({ current: scene.gistPositions }),
     [scene.gistPositions],

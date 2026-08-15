@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import {
   COORDINATE_STRIDE,
+  DEFAULT_GIST_SHAPE,
   GIST_INSTANCE_DIFFUSE,
   GIST_INSTANCE_TINT,
   InstancedNodeLayer,
-  createGistStarBodySource,
+  createGistShapeBodySource,
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
@@ -220,7 +221,10 @@ export function GistStarLayer({
   onSelect,
   onStageRise,
 }: GistStarLayerProps) {
-  const bodySource = useMemo(() => createGistStarBodySource(), [])
+  // The look the whole neocortical layer wears — one key out of the gist catalogue, never per
+  // memory ([V5]). Undecorated for now, and whichever row an ornament later names reads the same
+  // two channels below, so this stays the only line that would move.
+  const bodySource = useMemo(() => createGistShapeBodySource(DEFAULT_GIST_SHAPE), [])
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
 

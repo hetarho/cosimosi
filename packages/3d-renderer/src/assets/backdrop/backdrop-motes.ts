@@ -7,9 +7,9 @@ import type { BackdropToneKey } from './backdrop-life.ts'
 // MOTE — one of the two catalogues a backdrop is chosen from (the other is the FIELD).
 //
 // A mote is ONE decorative particle: what it is drawn as, and what colour it is. Those two travel
-// together because they are the same question — a violet ring and a grey speck are two looks, not one
-// look with two settings — while HOW BIG it is drawn is picked over the whole catalogue, since every
-// form is worth seeing at every size.
+// together because they are the same question — a ring and a speck are two looks, not one look with
+// two settings — while HOW BIG it is drawn is not part of a row at all: a field wears the four size
+// steps at once, in equal numbers, and the scatter hands them out (`backdrop-scatter.ts`).
 //
 // Where the motes sit, how many of them there are and how they twinkle belong to the field: a mote
 // knows nothing about the space it is scattered through, which is why either catalogue can grow
@@ -176,25 +176,12 @@ export interface BackdropMote {
   readonly tone: BackdropToneKey
 }
 
-/** The sizes a mote may be drawn at, as whole multiples of its own geometry.
- *
- *  Size is picked rather than authored into a row. A form and a colour are what a particle IS, and
- *  every one of them is worth seeing at every size — baking one in would fork the catalogue into a
- *  large version and a small version of the same idea. Whole steps because the difference between
- *  1.6 and 1.8 is not a decision anyone can make by looking. */
-export const BACKDROP_MOTE_SIZES = [1, 2, 3, 4] as const
-
-export type BackdropMoteSize = (typeof BACKDROP_MOTE_SIZES)[number]
-
-/** The size an undecorated universe draws its motes at — the geometry's own. */
-export const DEFAULT_BACKDROP_MOTE_SIZE: BackdropMoteSize = 1
-
 /**
  * The motes a backdrop can be built from — the first of the two pickers.
  *
- * A row is a form and a colour together, because that is how the eye reads a particle: a violet ring
- * or a grey speck, never "form 4 in tone 6". Every row is distinct in one of those two, so no two rows
- * are the same look — and how big it is drawn is chosen separately, over all of them at once.
+ * A row is a form and a colour together, because that is how the eye reads a particle: a warm ring or
+ * a cold sliver, never "form 4 in tone 6". Every row is distinct in one of those two, so no two rows
+ * are the same look — and every row is drawn at all four sizes at once, which is the scatter's half.
  */
 export const BACKDROP_MOTES = [
   {
@@ -210,13 +197,6 @@ export const BACKDROP_MOTES = [
     blurb: 'A round white ball — the one form bought for its roundness rather than its outline.',
     form: 'orb',
     tone: 'starlight',
-  },
-  {
-    key: 'ash-speck',
-    label: 'Ash Speck',
-    blurb: 'Grey, and dim with it — present, and spending almost nothing on being seen.',
-    form: 'grain',
-    tone: 'ash',
   },
   {
     key: 'ice-spark',
@@ -289,32 +269,11 @@ export const BACKDROP_MOTES = [
     tone: 'starlight',
   },
   {
-    key: 'violet-sparkle',
-    label: 'Violet Sparkle',
-    blurb: 'The same crossed arms in cool violet.',
-    form: 'jack',
-    tone: 'violet',
-  },
-  {
-    key: 'snow-fleck',
-    label: 'Snow Fleck',
-    blurb: 'A flat cold fleck that flickers as it turns edge-on.',
-    form: 'plate',
-    tone: 'ice',
-  },
-  {
     key: 'ember-bokeh',
     label: 'Ember Bokeh',
     blurb: 'A warm out-of-focus ring — a point light a lens could not resolve.',
     form: 'bokeh',
     tone: 'ember',
-  },
-  {
-    key: 'violet-bokeh',
-    label: 'Violet Bokeh',
-    blurb: 'The same ring in violet, hollow enough to see the field through it.',
-    form: 'bokeh',
-    tone: 'violet',
   },
 ] as const satisfies readonly BackdropMote[]
 

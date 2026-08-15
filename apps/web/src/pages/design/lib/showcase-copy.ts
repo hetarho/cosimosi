@@ -242,7 +242,7 @@ export const T = {
   skyEmotionCount: 'How many emotions',
   backdropTitle: 'Backdrops',
   backdropBlurb:
-    'The decorative field behind everything, chosen as two things rather than one. A MOTE is what a single particle is — its form, its size and its colour. A FIELD is the space they fill — where they sit, how many there are, and how their light moves, so "packed", "barely there" and "nothing at all" are rows like any other. Any mote goes into any field, and the pair is a backdrop. It carries no memory, no feeling and no strength, which is exactly why it is free to change.',
+    'The decorative field behind everything, chosen as two things rather than one. A MOTE is what a single particle is — its form and its colour. A FIELD is the space they fill — where they sit, how many there are, and how their light moves, so "packed", "barely there" and "nothing at all" are rows like any other. Any mote goes into any field, and the pair is a backdrop. Every field draws its motes at all four sizes, graded so that half stay at the geometry\'s own size and the largest is a rarity — a sky of one size reads as a texture rather than as depth, and a sky of four in equal numbers reads as two layers of dots. It carries no memory, no feeling and no strength, which is exactly why it is free to change.',
   backdropMoteBench: 'Mote — one particle',
   backdropFieldBench: 'Field — the space they fill',
   backdropSky: 'Emotion sky',
@@ -255,25 +255,23 @@ export const T = {
   backdropAxisTwinkle: 'Twinkle',
   backdropTwinkleValue: (rate: number, depth: number) =>
     `${rate.toFixed(2)}× speed · ${Math.round(depth * 100)}% swing`,
-  backdropMoteSize: 'Mote size',
+  backdropMoteSizeMix: (mix: readonly { readonly size: number; readonly share: number }[]) =>
+    mix.map(({ size, share }) => `${size}× ${Math.round(share * 100)}%`).join(' · '),
   backdropCost: 'Fixed cost',
   backdropCostValue: (triangles: number) => `${triangles.toLocaleString('en-US')} tris`,
   backdropCostOver: (ceiling: number) =>
     `over the ${ceiling.toLocaleString('en-US')} tri ceiling — reviewable, not shippable`,
   gistFormsTitle: 'Gist forms',
   gistFormsBlurb:
-    'Every candidate body a risen gist can wear. A gist is a summary, so these are deliberately plainer than the star forms: none of them reads a form seed, so every gist in a universe is the same shape, and each is one idea of light on the same plain shell. What tells two gists apart is their feeling and how far they have risen — never a silhouette of their own.',
+    'Every body a risen gist can wear, and the universe wears one of them — until a gist is decorated, the plain one. A gist is a summary, so these are deliberately plainer than the star forms: none of them reads a form seed, so every gist in a universe is the same shape, and each is one idea of light on the same plain shell. What tells two gists apart is their feeling and how far they have risen — never a silhouette of their own.',
   gistFormsStars: 'Episodic stars',
   gistFormsLadder:
     'Left to right: one rung deeper each step, so the same body should read as less defined rather than as a different one. Below each gist is the memory it summarises, at its real size — the gist has to look simpler than that star.',
+  gistFormsActive: (name: string) => `An undecorated universe wears ${name}.`,
   gistForms: {
     halo: {
       name: 'Halo',
-      detail: 'The shipped body: a soft glow ball with a faint breathing grain.',
-    },
-    veil: {
-      name: 'Veil',
-      detail: 'The falloff alone — no grain, no rim. The plainest reading of a gist there is.',
+      detail: 'The original shipped body: a soft glow ball with a faint grain.',
     },
     bead: {
       name: 'Bead',
@@ -281,7 +279,8 @@ export const T = {
     },
     ring: {
       name: 'Ring',
-      detail: 'An annulus. The centre is empty, so what is left is an outline of a memory.',
+      detail:
+        'A flat annulus lying level with the ground, turning on the axis a gist rises along — an outline from above, one line from the side.',
     },
     corona: {
       name: 'Corona',
@@ -291,49 +290,13 @@ export const T = {
       name: 'Echo',
       detail: 'Concentric rings of the same falloff: one shape, said more than once.',
     },
-    crest: {
-      name: 'Crest',
-      detail: 'The falloff terraced into a few plateaus instead of a gradient.',
-    },
     pearl: {
       name: 'Pearl',
       detail: 'The one opaque form: a matte body under a fixed key light, not a glow.',
     },
-    mist: { name: 'Mist', detail: 'The falloff eaten by soft noise, with no edge anywhere.' },
-    lens: { name: 'Lens', detail: 'The same glow, wider than it is tall — light caught in glass.' },
-    sigil: {
-      name: 'Sigil',
-      detail: 'A soft cross. A mark rather than a mass — a gist as notation.',
-    },
-    pip: {
-      name: 'Pip',
-      detail: 'A hard point inside a wide faint aura: a place to point at, and a presence.',
-    },
-    pulse: {
-      name: 'Pulse',
-      detail: 'The plain form on a slow shared breath — one process over the whole layer.',
-    },
-    dome: {
-      name: 'Dome',
-      detail: 'Brighter along one body axis, so a field of them shares a way up.',
-    },
-    shell: {
-      name: 'Shell',
-      detail: 'Hollow and drawn on both faces, so the far wall glows through the near one.',
-    },
-    ash: { name: 'Ash', detail: 'Drained toward grey and turned down — a gist nearly not there.' },
-    bloom: { name: 'Bloom', detail: 'The same glow overdriven until the bloom pass takes it.' },
-    drop: {
-      name: 'Drop',
-      detail: 'The bright centre pulled low with the haze trailing under it — it hangs.',
-    },
-    bar: {
-      name: 'Bar',
-      detail: 'One soft horizontal band. The least a mark can be and still be seen.',
-    },
-    grain: {
-      name: 'Grain',
-      detail: 'The haze printed rather than lit: quantized noise with a tooth.',
+    lens: {
+      name: 'Lens',
+      detail: 'Light caught in glass: wider than it is tall, and fading out at both ends.',
     },
   },
   statesTitle3D: 'States',

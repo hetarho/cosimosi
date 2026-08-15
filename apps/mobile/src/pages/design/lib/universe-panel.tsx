@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { VALUES } from '@cosimosi/config'
 import {
   ColorField,
+  DEFAULT_GIST_SHAPE,
   FatLineLayer,
   GIST_INSTANCE_DIFFUSE,
   GIST_INSTANCE_TINT,
@@ -23,7 +24,7 @@ import {
   UniverseCanvas,
   createCellStarBodySource,
   createFilamentBodySource,
-  createGistStarBodySource,
+  createGistShapeBodySource,
   createStarShapeBodySource,
   resolveActiveSkin,
   resolveSkyEffect,
@@ -344,7 +345,9 @@ function GistStage() {
     [scene],
   )
   const stops = useMemo(() => universeEmotionSlices(scene.memories), [scene])
-  const gistSource = useMemo(() => createGistStarBodySource(), [])
+  // The undecorated look, from the catalogue rather than typed here: this panel shows the universe
+  // as it currently is, so it takes its gist body the way the real gist layer does.
+  const gistSource = useMemo(() => createGistShapeBodySource(DEFAULT_GIST_SHAPE), [])
   const gistChannels = useMemo<InstanceChannels>(
     () => ({
       scales: scene.gistScales,

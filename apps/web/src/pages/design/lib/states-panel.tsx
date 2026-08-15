@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { VALUES } from '@cosimosi/config'
 import {
   CameraControls,
+  DEFAULT_GIST_SHAPE,
   GIST_INSTANCE_DIFFUSE,
   GIST_INSTANCE_TINT,
   InstancedNodeLayer,
@@ -15,7 +16,7 @@ import {
   SkySphere,
   StarField,
   UniverseCanvas,
-  createGistStarBodySource,
+  createGistShapeBodySource,
   createStarShapeBodySource,
   resolveActiveSkin,
   useSkin,
@@ -181,7 +182,9 @@ function GistCanvas({ scene, animate }: { scene: GistShowcaseScene; animate: boo
     [scene.gistPositions],
   )
   const skyStops = useMemo(() => universeEmotionSlices(scene.memories), [scene.memories])
-  const gistSource = useMemo(() => createGistStarBodySource(), [])
+  // The undecorated look, from the catalogue rather than typed here: this panel is a picture of the
+  // universe as it currently is, so it takes its gist body the way the real gist layer does.
+  const gistSource = useMemo(() => createGistShapeBodySource(DEFAULT_GIST_SHAPE), [])
   const gistChannels = useMemo<InstanceChannels>(
     () => ({
       scales: scene.gistScales,

@@ -11,7 +11,9 @@ import * as THREE from 'three/webgpu'
 // The one rule every mode shares is the SIZE rule below: a mote's world size rides its own distance,
 // so a near mote and a far one cover about the same handful of pixels. Without it a mode that reaches
 // the outer shell would grade itself into invisibility while a close-in mode would fill the screen,
-// and the modes would stop being comparable as looks.
+// and the modes would stop being comparable as looks. On top of that distance rule every field deals
+// out the four size steps in their declared shares, so a sky is mostly small light with the occasional
+// near mote in front of it, wherever the mode happens to have put them.
 
 export type BackdropScatterKey =
   'volume' | 'shell' | 'band' | 'spiral' | 'clumps' | 'strands' | 'belt' | 'lattice' | 'swarm'
@@ -23,6 +25,57 @@ const INNER_FRACTION = 0.28
 const SIZE_REFERENCE = 60
 /** Fixed scatter seed: the field is random-looking yet identical on every mount and platform. */
 const SCATTER_SEED = 20260725
+/** A second fixed seed, for the size mix alone. Kept separate from the placement stream so that
+ *  changing how sizes are handed out can never move a single mote. */
+const SIZE_SEED = 20260815
+
+/**
+ * The sizes a field draws its motes at — whole multiples of the mote geometry's own size — and how
+ * much of the field each one takes.
+ *
+ * A field wears ALL of them, but not in equal numbers. One size everywhere reads as a texture — a
+ * printed grain of identical specks — where a sky is mostly small far light with a few near motes in
+ * front of it, so the mix is graded steeply: half the field stays at the geometry's own size and the
+ * largest step is a rarity you come across rather than a second layer of dots. Whole steps, because
+ * the difference between 1.6 and 1.8 is not a decision anyone can make by looking.
+ */
+export const BACKDROP_MOTE_SIZE_MIX = [
+  { size: 1, share: 0.5 },
+  { size: 2, share: 0.3 },
+  { size: 3, share: 0.15 },
+  { size: 4, share: 0.05 },
+] as const
+
+export type BackdropMoteSize = (typeof BACKDROP_MOTE_SIZE_MIX)[number]['size']
+
+/**
+ * One size step per mote, the four in their declared shares and in no order the placement can
+ * correlate with. Dealt in blocks and then SHUFFLED: a run of one size is exactly the right count
+ * but rides the index, which the lattice mode turns into visible bands; a per-mote weighted draw has
+ * no such structure but lets the rarest step come out at twice its share on a small field. The
+ * shuffle is seeded — separately from the placement — so a field is still identical on every mount
+ * and on both platforms. Rounding drift lands on the FIRST step, the one large enough to absorb it.
+ */
+export function dealBackdropMoteSizes(count: number): Float32Array {
+  const sizes = new Float32Array(Math.max(0, count))
+  if (count <= 0) return sizes
+  let cursor = count
+  for (let step = BACKDROP_MOTE_SIZE_MIX.length - 1; step > 0; step--) {
+    const { size, share } = BACKDROP_MOTE_SIZE_MIX[step] ?? { size: 1, share: 0 }
+    const take = Math.min(cursor, Math.round(count * share))
+    sizes.fill(size, cursor - take, cursor)
+    cursor -= take
+  }
+  sizes.fill(BACKDROP_MOTE_SIZE_MIX[0]?.size ?? 1, 0, cursor)
+  const random = seededRandom(SIZE_SEED)
+  for (let i = count - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const swap = sizes[i] ?? 1
+    sizes[i] = sizes[j] ?? 1
+    sizes[j] = swap
+  }
+  return sizes
+}
 
 // Park-Miller minimal-standard LCG — a tiny deterministic PRNG using only integer * and % (all
 // operands stay < 2^53, so it is exact and identical across JS engines → web and mobile agree).
@@ -43,8 +96,6 @@ export interface BackdropScatterSpec {
   readonly count: number
   /** Outer shell radius — no mote may sit outside it (the backdrop nesting invariant). */
   readonly radius: number
-  /** Multiplies every mote's world size, after the distance rule. */
-  readonly sizeScale?: number
 }
 
 export interface BackdropScatterResult {
@@ -219,17 +270,18 @@ const SCATTER_BUILDERS: Record<BackdropScatterKey, ScatterBuilder> = {
  * Place a field: `count` positions inside `radius`, plus the uniform scale each mote is drawn at.
  *
  * Pure and deterministic — one seeded PRNG threaded through the chosen mode, so the same spec always
- * yields the same field. The scale carries the distance rule and a per-mote jitter, drawn from the
- * same stream so a mode cannot accidentally correlate size with place.
+ * yields the same field. The scale carries the distance rule, a per-mote jitter drawn from the same
+ * stream so a mode cannot accidentally correlate size with place, and the mote's own size step.
  */
 export function scatterBackdrop(
   key: BackdropScatterKey,
-  { count, radius, sizeScale = 1 }: BackdropScatterSpec,
+  { count, radius }: BackdropScatterSpec,
 ): BackdropScatterResult {
   const positions = new Float32Array(Math.max(0, count) * 3)
   const scales = new Float32Array(Math.max(0, count))
   if (count <= 0) return { positions, scales }
   const random = seededRandom(SCATTER_SEED)
+  const sizes = dealBackdropMoteSizes(count)
   const place = (SCATTER_BUILDERS[key] ?? SCATTER_BUILDERS.volume)(random, count, radius)
   const point = new THREE.Vector3()
   for (let i = 0; i < count; i++) {
@@ -243,7 +295,7 @@ export function scatterBackdrop(
     // The squared-ish draw skews the field toward faint pinpricks with a few bright standouts, the
     // way a real sky is graded, and the distance factor holds on-screen size roughly constant.
     const jitter = 0.45 + 1.15 * random() ** 1.6
-    scales[i] = ((jitter * point.length()) / SIZE_REFERENCE) * sizeScale
+    scales[i] = ((jitter * point.length()) / SIZE_REFERENCE) * (sizes[i] ?? 1)
   }
   return { positions, scales }
 }

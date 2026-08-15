@@ -41,7 +41,8 @@ export {
   type StarShapeKey,
   type StarShapeOptions,
 } from './assets/bodies/star-shapes.ts'
-// The gist-shape bench: candidate looks for the gist body, all on the gist body's channel contract.
+// The gist-shape catalogue: the looks the gist body can wear — the bench's rows and the one an
+// undecorated universe wears — all on the gist body's channel contract.
 export {
   DEFAULT_GIST_SHAPE,
   GIST_SHAPES,
@@ -50,7 +51,6 @@ export {
   resolveGistShape,
   type GistShape,
   type GistShapeKey,
-  type GistShapeOptions,
 } from './assets/bodies/gist-shapes.ts'
 export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
 export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
@@ -60,12 +60,11 @@ export {
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
 // The backdrop: a MOTE (one particle's form · colour) poured into a FIELD (where they sit, how many,
-// how they twinkle) at a chosen size. Two catalogues, and every pair of rows is a backdrop.
+// how they twinkle), every field mixing the four mote sizes in their declared shares. Two catalogues,
+// and every pair of rows is a backdrop.
 export {
   BACKDROP_MOTES,
-  BACKDROP_MOTE_SIZES,
   DEFAULT_BACKDROP_MOTE,
-  DEFAULT_BACKDROP_MOTE_SIZE,
   MOTE_RADIUS,
   backdropMoteFormTriangles,
   backdropMoteTriangles,
@@ -75,7 +74,6 @@ export {
   type BackdropMoteForm,
   type BackdropMoteFormKey,
   type BackdropMoteKey,
-  type BackdropMoteSize,
 } from './assets/backdrop/backdrop-motes.ts'
 export { BACKDROP_TRIANGLE_CEILING, backdropTriangleCost } from './assets/backdrop/backdrop-cost.ts'
 export {
@@ -95,8 +93,11 @@ export {
   type BackdropTwinkle,
 } from './assets/backdrop/backdrop-life.ts'
 export {
+  BACKDROP_MOTE_SIZE_MIX,
+  dealBackdropMoteSizes,
   scatterBackdrop,
   seededRandom,
+  type BackdropMoteSize,
   type BackdropScatterKey,
   type BackdropScatterResult,
   type BackdropScatterSpec,

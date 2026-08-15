@@ -14,22 +14,24 @@ import {
 import { backdropBrightness, backdropTint } from './backdrop-life.ts'
 import {
   BACKDROP_MOTES,
-  BACKDROP_MOTE_SIZES,
   DEFAULT_BACKDROP_MOTE,
-  DEFAULT_BACKDROP_MOTE_SIZE,
   backdropMoteFormTriangles,
   backdropMoteTriangles,
   createBackdropMoteForm,
   resolveBackdropMote,
 } from './backdrop-motes.ts'
-import { scatterBackdrop } from './backdrop-scatter.ts'
+import {
+  BACKDROP_MOTE_SIZE_MIX,
+  dealBackdropMoteSizes,
+  scatterBackdrop,
+} from './backdrop-scatter.ts'
 
 const WEB_COUNT = VALUES.rendering.starFieldCount
 const WEB_RADIUS = VALUES.rendering.starFieldRadius
 const graphInputs = () => ({ time: uniform(0), place: positionLocal.div(WEB_RADIUS) })
 
-// A mote is one particle — its form, its size and its colour — and the catalogue's contract is that
-// every row of the three actually builds and stays inside the size band a mote is legible in.
+// A mote is one particle — its form and its colour — and the catalogue's contract is that every row
+// actually builds and stays inside the size band a mote is legible in.
 describe('backdrop mote catalogue', () => {
   it('keeps every mote key unique', () => {
     const keys = BACKDROP_MOTES.map((mote) => mote.key)
@@ -45,8 +47,8 @@ describe('backdrop mote catalogue', () => {
     }
   })
 
-  // Size is chosen over the whole catalogue rather than authored per row, so a row must be a look on
-  // its own: no two may share a form AND a colour, or the picker offers the same particle twice.
+  // Size is not authored per row — every field draws all four steps — so a row must be a look on its
+  // own: no two may share a form AND a colour, or the picker offers the same particle twice.
   it('keeps every row distinct in its form or its colour', () => {
     const looks = BACKDROP_MOTES.map((mote) => `${mote.form}:${mote.tone}`)
     expect(new Set(looks).size).toBe(looks.length)
@@ -67,16 +69,8 @@ describe('backdrop mote catalogue', () => {
     expect(resolveBackdropMote('no-such-mote').key).toBe(DEFAULT_BACKDROP_MOTE)
   })
 
-  it('leaves the default mote plain: the round dot at its geometry size', () => {
+  it('leaves the default mote plain: the round dot', () => {
     expect(resolveBackdropMote(DEFAULT_BACKDROP_MOTE).form).toBe('grain')
-    expect(DEFAULT_BACKDROP_MOTE_SIZE).toBe(1)
-  })
-
-  // Whole steps, because the difference between 1.6 and 1.8 is not a decision anyone can make by
-  // looking — and the first step has to be the geometry's own size or nothing renders as authored.
-  it('offers whole size steps, starting at the geometry size', () => {
-    expect([...BACKDROP_MOTE_SIZES]).toEqual([1, 2, 3, 4])
-    for (const size of BACKDROP_MOTE_SIZES) expect(Number.isInteger(size)).toBe(true)
   })
 })
 
@@ -227,13 +221,40 @@ describe('backdrop scatter', () => {
     }
   })
 
-  it('gives every mote a positive size, scaled by the mote it is drawing', () => {
-    const plain = scatterBackdrop('volume', { count: 200, radius: WEB_RADIUS })
-    const doubled = scatterBackdrop('volume', { count: 200, radius: WEB_RADIUS, sizeScale: 2 })
-    for (let i = 0; i < 200; i++) {
-      expect(plain.scales[i]).toBeGreaterThan(0)
-      expect(doubled.scales[i]).toBeCloseTo((plain.scales[i] ?? 0) * 2, 5)
+  it('gives every mote a positive size', () => {
+    const placed = scatterBackdrop('volume', { count: 200, radius: WEB_RADIUS })
+    for (let i = 0; i < 200; i++) expect(placed.scales[i]).toBeGreaterThan(0)
+  })
+
+  // Whole steps, because the difference between 1.6 and 1.8 is not a decision anyone can make by
+  // looking — and the first step is the geometry's own size, or nothing renders as authored. The
+  // shares are a whole field, graded downward: the largest mote may never be the common one.
+  it('offers whole size steps, starting at the geometry size, on shares that sum to a field', () => {
+    expect(BACKDROP_MOTE_SIZE_MIX.map(({ size }) => size)).toEqual([1, 2, 3, 4])
+    const total = BACKDROP_MOTE_SIZE_MIX.reduce((sum, { share }) => sum + share, 0)
+    expect(total).toBeCloseTo(1, 6)
+    BACKDROP_MOTE_SIZE_MIX.forEach(({ size, share }, i) => {
+      expect(Number.isInteger(size)).toBe(true)
+      const previous = BACKDROP_MOTE_SIZE_MIX[i - 1]
+      if (previous) expect(share, `${size}× vs ${previous.size}×`).toBeLessThan(previous.share)
+    })
+  })
+
+  // The mix is the point: a field of one size reads as a printed texture, and four in equal numbers
+  // reads as two layers of dots. Each step has to land on its declared share, and the order must NOT
+  // ride the index — the lattice mode maps the index straight onto a grid, where a block deal would
+  // come out as visible bands.
+  it('deals the size steps on their shares, in an order the index cannot predict', () => {
+    const count = 400
+    const dealt = Array.from(dealBackdropMoteSizes(count))
+    expect(dealt).toHaveLength(count)
+    for (const { size, share } of BACKDROP_MOTE_SIZE_MIX) {
+      const drawn = dealt.filter((step) => step === size).length
+      expect(drawn, `${drawn} motes at ${size}×`).toBe(Math.round(count * share))
     }
+    const blocks = Array.from({ length: count }, (_, i) => (i < count / 2 ? 1 : 2))
+    expect(dealt).not.toEqual(blocks)
+    expect(Array.from(dealBackdropMoteSizes(count))).toEqual(dealt)
   })
 
   it('yields an empty field for an empty count', () => {

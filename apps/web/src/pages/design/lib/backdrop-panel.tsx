@@ -4,12 +4,11 @@ import { VALUES } from '@cosimosi/config'
 import {
   BACKDROP_FIELDS,
   BACKDROP_MOTES,
-  BACKDROP_MOTE_SIZES,
+  BACKDROP_MOTE_SIZE_MIX,
   BACKDROP_TRIANGLE_CEILING,
   CameraControls,
   DEFAULT_BACKDROP_FIELD,
   DEFAULT_BACKDROP_MOTE,
-  DEFAULT_BACKDROP_MOTE_SIZE,
   InstancedNodeLayer,
   PostFX,
   STAR_INSTANCE_BRIGHTNESS,
@@ -28,7 +27,6 @@ import {
   useSkin,
   type BackdropFieldKey,
   type BackdropMoteKey,
-  type BackdropMoteSize,
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
@@ -50,8 +48,9 @@ import { T } from './showcase-copy.ts'
  * Two pickers rather than one, because a backdrop is two independent choices. The mote row answers
  * what a single particle is — its form and its colour — and the field row answers what space they
  * fill: where they sit, how many, how their light moves. Every pair is a backdrop, so the bench is the
- * product of the two catalogues rather than a list. Size sits with the other frame controls, since it
- * applies to whichever mote is chosen.
+ * product of the two catalogues rather than a list. Size is not a third picker: every field draws all
+ * four size steps in fixed shares, so the mix is reported alongside the other axes rather than
+ * chosen — a sky of one size is a texture, and the bench should never be able to build one.
  *
  * The stars are the point of the frame. A backdrop is only judgeable against what it sits behind — a
  * field that looks gorgeous empty can still bury a memory's own light, or leave the scene so bare
@@ -119,7 +118,6 @@ export function BackdropPanel() {
   const [fieldKey, setFieldKey] = useState<BackdropFieldKey>(DEFAULT_BACKDROP_FIELD)
   const [sky, setSky] = useState(true)
   const [animate, setAnimate] = useState(true)
-  const [moteSize, setMoteSize] = useState<BackdropMoteSize>(DEFAULT_BACKDROP_MOTE_SIZE)
   const mote = resolveBackdropMote(moteKey)
   const field = resolveBackdropField(fieldKey)
   const cost = backdropTriangleCost(mote, field, VALUES.rendering.starFieldCount)
@@ -146,37 +144,10 @@ export function BackdropPanel() {
         <div className="flex flex-wrap items-center gap-4">
           <Switch checked={sky} onCheckedChange={setSky} label={T.backdropSky} />
           <Switch checked={animate} onCheckedChange={setAnimate} label={T.statesMotionLabel} />
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-              {T.backdropMoteSize}
-            </span>
-            {BACKDROP_MOTE_SIZES.map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setMoteSize(size)}
-                aria-pressed={size === moteSize}
-                className={cx(
-                  'inline-flex size-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors',
-                  size === moteSize
-                    ? 'border-primary text-text'
-                    : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
-                )}
-              >
-                {size}×
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="aspect-4/3 overflow-hidden rounded-2xl border border-border bg-bg">
-          <BackdropStage
-            mote={mote.key}
-            moteSize={moteSize}
-            field={field.key}
-            sky={sky}
-            animate={animate}
-          />
+          <BackdropStage mote={mote.key} field={field.key} sky={sky} animate={animate} />
         </div>
 
         <p className="text-sm text-text-muted">{mote.blurb}</p>
@@ -188,7 +159,7 @@ export function BackdropPanel() {
           {[
             { term: T.backdropAxisForm, detail: mote.form },
             { term: T.backdropAxisTone, detail: mote.tone },
-            { term: T.backdropAxisSize, detail: `${moteSize}×` },
+            { term: T.backdropAxisSize, detail: T.backdropMoteSizeMix(BACKDROP_MOTE_SIZE_MIX) },
             { term: T.backdropCost, detail: T.backdropCostValue(cost) },
             { term: T.backdropAxisScatter, detail: field.scatter },
             { term: T.backdropAxisDensity, detail: `${field.density}×` },
@@ -215,13 +186,11 @@ export function BackdropPanel() {
 
 function BackdropStage({
   mote,
-  moteSize,
   field,
   sky,
   animate,
 }: {
   mote: BackdropMoteKey
-  moteSize: BackdropMoteSize
   field: BackdropFieldKey
   sky: boolean
   animate: boolean
@@ -243,7 +212,7 @@ function BackdropStage({
       clearColor={skin.sky.night}
     >
       {sky ? <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={!moving} /> : null}
-      <StarField mote={mote} moteSize={moteSize} field={field} reducedMotion={!moving} />
+      <StarField mote={mote} field={field} reducedMotion={!moving} />
       <ReferenceStars memories={scene.memories} positions={positions} animate={moving} />
       <CameraControls {...UNIVERSE_CAMERA_ENVELOPE} />
       <PostFX bloom={skin.bloom} />

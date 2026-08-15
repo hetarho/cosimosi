@@ -123,9 +123,13 @@ and `BACKDROP_FIELDS` says what space they fill: where they sit, how many there 
 are rows rather than more modes). Neither constrains the other, so the set of possible backdrops is their
 **product**, and there is no third catalogue of named pairs: a row that is only "mote 7 in field 3" would have
 to be maintained alongside the two things it names. Anything neither catalogue offers goes into an axis, where
-it multiplies across every pair, rather than into a row. How big a mote is drawn is the one property held
-outside both — `BACKDROP_MOTE_SIZES` (1·2·3·4, whole steps of the geometry's own size), because every form is
-worth seeing at every size and it is an instance scale, so it costs nothing.
+it multiplies across every pair, rather than into a row. How big a mote is drawn belongs to NEITHER catalogue and
+is not a choice at all: `dealBackdropMoteSizes` gives every field all four steps of `BACKDROP_MOTE_SIZE_MIX`
+(1·2·3·4, whole multiples of the geometry's own size) on fixed shares — 50 / 30 / 15 / 5 % — shuffled on a seed
+of their own so the step never correlates with where the mote landed (a block deal comes out as bands under the
+index-driven `lattice` mode). The grade is the point: one size reads as a printed texture instead of as depth,
+and four in equal numbers read as two layers of dots rather than as one sky with a few near motes in it. The mix
+is free — it is an instance scale, so it costs no triangles.
 
 **Backdrop budget.** Count and radius are `rendering.star_field_count[_mobile]` / `star_field_radius[_mobile]`, taken as
 one bundle (`STAR_FIELD_PROFILE.web` / `.mobile`, re-exported with the latent tessellation as `UNIVERSE_BACKDROP`) so a
@@ -576,6 +580,14 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
+- **Which diffuse look is a catalogue key, not a layer decision.** `GistStarLayer` builds its body from
+  `createGistShapeBodySource(DEFAULT_GIST_SHAPE)` — one key out of the `gist-shapes.ts` catalogue the design bench
+  renders, so a look chosen by eye reaches the universe by naming a row rather than by re-typing a TSL graph into the
+  layer. It is **one choice for the whole universe** ([V5] again — a gist has no shape identity of its own) and every
+  entry reads the same tint + softness channels, so the key is the only line that moves when a gist ornament later
+  selects one per user. It is **not** a value: like `DEFAULT_SKY_EFFECT` and `DEFAULT_STAR_SHAPE`, the undecorated look
+  is owned by its own registry. The two "the universe as it is" design panels (web `states-panel`, mobile
+  `universe-panel`) take the same default, so they cannot drift from what a universe actually renders.
 - **The gap depth cue is `BandFog`** — horizontal `DoubleSide` additive glow discs across the z 18–27 gap,
   visible from above and below, raycast-invisible, and depth-write-free (peak at the gap center, zero at both band edges;
   intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the boundary, never a wall and never a
@@ -612,6 +624,8 @@ the plan-24 visual ranges `star_size_min`/`star_size_max`,
 (the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code), and the
 plan-42 gist scalars `gist_star_size_min`/`gist_star_size_max` (the quieter `EffectiveStrength` → size range),
 `gist_star_diffuse` (the base softness of the diffuse gist body), `gist_rise_layer_fog` (the gap depth-cue haze).
+(Which gist look, which mote and which field a universe wears are **not** values — they are per-user ornament
+selections, and each kind's undecorated look is its own registry's `DEFAULT_*`.)
 (The stage→z map is **not** a value — it is the memory-logic `gistCoordinate` derivation over the reused
 `force_sim.{hippocampus,neocortex}_z_*` bands; the rise duration stays a code-level layer constant.)
 

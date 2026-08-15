@@ -34,6 +34,8 @@ export const createStarShapeBodySource = () => ({ resolve: () => ({}) })
 export const createCellStarBodySource = () => ({ resolve: () => ({}) })
 export const createFilamentBodySource = () => ({ resolve: () => ({}) })
 export const createGistStarBodySource = () => ({ resolve: () => ({}) })
+export const createGistShapeBodySource = () => ({ resolve: () => ({}) })
+export const DEFAULT_GIST_SHAPE = 'halo'
 export const COORDINATE_STRIDE = 3
 // Real numbers, not stand-ins: a shell test asserting the mobile budget must fail when the mobile
 // budget moves, and these ARE just the generated scalars.

@@ -9,8 +9,8 @@ import {
   resolveGistShape,
 } from './gist-shapes.ts'
 
-const resolve = (key: string, animate = true) =>
-  createGistShapeBodySource(key, { animate }).resolve({ kind: 'shader', id: key }) as THREE.Mesh
+const resolve = (key: string) =>
+  createGistShapeBodySource(key).resolve({ kind: 'shader', id: key }) as THREE.Mesh
 
 const dispose = (mesh: THREE.Mesh) => {
   mesh.geometry.dispose()
@@ -34,16 +34,6 @@ describe('gist shape catalogue', () => {
       mesh.geometry.computeBoundingSphere()
       expect(mesh.geometry.boundingSphere?.radius, shape.key).toBeCloseTo(1, 2)
       dispose(mesh)
-    }
-  })
-
-  it('builds every look in animated and reduced-motion modes', () => {
-    for (const shape of GIST_SHAPES) {
-      for (const animate of [true, false]) {
-        const mesh = resolve(shape.key, animate)
-        expect(mesh, `${shape.key}/${animate}`).toBeInstanceOf(THREE.Mesh)
-        dispose(mesh)
-      }
     }
   })
 
@@ -81,5 +71,15 @@ describe('gist shape catalogue', () => {
 
   it('falls back to the default shape for an unknown key', () => {
     expect(resolveGistShape('no-such-shape').key).toBe(DEFAULT_GIST_SHAPE)
+  })
+
+  // The catalogue is not bench-only any more: the universe's own gist bodies are built from a key
+  // out of it, and until one is decorated that key is the DEFAULT — so the default has to name a
+  // row that exists, or the neocortex renders nothing at all.
+  it('builds the look an undecorated universe wears', () => {
+    expect(GIST_SHAPES.some((shape) => shape.key === DEFAULT_GIST_SHAPE)).toBe(true)
+    const mesh = resolve(DEFAULT_GIST_SHAPE)
+    expect(mesh).toBeInstanceOf(THREE.Mesh)
+    dispose(mesh)
   })
 })
