@@ -172,7 +172,6 @@
   "test_harness_values_default_stale": "Default stale time",
   "test_harness_values_default_gc": "Default GC time",
   "test_harness_values_retry_count": "Retry count",
-  "test_harness_values_rollback_window": "Optimistic rollback window",
   "test_harness_i18n_title": "i18n locale",
   "test_harness_i18n_description": "활성 Paraglide locale을 바꾸고 패널 copy가 갱신되는지 확인합니다.",
   "test_harness_i18n_active_locale": "Active locale",

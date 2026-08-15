@@ -3,7 +3,7 @@ import { AppState, KeyboardAvoidingView, Platform, StyleSheet, Text } from 'reac
 
 import { signupCredentialMachine } from '@cosimosi/auth'
 import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 
 import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'

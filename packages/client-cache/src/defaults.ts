@@ -6,14 +6,12 @@ export interface ClientCacheTimings {
   defaultStaleMs: number
   defaultGcMs: number
   defaultRetryCount: number
-  optimisticRollbackMs: number
 }
 
 export const clientCacheTimings: ClientCacheTimings = {
   defaultStaleMs: VALUES.clientCache.defaultStaleMs,
   defaultGcMs: VALUES.clientCache.defaultGcMs,
   defaultRetryCount: VALUES.clientCache.defaultRetryCount,
-  optimisticRollbackMs: VALUES.clientCache.optimisticRollbackMs,
 }
 
 export interface ClientCacheQueryClientOptions extends Omit<QueryClientConfig, 'defaultOptions'> {

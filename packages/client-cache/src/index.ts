@@ -8,13 +8,6 @@ export {
 export type { QueryClient as ClientCacheQueryClient } from '@tanstack/query-core'
 export { isConnectQueryKey, memoryCacheKeys, platformCacheKeys } from './keys.ts'
 export {
-  beginOptimisticMutation,
-  type BeginOptimisticMutationOptions,
-  type OptimisticMutationContext,
-  type OptimisticPatch,
-  type OptimisticSnapshot,
-} from './optimistic.ts'
-export {
   accountRpcCachePolicies,
   createClientCacheRpcPolicyInterceptor,
   createRpcCachePolicyInterceptor,

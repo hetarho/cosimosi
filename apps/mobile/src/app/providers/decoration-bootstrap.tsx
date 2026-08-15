@@ -9,7 +9,7 @@ import {
   createGetSelectionQueryOptions,
 } from '@cosimosi/api-client'
 import { MOODS, defaultMoodPalette, moodColor, resolveMoodColors } from '@cosimosi/emotion'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { tokens } from '@cosimosi/ui'
 
 import { applyMoodColors, moodColorRows } from '@cosimosi/emotion/react'

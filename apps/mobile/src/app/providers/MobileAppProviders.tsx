@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-import { LocaleRenderBoundary, m } from '../../shared/i18n/index.ts'
+import { LocaleRenderBoundary, m, type Locale } from '../../shared/i18n/index.ts'
 import { presentAppError } from '@cosimosi/errors'
 import {
   ObservedErrorBoundary,
@@ -11,7 +11,6 @@ import { Button, tokens } from '@cosimosi/ui'
 import type { ApiTransport } from '@cosimosi/api-client'
 import type { AuthFacade } from '@cosimosi/auth'
 import type { ClientCacheQueryClient } from '@cosimosi/client-cache'
-import type { Locale } from '@cosimosi/i18n'
 import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { MobileAuthProvider, type MobileSupabaseAuthOptions } from './auth-provider.tsx'

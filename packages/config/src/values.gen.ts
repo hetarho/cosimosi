@@ -4,7 +4,6 @@ export const VALUES = {
     defaultStaleMs: 30000,
     defaultGcMs: 300000,
     defaultRetryCount: 1,
-    optimisticRollbackMs: 10000,
   },
   errors: {
     toastAutoDismissMs: 6000,

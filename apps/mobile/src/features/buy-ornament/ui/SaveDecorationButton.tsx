@@ -4,7 +4,7 @@ import { saveVerdict, useOrnamentPreviewStore, type Ornament } from '@cosimosi/s
 import { ornamentName } from '@cosimosi/store/i18n'
 import { useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import { Button, tokens } from '@cosimosi/ui'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 
 // features/buy-ornament ui (native fork): the one commit action, and the one place a refusal is
 // explained. It reads the GENERAL balance alone — an ornament cannot be bought with today's recall

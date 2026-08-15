@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useOrnamentPreviewStore, type Ornament } from '@cosimosi/store'
 import { ORNAMENT_GROUP_TITLES } from '@cosimosi/store/i18n'
 import { useOrnamentCatalog } from '@cosimosi/store/react'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { tokens } from '@cosimosi/ui'
 
 import { OrnamentRow } from './OrnamentRow.tsx'

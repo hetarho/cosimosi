@@ -38,7 +38,6 @@ import {
   type RpcCachePolicyEntry,
 } from './http-policy.ts'
 import { isConnectQueryKey, memoryCacheKeys, platformCacheKeys } from './keys.ts'
-import { beginOptimisticMutation } from './optimistic.ts'
 import { assertClientCacheData } from './render-state.ts'
 import { createClientCacheTestContext, setClientCacheData } from './test-helpers.ts'
 import { resolveClientCacheTransport } from './provider.ts'
@@ -86,39 +85,6 @@ describe('client cache facade', () => {
     expect(optionsKey).toEqual(helperKey)
   })
 
-  it('supports optimistic snapshot, rollback, and settle invalidation', async () => {
-    const context = createClientCacheTestContext()
-    const key = platformCacheKeys.ping(context.transport)
-    const invalidateKey = platformCacheKeys.service(context.transport)
-    setClientCacheData(context.queryClient, key, { message: 'before' })
-    setClientCacheData(context.queryClient, invalidateKey, { touched: false })
-
-    const optimistic = await beginOptimisticMutation({
-      queryClient: context.queryClient,
-      patches: [
-        {
-          queryKey: key,
-          update: () => ({ message: 'optimistic' }),
-        },
-      ],
-      invalidate: [invalidateKey],
-    })
-
-    expect(context.queryClient.getQueryData<{ message: string }>(key)?.message).toBe('optimistic')
-    expect(optimistic.snapshots).toMatchObject([
-      { queryKey: key, exists: true, data: { message: 'before' } },
-    ])
-    expect(optimistic.rollbackDelayMs).toBe(clientCacheTimings.optimisticRollbackMs)
-
-    optimistic.rollback()
-    expect(context.queryClient.getQueryData<{ message: string }>(key)?.message).toBe('before')
-
-    await optimistic.settle()
-    expect(
-      context.queryClient.getQueryCache().find({ queryKey: invalidateKey })?.state.isInvalidated,
-    ).toBe(true)
-  })
-
   it('treats undefined cache updates as explicit query removal', () => {
     const context = createClientCacheTestContext()
     const key = platformCacheKeys.ping(context.transport)
@@ -128,118 +94,6 @@ describe('client cache facade', () => {
 
     expect(result).toBeUndefined()
     expect(context.queryClient.getQueryCache().find({ queryKey: key, exact: true })).toBeUndefined()
-  })
-
-  it('restores cloned optimistic snapshots after in-place patch mutation', async () => {
-    const context = createClientCacheTestContext()
-    const key = platformCacheKeys.ping(context.transport)
-    setClientCacheData(context.queryClient, key, { items: [{ message: 'before' }] })
-
-    const optimistic = await beginOptimisticMutation({
-      queryClient: context.queryClient,
-      patches: [
-        {
-          queryKey: key,
-          update: (current: { items: { message: string }[] } | undefined) => {
-            if (current) current.items[0].message = 'optimistic'
-            return current
-          },
-        },
-      ],
-    })
-
-    expect(
-      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
-    ).toBe('optimistic')
-    optimistic.rollback()
-    expect(
-      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
-    ).toBe('before')
-
-    const restored = context.queryClient.getQueryData<{ items: { message: string }[] }>(key)
-    if (restored) restored.items[0].message = 'mutated-after-rollback'
-    optimistic.rollback()
-    expect(
-      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
-    ).toBe('before')
-  })
-
-  it('clones typed array views in fallback optimistic snapshots', async () => {
-    vi.stubGlobal('structuredClone', undefined)
-    try {
-      const context = createClientCacheTestContext()
-      const key = platformCacheKeys.ping(context.transport)
-      context.queryClient.setQueryData(key, { matrix: new Int32Array([1, 2, 3]) })
-
-      const optimistic = await beginOptimisticMutation({
-        queryClient: context.queryClient,
-        patches: [
-          {
-            queryKey: key,
-            update: () => ({ message: 'optimistic' }),
-          },
-        ],
-      })
-
-      optimistic.rollback()
-      const restored = context.queryClient.getQueryData<{ matrix: Int32Array }>(key)
-      if (restored) restored.matrix[0] = 9
-      optimistic.rollback()
-      expect(context.queryClient.getQueryData<{ matrix: Int32Array }>(key)?.matrix[0]).toBe(1)
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-
-  it('rolls back optimistic removal patches by recreating the removed query', async () => {
-    const context = createClientCacheTestContext()
-    const key = platformCacheKeys.ping(context.transport)
-    setClientCacheData(context.queryClient, key, { message: 'before' })
-
-    const optimistic = await beginOptimisticMutation({
-      queryClient: context.queryClient,
-      patches: [
-        {
-          queryKey: key,
-          update: () => undefined,
-        },
-      ],
-    })
-
-    expect(context.queryClient.getQueryCache().find({ queryKey: key, exact: true })).toBeUndefined()
-    optimistic.rollback()
-    expect(context.queryClient.getQueryData<{ message: string }>(key)?.message).toBe('before')
-  })
-
-  it('rolls back already-applied optimistic patches when a later patch fails', async () => {
-    const context = createClientCacheTestContext()
-    const firstKey = platformCacheKeys.ping(context.transport)
-    const secondKey = platformCacheKeys.service(context.transport)
-    setClientCacheData(context.queryClient, firstKey, { message: 'first-before' })
-    setClientCacheData(context.queryClient, secondKey, { message: 'second-before' })
-
-    await expect(
-      beginOptimisticMutation({
-        queryClient: context.queryClient,
-        patches: [
-          {
-            queryKey: firstKey,
-            update: () => ({ message: 'first-optimistic' }),
-          },
-          {
-            queryKey: secondKey,
-            update: () => ({ coordinates: new Float32Array([0, 1, 2]) }),
-          },
-        ],
-      }),
-    ).rejects.toThrow(/render-loop buffer/)
-
-    expect(context.queryClient.getQueryData<{ message: string }>(firstKey)?.message).toBe(
-      'first-before',
-    )
-    expect(context.queryClient.getQueryData<{ message: string }>(secondKey)?.message).toBe(
-      'second-before',
-    )
   })
 
   it('rejects render-loop buffers while allowing plain scalar fields', () => {

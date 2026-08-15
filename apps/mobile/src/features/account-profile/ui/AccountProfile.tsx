@@ -18,7 +18,7 @@ import {
   resolveDeviceTimeZone,
   setActiveLocale,
   type Locale,
-} from '@cosimosi/i18n'
+} from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 
 import { writeStoredLocale } from '../../../shared/native/index.ts'

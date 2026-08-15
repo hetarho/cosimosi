@@ -16,7 +16,7 @@ theme content.
 Current groups. **`spec/values.yaml` is the registry — this list is a reading aid, in file order.** It exists so a
 newcomer can find the right group without scrolling 600 lines of YAML; when the two disagree, the YAML is right.
 
-- `client_cache`: TanStack Query default timing and optimistic rollback windows.
+- `client_cache`: TanStack Query default stale time, garbage-collection time, and retry count.
 - `errors`: toast auto-dismiss timing for the error surface.
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.

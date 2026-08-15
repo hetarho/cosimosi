@@ -15,7 +15,7 @@ import {
 } from '@cosimosi/onboarding'
 import { useSequenceRun } from '@cosimosi/sequence/react'
 import { Button, DecorateIcon, DiaryIcon, IconButton, SettingsIcon, tokens } from '@cosimosi/ui'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,

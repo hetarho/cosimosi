@@ -1,7 +1,7 @@
 import { StyleSheet, Text } from 'react-native'
 
 import { pendingInvite } from '@cosimosi/auth'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { tokens } from '@cosimosi/ui'
 
 export function InviteAcknowledgment() {

@@ -13,7 +13,6 @@ client_cache:
   default_stale_ms: 30000
   default_gc_ms: 300000
   default_retry_count: 1
-  optimistic_rollback_ms: 10000
 
 errors:
   # Keep transient error feedback visible long enough to read without requiring manual dismissal.

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 
 import { ornamentCost, type Ornament } from '@cosimosi/store'
 import { ornamentName } from '@cosimosi/store/i18n'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { tokens } from '@cosimosi/ui'
 
 // features/preview-ornament ui (native fork of the web row): one catalog row, where what it says

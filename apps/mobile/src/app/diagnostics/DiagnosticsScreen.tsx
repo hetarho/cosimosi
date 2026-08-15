@@ -4,13 +4,12 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { createPlatformClient } from '@cosimosi/api-client'
-import { m } from '@cosimosi/i18n'
 import { platformFeatureFlags } from '@cosimosi/observability'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { Button, defaultThemeKey, tokens } from '@cosimosi/ui'
 
 import { diagnosticsSurfaceFlag, mobileAppVersion } from '../../shared/config/index.ts'
-import { useActiveLocale } from '../../shared/i18n/index.ts'
+import { m, useActiveLocale } from '../../shared/i18n/index.ts'
 import {
   useMobileApiBaseUrl,
   useMobileApiTransport,

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createGetInviteLinkQueryOptions } from '@cosimosi/api-client'
 import { inviteLinkPath } from '@cosimosi/auth'
 import { VALUES } from '@cosimosi/config'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
 import { useErrorToast } from '../../../shared/model/index.ts'

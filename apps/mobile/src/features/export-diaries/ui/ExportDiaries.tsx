@@ -5,7 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useMutation } from '@tanstack/react-query'
 
 import { createMemoryClient, ExportFormat } from '@cosimosi/api-client'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
 import { useErrorToast } from '../../../shared/model/index.ts'

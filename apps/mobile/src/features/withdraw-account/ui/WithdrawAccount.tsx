@@ -8,7 +8,7 @@ import { withdraw } from '@cosimosi/api-client'
 import { commitWithdrawalAndEndSession } from '@cosimosi/auth'
 import { useAuthFacade } from '@cosimosi/auth/react'
 import { VALUES } from '@cosimosi/config'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
 import { useErrorToast } from '../../../shared/model/index.ts'

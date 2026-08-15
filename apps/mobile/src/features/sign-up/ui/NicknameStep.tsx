@@ -10,7 +10,7 @@ import {
   recordSignupCompletion,
   validateNickname,
 } from '@cosimosi/auth'
-import { getActiveLocale, m, resolveDeviceTimeZone } from '@cosimosi/i18n'
+import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/index.ts'
 import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 

@@ -1,8 +1,10 @@
 export {
   ActiveLocaleProvider,
+  getActiveLocale,
   LocaleBootstrap,
   LocaleRenderBoundary,
   m,
+  resolveDeviceTimeZone,
   resolveLocale,
   setActiveLocale,
   useActiveLocale,

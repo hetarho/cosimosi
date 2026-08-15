@@ -215,10 +215,6 @@ export function ValuesPanel() {
           [m.test_harness_values_default_stale(), formatMs(VALUES.clientCache.defaultStaleMs)],
           [m.test_harness_values_default_gc(), formatMs(VALUES.clientCache.defaultGcMs)],
           [m.test_harness_values_retry_count(), String(VALUES.clientCache.defaultRetryCount)],
-          [
-            m.test_harness_values_rollback_window(),
-            formatMs(VALUES.clientCache.optimisticRollbackMs),
-          ],
         ]}
       />
     </PanelStack>

@@ -7,7 +7,7 @@ import {
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useOrnamentCatalog, useSaveDecoration } from '@cosimosi/store/react'
 import { Sheet } from '@cosimosi/ui'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 
 import { SaveDecorationButton } from '../../../features/buy-ornament/index.ts'
 import { OrnamentGroupList } from '../../../features/preview-ornament/index.ts'

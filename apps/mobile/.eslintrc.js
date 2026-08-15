@@ -25,6 +25,30 @@ const crossImportRules = [
   },
 ]
 
+const i18nRestrictedImport = {
+  group: ['@cosimosi/i18n', '@cosimosi/i18n/*'],
+  message:
+    'Import i18n through src/shared/i18n/index.ts; only the seam, locale-storage adapter, and tests import the package directly.',
+}
+
+const sequenceRestrictedImport = {
+  group: [
+    '@cosimosi/sequence',
+    '@cosimosi/sequence/*',
+    '@cosimosi/onboarding',
+    '@cosimosi/onboarding/*',
+  ],
+  message:
+    'A product slice must not learn that a guided sequence exists. Anchors are registered by wrapping an existing child at a composition site (a page or a widget); the sequence chrome slices are the only exemption.',
+}
+
+const sequenceSurfaceFiles = [
+  'src/features/highlight-next-control/**',
+  'src/features/show-sequence-caption/**',
+  'src/features/skip-sequence/**',
+  'src/features/replay-onboarding/**',
+]
+
 module.exports = {
   root: true,
   extends: '@react-native',
@@ -66,36 +90,42 @@ module.exports = {
   },
   overrides: [
     {
+      // Product code reaches the pure package through the app-owned reactive barrel. Tests may
+      // import locale reset helpers directly; the platform adapter is the only production escape.
+      files: ['src/**/*.{ts,tsx}'],
+      excludedFiles: [
+        'src/shared/i18n/index.ts',
+        'src/shared/native/locale-storage.ts',
+        'src/**/*.test.*',
+      ],
+      rules: {
+        'no-restricted-imports': ['error', { patterns: [i18nRestrictedImport] }],
+      },
+    },
+    {
       // No product slice learns that a guided sequence exists — the web app's rule, mirrored. Anchors
       // are registered by wrapping an existing child at a COMPOSITION SITE (a page or a widget), so
       // `features/write-diary`, `features/launch-stars`, `features/recall-star` and every other shipped
       // slice stay unaware. The four exempt slices ARE the sequence's own surface rather than product it
       // points at: the three chrome slices, and the replay row whose single action is asking for a run.
       files: ['src/features/**/*.{ts,tsx}', 'src/entities/**/*.{ts,tsx}'],
-      excludedFiles: [
-        'src/features/highlight-next-control/**',
-        'src/features/show-sequence-caption/**',
-        'src/features/skip-sequence/**',
-        'src/features/replay-onboarding/**',
-      ],
+      excludedFiles: [...sequenceSurfaceFiles, 'src/**/*.test.*'],
       rules: {
         'no-restricted-imports': [
           'error',
           {
-            patterns: [
-              {
-                group: [
-                  '@cosimosi/sequence',
-                  '@cosimosi/sequence/*',
-                  '@cosimosi/onboarding',
-                  '@cosimosi/onboarding/*',
-                ],
-                message:
-                  'A product slice must not learn that a guided sequence exists. Anchors are registered by wrapping an existing child at a composition site (a page or a widget); the sequence chrome slices are the only exemption.',
-              },
-            ],
+            patterns: [sequenceRestrictedImport, i18nRestrictedImport],
           },
         ],
+      },
+    },
+    {
+      // Test files keep the sequence boundary while remaining free to import pure locale reset
+      // helpers directly. The sequence's own surface stays exempt, matching production.
+      files: ['src/features/**/*.test.*', 'src/entities/**/*.test.*'],
+      excludedFiles: sequenceSurfaceFiles,
+      rules: {
+        'no-restricted-imports': ['error', { patterns: [sequenceRestrictedImport] }],
       },
     },
   ],

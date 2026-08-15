@@ -3,10 +3,9 @@ package values
 
 // client_cache
 const (
-	ClientCacheDefaultStaleMs       = 30000
-	ClientCacheDefaultGcMs          = 300000
-	ClientCacheDefaultRetryCount    = 1
-	ClientCacheOptimisticRollbackMs = 10000
+	ClientCacheDefaultStaleMs    = 30000
+	ClientCacheDefaultGcMs       = 300000
+	ClientCacheDefaultRetryCount = 1
 )
 
 // errors

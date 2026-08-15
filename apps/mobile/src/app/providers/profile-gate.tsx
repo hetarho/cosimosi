@@ -12,7 +12,7 @@ import {
   takeSignupCompletion,
 } from '@cosimosi/auth'
 import { useAuthFacade } from '@cosimosi/auth/react'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
 import { NicknameStep } from '../../features/sign-up/index.ts'

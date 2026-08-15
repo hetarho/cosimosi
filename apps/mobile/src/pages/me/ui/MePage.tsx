@@ -2,7 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { Button, Tabs, tokens } from '@cosimosi/ui'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 
 import { AchievementList } from '../../../features/achievement-list/index.ts'
 import { AccountProfile } from '../../../features/account-profile/index.ts'
