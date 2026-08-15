@@ -136,11 +136,13 @@ function MoodPresets({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {presets.map((preset) => {
           const detail = moodColorPresetDetail(preset)
+          const title = moodColorPresetTitle(preset)
           return (
             <button
               key={preset.kind === 'POPULAR' ? preset.color : preset.kind}
               type="button"
-              aria-label={m.palette_preset_label()}
+              aria-label={title}
+              aria-description={m.palette_preset_label()}
               aria-pressed={preset.kind !== 'RANDOM' && preset.color === current}
               disabled={disabled}
               onClick={() =>
@@ -157,7 +159,7 @@ function MoodPresets({
                     : { backgroundColor: preset.color }
                 }
               />
-              <span className="font-medium text-text">{moodColorPresetTitle(preset)}</span>
+              <span className="font-medium text-text">{title}</span>
               {detail ? <span>{detail}</span> : null}
             </button>
           )

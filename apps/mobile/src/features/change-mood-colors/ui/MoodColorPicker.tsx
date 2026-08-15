@@ -45,6 +45,7 @@ export function MoodColorPicker({ value, onChange, disabled }: MoodColorPickerPr
             <Swatch
               key={hue}
               lch={clampChromaToGamut({ ...value, h: hue })}
+              accessibilityLabel={`${m.palette_picker_hue()} ${Math.round(hue)}°`}
               selected={Math.round(value.h / (360 / HUE_SWATCHES)) % HUE_SWATCHES === index}
               disabled={disabled}
               onPress={onChange}
@@ -56,11 +57,13 @@ export function MoodColorPicker({ value, onChange, disabled }: MoodColorPickerPr
       <Text style={styles.axis}>{m.palette_picker_chroma()}</Text>
       <View style={styles.strip}>
         {Array.from({ length: CHROMA_SWATCHES }, (_, index) => {
-          const chroma = (ceiling * (index + 1)) / CHROMA_SWATCHES
+          const fraction = index / (CHROMA_SWATCHES - 1)
+          const chroma = ceiling * fraction
           return (
             <Swatch
               key={chroma}
               lch={{ ...value, c: chroma }}
+              accessibilityLabel={`${m.palette_picker_chroma()} ${Math.round(fraction * 100)}%`}
               selected={Math.abs(value.c - chroma) < ceiling / (CHROMA_SWATCHES * 2)}
               disabled={disabled}
               onPress={onChange}
@@ -86,11 +89,13 @@ export function MoodColorPicker({ value, onChange, disabled }: MoodColorPickerPr
 
 function Swatch({
   lch,
+  accessibilityLabel,
   selected,
   disabled,
   onPress,
 }: {
   lch: OkLch
+  accessibilityLabel: string
   selected: boolean
   disabled: boolean
   onPress: (lch: OkLch) => void
@@ -98,7 +103,7 @@ function Swatch({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={m.palette_preset_label()}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={() => onPress(lch)}

@@ -513,7 +513,7 @@ describe('mobile auth gate', () => {
       fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
       fireEvent.press(screen.getByText(m.signup_nickname_submit()))
       await waitFor(() => expect(screen.getByText(m.mood_color_onboarding_title())).toBeTruthy())
-      fireEvent.press(screen.getAllByLabelText(m.palette_preset_label())[0])
+      fireEvent.press(screen.getByLabelText(m.palette_preset_authored()))
       await waitFor(() => expect(saved).toBeDefined())
       expect(saved?.mood).toBe('JOY')
       expect(moodColor('JOY')).toBe(saved?.color)

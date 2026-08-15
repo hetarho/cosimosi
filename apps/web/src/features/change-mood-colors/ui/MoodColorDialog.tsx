@@ -208,11 +208,13 @@ function PresetButton({
   onRandom: () => void
 }) {
   const detail = moodColorPresetDetail(preset)
+  const title = moodColorPresetTitle(preset)
 
   return (
     <button
       type="button"
-      aria-label={m.palette_preset_label()}
+      aria-label={title}
+      aria-description={m.palette_preset_label()}
       aria-pressed={selected}
       disabled={disabled}
       onClick={() => (preset.kind === 'RANDOM' ? onRandom() : onChoose(preset.color))}
@@ -225,7 +227,7 @@ function PresetButton({
           preset.kind === 'RANDOM' ? RANDOM_MOOD_COLOR_SWATCH : { backgroundColor: preset.color }
         }
       />
-      <span className="font-medium text-text">{moodColorPresetTitle(preset)}</span>
+      <span className="font-medium text-text">{title}</span>
       {detail ? <span>{detail}</span> : null}
     </button>
   )

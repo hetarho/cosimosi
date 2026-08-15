@@ -18,7 +18,7 @@ import {
   type MoodColorPreset,
 } from '@cosimosi/emotion'
 import { moodColorPresetsQueryKey, readMoodColorPresets } from '@cosimosi/emotion/react'
-import { Button, Dialog, tokens } from '@cosimosi/ui'
+import { Alert, Button, Dialog, tokens } from '@cosimosi/ui'
 
 import {
   m,
@@ -36,6 +36,7 @@ export interface MoodColorDialogProps {
    *  rather than reported after the save. Keyed by mood; the edited one is ignored if present. */
   otherColors: Readonly<Partial<Record<Mood, Color>>>
   saving: boolean
+  saveFailed: boolean
   onClose: () => void
   onSave: (color: Color) => void
 }
@@ -49,6 +50,7 @@ export function MoodColorDialog({
   current,
   otherColors,
   saving,
+  saveFailed,
   onClose,
   onSave,
 }: MoodColorDialogProps) {
@@ -105,6 +107,7 @@ export function MoodColorDialog({
           />
           {/* Live rather than on save, so the notice tracks the colour under the thumb. */}
           {risks.length > 0 ? <RiskNotice risks={risks} /> : null}
+          {saveFailed ? <Alert variant="danger">{m.palette_save_failed()}</Alert> : null}
           <View style={styles.actions}>
             <Button color="neutral" variant="text" onPress={onClose} disabled={saving}>
               {m.common_cancel()}
@@ -152,13 +155,9 @@ export function MoodColorDialog({
 // sentences do not already say, in a voice nobody speaks.
 function RiskNotice({ risks }: { risks: readonly MoodColorConcern[] }) {
   return (
-    <View accessibilityRole="alert" style={styles.risks}>
-      {risks.map((concern) => (
-        <Text key={concern.risk} style={styles.risk}>
-          {moodColorRiskText(concern)}
-        </Text>
-      ))}
-    </View>
+    <Alert variant="warning" live="status">
+      {risks.map((concern) => moodColorRiskText(concern)).join('\n')}
+    </Alert>
   )
 }
 
@@ -185,11 +184,13 @@ function PresetButton({
   onRandom: () => void
 }) {
   const detail = moodColorPresetDetail(preset)
+  const title = moodColorPresetTitle(preset)
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={m.palette_preset_label()}
+      accessibilityLabel={title}
+      accessibilityHint={m.palette_preset_label()}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={() => (preset.kind === 'RANDOM' ? onRandom() : onChoose(preset.color))}
@@ -210,7 +211,7 @@ function PresetButton({
       ) : (
         <View style={[styles.presetSwatch, { backgroundColor: preset.color }]} />
       )}
-      <Text style={styles.presetTitle}>{moodColorPresetTitle(preset)}</Text>
+      <Text style={styles.presetTitle}>{title}</Text>
       {detail ? <Text style={styles.presetDetail}>{detail}</Text> : null}
     </Pressable>
   )
@@ -276,7 +277,5 @@ const styles = StyleSheet.create({
     fontSize: tokens.fontSize.xs,
     textAlign: 'center',
   },
-  risks: { gap: 4 },
-  risk: { color: tokens.color.warning, fontSize: tokens.fontSize.sm },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
 })

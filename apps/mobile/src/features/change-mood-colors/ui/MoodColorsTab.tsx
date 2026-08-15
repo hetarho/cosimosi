@@ -11,7 +11,7 @@ import {
   moodColorRows,
   useMoodColorEditor,
 } from '@cosimosi/emotion/react'
-import { Card, tokens } from '@cosimosi/ui'
+import { Alert, Card, tokens } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 import { MoodColorDialog } from './MoodColorDialog.tsx'
@@ -32,9 +32,9 @@ export function MoodColorsTab() {
     [colorFor],
   )
 
-  // A failed write leaves the dialog open: the failure notice is on this card and the save is what
-  // the person needs to reach next. A landed one contributed to the aggregate the presets are drawn
-  // from, so the cached ranking and shares are dropped before the dialog can be opened again.
+  // A failed write leaves the dialog and its draft open, where the immediate failure notice is
+  // visible. The card keeps a secondary copy if the person closes the editor. A landed choice
+  // contributed to the aggregate, so its cached ranking and shares are dropped before reopening.
   const save = async (mood: Mood, color: Color) => {
     if (!(await editor.choose(mood, color))) return
     setEditing(undefined)
@@ -65,11 +65,7 @@ export function MoodColorsTab() {
           </Pressable>
         ))}
       </View>
-      {editor.error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {m.palette_save_failed()}
-        </Text>
-      ) : null}
+      {editor.error && !editing ? <Alert variant="danger">{m.palette_save_failed()}</Alert> : null}
       {editing ? (
         // Keyed by feeling: the dialog seeds its draft from `current` once, so a different feeling
         // has to be a different instance rather than the same one handed new props.
@@ -83,10 +79,11 @@ export function MoodColorsTab() {
           current={editor.colorFor(editing)}
           otherColors={palette}
           saving={editor.savingMood !== undefined}
+          saveFailed={editor.error}
           onClose={() => setEditing(undefined)}
           onSave={(color) => {
-            // `save` awaits an editor call that resolves either way — the failure lands on this
-            // card as a notice, so there is nothing here for a rejection handler to do.
+            // `save` awaits an editor call that resolves either way — the failure lands in the
+            // dialog, so there is nothing here for a rejection handler to do.
             save(editing, color)
           }}
         />
@@ -121,5 +118,4 @@ const styles = StyleSheet.create({
     width: 20,
   },
   name: { color: tokens.color.text, flexShrink: 1, fontSize: tokens.fontSize.sm },
-  error: { color: tokens.color.danger, fontSize: tokens.fontSize.sm },
 })

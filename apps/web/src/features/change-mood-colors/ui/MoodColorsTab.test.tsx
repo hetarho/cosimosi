@@ -144,7 +144,9 @@ describe('MoodColorsTab', () => {
       await screen.findByLabelText(m.palette_swatch_label({ mood: moodLabel('SAD') })),
     )
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByText(m.palette_preset_authored()))
+    const authored = within(dialog).getByRole('button', { name: m.palette_preset_authored() })
+    expect(authored.getAttribute('aria-description')).toBe(m.palette_preset_label())
+    await user.click(authored)
     await user.click(within(dialog).getByRole('button', { name: m.palette_save() }))
 
     await waitFor(() => expect(saved).toHaveLength(1))

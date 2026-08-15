@@ -27,7 +27,7 @@ import {
   readMoodColorPresets,
   useMoodColorEditor,
 } from '@cosimosi/emotion/react'
-import { Button, Card, tokens, useReducedMotion } from '@cosimosi/ui'
+import { Alert, Button, Card, tokens, useReducedMotion } from '@cosimosi/ui'
 import { MoodStarLayer } from '@cosimosi/universe-render'
 
 import {
@@ -88,15 +88,11 @@ export function ChooseMoodColors({ onContinue }: { onContinue: () => void }) {
             }}
           />
           {editor.duplicateMood ? (
-            <Text accessibilityRole="alert" style={styles.notice}>
+            <Alert variant="warning" live="status">
               {m.palette_near_duplicate({ mood: moodLabel(editor.duplicateMood) })}
-            </Text>
+            </Alert>
           ) : null}
-          {editor.error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {m.palette_save_failed()}
-            </Text>
-          ) : null}
+          {editor.error ? <Alert variant="danger">{m.palette_save_failed()}</Alert> : null}
           <Button onPress={onContinue}>{m.mood_color_onboarding_skip()}</Button>
         </View>
       </View>
@@ -138,11 +134,13 @@ function MoodPresets({
         {presets.map((preset) => {
           const selected = preset.kind !== 'RANDOM' && preset.color === current
           const detail = moodColorPresetDetail(preset)
+          const title = moodColorPresetTitle(preset)
           return (
             <Pressable
               key={preset.kind === 'POPULAR' ? preset.color : preset.kind}
               accessibilityRole="button"
-              accessibilityLabel={m.palette_preset_label()}
+              accessibilityLabel={title}
+              accessibilityHint={m.palette_preset_label()}
               accessibilityState={{ selected, disabled }}
               disabled={disabled}
               onPress={() =>
@@ -165,7 +163,7 @@ function MoodPresets({
               ) : (
                 <View style={[styles.swatch, { backgroundColor: preset.color }]} />
               )}
-              <Text style={styles.presetTitle}>{moodColorPresetTitle(preset)}</Text>
+              <Text style={styles.presetTitle}>{title}</Text>
               {detail ? <Text style={styles.share}>{detail}</Text> : null}
             </Pressable>
           )
@@ -230,6 +228,4 @@ const styles = StyleSheet.create({
     width: 24,
   },
   share: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs, textAlign: 'center' },
-  notice: { color: tokens.color.warning, fontSize: tokens.fontSize.sm },
-  error: { color: tokens.color.danger, fontSize: tokens.fontSize.sm },
 })

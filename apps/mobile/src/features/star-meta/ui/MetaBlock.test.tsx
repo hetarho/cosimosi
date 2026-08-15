@@ -41,6 +41,23 @@ describe('MetaBlock (mobile)', () => {
     expect(view.getByText('2026-06-20')).toBeTruthy()
   })
 
+  it('keeps the four interpreted readings beside their inline explanations', () => {
+    const view = render(
+      <MetaBlock selection={{ kind: 'episodic', memory }} universeTime="2026-06-25" />,
+    )
+
+    for (const [label, hint] of [
+      [m.star_meta_emotion(), m.star_meta_hint_emotion()],
+      [m.star_meta_brightness(), m.star_meta_hint_brightness()],
+      [m.star_meta_strength(), m.star_meta_hint_strength()],
+      [m.star_meta_forgetting_state(), m.star_meta_hint_forgetting_state()],
+    ]) {
+      expect(view.getByText(label)).toBeTruthy()
+      expect(view.getByText(hint)).toBeTruthy()
+    }
+    expect(view.getByText(m.star_meta_created())).toBeTruthy()
+  })
+
   it('shows the current forgetting degree — vivid when fresh, deeper as it fades [F1][D1]', () => {
     const fresh = render(
       <MetaBlock selection={{ kind: 'episodic', memory }} universeTime="2026-06-20" />,

@@ -10,24 +10,26 @@ import { m } from '../../../shared/i18n/index.ts'
 // the camera reads that store inside the canvas.
 //
 // The glyph says which mode is ON and the word beside it says the same again. There is no hover on
-// touch, so the button's `label` carries the ACTION as its whole accessible name, and `selected`
-// carries the state a sighted viewer gets from the fill.
+// touch, so the accessible name carries both that visible STATE word and the ACTION. `selected`
+// carries the same state non-visually.
 export function UniverseViewToggle() {
   const mode = useUniverseViewStore((state) => state.mode)
   const toggle = useUniverseViewStore((state) => state.toggle)
   const pinned = mode === 'pinned'
+  const state = pinned ? m.universe_view_pinned() : m.universe_view_free()
+  const action = pinned ? m.universe_view_free_action() : m.universe_view_pin_action()
 
   return (
     <View style={styles.root}>
       <IconButton
         variant="outlined"
         color="neutral"
-        label={pinned ? m.universe_view_free_action() : m.universe_view_pin_action()}
+        label={`${state}. ${action}`}
         accessibilityState={{ selected: pinned }}
         icon={pinned ? <PinnedViewIcon /> : <FreeViewIcon />}
         onPress={toggle}
       />
-      <Text style={styles.mode}>{pinned ? m.universe_view_pinned() : m.universe_view_free()}</Text>
+      <Text style={styles.mode}>{state}</Text>
     </View>
   )
 }

@@ -51,10 +51,11 @@ gist view) cost, and they price themselves inside their own flows — no price l
   has settled, raised by every recall, and the higher it is the larger the star and the slower the fade
   ([V3][F7]); **지금 상태** is how far the text has blurred, losing words a stage at a time and reading whole
   again after a recall ([F5]). **적은 날 carries none** — a date is the fact itself, and an ⓘ that only
-  said "this is the date" would teach the diarist to stop pressing the others. The hints **open on a
-  press as well as on hover**, since the panel is a bottom sheet on a phone where there is no hover to
-  open anything with, and they describe only what the shared read-time functions already do — never a
-  mechanism the code does not have. They are reads like everything else here: they cost nothing,
+  said "this is the date" would teach the diarist to stop pressing the others. On web each hint
+  **opens on a press as well as on hover**. On native, where the panel is a bottom sheet and there is
+  no hover, all four explanations stay **inline beneath their readings** so none is hidden behind an
+  undiscoverable gesture. They describe only what the shared read-time functions already do — never
+  a mechanism the code does not have. They are reads like everything else here: they cost nothing,
   advance nothing, and change nothing.
 - A **neuron (small) star** shows **information only — no emotion** ([I3]): name · type · connectivity,
   and none of the episodic actions.

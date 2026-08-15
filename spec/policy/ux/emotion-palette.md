@@ -121,8 +121,14 @@ Beside the presets the editor offers a free picker, expressed in OkLCH rather th
 chroma travel freely, and lightness is the bounded choice among the three authored steps that it
 really is. Chroma is offered as a fraction of what _that_ hue and step can hold in sRGB, so the
 control's far end is always the most color that exists there instead of a stretch of positions that
-all clip onto the same hue. This is what keeps the picker from offering colors the server would then
-snap or reject.
+all clip onto the same hue. The native touch fork samples that same range into eight chroma swatches,
+including both the achromatic `0%` floor and the in-gamut `100%` ceiling; its hue and chroma swatches
+name their own numeric stop so none of the 32 buttons has an indistinguishable accessible name. This
+is what keeps the picker from offering colors the server would then snap or reject.
+
+Preset buttons are named by the title printed on them (authored, rank, or random) on both platforms.
+The generic “choose this colour” instruction is only a description/hint, never a replacement for the
+visible title in the accessible name.
 
 ### Risk is warned live, and asked once more before it is kept
 
@@ -153,7 +159,8 @@ reported after it — a reader learns two feelings will be hard to tell apart at
 pick another. There is **no heading over the sentences**: a caption naming the notice said nothing the
 sentences do not already say, and a warning box reads as a warning without being announced. Each sentence
 names the cause and then what it costs in the universe, because "too bright" alone gives a reader nothing
-to decide with.
+to decide with. Warning concerns use a polite live status; a failed save uses an assertive danger alert,
+on web and native alike.
 
 A color carrying no concern saves on one press; a color carrying one asks a second, explicit confirmation
 before it is kept — and that confirmation still keeps it if the person says so. Like the axis notice, none

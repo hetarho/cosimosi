@@ -13,11 +13,14 @@ import { StarPreview } from '@cosimosi/universe-render'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function MetaRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+    <View style={styles.metaItem}>
+      <View style={styles.row}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.value}>{value}</Text>
+      </View>
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   )
 }
@@ -89,11 +92,27 @@ export function MetaBlock({
         {previewAction ? <View style={styles.previewAction}>{previewAction}</View> : null}
       </View>
       <View style={styles.list}>
-        <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
-        <MetaRow label={m.star_meta_brightness()} value={percent(brightness)} />
+        <MetaRow
+          label={m.star_meta_emotion()}
+          value={moodLabel(memory.emotion.mood)}
+          hint={m.star_meta_hint_emotion()}
+        />
+        <MetaRow
+          label={m.star_meta_brightness()}
+          value={percent(brightness)}
+          hint={m.star_meta_hint_brightness()}
+        />
         <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
-        <MetaRow label={m.star_meta_strength()} value={strength.toFixed(2)} />
-        <MetaRow label={m.star_meta_forgetting_state()} value={forgettingStageLabel(stage)} />
+        <MetaRow
+          label={m.star_meta_strength()}
+          value={strength.toFixed(2)}
+          hint={m.star_meta_hint_strength()}
+        />
+        <MetaRow
+          label={m.star_meta_forgetting_state()}
+          value={forgettingStageLabel(stage)}
+          hint={m.star_meta_hint_forgetting_state()}
+        />
       </View>
     </View>
   )
@@ -136,7 +155,13 @@ const styles = StyleSheet.create({
     borderColor: tokens.color.border,
   },
   list: { gap: tokens.spacing[2] },
+  metaItem: { gap: tokens.spacing[1] },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: tokens.spacing[4] },
   label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   value: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
+  hint: {
+    color: tokens.color['text-muted'],
+    fontSize: tokens.fontSize.xs,
+    lineHeight: tokens.fontSize.xs * 1.5,
+  },
 })

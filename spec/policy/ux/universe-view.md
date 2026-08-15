@@ -26,6 +26,8 @@ a lone glyph is a guess, and this control changes how the whole scene answers a 
 the same button rather than beside each other: a mark and a label with a gap between them read as a control next to a
 caption, and the caption is then the one part of it a pointer cannot press. What hovering adds is the CONSEQUENCE —
 what the other way of holding the universe would let you do — not a second copy of the name already on the button.
+On native the word remains visually beside the icon, while the icon button's accessible name composes that exact
+visible state word with the action a press will take; the control's selected state carries the same fact separately.
 
 **Every icon control over the universe is round, borderless, and lit only by a shadow.** No rim and no plate: over a
 live sky a bordered circle reads as a hole punched in the universe, and a column of them reads as a widget tray. What
