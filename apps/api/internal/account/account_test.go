@@ -19,23 +19,38 @@ import (
 )
 
 type fakeStore struct {
-	mu             sync.Mutex
-	settlementMu   sync.Mutex
-	moodColors     map[string]map[Mood]Color
-	moodColorStats map[Mood][]MoodColorStatCount
-	profiles       map[string]Profile
-	providers      map[string][]AuthProvider
-	invites        map[string]SettleableInvite
-	rewardedCounts map[string]int64
-	getErr         error
-	inviteFindErr  error
-	putErr         error
-	bindErr        error
-	profileReads   int
-	profileUpdates int
-	providerWrites int
-	bindWrites     int
-	lastBound      Invite
+	mu              sync.Mutex
+	settlementMu    sync.Mutex
+	moodColors      map[string]map[Mood]Color
+	moodColorStats  map[Mood][]MoodColorStatCount
+	profiles        map[string]Profile
+	providers       map[string][]AuthProvider
+	invites         map[string]SettleableInvite
+	rewardedCounts  map[string]int64
+	getErr          error
+	inviteFindErr   error
+	putErr          error
+	bindErr         error
+	profileReads    int
+	timezoneBatches int
+	profileUpdates  int
+	providerWrites  int
+	bindWrites      int
+	lastBound       Invite
+}
+
+func (f *fakeStore) UserTimezones(_ context.Context, userIDs []string) (map[string]string, error) {
+	f.timezoneBatches++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	zones := make(map[string]string, len(userIDs))
+	for _, userID := range userIDs {
+		if profile, ok := f.profiles[userID]; ok {
+			zones[userID] = profile.Timezone
+		}
+	}
+	return zones, nil
 }
 
 func (f *fakeStore) InSignupTx(ctx context.Context, fn func(Store) error) error {
@@ -595,6 +610,26 @@ func TestZoneForDefaultsForMissingAndUnresolvableProfiles(t *testing.T) {
 	}
 	if location, err := time.LoadLocation("Asia/Seoul"); err != nil || location.String() != "Asia/Seoul" {
 		t.Fatalf("embedded tzdata did not resolve Asia/Seoul: %v, %v", location, err)
+	}
+}
+
+func TestZonesForBatchesAndAppliesTheScalarDefaults(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{profiles: map[string]Profile{
+		"invalid": {UserID: "invalid", Timezone: "Removed/Zone"},
+		"seoul":   {UserID: "seoul", Timezone: "Asia/Seoul"},
+	}}
+	service := newTestService(t, store)
+	zones, err := service.ZonesFor(context.Background(), []string{"missing", "invalid", "seoul"})
+	if err != nil {
+		t.Fatalf("ZonesFor: %v", err)
+	}
+	want := map[string]string{"missing": DefaultTimezone, "invalid": DefaultTimezone, "seoul": "Asia/Seoul"}
+	if !reflect.DeepEqual(zones, want) {
+		t.Fatalf("zones = %#v, want %#v", zones, want)
+	}
+	if store.timezoneBatches != 1 || store.profileReads != 0 {
+		t.Fatalf("reads = %d batch, %d scalar; want 1/0", store.timezoneBatches, store.profileReads)
 	}
 }
 

@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cosimosi/api/internal/platform/values"
 )
 
 var ErrDirectoryUnavailable = errors.New("supabase account directory is unavailable")
@@ -37,11 +39,20 @@ type Fake struct {
 }
 
 func (f Fake) ListUsers(_ context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
+	if page < 0 {
+		page = 0
+	}
+	if pageSize <= 0 {
+		return nil, false, nil
+	}
+	if pageSize > values.AdminUserListPageSize {
+		pageSize = values.AdminUserListPageSize
+	}
 	filtered := f.Accounts
 	if q := strings.ToLower(strings.TrimSpace(query)); q != "" {
 		filtered = nil
 		for _, account := range f.Accounts {
-			if strings.Contains(strings.ToLower(account.Email), q) || strings.Contains(strings.ToLower(account.UserID), q) {
+			if accountHasPrefix(account.Email, account.UserID, q) {
 				filtered = append(filtered, account)
 			}
 		}
@@ -148,24 +159,89 @@ type supabaseListResponse struct {
 	Users []supabaseUser `json:"users"`
 }
 
-// ListUsers applies search client-side to one GoTrue page because the admin endpoint has no
-// portable prefix filter.
+// ListUsers exposes search-result pagination over GoTrue's raw provider pages. GoTrue has no
+// portable prefix filter, so a search starts at the provider's first page, skips matches belonging
+// to earlier search pages, and scans until it has this page plus one lookahead match or reaches the
+// provider's terminal short page. An unfiltered full page also peeks at the next provider page so
+// an exactly-full final page never advertises a phantom continuation.
 func (s Directory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
-	endpoint := fmt.Sprintf("%s/auth/v1/admin/users?page=%d&per_page=%d", s.baseURL, page+1, pageSize)
+	if page < 0 {
+		page = 0
+	}
+	if pageSize <= 0 {
+		return nil, false, nil
+	}
+	if pageSize > values.AdminUserListPageSize {
+		pageSize = values.AdminUserListPageSize
+	}
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		users, err := s.listUserProviderPage(ctx, page+1, pageSize)
+		if err != nil {
+			return nil, false, err
+		}
+		accounts := mapAccounts(users)
+		if len(users) < pageSize {
+			return accounts, false, nil
+		}
+		lookahead, err := s.listUserProviderPage(ctx, page+2, pageSize)
+		if err != nil {
+			return nil, false, err
+		}
+		return accounts, len(lookahead) > 0, nil
+	}
+
+	// Keep only this search page plus one match. Provider pages remain fixed at pageSize, so the
+	// raw page offsets are stable while the search stream is reconstructed.
+	matchOffset := page * pageSize
+	matches := make([]Account, 0, pageSize+1)
+	seenMatches := 0
+	for providerPage := 1; ; providerPage++ {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
+		users, err := s.listUserProviderPage(ctx, providerPage, pageSize)
+		if err != nil {
+			return nil, false, err
+		}
+		for _, user := range users {
+			if !accountHasPrefix(user.Email, user.ID, q) {
+				continue
+			}
+			if seenMatches >= matchOffset {
+				matches = append(matches, mapAccount(user))
+				if len(matches) == pageSize+1 {
+					return matches[:pageSize], true, nil
+				}
+			}
+			seenMatches++
+		}
+		if len(users) < pageSize {
+			return matches, false, nil
+		}
+	}
+}
+
+func (s Directory) listUserProviderPage(ctx context.Context, page int, pageSize int) ([]supabaseUser, error) {
+	endpoint := fmt.Sprintf("%s/auth/v1/admin/users?page=%d&per_page=%d", s.baseURL, page, pageSize)
 	var body supabaseListResponse
 	if err := s.get(ctx, endpoint, &body); err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	hasMore := len(body.Users) >= pageSize
-	q := strings.ToLower(strings.TrimSpace(query))
-	accounts := make([]Account, 0, len(body.Users))
-	for _, user := range body.Users {
-		if q != "" && !strings.Contains(strings.ToLower(user.Email), q) && !strings.Contains(strings.ToLower(user.ID), q) {
-			continue
-		}
+	return body.Users, nil
+}
+
+func mapAccounts(users []supabaseUser) []Account {
+	accounts := make([]Account, 0, len(users))
+	for _, user := range users {
 		accounts = append(accounts, mapAccount(user))
 	}
-	return accounts, hasMore, nil
+	return accounts
+}
+
+func accountHasPrefix(email string, userID string, normalizedQuery string) bool {
+	return strings.HasPrefix(strings.ToLower(email), normalizedQuery) ||
+		strings.HasPrefix(strings.ToLower(userID), normalizedQuery)
 }
 
 func (s Directory) EmailFor(ctx context.Context, userID string) (string, error) {

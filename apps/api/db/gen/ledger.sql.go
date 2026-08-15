@@ -161,6 +161,40 @@ func (q *Queries) InsertTwinkleBalance(ctx context.Context, arg InsertTwinkleBal
 	return i, err
 }
 
+const listTwinkleBalancesByUserIDs = `-- name: ListTwinkleBalancesByUserIDs :many
+SELECT user_id, additional, basic_spent_this_window, basic_reset_window, updated_at
+FROM twinkle_balances
+WHERE user_id = ANY($1::text[])
+`
+
+// Batch balance facts for the admin list. Missing rows remain absent so the Twinkle service can
+// apply the same lazy-birth default as GetBalance without writing a row.
+func (q *Queries) ListTwinkleBalancesByUserIDs(ctx context.Context, userIds []string) ([]TwinkleBalance, error) {
+	rows, err := q.db.Query(ctx, listTwinkleBalancesByUserIDs, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TwinkleBalance
+	for rows.Next() {
+		var i TwinkleBalance
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Additional,
+			&i.BasicSpentThisWindow,
+			&i.BasicResetWindow,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTwinkleLedgerPage = `-- name: ListTwinkleLedgerPage :many
 SELECT id, kind, reason, amount, from_basic, from_additional, created_at
 FROM twinkle_ledger_entries

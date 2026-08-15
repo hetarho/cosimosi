@@ -240,6 +240,14 @@ func (z staticTwinkleZone) ZoneFor(context.Context, platform.UserScope) (string,
 	return string(z), nil
 }
 
+func (z staticTwinkleZone) ZonesFor(_ context.Context, userIDs []string) (map[string]string, error) {
+	zones := make(map[string]string, len(userIDs))
+	for _, userID := range userIDs {
+		zones[userID] = string(z)
+	}
+	return zones, nil
+}
+
 func countLedgerRows(t *testing.T, pool *platformdb.Pool, userID string) int {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

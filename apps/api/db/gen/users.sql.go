@@ -101,6 +101,39 @@ func (q *Queries) GetUserProfile(ctx context.Context, userID string) (User, erro
 	return i, err
 }
 
+const listUserTimezones = `-- name: ListUserTimezones :many
+SELECT user_id, timezone
+FROM users
+WHERE user_id = ANY($1::text[])
+`
+
+type ListUserTimezonesRow struct {
+	UserID   string
+	Timezone string
+}
+
+// Batch form of the published timezone read used by Twinkle's admin balance enrichment. Missing
+// profile rows are omitted; account's service maps them to its UTC default.
+func (q *Queries) ListUserTimezones(ctx context.Context, userIds []string) ([]ListUserTimezonesRow, error) {
+	rows, err := q.db.Query(ctx, listUserTimezones, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserTimezonesRow
+	for rows.Next() {
+		var i ListUserTimezonesRow
+		if err := rows.Scan(&i.UserID, &i.Timezone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET nickname = $1,

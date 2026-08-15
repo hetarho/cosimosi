@@ -367,6 +367,10 @@ func (z workerTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScope
 	return z.service.ZoneFor(ctx, scope)
 }
 
+func (z workerTwinkleZone) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
+	return z.service.ZonesFor(ctx, userIDs)
+}
+
 // workerTwinkleGranter and workerOrnamentGranter are the drain's two payout legs, over the same
 // published behavior the API root binds. The claim id is the dedup key on both, so a drain that
 // replays an already-paid leg credits nothing.

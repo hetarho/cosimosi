@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cosimosi/api/internal/platform/values"
 )
 
 func TestDirectoryReturnsPlatformOwnedAccountMetadata(t *testing.T) {
@@ -58,6 +60,138 @@ func TestDirectoryReturnsPlatformOwnedAccountMetadata(t *testing.T) {
 	identities, err := directory.Identities(context.Background(), "u1")
 	if err != nil || len(identities) != 2 || identities[0] != "google" || identities[1] != "email" {
 		t.Fatalf("Identities = %#v, %v", identities, err)
+	}
+}
+
+func TestDirectorySearchTraversesProviderPagesWithPrefixPagination(t *testing.T) {
+	t.Parallel()
+	pages := map[string]string{
+		"1": `{"users":[{"id":"u1","email":"first@example.com"},{"id":"u2","email":"second@example.com"}]}`,
+		"2": `{"users":[{"id":"u3","email":"third@example.com"},{"id":"u4","email":"fourth@example.com"}]}`,
+		"3": `{"users":[{"id":"target-1","email":"match@example.com"}]}`,
+	}
+	var requested []string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requested = append(requested, request.URL.Query().Get("page"))
+		response.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(response, pages[request.URL.Query().Get("page")])
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, 2, " MATCH@ ")
+	if err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if hasMore || len(accounts) != 1 || accounts[0].UserID != "target-1" {
+		t.Fatalf("ListUsers = %#v, hasMore %v; want later-page target and terminal", accounts, hasMore)
+	}
+	if want := []string{"1", "2", "3"}; !reflect.DeepEqual(requested, want) {
+		t.Fatalf("provider pages = %v, want %v", requested, want)
+	}
+}
+
+func TestDirectorySearchRequiresEmailOrIDPrefix(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(response, `{"users":[{"id":"u1","email":"no-match@example.com"}]}`)
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, 2, "match")
+	if err != nil || hasMore || len(accounts) != 0 {
+		t.Fatalf("substring-only ListUsers = %#v, hasMore %v, err %v; want no match", accounts, hasMore, err)
+	}
+}
+
+func TestDirectorySearchHasMoreBelongsToTheMatchStream(t *testing.T) {
+	t.Parallel()
+	pages := map[string]string{
+		"1": `{"users":[{"id":"match-1"},{"id":"other-1"}]}`,
+		"2": `{"users":[{"id":"other-2"},{"id":"match-2"}]}`,
+		"3": `{"users":[{"id":"match-3"}]}`,
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(response, pages[request.URL.Query().Get("page")])
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	first, firstHasMore, err := directory.ListUsers(context.Background(), 0, 2, "match")
+	if err != nil || !firstHasMore || len(first) != 2 || first[0].UserID != "match-1" || first[1].UserID != "match-2" {
+		t.Fatalf("first search page = %#v, hasMore %v, err %v", first, firstHasMore, err)
+	}
+	second, secondHasMore, err := directory.ListUsers(context.Background(), 1, 2, "match")
+	if err != nil || secondHasMore || len(second) != 1 || second[0].UserID != "match-3" {
+		t.Fatalf("second search page = %#v, hasMore %v, err %v", second, secondHasMore, err)
+	}
+}
+
+func TestDirectoryUnfilteredExactlyFullLastPageIsTerminal(t *testing.T) {
+	t.Parallel()
+	var requested []string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		page := request.URL.Query().Get("page")
+		requested = append(requested, page)
+		response.Header().Set("content-type", "application/json")
+		if page == "1" {
+			_, _ = fmt.Fprint(response, `{"users":[{"id":"u1"},{"id":"u2"}]}`)
+			return
+		}
+		_, _ = fmt.Fprint(response, `{"users":[]}`)
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, 2, "")
+	if err != nil || hasMore || len(accounts) != 2 {
+		t.Fatalf("ListUsers = %#v, hasMore %v, err %v; want two terminal users", accounts, hasMore, err)
+	}
+	if want := []string{"1", "2"}; !reflect.DeepEqual(requested, want) {
+		t.Fatalf("provider pages = %v, want lookahead %v", requested, want)
+	}
+}
+
+func TestDirectoryUnfilteredPageUsesProviderLookahead(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.Header().Set("content-type", "application/json")
+		if request.URL.Query().Get("page") == "1" {
+			_, _ = fmt.Fprint(response, `{"users":[{"id":"u1"},{"id":"u2"}]}`)
+			return
+		}
+		_, _ = fmt.Fprint(response, `{"users":[{"id":"u3"}]}`)
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, 2, "   ")
+	if err != nil || !hasMore || len(accounts) != 2 {
+		t.Fatalf("empty-query ListUsers = %#v, hasMore %v, err %v; want first raw page + continuation", accounts, hasMore, err)
+	}
+}
+
+func TestDirectoryClampsSearchPageSizeBeforeAllocationAndProviderCall(t *testing.T) {
+	t.Parallel()
+	var perPage string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		perPage = request.URL.Query().Get("per_page")
+		response.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(response, `{"users":[]}`)
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	maxInt := int(^uint(0) >> 1)
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, maxInt, "match")
+	if err != nil || hasMore || len(accounts) != 0 {
+		t.Fatalf("ListUsers = %#v, hasMore %v, err %v", accounts, hasMore, err)
+	}
+	if perPage != fmt.Sprint(values.AdminUserListPageSize) {
+		t.Fatalf("provider per_page = %q, want configured ceiling %d", perPage, values.AdminUserListPageSize)
 	}
 }
 

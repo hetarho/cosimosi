@@ -4,6 +4,13 @@ import "time"
 
 type NeuronType string
 
+// ContentCounts is memory's published non-content aggregate for one user. It belongs to the
+// context vocabulary; the pg adapter only maps grouped SQL rows into it.
+type ContentCounts struct {
+	Diaries          int64
+	EpisodicMemories int64
+}
+
 const (
 	NeuronTypeSemantic NeuronType = "semantic"
 	NeuronTypeSpatial  NeuronType = "spatial"

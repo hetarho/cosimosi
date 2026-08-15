@@ -39,6 +39,13 @@ type Balance struct {
 	Total   int
 }
 
+// Stats is one user's non-content memory aggregate. Its deliberately narrow shape makes diary or
+// memory content unrepresentable at the admin boundary ([I2]).
+type Stats struct {
+	DiaryCount          int
+	EpisodicMemoryCount int
+}
+
 // UserSummary is one account row for the admin user list — metadata only ([I2]): identity,
 // signup, admin status, balance, and non-content counts. There is deliberately no field for diary
 // text, emotion, position, or any memory content.

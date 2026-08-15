@@ -249,6 +249,34 @@ func (s *Service) GetBalance(ctx context.Context, scope platform.UserScope) (Bal
 	return DeriveBalance(s.now(), zone, recordOrLazyBirth(record)), nil
 }
 
+// GetBalances is the admin-list batch read. Production obtains every timezone and stored balance
+// in one query per owning context, then applies exactly the same lazy-birth/day-boundary derivation
+// as GetBalance.
+func (s *Service) GetBalances(ctx context.Context, userIDs []string) (map[string]Balance, error) {
+	balances := make(map[string]Balance, len(userIDs))
+	if len(userIDs) == 0 {
+		return balances, nil
+	}
+	zones, err := s.userZone.ZonesFor(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	records, err := s.ledger.GetBalanceRecords(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	for _, userID := range userIDs {
+		record, found := records[userID]
+		var stored *BalanceRecord
+		if found {
+			stored = &record
+		}
+		balances[userID] = DeriveBalance(now, LocationOf(zones[userID]), recordOrLazyBirth(stored))
+	}
+	return balances, nil
+}
+
 // zone resolves the scoped user's SMALL reset boundary once per use-case ([G2][U7]). An empty,
 // blank or unknown IANA name resolves to UTC without an error — the [G5] direction: a user whose
 // profile is missing or whose zone the runtime cannot load still gets today's refill. Only a

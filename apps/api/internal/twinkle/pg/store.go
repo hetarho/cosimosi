@@ -109,6 +109,23 @@ func (s Store) GetBalanceRecord(ctx context.Context, scope platform.UserScope) (
 	return &record, nil
 }
 
+// GetBalanceRecords reads the stored balance facts for a set of users in one query. Missing users
+// stay absent so the service applies the canonical lazy-birth balance independently per timezone.
+func (s Store) GetBalanceRecords(ctx context.Context, userIDs []string) (map[string]twinkle.BalanceRecord, error) {
+	if s.queries == nil {
+		return nil, ErrQueriesRequired
+	}
+	rows, err := s.queries.ListTwinkleBalancesByUserIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	records := make(map[string]twinkle.BalanceRecord, len(rows))
+	for _, row := range rows {
+		records[row.UserID] = mapBalanceRecord(row)
+	}
+	return records, nil
+}
+
 // ApplyBalanceDelta commits one earn/spend against the single balance row (the row lock
 // serializes concurrent spends; the DB CHECKs reject a negative tier and the in-query grant
 // guard rejects a basic draw past the daily grant, so a plan raced against a stale read can

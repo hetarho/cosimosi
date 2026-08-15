@@ -26,6 +26,18 @@ type fakeLedger struct {
 	failAppendForUser string
 	txCount           int
 	writes            int
+	batchReads        int
+}
+
+func (f *fakeLedger) GetBalanceRecords(_ context.Context, userIDs []string) (map[string]BalanceRecord, error) {
+	f.batchReads++
+	records := make(map[string]BalanceRecord, len(userIDs))
+	for _, userID := range userIDs {
+		if f.born[userID] {
+			records[userID] = f.records[userID]
+		}
+	}
+	return records, nil
 }
 
 type recordedEntry struct {
@@ -213,9 +225,26 @@ func (f *fakeSignals) ViewableGistStage(_ context.Context, _ platform.UserScope,
 // fakeUserZone stands in for the composition root's account adapter: an IANA name per user, so a
 // test can move a user's day boundary the way the /me control does.
 type fakeUserZone struct {
-	names    map[string]string
-	fallback string
-	err      error
+	names      map[string]string
+	fallback   string
+	err        error
+	batchReads int
+}
+
+func (f *fakeUserZone) ZonesFor(_ context.Context, userIDs []string) (map[string]string, error) {
+	f.batchReads++
+	if f.err != nil {
+		return nil, f.err
+	}
+	zones := make(map[string]string, len(userIDs))
+	for _, userID := range userIDs {
+		if name, ok := f.names[userID]; ok {
+			zones[userID] = name
+		} else {
+			zones[userID] = f.fallback
+		}
+	}
+	return zones, nil
 }
 
 func (f *fakeUserZone) ZoneFor(_ context.Context, scope platform.UserScope) (string, error) {
@@ -356,6 +385,42 @@ func TestGetBalanceReadsTheUsersOwnCalendarDay(t *testing.T) {
 		if _, err := fixture.service.GetBalance(context.Background(), scope); err != nil {
 			t.Fatalf("GetBalance(zone %q) err = %v, want the UTC fallback and no error", name, err)
 		}
+	}
+}
+
+func TestGetBalancesBatchesAndPreservesLazyTimezoneDerivation(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	fixture.service.now = func() time.Time { return time.Date(2026, 7, 14, 23, 0, 0, 0, time.UTC) }
+	fixture.ledger.records["seoul"] = BalanceRecord{
+		General:              5,
+		SmallSpentThisWindow: values.TwinkleSmallDailyAmount,
+		SmallResetWindow:     twinkleToday(),
+	}
+	fixture.ledger.born["seoul"] = true
+	fixture.ledger.records["utc"] = BalanceRecord{
+		General:              7,
+		SmallSpentThisWindow: 25,
+		SmallResetWindow:     twinkleToday(),
+	}
+	fixture.ledger.born["utc"] = true
+	fixture.zones.names["seoul"] = "Asia/Seoul"
+
+	balances, err := fixture.service.GetBalances(context.Background(), []string{"seoul", "utc", "missing"})
+	if err != nil {
+		t.Fatalf("GetBalances: %v", err)
+	}
+	if balances["seoul"].Small != values.TwinkleSmallDailyAmount || balances["seoul"].General != 5 {
+		t.Fatalf("Seoul balance = %+v, want refilled small + 5 general", balances["seoul"])
+	}
+	if balances["utc"].Small != values.TwinkleSmallDailyAmount-25 || balances["utc"].General != 7 {
+		t.Fatalf("UTC balance = %+v", balances["utc"])
+	}
+	if balances["missing"].Small != values.TwinkleSmallDailyAmount || balances["missing"].General != 0 {
+		t.Fatalf("missing balance = %+v, want the lazy-birth default", balances["missing"])
+	}
+	if fixture.ledger.batchReads != 1 || fixture.zones.batchReads != 1 {
+		t.Fatalf("batch reads = ledger %d, zones %d; want 1/1", fixture.ledger.batchReads, fixture.zones.batchReads)
 	}
 }
 

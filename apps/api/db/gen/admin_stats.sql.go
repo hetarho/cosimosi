@@ -53,30 +53,54 @@ func (q *Queries) CountJobsByStatus(ctx context.Context) ([]CountJobsByStatusRow
 	return items, nil
 }
 
-const countUserDiaries = `-- name: CountUserDiaries :one
+const countUserContentByUserIDs = `-- name: CountUserContentByUserIDs :many
 
-SELECT count(*)::bigint AS count FROM diaries WHERE user_id = $1
+WITH content_counts AS (
+    SELECT user_id, count(*)::bigint AS diary_count, 0::bigint AS episodic_memory_count
+    FROM diaries
+    WHERE user_id = ANY($1::text[])
+    GROUP BY user_id
+
+    UNION ALL
+
+    SELECT user_id, 0::bigint AS diary_count, count(*)::bigint AS episodic_memory_count
+    FROM episodic_memories
+    WHERE user_id = ANY($1::text[])
+      AND deleted_at IS NULL
+    GROUP BY user_id
+)
+SELECT user_id,
+       sum(diary_count)::bigint AS diary_count,
+       sum(episodic_memory_count)::bigint AS episodic_memory_count
+FROM content_counts
+GROUP BY user_id
 `
+
+type CountUserContentByUserIDsRow struct {
+	UserID              string
+	DiaryCount          int64
+	EpisodicMemoryCount int64
+}
 
 // Non-content aggregate reads the admin console consumes through memory's published behavior.
 // The per-user counts are user-scoped; the job-queue counts are deliberately global
 // (an operator queue-health read, allowlisted in check-persistence-isolation.mjs).
-func (q *Queries) CountUserDiaries(ctx context.Context, userID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countUserDiaries, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countUserStars = `-- name: CountUserStars :one
-SELECT count(*)::bigint AS count
-FROM episodic_memories
-WHERE user_id = $1 AND deleted_at IS NULL
-`
-
-func (q *Queries) CountUserStars(ctx context.Context, userID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countUserStars, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+func (q *Queries) CountUserContentByUserIDs(ctx context.Context, userIds []string) ([]CountUserContentByUserIDsRow, error) {
+	rows, err := q.db.Query(ctx, countUserContentByUserIDs, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountUserContentByUserIDsRow
+	for rows.Next() {
+		var i CountUserContentByUserIDsRow
+		if err := rows.Scan(&i.UserID, &i.DiaryCount, &i.EpisodicMemoryCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

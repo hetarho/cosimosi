@@ -44,6 +44,12 @@ const globalQueries = new Set([
   // ClaimDueJob/PurgeTerminalJobs — aggregate status counts, no per-user scope.
   'memory/admin_stats.sql#CountJobsByStatus',
   'memory/admin_stats.sql#CountDeadLetteredJobs',
+  // The authorization-gated admin user list enriches one directory page through owning-context
+  // batch reads. These statements return only timezone names, balance facts, and aggregate counts;
+  // no profile or memory content crosses the consumer-owned admin ports.
+  'account/users.sql#ListUserTimezones',
+  'twinkle/ledger.sql#ListTwinkleBalancesByUserIDs',
+  'memory/admin_stats.sql#CountUserContentByUserIDs',
 ])
 
 // [I1] hard-delete gate. Product rows may be deleted only by the two

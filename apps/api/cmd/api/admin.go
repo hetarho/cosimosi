@@ -137,16 +137,17 @@ func newAccountDirectory() accountDirectorySource {
 // + the admin_grant earn. admin never imports twinkle types beyond this composition-root adapter.
 type adminTwinkleGranter struct{ service *twinkle.Service }
 
-func (g adminTwinkleGranter) Balance(ctx context.Context, userID string) (admin.Balance, error) {
-	scope, err := platform.NewUserScope(userID)
+func (g adminTwinkleGranter) Balances(ctx context.Context, userIDs []string) (map[string]admin.Balance, error) {
+	balances, err := g.service.GetBalances(ctx, userIDs)
 	if err != nil {
-		return admin.Balance{}, err
+		return nil, err
 	}
-	balance, err := g.service.GetBalance(ctx, scope)
-	if err != nil {
-		return admin.Balance{}, err
+	result := make(map[string]admin.Balance, len(userIDs))
+	for _, userID := range userIDs {
+		balance := balances[userID]
+		result[userID] = admin.Balance{Small: balance.Small, General: balance.General, Total: balance.Total()}
 	}
-	return admin.Balance{Small: balance.Small, General: balance.General, Total: balance.Total()}, nil
+	return result, nil
 }
 
 func (g adminTwinkleGranter) Grant(ctx context.Context, targetUserID string, amount int, grantID string) (int, error) {
@@ -164,12 +165,20 @@ func (g adminTwinkleGranter) Grant(ctx context.Context, targetUserID string, amo
 // adminMemoryStats binds the user list's non-content counts to memory's published aggregate read.
 type adminMemoryStats struct{ store memorypg.Store }
 
-func (a adminMemoryStats) Counts(ctx context.Context, userID string) (int, int, error) {
-	diaries, stars, err := a.store.UserContentCounts(ctx, userID)
+func (a adminMemoryStats) Counts(ctx context.Context, userIDs []string) (map[string]admin.Stats, error) {
+	counts, err := a.store.UserContentCountsByUserIDs(ctx, userIDs)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-	return int(diaries), int(stars), nil
+	result := make(map[string]admin.Stats, len(userIDs))
+	for _, userID := range userIDs {
+		count := counts[userID]
+		result[userID] = admin.Stats{
+			DiaryCount:          int(count.Diaries),
+			EpisodicMemoryCount: int(count.EpisodicMemories),
+		}
+	}
+	return result, nil
 }
 
 // adminMeterUsage binds the usage dashboard to the shared metering snapshot. ProcessLocal=true

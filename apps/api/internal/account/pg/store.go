@@ -34,6 +34,23 @@ func NewStore(db dbgen.DBTX) Store {
 	return store
 }
 
+// UserTimezones is account's batch persistence read for its published ZonesFor behavior.
+// Missing profile rows are intentionally absent; the service owns their UTC default.
+func (s Store) UserTimezones(ctx context.Context, userIDs []string) (map[string]string, error) {
+	if s.queries == nil {
+		return nil, ErrQueriesRequired
+	}
+	rows, err := s.queries.ListUserTimezones(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	zones := make(map[string]string, len(rows))
+	for _, row := range rows {
+		zones[row.UserID] = row.Timezone
+	}
+	return zones, nil
+}
+
 func (s Store) InSignupTx(ctx context.Context, fn func(account.Store) error) error {
 	if s.pool == nil {
 		return ErrTransactionPoolRequired

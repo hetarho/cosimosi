@@ -116,6 +116,15 @@ func (d fakeDirectory) ListUsers(context.Context, int, int, string) ([]Directory
 	}
 	return out, false, nil
 }
+
+type recordingDirectory struct{ pageSize int }
+
+func (d *recordingDirectory) ListUsers(_ context.Context, _ int, pageSize int, _ string) ([]DirectoryAccount, bool, error) {
+	d.pageSize = pageSize
+	return nil, false, nil
+}
+
+func (*recordingDirectory) EmailFor(context.Context, string) (string, error) { return "", nil }
 func (d fakeDirectory) EmailFor(_ context.Context, userID string) (string, error) {
 	if a, ok := d.accounts[userID]; ok {
 		return a.Email, nil
@@ -124,13 +133,21 @@ func (d fakeDirectory) EmailFor(_ context.Context, userID string) (string, error
 }
 
 type fakeGranter struct {
-	granted map[string]int
-	deduped map[string]struct{}
-	calls   int
+	granted      map[string]int
+	deduped      map[string]struct{}
+	calls        int
+	balanceCalls int
+	balanceIDs   []string
 }
 
-func (g *fakeGranter) Balance(context.Context, string) (Balance, error) {
-	return Balance{Small: 100, General: 0, Total: 100}, nil
+func (g *fakeGranter) Balances(_ context.Context, userIDs []string) (map[string]Balance, error) {
+	g.balanceCalls++
+	g.balanceIDs = append([]string(nil), userIDs...)
+	balances := make(map[string]Balance, len(userIDs))
+	for _, userID := range userIDs {
+		balances[userID] = Balance{Small: 100, General: 0, Total: 100}
+	}
+	return balances, nil
 }
 
 // Grant mirrors the real twinkle earn's per-(user, grant id) dedup, so the idempotency tests
@@ -149,9 +166,20 @@ func (g *fakeGranter) Grant(_ context.Context, targetUserID string, amount int, 
 	return g.granted[targetUserID], nil
 }
 
-type fakeStats struct{}
+type fakeStats struct {
+	calls   int
+	userIDs []string
+}
 
-func (fakeStats) Counts(context.Context, string) (int, int, error) { return 2, 5, nil }
+func (f *fakeStats) Counts(_ context.Context, userIDs []string) (map[string]Stats, error) {
+	f.calls++
+	f.userIDs = append([]string(nil), userIDs...)
+	stats := make(map[string]Stats, len(userIDs))
+	for _, userID := range userIDs {
+		stats[userID] = Stats{DiaryCount: 2, EpisodicMemoryCount: 5}
+	}
+	return stats, nil
+}
 
 type fakeUsage struct{}
 
@@ -201,7 +229,7 @@ func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service
 		Store:     store,
 		Directory: fakeDirectory{accounts: map[string]DirectoryAccount{}},
 		Twinkle:   &fakeGranter{},
-		MemStats:  fakeStats{},
+		MemStats:  &fakeStats{},
 		Usage:     fakeUsage{},
 		Jobs:      fakeJobs{},
 		Cipher:    fakeCipher{},
@@ -253,6 +281,53 @@ func TestDevModeMakesEveryoneAdmin(t *testing.T) {
 	got, err := svc.IsAdmin(context.Background(), "any-user")
 	if err != nil || !got {
 		t.Fatalf("dev mode IsAdmin(any) = %v, %v; want true, nil", got, err)
+	}
+}
+
+func TestListUsersBatchesPageEnrichmentOnce(t *testing.T) {
+	accounts := make(map[string]DirectoryAccount, values.AdminUserListPageSize)
+	for i := range values.AdminUserListPageSize {
+		userID := "user-" + itoa(i)
+		accounts[userID] = DirectoryAccount{UserID: userID, Email: userID + "@example.com"}
+	}
+	granter := &fakeGranter{}
+	stats := &fakeStats{}
+	svc := newTestService(t, newFakeStore(), func(d *ServiceDeps) {
+		d.Directory = fakeDirectory{accounts: accounts}
+		d.Twinkle = granter
+		d.MemStats = stats
+	})
+
+	page, err := svc.ListUsers(context.Background(), 0, values.AdminUserListPageSize, "")
+	if err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if len(page.Users) != values.AdminUserListPageSize {
+		t.Fatalf("users = %d, want %d", len(page.Users), values.AdminUserListPageSize)
+	}
+	if granter.balanceCalls != 1 || stats.calls != 1 {
+		t.Fatalf("batch calls = balances %d, counts %d; want 1/1 for a page of %d",
+			granter.balanceCalls, stats.calls, values.AdminUserListPageSize)
+	}
+	if len(granter.balanceIDs) != values.AdminUserListPageSize || len(stats.userIDs) != values.AdminUserListPageSize {
+		t.Fatalf("batch sizes = balances %d, counts %d; want %d",
+			len(granter.balanceIDs), len(stats.userIDs), values.AdminUserListPageSize)
+	}
+	for _, user := range page.Users {
+		if user.Balance.Total != 100 || user.DiaryCount != 2 || user.EpisodicMemoryCount != 5 {
+			t.Fatalf("user enrichment = %+v", user)
+		}
+	}
+}
+
+func TestListUsersClampsOversizedPageBeforeDirectoryAllocation(t *testing.T) {
+	directory := &recordingDirectory{}
+	svc := newTestService(t, newFakeStore(), func(d *ServiceDeps) { d.Directory = directory })
+	if _, err := svc.ListUsers(context.Background(), 0, values.AdminUserListPageSize+1, ""); err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if directory.pageSize != values.AdminUserListPageSize {
+		t.Fatalf("directory page size = %d, want configured ceiling %d", directory.pageSize, values.AdminUserListPageSize)
 	}
 }
 

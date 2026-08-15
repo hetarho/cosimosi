@@ -491,6 +491,14 @@ func (utcUserZone) ZoneFor(context.Context, platform.UserScope) (string, error) 
 	return "UTC", nil
 }
 
+func (utcUserZone) ZonesFor(_ context.Context, userIDs []string) (map[string]string, error) {
+	zones := make(map[string]string, len(userIDs))
+	for _, userID := range userIDs {
+		zones[userID] = "UTC"
+	}
+	return zones, nil
+}
+
 type emptySpendSignals struct{}
 
 func (emptySpendSignals) RecallAccessibility(context.Context, platform.UserScope, string) (float64, error) {

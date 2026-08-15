@@ -6,6 +6,13 @@ SELECT user_id, additional, basic_spent_this_window, basic_reset_window, updated
 FROM twinkle_balances
 WHERE user_id = $1;
 
+-- Batch balance facts for the admin list. Missing rows remain absent so the Twinkle service can
+-- apply the same lazy-birth default as GetBalance without writing a row.
+-- name: ListTwinkleBalancesByUserIDs :many
+SELECT user_id, additional, basic_spent_this_window, basic_reset_window, updated_at
+FROM twinkle_balances
+WHERE user_id = ANY(sqlc.arg(user_ids)::text[]);
+
 -- The spend/charge delta against the existing balance row (one row per user, serialized by
 -- the row lock — the universe_state single-writer pattern, so concurrent spends cannot
 -- oversell: the CHECKs reject any delta that would drive a tier negative, and the basic_grant

@@ -58,6 +58,10 @@ func (a accountTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScop
 	return a.service.ZoneFor(ctx, scope)
 }
 
+func (a accountTwinkleZone) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
+	return a.service.ZonesFor(ctx, userIDs)
+}
+
 // twinkleServiceOption registers the TwinkleService Connect handler.
 func twinkleServiceOption(service *twinkle.Service) (platform.HandlerOption, error) {
 	server, err := twinklerpc.NewServer(service)

@@ -33,6 +33,13 @@ SELECT user_id, nickname, timezone, locale, created_at, deleted_at
 FROM users
 WHERE user_id = sqlc.arg(user_id);
 
+-- Batch form of the published timezone read used by Twinkle's admin balance enrichment. Missing
+-- profile rows are omitted; account's service maps them to its UTC default.
+-- name: ListUserTimezones :many
+SELECT user_id, timezone
+FROM users
+WHERE user_id = ANY(sqlc.arg(user_ids)::text[]);
+
 -- UpdateProfile is the sole writer of the editable profile fields. A withdrawn row cannot be
 -- changed during its retention window.
 -- name: UpdateUserProfile :one

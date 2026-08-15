@@ -1,26 +1,35 @@
 package pg
 
-import "context"
+import (
+	"context"
+
+	"github.com/cosimosi/api/internal/memory"
+)
 
 // The non-content aggregate reads the admin console consumes (the admin console). Per-user counts are the
 // user's diary/episodic memory totals — COUNTS only, never content ([I2]); the job-queue counts are a global
 // operator health read. These are memory-owned reads (memory owns diaries/episodic_memories/jobs);
 // the admin context reaches them through composition-root ports, never by querying these tables.
 
-// UserContentCounts returns a user's diary count and live (non-deleted) episodic memory count.
-func (s Store) UserContentCounts(ctx context.Context, userID string) (diaries int64, stars int64, err error) {
+// UserContentCountsByUserIDs returns diary and live episodic-memory totals for all requested users
+// in one grouped query. Users with no content are omitted; the composition adapter supplies their
+// explicit zero default while translating to admin's consumer-owned type.
+func (s Store) UserContentCountsByUserIDs(ctx context.Context, userIDs []string) (map[string]memory.ContentCounts, error) {
 	if s.queries == nil {
-		return 0, 0, ErrQueriesRequired
+		return nil, ErrQueriesRequired
 	}
-	diaries, err = s.queries.CountUserDiaries(ctx, userID)
+	rows, err := s.queries.CountUserContentByUserIDs(ctx, userIDs)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-	stars, err = s.queries.CountUserStars(ctx, userID)
-	if err != nil {
-		return 0, 0, err
+	counts := make(map[string]memory.ContentCounts, len(rows))
+	for _, row := range rows {
+		counts[row.UserID] = memory.ContentCounts{
+			Diaries:          row.DiaryCount,
+			EpisodicMemories: row.EpisodicMemoryCount,
+		}
 	}
-	return diaries, stars, nil
+	return counts, nil
 }
 
 // JobStatusCounts returns the queue's row count per status (pending/running/done/failed).

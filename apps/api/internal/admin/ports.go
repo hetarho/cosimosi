@@ -70,10 +70,10 @@ type DirectoryAccount struct {
 }
 
 // TwinkleGranter is the twinkle-economy seam the grant use-case drives (bound over twinkle's
-// GetBalance + EarnAdminGrant at the composition root; admin never imports twinkle).
+// batch balance read + EarnAdminGrant at the composition root; admin never imports twinkle).
 type TwinkleGranter interface {
-	// Balance reads a user's two-tier balance.
-	Balance(ctx context.Context, userID string) (Balance, error)
+	// Balances reads two-tier balances for a user page in one batch.
+	Balances(ctx context.Context, userIDs []string) (map[string]Balance, error)
 	// Grant credits `amount` GENERAL Twinkle to targetUserID as an admin gift, idempotent by
 	// grantID, and returns the balance total after the grant.
 	Grant(ctx context.Context, targetUserID string, amount int, grantID string) (total int, err error)
@@ -82,7 +82,7 @@ type TwinkleGranter interface {
 // MemoryStats is memory's published non-content aggregate read (bound at the composition root).
 // Its return values are COUNTS only — there is no content field, so [I2] holds at the type level.
 type MemoryStats interface {
-	Counts(ctx context.Context, userID string) (diaryCount int, starCount int, err error)
+	Counts(ctx context.Context, userIDs []string) (map[string]Stats, error)
 }
 
 // AIUsageReader is the the AI-provider abstraction meter snapshot (bound over ai.Meter at the composition root).

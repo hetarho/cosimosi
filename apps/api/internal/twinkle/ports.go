@@ -36,6 +36,7 @@ type LedgerStore interface {
 // gist-view spend use.
 type LedgerRepo interface {
 	LedgerStore
+	GetBalanceRecords(ctx context.Context, userIDs []string) (map[string]BalanceRecord, error)
 	InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error
 }
 
@@ -47,6 +48,7 @@ type LedgerRepo interface {
 // profile read.
 type UserZoneReader interface {
 	ZoneFor(ctx context.Context, scope platform.UserScope) (string, error)
+	ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
 // SpendSignalReader resolves the authoritative depth signals a quote prices
