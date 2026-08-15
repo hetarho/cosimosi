@@ -634,6 +634,9 @@ achievement:
 admin:
   # Default page size for the admin user list and stardust-grant history pagination.
   user_list_page_size: 50
+  # Idle time after the last operator keystroke before the account-prefix search is sent. The
+  # directory scan can traverse multiple provider pages, so a half-typed query must never start it.
+  search_debounce_ms: 300
 
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.

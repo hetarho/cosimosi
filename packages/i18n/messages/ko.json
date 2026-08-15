@@ -526,6 +526,7 @@
   "admin_users_seed": "시드",
   "admin_users_grant": "별가루 증정",
   "admin_users_grant_amount": "증정 수량",
+  "admin_users_grant_amount_invalid": "1부터 {max}까지의 정수를 입력해 주세요.",
   "admin_users_grant_note": "메모(선택)",
   "admin_users_grant_submit": "증정",
   "admin_users_promote": "관리자 지정",

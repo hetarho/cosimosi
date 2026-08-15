@@ -526,6 +526,7 @@
   "admin_users_seed": "Seed",
   "admin_users_grant": "Grant stardust",
   "admin_users_grant_amount": "Amount",
+  "admin_users_grant_amount_invalid": "Enter a whole number from 1 to {max}.",
   "admin_users_grant_note": "Note (optional)",
   "admin_users_grant_submit": "Grant",
   "admin_users_promote": "Make admin",

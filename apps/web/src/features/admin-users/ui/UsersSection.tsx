@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
@@ -9,6 +9,7 @@ import {
   createListUsersQueryOptions,
   type AdminUser,
 } from '@cosimosi/api-client'
+import { VALUES } from '@cosimosi/config'
 import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
@@ -20,11 +21,29 @@ import { useErrorToast } from '../../../shared/model/index.ts'
 export function UsersSection() {
   const transport = useTransport()
   const client = useMemo(() => createAdminClient(transport), [transport])
-  const [page, setPage] = useState(0)
-  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState({ page: 0, query: '' })
+  const [queryDraft, setQueryDraft] = useState('')
   const [pending, setPending] = useState(false)
+  const searchCommitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const searchSettling = queryDraft !== search.query
 
-  const usersQuery = useQuery(createListUsersQueryOptions(transport, { page, query }))
+  useEffect(() => () => clearTimeout(searchCommitTimer.current), [])
+
+  const updateQueryDraft = (next: string) => {
+    setQueryDraft(next)
+    clearTimeout(searchCommitTimer.current)
+    if (next === search.query) return
+    searchCommitTimer.current = setTimeout(() => {
+      // Commit both fields together: resetting the page while the old query is still active would
+      // issue an extra page-zero RPC for that stale prefix before the debounce boundary.
+      setSearch({ page: 0, query: next })
+    }, VALUES.admin.searchDebounceMs)
+  }
+
+  // The settled query is part of the Connect Query key. Connect Query consumes TanStack Query's
+  // AbortSignal, so changing the key cancels the superseded RPC; no previous result is carried into
+  // the new key, and older rows cannot render as if they matched the newer prefix.
+  const usersQuery = useQuery(createListUsersQueryOptions(transport, search))
   const grantsQuery = useQuery(createListTwinkleGrantsQueryOptions(transport, { page: 0 }))
 
   const refresh = () => {
@@ -33,11 +52,17 @@ export function UsersSection() {
   }
 
   const showError = useErrorToast()
-  const runAction = (action: () => Promise<unknown>) => {
+  const runAction = (action: () => Promise<unknown>): Promise<boolean> => {
     setPending(true)
-    action()
-      .then(refresh)
-      .catch(showError)
+    return action()
+      .then(() => {
+        refresh()
+        return true
+      })
+      .catch((error: unknown) => {
+        showError(error)
+        return false
+      })
       .finally(() => setPending(false))
   }
 
@@ -51,11 +76,8 @@ export function UsersSection() {
       <TextField
         label={m.admin_users_search()}
         placeholder={m.admin_users_search_placeholder()}
-        value={query}
-        onChange={(event) => {
-          setPage(0)
-          setQuery(event.target.value)
-        }}
+        value={queryDraft}
+        onChange={(event) => updateQueryDraft(event.target.value)}
       />
       {users.length === 0 ? (
         <p className="text-sm text-text-muted">{m.admin_users_empty()}</p>
@@ -65,7 +87,7 @@ export function UsersSection() {
             <UserRow
               key={user.userId}
               user={user}
-              disabled={pending}
+              disabled={pending || searchSettling}
               onAction={runAction}
               client={client}
             />
@@ -77,8 +99,10 @@ export function UsersSection() {
           variant="outlined"
           color="neutral"
           size="sm"
-          disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={searchSettling || search.page === 0}
+          onClick={() =>
+            setSearch((current) => ({ ...current, page: Math.max(0, current.page - 1) }))
+          }
         >
           {m.admin_users_prev()}
         </Button>
@@ -86,8 +110,8 @@ export function UsersSection() {
           variant="outlined"
           color="neutral"
           size="sm"
-          disabled={!usersQuery.data?.hasMore}
-          onClick={() => setPage((p) => p + 1)}
+          disabled={searchSettling || !usersQuery.data?.hasMore}
+          onClick={() => setSearch((current) => ({ ...current, page: current.page + 1 }))}
         >
           {m.admin_users_next()}
         </Button>
@@ -121,21 +145,35 @@ function UserRow({
 }: {
   user: AdminUser
   disabled: boolean
-  onAction: (action: () => Promise<unknown>) => void
+  onAction: (action: () => Promise<unknown>) => Promise<boolean>
   client: ReturnType<typeof createAdminClient>
 }) {
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
+  const [amountError, setAmountError] = useState('')
 
-  const grant = () => {
-    const value = Number.parseInt(amount, 10)
-    if (!Number.isFinite(value) || value <= 0) return
+  const grant = async () => {
+    const normalized = amount.trim()
+    const value = Number(normalized)
+    if (
+      !/^\d+$/.test(normalized) ||
+      !Number.isSafeInteger(value) ||
+      value < 1 ||
+      value > VALUES.twinkle.adminGrantMax
+    ) {
+      setAmountError(
+        m.admin_users_grant_amount_invalid({ max: String(VALUES.twinkle.adminGrantMax) }),
+      )
+      return
+    }
+    setAmountError('')
     // One id per submit: transport-level retries of this call dedup server-side (the id is the
     // grant's idempotency key). A second click is deliberately a new grant, not a retry.
     const grantId = crypto.randomUUID()
-    onAction(() =>
+    const succeeded = await onAction(() =>
       client.grantStardust({ userId: user.userId, amount: BigInt(value), note, grantId }),
     )
+    if (!succeeded) return
     setAmount('')
     setNote('')
   }
@@ -168,18 +206,26 @@ function UserRow({
             label={m.admin_users_grant_amount()}
             type="number"
             min={1}
+            max={VALUES.twinkle.adminGrantMax}
+            step={1}
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            error={amountError}
+            disabled={disabled}
+            onChange={(event) => {
+              setAmount(event.target.value)
+              setAmountError('')
+            }}
           />
         </div>
         <div className="min-w-40 flex-1">
           <TextField
             label={m.admin_users_grant_note()}
             value={note}
+            disabled={disabled}
             onChange={(event) => setNote(event.target.value)}
           />
         </div>
-        <Button color="primary" size="sm" disabled={disabled} onClick={grant}>
+        <Button color="primary" size="sm" disabled={disabled} onClick={() => void grant()}>
           {m.admin_users_grant_submit()}
         </Button>
         {user.isSeedAdmin ? null : user.isAdmin ? (
@@ -188,7 +234,7 @@ function UserRow({
             color="danger"
             size="sm"
             disabled={disabled}
-            onClick={() => onAction(() => client.revokeAdmin({ userId: user.userId }))}
+            onClick={() => void onAction(() => client.revokeAdmin({ userId: user.userId }))}
           >
             {m.admin_users_revoke()}
           </Button>
@@ -198,7 +244,7 @@ function UserRow({
             color="neutral"
             size="sm"
             disabled={disabled}
-            onClick={() => onAction(() => client.grantAdmin({ userId: user.userId }))}
+            onClick={() => void onAction(() => client.grantAdmin({ userId: user.userId }))}
           >
             {m.admin_users_promote()}
           </Button>

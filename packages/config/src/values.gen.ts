@@ -201,6 +201,7 @@ export const VALUES = {
   },
   admin: {
     userListPageSize: 50,
+    searchDebounceMs: 300,
   },
   forceSim: {
     charge: 0.035,
