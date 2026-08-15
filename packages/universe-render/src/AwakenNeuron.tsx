@@ -63,8 +63,8 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
     const registry = useAwakenRegistryStore.getState()
     const fresh = newNeuronIds.filter((id) => !registry.claimed.has(id))
     if (fresh.length === 0) return
-    // Only take what the pool can flare THIS pass — a star is consumed only if it also flares, and
-    // an id is claimed only once handled, so an overflowing burst is not lost (the rest retry).
+    // Only take what the pool can attempt this pass. Births outside this batch stay eligible for a
+    // later effect run; the attempted batch follows the exhausted-field stop documented below.
     const freeSlots = pool.active.length - pool.activeCount
     if (freeSlots === 0) return
     const batch = fresh.slice(0, freeSlots)
@@ -80,7 +80,13 @@ export function AwakenNeuron({ field, newNeuronIds, resolveAnchors }: AwakenNeur
       births: batch.length,
       random: Math.random,
     })
-    if (picks.length === 0) return
+    // The attempted batch is claimed even when the latent field cannot represent every birth.
+    // Retrying an exhausted field on each dependency change cannot create a distinct flare; ids
+    // beyond the pool-sized batch remain unclaimed rather than being stopped without an attempt.
+    if (picks.length === 0) {
+      registry.claim(batch)
+      return
+    }
     consume(picks)
     for (const index of picks) {
       const slot = freeAwakenSlot(pool)

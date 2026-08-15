@@ -30,6 +30,7 @@ export function SpotlightDim({ reducedMotion = false }: { readonly reducedMotion
   const active = memoryIds.length > 0
   const elapsed = useRef(0)
   const level = useRef(1)
+  const pendingClear = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restart the hold whenever a NEW spotlight is armed, so a second jump gets a full turn rather
   // than the tail of the previous one.
@@ -37,10 +38,24 @@ export function SpotlightDim({ reducedMotion = false }: { readonly reducedMotion
     elapsed.current = 0
   }, [memoryIds])
 
-  // A spotlight belongs to the arrival it announces, so it does not outlive this layer: leaving the
-  // universe mid-hold drops the request rather than saving it up to replay unprompted on a later
-  // visit. `SceneExposure` gives the light back on the same unmount.
-  useEffect(() => () => useSpotlightStore.getState().clear(), [])
+  // A spotlight belongs to the arrival it announces, so it does not outlive this layer. The clear
+  // waits one macrotask because StrictMode immediately re-runs this effect after its development
+  // cleanup; a real unmount has no setup to cancel it. The identity guard also keeps a later arm
+  // from being erased by an older mount's pending cleanup.
+  useEffect(() => {
+    if (pendingClear.current !== null) {
+      clearTimeout(pendingClear.current)
+      pendingClear.current = null
+    }
+    return () => {
+      const observed = useSpotlightStore.getState().memoryIds
+      pendingClear.current = setTimeout(() => {
+        pendingClear.current = null
+        const spotlight = useSpotlightStore.getState()
+        if (spotlight.memoryIds === observed) spotlight.clear()
+      }, 0)
+    }
+  }, [])
 
   const onFrame = useMemo(
     () => (delta: number) => {

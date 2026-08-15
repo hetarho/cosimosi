@@ -57,6 +57,10 @@ export function parseGistNodeId(nodeId: string): { episodicMemoryId: string } | 
   return { episodicMemoryId }
 }
 
+export function gistStageZ(stage: number): number {
+  return gistCoordinate(0, 0, stage).z
+}
+
 export function gistStarInstances(
   memories: readonly EpisodicMemory[],
 ): readonly GistStarInstance[] {
@@ -82,7 +86,7 @@ export function gistStarInstances(
       // Only z is taken — the x, y arguments are placeholders because the real x, y are
       // copied from the live sim buffer per frame; the z derivation stays the golden-parity
       // `gistCoordinate`'s alone ([I5]).
-      z: gistCoordinate(0, 0, risen).z,
+      z: gistStageZ(risen),
       color,
       size,
       // Stage 1 reads at the base gist softness; the ladder top reads fully diffuse ([V5]).

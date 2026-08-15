@@ -417,7 +417,9 @@ logic that is not platform-specific, that logic belongs in the shared pair.
   arrival, because `NavigationRig` can force-arrive while chasing a star that is still settling and tying the dark to
   that would let a timeout strand the universe in it. Per §3.2 the light is a per-frame ref, so the layer subscribes to
   the id list once and eases inside the frame callback; reduced motion gets the same darkness with no ramp, and the
-  layer gives the light back on unmount.
+  layer gives the light back on unmount. Its store cleanup is deferred one macrotask and cancelled by an immediate
+  remount, so React StrictMode's development cleanup cannot erase a diary-armed spotlight before its first frame; the
+  cleanup also compares the observed id-list identity before clearing, so it cannot erase a newer arm.
 
 ## Star / neuron / filament bodies (plan 24 as-built)
 
@@ -517,6 +519,9 @@ seed anchor is a client presentation choice; the real neuron's final position is
   React state) and marks it consumed; a module-level `awaken-registry` store makes the awaken **idempotent across
   remounts**. It reacts to `new_neuron_ids` — the writing flow (plan 27) announces them through the module-level
   `features/launch-stars` launched-neurons store, which the always-mounted canvas reads and feeds here.
+  A pool-limited overflow stays unclaimed and remains eligible on a later effect run. Once a pool-sized batch is
+  attempted, the whole batch is claimed even if the latent field has fewer distinct unconsumed points: the represented
+  subset flares, while the shortfall stops instead of retrying an exhausted field on every dependency change.
 - **Mobile (§3.5).** The field + layer are the shared package modules (`@cosimosi/universe` / `@cosimosi/universe-render`);
   the widget passes `rendering.latent_star_count_mobile` (reduced MVP count). No `*.native` sibling — the R3F host is
   already forked at the canvas level.
@@ -608,16 +613,18 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
   reads `positionGeometry`, not `positionLocal`: an instanced disc measuring `positionLocal` would fade from the field's
   axis instead of from its own center.
 - **The neutral stage-rise is appearance-driven and one-way** ([V8][I10]). Consolidation is the sole stage writer, so
-  a `(memory, stage)` instance newly appearing in the projection _is_ the advance's read landing: it eases from the
-  memory's hippocampal z up into the band once (`GIST_RISE_DURATION_SECONDS`, a code-level layer constant); the first
-  non-empty projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing
-  plays. The per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the
-  later-authored pulled-upward/relate-star replay choreography consumes; nothing more is built.
-- **A gist star is read-only** ([R8][I8]). Its pick payload is `gistNodeId(memoryId, stage)`; a pick sends the
-  navigation machine SELECT only (a gist body is not a sim node — no camera glide), the star-detail resolver routes it
-  through the injected `parseGistNodeId` recognizer as `{kind: 'gist', episodicMemoryId, stage}`, and the panel
-  forwards `(memoryId, stage)` to the ViewSemantic surface seam — no 회고하기, no rewrite affordance, no
-  un-rise/placement/stage control ([I10][I11]).
+  a stage change in the projection _is_ the advance's read landing. A memory's first gist appearance eases from that
+  memory's hippocampal sim z into its first band z. A body deepening from stage N to N+1 instead eases from stage N's
+  canonical `gistCoordinate` band z; it never snaps back to the sim layer and therefore never reverses. Both origins
+  are fixed for the duration of the ease, so live sim motion cannot bend the rise downward. The first non-empty
+  projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing plays. The
+  per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the later-authored
+  pulled-upward/relate-star replay choreography consumes; nothing more is built.
+- **A gist star is read-only** ([R8][I8]). Its pick payload is `gistNodeId(memoryId)`; a pick sends the navigation
+  machine SELECT only (a gist body is not a sim node — no camera glide), the star-detail resolver routes it through the
+  injected `parseGistNodeId` recognizer as `{kind: 'gist', episodicMemoryId}`, and the panel forwards `memoryId` to the
+  ViewSemantic surface seam. The server decides which current rung the read reaches — no 회고하기, no rewrite
+  affordance, no un-rise/placement/stage control ([I10][I11]).
 - **Mobile (§3.5).** Channels, body, fog, and layer are the shared package modules — no `*.native` fork; the mobile
   widget composes them identically (source-gate verified; on-device render pending).
 

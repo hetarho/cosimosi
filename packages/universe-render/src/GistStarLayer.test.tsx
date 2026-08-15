@@ -5,7 +5,7 @@ import {
   GIST_INSTANCE_TINT,
   type InstanceAttributeChannel,
 } from '@cosimosi/3d-renderer'
-import { gistNodeId, type GistStarInstance } from '@cosimosi/universe'
+import { gistNodeId, gistStageZ, type GistStarInstance } from '@cosimosi/universe'
 
 import {
   createGistRenderSnapshot,
@@ -25,7 +25,7 @@ function instance(
     memoryId,
     stage,
     nodeId: gistNodeId(memoryId),
-    z: 15 + stage,
+    z: gistStageZ(stage),
     color: [stage / 10, stage / 5, stage / 4],
     size: 0.5 + stage / 10,
     softness: 0.6 + stage / 20,
@@ -135,10 +135,16 @@ describe('gist render snapshot', () => {
     // Re-reconciling the same stage is not another rise — an ordinary refetch replays nothing.
     expect(reconcileGistRiseState(riseState, advanced, true)).toEqual([])
 
-    // The ease starts from where the body actually is and lands on the new band's z.
+    // A deepening starts at the previous stage's settled band z, never back at the sim z.
     expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 4)).toBe(true)
-    expect(Array.from(out)).toEqual([10, 11, 12])
+    expect(Array.from(out)).toEqual([10, 11, alpha.z])
     riseBuffer[5] = -40
+    let previousZ = out[2] as number
+    for (const elapsed of [4.2, 4.5, 4.9, 5.4]) {
+      expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, elapsed)).toBe(true)
+      expect(out[2]).toBeGreaterThanOrEqual(previousZ)
+      previousZ = out[2] as number
+    }
     expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 100)).toBe(true)
     expect(Array.from(out)).toEqual([10, 11, risenAlpha.z])
 
@@ -169,6 +175,10 @@ describe('gist render snapshot', () => {
     expect(reconcileGistRiseState(riseState, firstRise, true)).toEqual([
       { memoryId: 'alpha', stage: 1 },
     ])
+
+    const out = new Float32Array(3)
+    expect(mapGistInstancePosition(firstRise, riseState, 0, buffer, out, 2)).toBe(true)
+    expect(Array.from(out)).toEqual([10, 11, 12])
   })
 
   it('indexes rise entries against the committed order, and settles the index with the map', () => {

@@ -231,6 +231,7 @@ export {
 } from './current-decay-text.ts'
 export {
   gistNodeId,
+  gistStageZ,
   gistStarInstances,
   parseGistNodeId,
   type GistStarInstance,

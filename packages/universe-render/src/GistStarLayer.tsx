@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 
 import {
   COORDINATE_STRIDE,
@@ -12,6 +12,7 @@ import {
 } from '@cosimosi/3d-renderer'
 
 import {
+  gistStageZ,
   gistStarInstances,
   useEpisodicMemoryStore,
   type GistStarInstance,
@@ -48,7 +49,7 @@ const GIST_RISE_DURATION_SECONDS = 1.4
 // skips the ease math. A frozen shared sentinel, distinct from the {start, startZ} of a body
 // still animating.
 const SETTLED = Object.freeze({ start: 0, startZ: 0 })
-type RiseEntry = { start: number | null; startZ: number } | typeof SETTLED
+type RiseEntry = { start: number | null; startZ: number | null } | typeof SETTLED
 
 // Per-body rise state keyed by node id, plus whether the read model has hydrated once. `hydrated`
 // gates on the episodic STORE being non-empty, not the gist projection: a universe with memories
@@ -58,9 +59,9 @@ type RiseEntry = { start: number | null; startZ: number } | typeof SETTLED
 // `byInstance` is the same entries laid out in one snapshot's committed instance order, so the
 // per-frame mapper indexes an array instead of hashing a node-id string per instance per frame.
 // It is a cache, not a second source of truth: `indexed` names the snapshot it was built for, and
-// a mapper call against any other snapshot falls back to `seen`. That fallback is reachable — the
-// reconcile runs in a passive effect, so a frame can land between the commit that published a new
-// snapshot and the effect that indexes it.
+// a mapper call against any other snapshot falls back to `seen`. The layout-phase reconcile keeps
+// committed frames indexed; the fallback keeps direct/future callers fail-safe if that ordering is
+// ever bypassed.
 export type GistRiseState = {
   readonly seen: Map<string, RiseEntry>
   /**
@@ -140,7 +141,10 @@ export function reconcileGistRiseState(
     const rose = !isNew && instance.stage > previousStage
     if (!isNew && !rose) continue
     if (state.hydrated) {
-      state.seen.set(instance.nodeId, { start: null, startZ: 0 })
+      state.seen.set(instance.nodeId, {
+        start: null,
+        startZ: previousStage === undefined ? null : gistStageZ(previousStage),
+      })
       risen.push({ memoryId: instance.memoryId, stage: instance.stage })
     } else {
       state.seen.set(instance.nodeId, SETTLED)
@@ -185,11 +189,13 @@ export function mapGistInstancePosition(
     return true
   }
   if (entry.start === null) {
-    // The fixed origin keeps the rise one-way if the hippocampal sim moves the memory mid-rise;
-    // a body first seen after a hidden-tab interval still gets the full ease.
+    // A first appearance starts at the hippocampal body. A stage deepening was pre-seeded with
+    // its previous band z, so neither origin can reverse if the sim moves mid-rise.
     entry.start = elapsedSeconds
-    entry.startZ = buffer[offset + 2] ?? 0
+    if (entry.startZ === null) entry.startZ = buffer[offset + 2] ?? 0
   }
+  const startZ = entry.startZ
+  if (startZ === null) return false
   const progress = Math.min(
     1,
     Math.max(0, (elapsedSeconds - entry.start) / GIST_RISE_DURATION_SECONDS),
@@ -203,7 +209,7 @@ export function mapGistInstancePosition(
     return true
   }
   const eased = 1 - (1 - progress) ** 3
-  out[2] = entry.startZ + (instance.z - entry.startZ) * eased
+  out[2] = startZ + (instance.z - startZ) * eased
   return true
 }
 
@@ -243,12 +249,12 @@ export function GistStarLayer({
   }, [byId, ids, memoryIndexById])
 
   const riseRef = useRef<GistRiseState>(createGistRiseState())
-  // Diff the projection against the seen set post-commit (it changes only when the read model
+  // Diff the projection against the seen set after commit (it changes only when the read model
   // does): once the store has hydrated, a node id not seen before is a genuine rise — marked
   // pending + announced on the [V8] seam; the bodies present at hydration settle silently; a
-  // vanished id (a deleted memory) drops its state. Running in an effect keeps the ref mutation
-  // and the onStageRise call out of the render phase.
-  useEffect(() => {
+  // vanished id (a deleted memory) drops its state. Layout timing is load-bearing: a frame drawn
+  // before a passive effect would show the new target z, then snap back to the rise origin.
+  useLayoutEffect(() => {
     // The store being non-empty is hydration — a loaded universe with no risen gist still
     // treats its next stage as a real rise.
     const risen = reconcileGistRiseState(riseRef.current, snapshot, ids.length > 0)
