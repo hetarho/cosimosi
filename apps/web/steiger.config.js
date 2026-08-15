@@ -224,7 +224,13 @@ export default defineConfig([
     // Plan 51's two color actions are deliberately thin app-local UI over shared emotion logic:
     // the first-signin chooser is composed once by the profile gate, and the later editor once by
     // /me. Merging either into those hosts would erase the action boundary and web/mobile parity.
-    files: ['./src/features/choose-mood-colors/**', './src/features/change-mood-colors/**'],
+    // The mood-color entity is their one web-only projection for the conic random swatch; both
+    // consumers sit in the exempt feature slices, so Steiger observes no external reference.
+    files: [
+      './src/entities/mood-color/**',
+      './src/features/choose-mood-colors/**',
+      './src/features/change-mood-colors/**',
+    ],
     rules: {
       'fsd/insignificant-slice': 'off',
     },

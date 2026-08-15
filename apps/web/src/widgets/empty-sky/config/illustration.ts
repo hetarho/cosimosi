@@ -19,7 +19,7 @@ import type { Mood } from '@cosimosi/emotion'
  * product's own palette wearing the product's own material. Mood names never render here — only
  * their colours do.
  */
-export const EMPTY_SKY_MOODS: readonly Mood[] = [
+export const EMPTY_SKY_MOODS = [
   'FEAR',
   'EMPTINESS',
   'STRESS',
@@ -28,7 +28,7 @@ export const EMPTY_SKY_MOODS: readonly Mood[] = [
   'CALM',
   'LOVE',
   'TIRED',
-]
+] as const satisfies readonly Mood[]
 
 /**
  * The weight each mood holds in the ramp: the primary-adjacent violets lead (12 of 20 shares), the
@@ -36,7 +36,7 @@ export const EMPTY_SKY_MOODS: readonly Mood[] = [
  * reading as a two-colour gradient. None is tiny — a feeling given a sliver of the ramp is a colour
  * the fold smears away before anyone can name it.
  */
-export const EMPTY_SKY_WEIGHTS: Readonly<Record<string, number>> = {
+export const EMPTY_SKY_WEIGHTS: Readonly<Record<(typeof EMPTY_SKY_MOODS)[number], number>> = {
   FEAR: 5,
   EMPTINESS: 4,
   STRESS: 2,

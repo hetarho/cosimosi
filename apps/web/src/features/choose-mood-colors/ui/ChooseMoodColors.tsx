@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,9 +13,7 @@ import {
 import { VALUES } from '@cosimosi/config'
 import {
   MOODS,
-  clampChromaToGamut,
   moodColorPresets,
-  okLchToColor,
   randomMoodColor,
   type Color,
   type Mood,
@@ -35,6 +33,7 @@ import {
   moodColorPresetTitle,
   moodLabel,
 } from '../../../shared/i18n/index.ts'
+import { RANDOM_MOOD_COLOR_SWATCH } from '../../../entities/mood-color/index.ts'
 
 const EMPTY_ROWS: readonly MoodColorRow[] = []
 
@@ -152,7 +151,11 @@ function MoodPresets({
               <span
                 aria-hidden="true"
                 className="size-7 rounded-full border border-border"
-                style={preset.kind === 'RANDOM' ? RANDOM_SWATCH : { backgroundColor: preset.color }}
+                style={
+                  preset.kind === 'RANDOM'
+                    ? RANDOM_MOOD_COLOR_SWATCH
+                    : { backgroundColor: preset.color }
+                }
               />
               <span className="font-medium text-text">{moodColorPresetTitle(preset)}</span>
               {detail ? <span>{detail}</span> : null}
@@ -162,12 +165,4 @@ function MoodPresets({
       </div>
     </Card>
   )
-}
-
-// Random has no colour to show, so it shows all of them. Drawn through the same OkLCH seam every
-// emotion colour goes through, so the wheel holds colours a feeling could actually get.
-const RANDOM_SWATCH: CSSProperties = {
-  backgroundImage: `conic-gradient(${Array.from({ length: 13 }, (_, index) =>
-    okLchToColor(clampChromaToGamut({ l: 0.72, c: 0.2, h: (index * 360) / 12 })),
-  ).join(', ')})`,
 }

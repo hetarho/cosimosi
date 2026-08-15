@@ -4,12 +4,10 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import {
-  clampChromaToGamut,
   draftFromColor,
   draftFromOkLch,
   moodColorPresets,
   moodColorRisks,
-  okLchToColor,
   randomMoodColor,
   type Color,
   type Mood,
@@ -26,6 +24,7 @@ import {
   moodColorRiskText,
   moodLabel,
 } from '../../../shared/i18n/index.ts'
+import { RANDOM_MOOD_COLOR_SWATCH } from '../../../entities/mood-color/index.ts'
 import { MoodColorPicker } from './MoodColorPicker.tsx'
 
 export interface MoodColorDialogProps {
@@ -36,6 +35,7 @@ export interface MoodColorDialogProps {
    *  rather than reported after the save. Keyed by mood; the edited one is ignored if present. */
   otherColors: Readonly<Partial<Record<Mood, Color>>>
   saving: boolean
+  saveFailed: boolean
   onClose: () => void
   onSave: (color: Color) => void
 }
@@ -50,6 +50,7 @@ export function MoodColorDialog({
   current,
   otherColors,
   saving,
+  saveFailed,
   onClose,
   onSave,
 }: MoodColorDialogProps) {
@@ -111,6 +112,7 @@ export function MoodColorDialog({
           />
           {/* Live rather than on save, so the notice tracks the colour under the cursor. */}
           {risks.length > 0 ? <RiskNotice risks={risks} /> : null}
+          {saveFailed ? <Alert variant="danger">{m.palette_save_failed()}</Alert> : null}
           <div className="flex justify-end gap-2">
             <Button color="neutral" variant="text" onClick={onClose} disabled={saving}>
               {m.common_cancel()}
@@ -219,18 +221,12 @@ function PresetButton({
       <span
         aria-hidden="true"
         className="size-8 rounded-full border border-border"
-        style={preset.kind === 'RANDOM' ? RANDOM_SWATCH : { backgroundColor: preset.color }}
+        style={
+          preset.kind === 'RANDOM' ? RANDOM_MOOD_COLOR_SWATCH : { backgroundColor: preset.color }
+        }
       />
       <span className="font-medium text-text">{moodColorPresetTitle(preset)}</span>
       {detail ? <span>{detail}</span> : null}
     </button>
   )
-}
-
-// Random has no colour to show, so it shows all of them. Drawn through the same OkLCH seam every
-// emotion colour goes through, so the wheel holds colours a feeling could actually get.
-const RANDOM_SWATCH: CSSProperties = {
-  backgroundImage: `conic-gradient(${Array.from({ length: 13 }, (_, index) =>
-    okLchToColor(clampChromaToGamut({ l: 0.72, c: 0.2, h: (index * 360) / 12 })),
-  ).join(', ')})`,
 }

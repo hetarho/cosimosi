@@ -1,9 +1,34 @@
+import type { ReactNode } from 'react'
+
 import { useTwinkleBalanceStore } from '@cosimosi/twinkle'
-import { TwinkleGeneralIcon, TwinkleSmallIcon } from '@cosimosi/ui'
+import { TwinkleGeneralIcon, TwinkleSmallIcon, VisuallyHidden } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 
 // A placeholder rather than a false zero, until the first GetBalance settles ([G5]).
 const figure = (loaded: boolean, value: bigint) => (loaded ? String(value) : '—')
+
+function BalanceHudFrame({
+  className,
+  onOpenDetail,
+  children,
+}: {
+  readonly className: string
+  readonly onOpenDetail?: () => void
+  readonly children: ReactNode
+}) {
+  if (!onOpenDetail) return <div className={className}>{children}</div>
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label={m.twinkle_balance_title()}
+      onClick={onOpenDetail}
+      className={className}
+    >
+      {children}
+    </button>
+  )
+}
 
 // features/twinkle-balance-hud ui ([G2][G5]): the persistent, restrained balance reading. SMALL
 // (today's recall-only allowance) and GENERAL (the universal permanent reserve) are always distinct —
@@ -35,11 +60,8 @@ export function TwinkleBalanceHud({ onOpenDetail }: { readonly onOpenDetail?: ()
 
   return (
     <>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-label={m.twinkle_balance_title()}
-        onClick={() => onOpenDetail?.()}
+      <BalanceHudFrame
+        onOpenDetail={onOpenDetail}
         className="pointer-events-auto hidden items-center gap-4 rounded-md py-1.5 pl-1 pr-1 drop-shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:flex"
       >
         <span className="flex items-center gap-1.5">
@@ -60,30 +82,29 @@ export function TwinkleBalanceHud({ onOpenDetail }: { readonly onOpenDetail?: ()
             {figure(loaded, general)}
           </span>
         </span>
-      </button>
+      </BalanceHudFrame>
 
       {/* The phone form stays as narrow as its widest figure, because the clock is centred on the same
           line: a labelled row is wider than the corner it would have to fit in and would run into it. */}
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-label={m.twinkle_balance_title()}
-        onClick={() => onOpenDetail?.()}
+      <BalanceHudFrame
+        onOpenDetail={onOpenDetail}
         className="pointer-events-auto flex flex-col items-end gap-0.5 rounded-md px-1 py-1.5 drop-shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:hidden"
       >
         <span className="flex items-center gap-1.5">
           <TwinkleSmallIcon className="shrink-0 text-text-muted" />
+          <VisuallyHidden>{m.twinkle_balance_small_label()}</VisuallyHidden>
           <span className="text-sm font-medium tabular-nums text-text">
             {figure(loaded, small)}
           </span>
         </span>
         <span className="flex items-center gap-1.5">
           <TwinkleGeneralIcon className="shrink-0 text-text-muted" />
+          <VisuallyHidden>{m.twinkle_balance_general_label()}</VisuallyHidden>
           <span className="text-sm font-medium tabular-nums text-text">
             {figure(loaded, general)}
           </span>
         </span>
-      </button>
+      </BalanceHudFrame>
     </>
   )
 }

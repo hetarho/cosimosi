@@ -33,12 +33,18 @@ describe('TwinkleBalanceHud (web)', () => {
     }
   })
 
-  it('is itself the way into what the figures are about, in both compositions', () => {
-    const html = renderToString(createElement(TwinkleBalanceHud))
+  it('is itself the way into what the figures are about when the detail surface is wired', () => {
+    const html = renderToString(createElement(TwinkleBalanceHud, { onOpenDetail: () => undefined }))
     // Two forms, one for each width, and BOTH are the press — there is no separate mark beside the
     // numbers to aim at, and no form of this reading that only looks back at the reader.
     const openers = html.match(/aria-haspopup="dialog"/g) ?? []
     expect(openers).toHaveLength(2)
     expect(html).toContain(`aria-label="${m.twinkle_balance_title()}"`)
+  })
+
+  it('renders readings without false button or popup semantics when no detail surface is wired', () => {
+    const html = renderToString(createElement(TwinkleBalanceHud))
+    expect(html).not.toContain('<button')
+    expect(html).not.toContain('aria-haspopup')
   })
 })

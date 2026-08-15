@@ -93,6 +93,12 @@ and the ranking come from, so both surfaces that offer presets drop the cached r
 soon as the write lands. A ratio that survived its own contribution would be a stale number stated
 with confidence.
 
+**A failed save stays with the draft.** The editor remains open and keeps the color the person was
+working on, while a danger notice renders inside that same dialog above its actions. The palette and
+sky roll back to their confirmed colors, but the draft stays editable so the next save does not
+require reconstructing it. The palette card may retain a secondary notice after the dialog closes;
+it is never the only failure surface hidden behind the modal scrim.
+
 **Ranking, and what breaks a tie.** Buckets are ordered by count, and two buckets holding the same
 count are ordered by which the aggregate saw **first** — `mood_color_counts.first_counted_at`, the
 stamp a color's first appearance leaves. Hue-bucket number remains only as the last resort under

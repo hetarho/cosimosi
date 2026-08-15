@@ -144,7 +144,10 @@ remembered afterwards.
   real control. Nothing is performed on their behalf. The tour may still put a surface in front of
   them — the opening diary arrives already open, and the recall beat arrives with its own star
   picked, because which star it is about is the scenario's and hunting for it among look-alikes is a
-  search task no caption can help with. What is never done for them is the beat's own work.
+  search task no caption can help with. That scenario-staged recall panel cannot strand the beat:
+  dismissing it before the recall walk starts immediately selects the target again, while starting
+  the walk hands off normally to the recall surface. What is never done for them is the beat's own
+  work.
 - **Nothing survives leaving.** The read models, the clock, the awaken registry and the palette are all
   cleared on the way out, and nothing was ever written to storage, a URL or a server — so a visitor
   who signs up afterwards starts from a genuinely empty universe.

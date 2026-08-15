@@ -21,7 +21,8 @@ Disallow: /diary
 Disallow: /me
 Disallow: /admin
 
-# Auth surfaces: nothing here is a landing target, and a login form is not a search result.
+# Duplicate auth entry points are not landing targets. The root also renders the sign-in door, but
+# its canonical points to /about; these alternate auth URLs have no separate canonical destination.
 Disallow: /login
 Disallow: /signup
 Disallow: /invite/

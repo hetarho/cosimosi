@@ -17,6 +17,7 @@ import {
   syncDemoRunMachine,
   tutorialInteractiveAnchors,
 } from '../model/run-machine.ts'
+import { useTutorialRecallPanelSelection } from '../model/recall-panel.ts'
 import {
   DEMO_TIME_JUMPS,
   shiftDemoDate,
@@ -448,11 +449,16 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // The recall beat opens with its star already picked. The beat's WORK stays the visitor's — the
   // recall is theirs to press ([O2]) — but which star it is about is the scenario's, and asking a
   // visitor to find it among a cluster of look-alikes is a search task the caption cannot help with.
-  // The writing sheet arrives the same way, already open on beat 1.
-  useEffect(() => {
-    if (phaseKey !== 'recall' || recallMemoryId) return
-    setSelectedMemoryId((current) => current ?? tutorialRecallMemoryId)
-  }, [phaseKey, recallMemoryId, tutorialRecallMemoryId])
+  // If the staged panel is dismissed before that work starts, selection is re-armed immediately;
+  // otherwise the mask would be left pointing at a control that no longer exists. The writing sheet
+  // arrives under the same tutorial rule, already open on beat 1.
+  useTutorialRecallPanelSelection(
+    phaseKey,
+    selectedMemoryId,
+    recallMemoryId,
+    tutorialRecallMemoryId,
+    setSelectedMemoryId,
+  )
 
   const findMemory = (memoryId: string | null) =>
     memoryId ? (scene.memories.find((memory) => memory.id === memoryId) ?? null) : null

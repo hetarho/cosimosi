@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -176,6 +176,32 @@ describe('MoodColorsTab', () => {
     await user.click(await screen.findByRole('button', { name: m.palette_confirm_keep() }))
     await waitFor(() => expect(saved).toHaveLength(1))
     expect(saved[0]?.color).toBe(snapToEmotionStep(GLARING))
+  })
+
+  it('keeps a failed save visible and editable inside the open dialog', async () => {
+    renderTab({
+      setMoodColor: () => {
+        throw new Error('refused')
+      },
+    })
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByLabelText(m.palette_swatch_label({ mood: moodLabel('SAD') })),
+    )
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: m.palette_save() }))
+
+    expect(await within(dialog).findByText(m.palette_save_failed())).toBeTruthy()
+    expect(screen.getAllByText(m.palette_save_failed())).toHaveLength(1)
+    expect(screen.getByRole('dialog')).toBe(dialog)
+    const hue = within(dialog).getByLabelText(m.palette_picker_hue()) as HTMLInputElement
+    expect(hue.disabled).toBe(false)
+    fireEvent.change(hue, { target: { value: '120' } })
+    expect(hue.value).toBe('120')
+
+    await user.click(within(dialog).getByRole('button', { name: m.common_cancel() }))
+    expect(screen.getByText(m.palette_save_failed())).toBeTruthy()
   })
 })
 

@@ -64,7 +64,7 @@ export function MoodColorPicker({ value, onChange, disabled }: MoodColorPickerPr
           min={0}
           max={359}
           step={1}
-          value={Math.round(value.h)}
+          value={Math.min(359, Math.max(0, Math.round(value.h)))}
           disabled={disabled}
           onChange={(event) => onChange({ ...value, h: Number(event.target.value) })}
           className={SLIDER}
