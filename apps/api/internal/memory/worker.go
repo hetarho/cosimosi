@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform/jobqueue"
@@ -132,7 +133,14 @@ type maintenanceQueue struct {
 	logger           *log.Logger
 	cleanupInterval  time.Duration
 	cleanupBatchSize int32
-	nextCleanupAt    time.Time
+
+	// The cleanup schedule is this wrapper's own mutable state, and a claim is the only thing that
+	// advances it. Runner claims are sequential today, so the lock is not what makes the cadence
+	// correct — it is what keeps the cadence a property of this type instead of a property of its
+	// single caller. Nothing in the wrapped JobQueue announces that claiming is non-reentrant, so a
+	// second claimer would otherwise read and write a half-advanced window with no gate to fail.
+	scheduleMu    sync.Mutex
+	nextCleanupAt time.Time
 }
 
 func (q *maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, error) {
@@ -141,12 +149,11 @@ func (q *maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, er
 }
 
 func (q *maintenanceQueue) cleanupTerminalJobs(ctx context.Context, now time.Time) {
-	if q.cleaner == nil || (!q.nextCleanupAt.IsZero() && now.Before(q.nextCleanupAt)) {
+	// The window is claimed before the scan, not after it: the purge is I/O, and holding the
+	// schedule across it would make a claim wait on housekeeping rather than skip it.
+	if q.cleaner == nil || !q.claimCleanupWindow(now) {
 		return
 	}
-	// A partial batch or error advances the maintenance window. A full batch leaves the
-	// schedule due, allowing exactly one more bounded batch on the next product claim.
-	q.nextCleanupAt = now.Add(q.cleanupInterval)
 	cutoff := now.Add(-time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour)
 	purged, err := q.cleaner.PurgeTerminalJobs(ctx, cutoff, q.cleanupBatchSize)
 	if err != nil {
@@ -155,9 +162,29 @@ func (q *maintenanceQueue) cleanupTerminalJobs(ctx context.Context, now time.Tim
 		}
 		return
 	}
+	// A full batch means rows are still waiting, so the schedule goes back to due and the next
+	// product claim takes exactly one more bounded batch. A partial batch keeps the claimed window.
 	if purged >= int(q.cleanupBatchSize) {
-		q.nextCleanupAt = now
+		q.reopenCleanupWindow(now)
 	}
+}
+
+// claimCleanupWindow reports whether this call owns the next cleanup batch, advancing the schedule
+// as it hands the window out so no second caller can take the same one.
+func (q *maintenanceQueue) claimCleanupWindow(now time.Time) bool {
+	q.scheduleMu.Lock()
+	defer q.scheduleMu.Unlock()
+	if !q.nextCleanupAt.IsZero() && now.Before(q.nextCleanupAt) {
+		return false
+	}
+	q.nextCleanupAt = now.Add(q.cleanupInterval)
+	return true
+}
+
+func (q *maintenanceQueue) reopenCleanupWindow(now time.Time) {
+	q.scheduleMu.Lock()
+	defer q.scheduleMu.Unlock()
+	q.nextCleanupAt = now
 }
 
 func (q *maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -118,6 +119,72 @@ func TestMaintenanceQueueRunsAgainAcrossClockWindows(t *testing.T) {
 	if cleaner.calls != 3 {
 		t.Fatalf("cleanup calls = %d, want one at each of three windows", cleaner.calls)
 	}
+}
+
+// The cadence has to be a property of the wrapper, not of the sequential runner loop that is its
+// only caller today: a claim is what hands out a cleanup window, so overlapping claims must still
+// see exactly one batch per window rather than a half-advanced schedule. Run under -race, this is
+// also what proves the schedule's reads and writes are guarded.
+func TestMaintenanceQueueHandsOneCleanupWindowToOverlappingClaims(t *testing.T) {
+	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
+	cleaner := &concurrentTerminalJobCleaner{}
+	maintained := &maintenanceQueue{
+		JobQueue:         concurrentWorkerQueue{},
+		cleaner:          cleaner,
+		cleanupInterval:  time.Hour,
+		cleanupBatchSize: 2,
+	}
+
+	var claims sync.WaitGroup
+	for range 16 {
+		claims.Add(1)
+		go func() {
+			defer claims.Done()
+			if _, err := maintained.ClaimDue(context.Background(), now); !errors.Is(err, jobqueue.ErrNoJob) {
+				t.Errorf("ClaimDue error = %v, want ErrNoJob", err)
+			}
+		}()
+	}
+	claims.Wait()
+
+	if got := cleaner.batches(); got != 1 {
+		t.Fatalf("cleanup batches within one window = %d, want 1", got)
+	}
+	if _, err := maintained.ClaimDue(context.Background(), now.Add(time.Hour)); !errors.Is(err, jobqueue.ErrNoJob) {
+		t.Fatalf("ClaimDue after the window error = %v, want ErrNoJob", err)
+	}
+	if got := cleaner.batches(); got != 2 {
+		t.Fatalf("cleanup batches after the window elapsed = %d, want 2", got)
+	}
+}
+
+// A claim-only queue and cleaner that record nothing a concurrent caller could race on. The shared
+// fakes above count unguarded fields on purpose — their tests are sequential.
+type concurrentWorkerQueue struct{}
+
+func (concurrentWorkerQueue) ClaimDue(context.Context, time.Time) (Job, error) {
+	return Job{}, jobqueue.ErrNoJob
+}
+func (concurrentWorkerQueue) Complete(context.Context, Job) error                { return nil }
+func (concurrentWorkerQueue) Retry(context.Context, Job, int32, time.Time) error { return nil }
+func (concurrentWorkerQueue) Fail(context.Context, Job, int32) error             { return nil }
+
+type concurrentTerminalJobCleaner struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (c *concurrentTerminalJobCleaner) PurgeTerminalJobs(context.Context, time.Time, int32) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.calls++
+	return 0, nil
+}
+
+func (c *concurrentTerminalJobCleaner) batches() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.calls
 }
 
 func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
