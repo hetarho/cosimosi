@@ -165,6 +165,10 @@ func (absentProfileStore) WithInviteSettlementLock(
 	return fn()
 }
 
+func (absentProfileStore) UserTimezones(context.Context, []string) (map[string]string, error) {
+	return nil, nil
+}
+
 func (absentProfileStore) ListMoodColors(context.Context, platform.UserScope) ([]account.MoodColor, error) {
 	return nil, nil
 }

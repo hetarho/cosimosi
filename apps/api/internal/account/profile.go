@@ -91,36 +91,19 @@ func (s *Service) ZoneFor(ctx context.Context, scope platform.UserScope) (string
 	return normalizeStoredTimezone(profile.Timezone), nil
 }
 
-type userTimezoneBatchStore interface {
-	UserTimezones(ctx context.Context, userIDs []string) (map[string]string, error)
-}
-
-// ZonesFor is the batch form of ZoneFor published for Twinkle's admin-list enrichment. The
-// production store resolves all stored names in one query; every requested ID is present in the
-// result, with missing or invalid profile values mapped to the same UTC default as ZoneFor.
+// ZonesFor is the batch form of ZoneFor published for Twinkle's admin-list enrichment. The store
+// resolves all stored names in one query — `Store.UserTimezones` is part of the port rather than a
+// capability probed at runtime, so a store that cannot answer in one read fails to compile instead
+// of degrading to a scalar read per user. Every requested ID is present in the result, with missing
+// or invalid profile values mapped to the same UTC default as ZoneFor.
 func (s *Service) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
-	zones := make(map[string]string, len(userIDs))
-	if batch, ok := s.store.(userTimezoneBatchStore); ok {
-		stored, err := batch.UserTimezones(ctx, userIDs)
-		if err != nil {
-			return nil, err
-		}
-		for _, userID := range userIDs {
-			zones[userID] = normalizeStoredTimezone(stored[userID])
-		}
-		return zones, nil
+	stored, err := s.store.UserTimezones(ctx, userIDs)
+	if err != nil {
+		return nil, err
 	}
-	// Non-production test stores need not grow a batch method merely to satisfy account.Store.
+	zones := make(map[string]string, len(userIDs))
 	for _, userID := range userIDs {
-		scope, err := platform.NewUserScope(userID)
-		if err != nil {
-			return nil, err
-		}
-		zone, err := s.ZoneFor(ctx, scope)
-		if err != nil {
-			return nil, err
-		}
-		zones[userID] = zone
+		zones[userID] = normalizeStoredTimezone(stored[userID])
 	}
 	return zones, nil
 }

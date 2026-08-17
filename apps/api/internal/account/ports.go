@@ -16,6 +16,11 @@ type Store interface {
 	SetMoodColor(ctx context.Context, scope platform.UserScope, color MoodColor, bucket int32) (MoodColor, error)
 	ListMoodColorStats(ctx context.Context, mood Mood, recommendationCount int32) ([]MoodColorStatCount, error)
 	GetUserProfile(ctx context.Context, scope platform.UserScope) (profile Profile, found bool, err error)
+	// UserTimezones answers the stored zone of many users in ONE read, backing the batch ZonesFor
+	// the admin list enriches through. Rows absent from the result carry no stored zone; the
+	// service owns their default. Cross-user by shape, so it takes ids rather than a scope: the
+	// only caller is the authorized admin surface, reached through admin's own port.
+	UserTimezones(ctx context.Context, userIDs []string) (map[string]string, error)
 	CreateUserIfAbsent(ctx context.Context, scope platform.UserScope, input SignUpInput, provider *AuthProvider) (profile Profile, created bool, err error)
 	UpdateUserProfile(ctx context.Context, scope platform.UserScope, input UpdateProfileInput) (profile Profile, found bool, err error)
 	ListAuthProviders(ctx context.Context, scope platform.UserScope) ([]AuthProvider, error)

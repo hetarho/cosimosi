@@ -155,6 +155,14 @@ func (s profileZoneStore) GetUserProfile(context.Context, platform.UserScope) (a
 	return s.profile, true, nil
 }
 
+func (s profileZoneStore) UserTimezones(_ context.Context, userIDs []string) (map[string]string, error) {
+	zones := make(map[string]string, len(userIDs))
+	for _, userID := range userIDs {
+		zones[userID] = s.profile.Timezone
+	}
+	return zones, nil
+}
+
 func (profileZoneStore) CreateUserIfAbsent(context.Context, platform.UserScope, account.SignUpInput, *account.AuthProvider) (account.Profile, bool, error) {
 	return account.Profile{}, false, nil
 }
