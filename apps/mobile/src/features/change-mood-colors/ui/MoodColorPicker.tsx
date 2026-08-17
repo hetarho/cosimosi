@@ -18,6 +18,18 @@ import { m } from '../../../shared/i18n/index.ts'
 const HUE_SWATCHES = 24
 const CHROMA_SWATCHES = 8
 
+// Which chroma swatch reads as the current one. Nearest-index rather than a distance threshold, the
+// same way the hue strip picks its own: the swatches span 0..ceiling in `CHROMA_SWATCHES - 1` steps,
+// so any threshold narrower than half a step leaves a stored colour sitting between two swatches
+// with nothing marked at all. The ceiling moves with hue and lightness while the chroma does not,
+// so a colour landing off the ladder is the ordinary case, not an edge one. A gamut with no room
+// for chroma has only the achromatic swatch to mark.
+function nearestChromaIndex(chroma: number, ceiling: number): number {
+  const step = ceiling / (CHROMA_SWATCHES - 1)
+  if (step <= 0) return 0
+  return Math.min(CHROMA_SWATCHES - 1, Math.max(0, Math.round(chroma / step)))
+}
+
 const LIGHTNESS_LABELS = [
   m.palette_lightness_light,
   m.palette_lightness_mid,
@@ -58,13 +70,12 @@ export function MoodColorPicker({ value, onChange, disabled }: MoodColorPickerPr
       <View style={styles.strip}>
         {Array.from({ length: CHROMA_SWATCHES }, (_, index) => {
           const fraction = index / (CHROMA_SWATCHES - 1)
-          const chroma = ceiling * fraction
           return (
             <Swatch
-              key={chroma}
-              lch={{ ...value, c: chroma }}
+              key={fraction}
+              lch={{ ...value, c: ceiling * fraction }}
               accessibilityLabel={`${m.palette_picker_chroma()} ${Math.round(fraction * 100)}%`}
-              selected={Math.abs(value.c - chroma) < ceiling / (CHROMA_SWATCHES * 2)}
+              selected={nearestChromaIndex(value.c, ceiling) === index}
               disabled={disabled}
               onPress={onChange}
             />

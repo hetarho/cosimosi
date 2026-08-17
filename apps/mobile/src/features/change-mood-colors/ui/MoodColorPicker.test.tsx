@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native'
 
+import { maxChromaInGamut } from '@cosimosi/emotion'
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 
 import { m } from '../../../shared/i18n/index.ts'
@@ -26,6 +27,31 @@ describe('MoodColorPicker (mobile)', () => {
 
     for (const label of labels) expect(view.getByLabelText(label)).toBeTruthy()
     expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  // A stored colour is whatever was saved, not a point on this strip: the strip's ceiling moves with
+  // hue and lightness, so an arbitrary chroma lands between two swatches. Exactly one still has to
+  // read as current, or opening the editor shows a strip with nothing selected at all.
+  it('marks exactly one chroma swatch for any colour the editor can open on', () => {
+    const lightness = 0.72
+    const hue = 15
+    const ceiling = maxChromaInGamut(lightness, hue)
+
+    for (const fraction of [0, 0.07, 0.5, 3 / 14, 0.71, 0.93, 1]) {
+      const view = render(
+        <MoodColorPicker
+          value={{ l: lightness, c: ceiling * fraction, h: hue }}
+          disabled={false}
+          onChange={() => {}}
+        />,
+      )
+      const selected = Array.from({ length: 8 }, (_, index) =>
+        view.getByLabelText(`${m.palette_picker_chroma()} ${Math.round((index / 7) * 100)}%`),
+      ).filter((swatch) => swatch.props.accessibilityState.selected === true)
+
+      expect(selected).toHaveLength(1)
+      view.unmount()
+    }
   })
 
   it('offers an achromatic swatch at the chroma floor', () => {
