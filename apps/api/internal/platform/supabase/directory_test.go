@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -259,4 +260,82 @@ func TestDirectoryBansUnbansAndDeletesUsersThroughAdminAPI(t *testing.T) {
 	if !reflect.DeepEqual(requests, want) {
 		t.Fatalf("requests = %#v, want %#v", requests, want)
 	}
+}
+
+// A prefix search's cost tracks the directory, not the query: nothing matching means nothing stops
+// the walk. The breaker refuses the request rather than answering with a page that omits later
+// matches, and it refuses after a bounded number of provider calls.
+func TestDirectorySearchRefusesToWalkPastItsScanBound(t *testing.T) {
+	t.Parallel()
+	const pageSize = values.AdminUserListPageSize
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		response.Header().Set("content-type", "application/json")
+		_, _ = fmt.Fprint(response, providerPageJSON(request.URL.Query().Get("page"), pageSize, -1))
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, pageSize, "match")
+	if !errors.Is(err, ErrSearchScanTruncated) {
+		t.Fatalf("endless-walk ListUsers err = %v, want ErrSearchScanTruncated", err)
+	}
+	if accounts != nil || hasMore {
+		t.Fatalf("refused search returned %#v, hasMore %v; want no partial page", accounts, hasMore)
+	}
+	// One page past the bound is the lookahead that would have revealed a terminal directory.
+	if want := values.AdminSearchScanMaxAccounts/pageSize + 1; requests != want {
+		t.Fatalf("provider requests = %d, want the bound's %d", requests, want)
+	}
+}
+
+// The bound must not cut off a legitimate needle sitting at the far edge of a directory that ends
+// exactly on it — the same exactly-full-last-page case the unfiltered path peeks past.
+func TestDirectorySearchFindsTheLastAccountOfADirectoryEndingOnTheScanBound(t *testing.T) {
+	t.Parallel()
+	const pageSize = values.AdminUserListPageSize
+	lastPage := values.AdminSearchScanMaxAccounts / pageSize
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		rawPage := request.URL.Query().Get("page")
+		page, err := strconv.Atoi(rawPage)
+		if err != nil {
+			t.Errorf("provider page = %q, want a number", rawPage)
+			http.Error(response, "bad page", http.StatusBadRequest)
+			return
+		}
+		response.Header().Set("content-type", "application/json")
+		switch {
+		case page > lastPage:
+			// Past the end: the empty page is what tells the walk this directory is terminal.
+			_, _ = fmt.Fprint(response, `{"users":[]}`)
+		case page == lastPage:
+			_, _ = fmt.Fprint(response, providerPageJSON(rawPage, pageSize, pageSize-1))
+		default:
+			_, _ = fmt.Fprint(response, providerPageJSON(rawPage, pageSize, -1))
+		}
+	}))
+	t.Cleanup(server.Close)
+	directory, _ := NewDirectory(server.URL, "service-role", server.Client())
+
+	accounts, hasMore, err := directory.ListUsers(context.Background(), 0, pageSize, "match")
+	if err != nil {
+		t.Fatalf("terminal-directory ListUsers: %v", err)
+	}
+	if hasMore || len(accounts) != 1 || accounts[0].UserID != "match-last" {
+		t.Fatalf("ListUsers = %#v, hasMore %v; want the final account and terminal", accounts, hasMore)
+	}
+}
+
+// One full provider page. `matchAt` places the single prefix match, or -1 for a page of misses.
+func providerPageJSON(page string, pageSize int, matchAt int) string {
+	users := make([]string, 0, pageSize)
+	for index := range pageSize {
+		id := fmt.Sprintf("other-%s-%d", page, index)
+		if index == matchAt {
+			id = "match-last"
+		}
+		users = append(users, fmt.Sprintf(`{"id":%q}`, id))
+	}
+	return fmt.Sprintf(`{"users":[%s]}`, strings.Join(users, ","))
 }

@@ -313,8 +313,9 @@ const (
 
 // admin
 const (
-	AdminUserListPageSize = 50
-	AdminSearchDebounceMs = 300
+	AdminUserListPageSize      = 50
+	AdminSearchDebounceMs      = 300
+	AdminSearchScanMaxAccounts = 5000
 )
 
 // force_sim

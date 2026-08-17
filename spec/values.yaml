@@ -649,6 +649,13 @@ admin:
   # Idle time after the last operator keystroke before the account-prefix search is sent. The
   # directory scan can traverse multiple provider pages, so a half-typed query must never start it.
   search_debounce_ms: 300
+  # The circuit breaker on one search's provider scan. GoTrue has no prefix filter, so a searched
+  # page is reconstructed by walking raw provider pages, and a rare prefix walks the whole directory
+  # — work that grows with the account count rather than with the query. This caps how many accounts
+  # one search may walk; passing it refuses the request instead of issuing an unbounded request fan.
+  # Sized well above the live directory, so tripping it is the signal that the local account
+  # projection is now due, not a limit an operator is expected to meet.
+  search_scan_max_accounts: 5000
 
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.

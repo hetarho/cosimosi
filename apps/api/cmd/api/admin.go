@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -103,6 +104,11 @@ type adminAccountDirectory struct {
 func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]admin.DirectoryAccount, bool, error) {
 	accounts, hasMore, err := a.source.ListUsers(ctx, page, pageSize, query)
 	if err != nil {
+		// The provider's scan bound is a platform fact; admin owns how the console reads it. Only
+		// this adapter knows both vocabularies, so the translation lives here.
+		if errors.Is(err, platformsupabase.ErrSearchScanTruncated) {
+			return nil, false, fmt.Errorf("%w: %w", admin.ErrUserSearchTooBroad, err)
+		}
 		return nil, false, err
 	}
 	result := make([]admin.DirectoryAccount, 0, len(accounts))

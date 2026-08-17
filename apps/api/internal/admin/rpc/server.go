@@ -347,6 +347,8 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonProviderKeyMissing, err, nil)
 	case errors.Is(err, admin.ErrModelListingUnavailable):
 		return apperr.Domain(connect.CodeUnavailable, reasonModelListingUnavailable, err, nil)
+	case errors.Is(err, admin.ErrUserSearchTooBroad):
+		return apperr.Domain(connect.CodeResourceExhausted, reasonUserSearchTooBroad, err, nil)
 	case errors.Is(err, secretbox.ErrDisabled):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonSecretboxDisabled, err, nil)
 	default:

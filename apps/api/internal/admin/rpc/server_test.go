@@ -30,6 +30,8 @@ func TestDomainErrorMapsAdminErrors(t *testing.T) {
 		{admin.ErrProviderCapabilityMismatch, connect.CodeInvalidArgument, reasonProviderCapabilityMismatch},
 		{admin.ErrProviderNotImplemented, connect.CodeFailedPrecondition, reasonProviderNotImplemented},
 		{admin.ErrProviderKeyMissing, connect.CodeFailedPrecondition, reasonProviderKeyMissing},
+		{admin.ErrModelListingUnavailable, connect.CodeUnavailable, reasonModelListingUnavailable},
+		{admin.ErrUserSearchTooBroad, connect.CodeResourceExhausted, reasonUserSearchTooBroad},
 		{secretbox.ErrDisabled, connect.CodeFailedPrecondition, reasonSecretboxDisabled},
 	} {
 		got := domainError(testCase.err)

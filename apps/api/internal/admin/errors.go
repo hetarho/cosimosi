@@ -44,4 +44,8 @@ var (
 	// fetched (vendor outage, rejected key, unusable stored key). The listing is advisory —
 	// the console degrades to manual model entry; nothing else is affected.
 	ErrModelListingUnavailable = errors.New("AI provider model listing is unavailable")
+	// ErrUserSearchTooBroad reports that the account directory could not resolve a searched page
+	// within its scan bound. The list is refused rather than shortened: a user list that silently
+	// drops later matches reads as proof an account does not exist.
+	ErrUserSearchTooBroad = errors.New("account directory search exceeded its scan bound")
 )

@@ -20,6 +20,11 @@ import (
 
 var ErrDirectoryUnavailable = errors.New("supabase account directory is unavailable")
 
+// ErrSearchScanTruncated reports that a prefix search would have walked more of the provider
+// directory than values.AdminSearchScanMaxAccounts allows. Returned instead of a partial page: the
+// consumer can say the search could not complete, which a short list cannot.
+var ErrSearchScanTruncated = errors.New("supabase directory prefix search exceeded its scan bound")
+
 // Compatibility fallback for direct platform-package callers. Production composition
 // roots always inject their named deployment timeout explicitly.
 const defaultDirectoryHTTPTimeout = 5 * time.Second
@@ -168,6 +173,13 @@ type supabaseListResponse struct {
 // to earlier search pages, and scans until it has this page plus one lookahead match or reaches the
 // provider's terminal short page. An unfiltered full page also peeks at the next provider page so
 // an exactly-full final page never advertises a phantom continuation.
+//
+// A search's cost therefore tracks the DIRECTORY size, not the query: the rarer the prefix, the
+// further it walks, and a prefix matching nothing walks every account. So the scan is capped at
+// values.AdminSearchScanMaxAccounts and a request that would pass the cap fails with
+// ErrSearchScanTruncated rather than returning a page that silently omits later matches — an admin
+// list quietly missing a user reads as "this account does not exist". Wall-clock is already bounded
+// from the other side: every page honours the caller's context, so a client deadline stops the walk.
 func (s Directory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
 	if page < 0 {
 		page = 0
@@ -200,6 +212,7 @@ func (s Directory) ListUsers(ctx context.Context, page int, pageSize int, query 
 	matchOffset := page * pageSize
 	matches := make([]Account, 0, pageSize+1)
 	seenMatches := 0
+	scanned := 0
 	for providerPage := 1; ; providerPage++ {
 		if err := ctx.Err(); err != nil {
 			return nil, false, err
@@ -222,6 +235,16 @@ func (s Directory) ListUsers(ctx context.Context, page int, pageSize int, query 
 		}
 		if len(users) < pageSize {
 			return matches, false, nil
+		}
+		// Checked after the short-page exit, and on `>` rather than `>=`, so a directory whose last
+		// full page lands exactly on the bound still gets the one page that reveals its end. The
+		// breaker is for a walk that would keep going, not for one that just finished.
+		scanned += len(users)
+		if scanned > values.AdminSearchScanMaxAccounts {
+			return nil, false, fmt.Errorf(
+				"%w: scanned %d accounts for prefix search without resolving page %d",
+				ErrSearchScanTruncated, scanned, page,
+			)
 		}
 	}
 }

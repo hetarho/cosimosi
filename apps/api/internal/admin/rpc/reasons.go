@@ -15,5 +15,6 @@ const (
 	reasonProviderNotImplemented     = "ADMIN_PROVIDER_NOT_IMPLEMENTED"
 	reasonProviderKeyMissing         = "ADMIN_PROVIDER_KEY_MISSING"
 	reasonModelListingUnavailable    = "ADMIN_MODEL_LISTING_UNAVAILABLE"
+	reasonUserSearchTooBroad         = "ADMIN_USER_SEARCH_TOO_BROAD"
 	reasonSecretboxDisabled          = "ADMIN_SECRETBOX_DISABLED"
 )
