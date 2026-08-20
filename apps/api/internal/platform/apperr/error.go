@@ -103,6 +103,34 @@ func WithRequestID(err error, requestID string) error {
 	return rebuilt
 }
 
+// Reported marks an expected domain refusal that the operator must nevertheless see. Masking and
+// telemetry are separate decisions: an unexpected failure is both masked and reported, while a
+// domain failure like "the extractor could not meet the invariants" keeps its own code, reason and
+// copy on the wire AND belongs in the exception feed, because nobody else is watching for it.
+//
+// The mark rides the Go error chain only — never the wire. A client learns nothing about what we
+// monitor, and the outer interceptor consumes the mark before rebuilding the error for transport.
+// The context that raises the error decides; platform only honors the decision, so no reason
+// registry has to be duplicated outside the context that owns it.
+func Reported(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &reportedError{err: err}
+}
+
+// IsReported reports whether Reported marked this error.
+func IsReported(err error) bool {
+	var target *reportedError
+	return errors.As(err, &target)
+}
+
+type reportedError struct{ err error }
+
+func (e *reportedError) Error() string { return e.err.Error() }
+
+func (e *reportedError) Unwrap() error { return e.err }
+
 // Info returns the first ErrorInfo detail, if present.
 func Info(err error) (*platformv1.ErrorInfo, bool) {
 	var connectErr *connect.Error

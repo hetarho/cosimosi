@@ -397,9 +397,19 @@ palette:
   onboarding_field_radius: 18
 
 encode:
-  # Event-boundary split bounds per diary; outside this range the extractor is re-prompted, never clamped.
+  # Event-boundary split bounds per diary — the TARGET the prompt asks for and the range the
+  # extractor is re-prompted toward. Never clamped: an out-of-range result is re-prompted.
   min_memories: 2
   max_memories: 5
+  # The floor the domain actually enforces, below the target. PRD [E2] reads "장면 단위, 보통 2~5개":
+  # a day that held one continuous event is one scene, and the prompt's own event-boundary rule
+  # forbids inventing a second one for it — so a one-memory split is an accepted outcome, not an
+  # error. Only the target is negotiated with the model; this is what Encode and PersistEncoded admit.
+  min_memories_accepted: 1
+  # How many times a below-target count is re-prompted before it is accepted as the writer's day.
+  # One: a single nudge distinguishes a lazy split from a genuinely single-scene diary, and a second
+  # ask of a model that already declined once only burns the repair budget the other invariants need.
+  under_count_nudges: 1
   # Extraction guideline enforced as retry/repair — a placeholder neuron is never injected.
   min_semantic_neurons: 1
   # Repair/revise re-prompts allowed per SplitDiary/ReviseSplit call after the initial extraction:

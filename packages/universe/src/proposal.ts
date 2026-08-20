@@ -76,9 +76,10 @@ export function mergeMemory(
   memories: readonly ProposedMemoryDraft[],
   index: number,
 ): ProposedMemoryDraft[] {
-  // Never fall below the encode minimum — the same 2–5 bound the UI gate enforces, clamped here as
-  // defense in depth so no caller can drive the proposal out of range ([E2]).
-  if (memories.length <= VALUES.encode.minMemories) return memories.slice()
+  // Never fall below what a launch accepts — the same floor the UI gate enforces, clamped here as
+  // defense in depth so no caller can drive the proposal out of range ([E2]). The floor is the
+  // accepted one, not the 2–5 target: a single-scene split is a legitimate day.
+  if (memories.length <= VALUES.encode.minMemoriesAccepted) return memories.slice()
   const first = memories[index]
   const second = memories[index + 1]
   if (!first || !second) return memories.slice()

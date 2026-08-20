@@ -34,5 +34,6 @@ const (
 	reasonSyncConsentRequired        = "MEMORY_SYNC_CONSENT_REQUIRED"
 	reasonInsufficientTwinkle        = "MEMORY_INSUFFICIENT_TWINKLE"
 	reasonEncodeRetryExhausted       = "MEMORY_ENCODE_RETRY_EXHAUSTED"
+	reasonAiCallCapReached           = "MEMORY_AI_CALL_CAP_REACHED"
 	reasonScopeRequired              = "MEMORY_SCOPE_REQUIRED"
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -16,8 +17,9 @@ var (
 	// ErrEncodeInputRequired is the canonical invalid-input error for the encode
 	// previews (empty body, missing date, missing instruction/previous on revise).
 	ErrEncodeInputRequired = errors.New("memory encode requires a body and a diary date")
-	// ErrEncodeRetryExhausted is the canonical cap error [W4a]: the repair budget
-	// (encode.max_revise_retries) ran out before the extractor met the invariants.
+	// ErrEncodeRetryExhausted is the canonical give-up error [W4a]: the repair budget
+	// (encode.max_revise_retries) ran out before the extractor met the invariants. It is a
+	// failure of the sample, not of any allowance — see EncodeRetryExhausted for the kind.
 	ErrEncodeRetryExhausted = errors.New("memory encode retry budget exhausted")
 	// ErrEncodeInvalidSplit marks a structurally broken extractor result (unknown
 	// mood/type, blank name). Unlike a repairable violation this is an adapter
@@ -33,6 +35,58 @@ var (
 	// ErrScopeRequired guards every use-case entry point (§4 per-user isolation).
 	ErrScopeRequired = errors.New("memory use-case requires an authenticated user scope")
 )
+
+// ViolationKind names WHICH encode invariant a sample missed. It is a closed set because it is the
+// only half of a violation allowed to leave the process: the instruction beside it is written for
+// the model and quotes the proposed memory name and a passage token, which the error contract
+// forbids sending to a client or a reporter (policy/platform/errors.md §1). The kind plus a count
+// is enough to tell an operator which rule gave up without ever handling the writer's words.
+type ViolationKind string
+
+const (
+	ViolationCountUnder            ViolationKind = "count_under"
+	ViolationCountOver             ViolationKind = "count_over"
+	ViolationSemanticNeuronMissing ViolationKind = "semantic_neuron_missing"
+	ViolationSourceTextNovelToken  ViolationKind = "source_text_novel_token"
+	ViolationSourceTextReworded    ViolationKind = "source_text_reworded"
+	ViolationSourceTextCoverage    ViolationKind = "source_text_coverage"
+	ViolationOutputTooLarge        ViolationKind = "output_too_large"
+)
+
+// Violation is one repairable miss: the reportable kind, the re-prompt instruction that may only be
+// shown to the model, and — for the count kinds — how many memories the extractor actually returned.
+type Violation struct {
+	Kind        ViolationKind
+	Instruction string
+	MemoryCount int
+}
+
+// EncodeRetryExhausted is the give-up carrying the kind that defeated the loop, mirroring
+// twinkle's InsufficientTwinkle: it wraps the canonical sentinel so every
+// errors.Is(err, ErrEncodeRetryExhausted) site keeps working, and its Detail is the one channel
+// through which the failure reaches a client — content-free by construction.
+type EncodeRetryExhausted struct {
+	Kind        ViolationKind
+	MemoryCount int
+}
+
+func (e *EncodeRetryExhausted) Error() string {
+	if e.MemoryCount > 0 {
+		return fmt.Sprintf("%s: %s (memories=%d)", ErrEncodeRetryExhausted.Error(), e.Kind, e.MemoryCount)
+	}
+	return fmt.Sprintf("%s: %s", ErrEncodeRetryExhausted.Error(), e.Kind)
+}
+
+func (e *EncodeRetryExhausted) Unwrap() error { return ErrEncodeRetryExhausted }
+
+// Detail is the give-up as the apperr metadata channel carries it: non-content discriminators only.
+func (e *EncodeRetryExhausted) Detail() map[string]string {
+	detail := map[string]string{"violation_kind": string(e.Kind)}
+	if e.MemoryCount > 0 {
+		detail["memories"] = strconv.Itoa(e.MemoryCount)
+	}
+	return detail
+}
 
 // Encode produces the proposed split behind SplitDiary [W2]: assemble the per-user
 // dedup-candidate set, call the schema-forced extractor, and enforce the domain
@@ -120,27 +174,53 @@ func (s *Service) dedupCandidates(ctx context.Context, scope platform.UserScope,
 	return merged, nil
 }
 
-// repairUntilValid enforces the encode invariants on an extractor result. A
-// repairable violation (count out of range [E2], missing semantic neuron [E4],
-// output over budget) re-prompts through the revise variant — never a silent
-// clamp, never a placeholder neuron — bounded by encode.max_revise_retries.
+// repairUntilValid enforces the encode invariants on an extractor result. A repairable violation
+// (count over the target [E2], missing semantic neuron [E4], passages that are not the writer's
+// words, output over budget) re-prompts through the revise variant — never a silent clamp, never a
+// placeholder neuron — bounded by encode.max_revise_retries.
+//
+// A count BELOW the target is the one soft violation: the target is 2–5 scenes ([E2] reads "보통
+// 2~5개"), but a day that held one continuous event is one scene, and rule 1 of the prompt forbids
+// splitting it further. So an under-count is nudged encode.under_count_nudges times and then
+// accepted as the writer's day. Acceptance covers the count alone — every other invariant still has
+// to hold on the accepted result, with the WHOLE repair budget to get there: the nudge has its own
+// counter, so a single-scene diary is not left fewer attempts than a two-scene one.
 func (s *Service) repairUntilValid(ctx context.Context, body string, result ExtractResult) (ExtractResult, error) {
-	for attempt := 0; ; attempt++ {
+	attempt, nudges, countUnderAccepted := 0, 0, false
+	for {
 		if err := validateSplitStructure(result); err != nil {
 			return ExtractResult{}, err
 		}
-		violation := repairableViolation(body, result)
-		if violation == "" {
+		violation, ok := repairableViolation(body, result, countUnderAccepted)
+		if !ok {
 			return result, nil
 		}
-		if attempt >= values.EncodeMaxReviseRetries {
-			return ExtractResult{}, fmt.Errorf("%w: %s", ErrEncodeRetryExhausted, violation)
+		// The nudge draws on its own budget, not the repair budget. Sharing one counter would leave a
+		// single-scene diary fewer attempts to fix a passage than a two-scene one — the same
+		// punishment for a legitimate day that this whole rule exists to remove. A count below the
+		// accepted floor is not a nudge at all: there is no split to show, so it repairs like any
+		// hard violation and can never spend the nudge budget in a loop.
+		softNudge := violation.Kind == ViolationCountUnder &&
+			violation.MemoryCount >= values.EncodeMinMemoriesAccepted
+		if softNudge && nudges >= values.EncodeUnderCountNudges {
+			// The extractor was asked and stood by its reading. Suppressing the check (rather than
+			// returning here) is what keeps the other invariants enforced on the accepted split.
+			countUnderAccepted = true
+			continue
 		}
-		next, err := s.extractor.ReviseSplit(ctx, body, result, violation)
+		if !softNudge && attempt >= values.EncodeMaxReviseRetries {
+			return ExtractResult{}, &EncodeRetryExhausted{Kind: violation.Kind, MemoryCount: violation.MemoryCount}
+		}
+		next, err := s.extractor.ReviseSplit(ctx, body, result, violation.Instruction)
 		if err != nil {
 			return ExtractResult{}, err
 		}
 		result = next
+		if softNudge {
+			nudges++
+		} else {
+			attempt++
+		}
 	}
 }
 
@@ -171,35 +251,61 @@ func validateSplitStructure(result ExtractResult) error {
 	return nil
 }
 
-// repairableViolation returns the re-prompt instruction for the first invariant
-// the result misses, or "" when the result is acceptable.
-func repairableViolation(body string, result ExtractResult) string {
-	if !memoryCountInRange(len(result.Memories)) {
-		return fmt.Sprintf(
-			"Return between %d and %d memories, split on event boundaries (place, person, activity, or topic shifts) — never on emotion shifts.",
-			values.EncodeMinMemories,
-			values.EncodeMaxMemories,
-		)
+// repairableViolation returns the first invariant the result misses, or ok=false when the result is
+// acceptable. countUnderAccepted suppresses the below-target count check — once the extractor has
+// declined the nudge, the count is the writer's day and only the other invariants are worth
+// repairing. A count below encode.min_memories_accepted is reported either way: below the floor
+// there is no split to show the writer at all.
+func repairableViolation(body string, result ExtractResult, countUnderAccepted bool) (Violation, bool) {
+	count := len(result.Memories)
+	switch {
+	case count > values.EncodeMaxMemories:
+		return Violation{Kind: ViolationCountOver, MemoryCount: count, Instruction: fmt.Sprintf(
+			"You returned %d memories; return at most %d. Merge the ones that belong to a single event (same place, "+
+				"people, activity and topic) into one memory, keeping their passages consecutive — never split on an "+
+				"emotion shift.",
+			count, values.EncodeMaxMemories,
+		)}, true
+	case count < values.EncodeMinMemoriesAccepted || (count < values.EncodeMinMemories && !countUnderAccepted):
+		return Violation{Kind: ViolationCountUnder, MemoryCount: count, Instruction: fmt.Sprintf(
+			"You returned %d memories, fewer than the usual %d to %d. Look again for an event boundary you passed "+
+				"over — a change of place, people, activity or topic. If the diary truly describes one continuous "+
+				"event, keep it as one memory: never split on an emotion shift to reach a number.",
+			count, values.EncodeMinMemories, values.EncodeMaxMemories,
+		)}, true
 	}
 	for _, proposed := range result.Memories {
 		if !hasRequiredSemanticNeurons(proposed) {
-			return fmt.Sprintf(
+			return Violation{Kind: ViolationSemanticNeuronMissing, Instruction: fmt.Sprintf(
 				"Every memory must carry at least %d semantic neuron(s) extracted from the diary itself — do not invent filler concepts.",
 				values.EncodeMinSemanticNeurons,
-			)
+			)}, true
 		}
 	}
-	if violation := SourceTextViolation(body, result.Memories); violation != "" {
-		return violation
+	if violation, ok := SourceTextViolation(body, result.Memories); ok {
+		return violation, true
 	}
 	// Last, and only for what the model can still fix: the passages are already pinned to the
 	// diary (bodyWithinOutputBudget cleared it before the call), so any remaining excess is the
 	// names and neurons around them. Asking for a smaller result would otherwise be asking the
 	// model to break the coverage rule it was just held to.
 	if estimateOutputTokens(result) > values.EncodeMaxOutputTokens {
-		return "The result is too large. Use shorter memory names and keep only the essential neurons."
+		return Violation{Kind: ViolationOutputTooLarge, Instruction: "The result is too large. Use shorter memory names and keep only the essential neurons."}, true
 	}
-	return ""
+	return Violation{}, false
+}
+
+// SplitNeedsRepair reports whether a fresh extractor sample still misses an invariant the repair
+// loop would re-prompt for. It is how the extractor adapter asks the domain whether a sample is
+// worth keeping: one on its way back into the repair loop must not be replayed to the next
+// identical call from a cache. The rule stays here — the adapter asks, it never re-implements it.
+//
+// A below-target count answers yes even though the loop may end up accepting it: the acceptance is a
+// decision about one call's outcome, not about the sample, and the next press deserves a fresh draw
+// rather than the reading the model was already nudged on.
+func SplitNeedsRepair(body string, result ExtractResult) bool {
+	_, needsRepair := repairableViolation(body, result, false)
+	return needsRepair
 }
 
 // bodyWithinOutputBudget refuses a diary whose passages alone cannot fit encode.max_output_tokens.
@@ -217,11 +323,15 @@ func bodyWithinOutputBudget(body string) error {
 	return nil
 }
 
-// memoryCountInRange and hasRequiredSemanticNeurons are the single owners of the
-// [E2]/[E4] predicates — the preview repair loop and the launch validator must
-// enforce the same rule, never two drifting copies.
-func memoryCountInRange(count int) bool {
-	return count >= values.EncodeMinMemories && count <= values.EncodeMaxMemories
+// memoryCountAccepted and hasRequiredSemanticNeurons are the single owners of the [E2]/[E4]
+// predicates — the preview repair loop and the launch validator must enforce the same rule, never
+// two drifting copies.
+//
+// Accepted is not the same as on target: 2–5 ([E2]'s "보통 2~5개") is what the prompt asks for and
+// what the loop nudges toward, while this is what the product admits — one scene for a day that
+// held one. A launch may only refuse what the preview could never have produced.
+func memoryCountAccepted(count int) bool {
+	return count >= values.EncodeMinMemoriesAccepted && count <= values.EncodeMaxMemories
 }
 
 func hasRequiredSemanticNeurons(proposed ExtractedMemory) bool {

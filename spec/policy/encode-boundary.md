@@ -20,10 +20,24 @@ owned by the extractor adapter's prompt.
 
 - Any new field added to the encode schema must be justified against this rule; fields that could carry position,
   color, strength, seed, time, or deletion semantics are rejected by design review, not by validation code.
-- Invariant enforcement on the returned structure (count range [E2], ≥1 semantic neuron [E4], typed neurons [E3])
+- Invariant enforcement on the returned structure (count [E2], ≥1 semantic neuron [E4], typed neurons [E3])
   lives in the use-case as **retry/repair** — never a silent clamp and never an injected placeholder neuron. The
   repair budget is `encode.max_revise_retries`; the output budget is `encode.max_output_tokens`; exhausting either
   returns a canonical error.
+- The count has a **target** and a **floor**, and they are not the same rule. `encode.min_memories` …
+  `encode.max_memories` (2–5) is what the prompt asks for and what a re-prompt moves toward; the floor the domain
+  admits is `encode.min_memories_accepted`. Above the target the model is told to merge adjacent scenes, which a
+  re-prompt can achieve. Below it the model is nudged `encode.under_count_nudges` times and then believed: [E2]
+  reads "보통 2~5개", and rule 1 of the prompt forbids splitting one continuous event, so demanding a second scene
+  from a single-scene diary asks for a rule violation and can only end in a refusal. Accepting the count accepts
+  nothing else — fidelity, coverage, semantic neurons and the output budget still hold on the accepted split, and
+  `PersistEncoded` admits the same floor so a launch can never refuse what the preview just returned.
+- The canonical error names the invariant, not the words. Every violation carries a closed `ViolationKind`
+  alongside the instruction; the give-up carries the kind and the observed count, the instruction stays inside the
+  loop (see `policy/platform/errors.md` §1).
+- A sample that still misses an invariant is handed back to the loop and **never cached**: the metering seam's
+  identical-input cache would otherwise replay it to every later identical call, so a second press on the same
+  diary could never differ from the first. The judgement is the domain's; the extractor adapter only asks it.
 
 ## Rule 1a — The one prose field is verified against the diary, not trusted ([W4a])
 

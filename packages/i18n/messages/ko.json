@@ -427,6 +427,8 @@
   "error_twinkle_insufficient": "이 작업에 필요한 별가루가 부족해요.",
   "error_store_insufficient": "별가루가 모자라 아무것도 저장하지 않았어요.",
   "error_memory_sync_consent_required": "계속하기 전에 기억 동기화 내용을 확인하고 동의해 주세요.",
+  "error_memory_encode_retry_exhausted": "일기를 별로 나누지 못했어요. 다시 시도하면 달라질 수 있어요.",
+  "error_memory_ai_call_cap_reached": "오늘 쓸 수 있는 몫을 다 썼어요. 하루가 지나면 다시 쓸 수 있어요.",
   "error_memory_operation_conflict": "이미 처리 중인 작업이에요. 잠시 뒤 다시 시도해요.",
   "error_memory_target_not_found": "해당 기억을 찾지 못했어요.",
   "error_memory_target_unavailable": "지금은 해당 기억에 이 작업을 할 수 없어요.",

@@ -279,7 +279,10 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		{memory.ErrRestoreWindowExpired, connect.CodeFailedPrecondition, reasonRestoreWindowExpired},
 		{memory.ErrSyncConsentRequired, connect.CodeFailedPrecondition, reasonSyncConsentRequired},
 		{memory.ErrInsufficientTwinkle, connect.CodeResourceExhausted, reasonInsufficientTwinkle},
-		{memory.ErrEncodeRetryExhausted, connect.CodeResourceExhausted, reasonEncodeRetryExhausted},
+		// Unavailable, not ResourceExhausted: no allowance was reached, and a fresh sample may work.
+		{memory.ErrEncodeRetryExhausted, connect.CodeUnavailable, reasonEncodeRetryExhausted},
+		// The one real allowance refusal on an AI path.
+		{memory.ErrAiCallCapReached, connect.CodeResourceExhausted, reasonAiCallCapReached},
 		{memory.ErrEncodeInvalidSplit, connect.CodeInternal, apperr.ReasonInternal},
 		{memory.ErrConsolidateTxRequired, connect.CodeInternal, apperr.ReasonInternal},
 		{memory.ErrScopeRequired, connect.CodeUnauthenticated, reasonScopeRequired},
@@ -292,6 +295,21 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		if gotReason := errorReason(t, got); gotReason != c.wantReason {
 			t.Fatalf("domainError(%v) reason = %q, want %q", c.err, gotReason, c.wantReason)
 		}
+	}
+
+	// The give-up is the one refusal this context asks telemetry to see, and the only thing it may
+	// carry is the discriminator: its instruction quotes the writer's passage.
+	giveUp := domainError(&memory.EncodeRetryExhausted{Kind: memory.ViolationCountOver, MemoryCount: 7})
+	if !apperr.IsReported(giveUp) {
+		t.Fatal("MEMORY_ENCODE_RETRY_EXHAUSTED must be reported — nothing else watches for it")
+	}
+	info, ok := apperr.Info(giveUp)
+	if !ok {
+		t.Fatal("give-up carries no ErrorInfo")
+	}
+	if info.GetMetadata()["violation_kind"] != string(memory.ViolationCountOver) ||
+		info.GetMetadata()["memories"] != "7" {
+		t.Fatalf("give-up metadata = %v, want the kind and the observed count", info.GetMetadata())
 	}
 
 	other := errors.New("boom")

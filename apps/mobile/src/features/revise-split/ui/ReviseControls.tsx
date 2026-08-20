@@ -47,7 +47,9 @@ export function ReviseControls({
   busy,
 }: ReviseControlsProps) {
   const [instruction, setInstruction] = useState('')
-  const canMerge = memories.length > VALUES.encode.minMemories
+  // The floor is what a launch accepts, not the 2–5 target — offering less than the server would
+  // take, or more, puts the button and the launch out of step.
+  const canMerge = memories.length > VALUES.encode.minMemoriesAccepted
   const canSplit = memories.length < VALUES.encode.maxMemories
 
   return (

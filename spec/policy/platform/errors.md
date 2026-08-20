@@ -12,6 +12,15 @@ also carries exactly one `cosimosi.platform.v1.ErrorInfo` with a stable
 `<CONTEXT>_<ERROR>` reason, lowercase domain, safe structured metadata, and the
 server-authoritative request id.
 
+**Masking and reporting are separate decisions.** An unexpected failure is both
+masked and reported; a domain refusal is neither by default. A context may mark one
+as **reported** (`apperr.Reported`) when the operator is the only one who can act on
+it and nothing else watches for it — the refusal keeps its own code, reason, metadata
+and copy on the wire and is additionally captured, grouped by reason, with
+content-free attributes. The mark rides the Go error chain only: a client learns
+nothing about what we monitor, and the context that owns the reason owns the
+decision, so platform never holds a list of another context's reasons.
+
 An unexpected failure is always rebuilt at the outer API boundary as:
 
 - Connect `Internal`;
@@ -23,7 +32,14 @@ An unexpected failure is always rebuilt at the outer API boundary as:
 The original cause stays server-side for logs and the unexpected-error reporter.
 Production must never send raw error text, SQL, stack traces, secrets, diary or
 memory content, generated content, tokens, or credentials. Metadata is limited to
-non-content discriminators needed for safe recovery. The only diagnostic exception
+non-content discriminators needed for safe recovery.
+
+This binds a **domain refusal's own message** too, not just the masked class. A domain
+error whose text is assembled from model output or the writer's words cannot be sent,
+so a refusal that needs to say _which_ rule it hit carries a closed discriminator —
+`MEMORY_ENCODE_RETRY_EXHAUSTED` carries `violation_kind` (and the observed memory
+count) in metadata, while the re-prompt instruction that quotes the passage and the
+proposed name never leaves the process, on the wire, in a log line, or in telemetry. The only diagnostic exception
 is the exact runtime setting `COSIMOSI_ERROR_DETAIL=verbose`, which copies the raw
 cause into `debug_detail` only. Empty, misspelled, and unknown values fail closed.
 It is **hard-gated off in production**: when the deployment signal
@@ -72,7 +88,8 @@ behavior. `fallback` means localized copy comes from the coarse Connect code.
 | `MEMORY_RESTORE_WINDOW_EXPIRED`                                                                                                          | memory      | FailedPrecondition         | reason copy                       |
 | `MEMORY_SYNC_CONSENT_REQUIRED`                                                                                                           | memory      | FailedPrecondition         | consent recovery + reason copy    |
 | `MEMORY_INSUFFICIENT_TWINKLE`                                                                                                            | memory      | ResourceExhausted          | earn recovery + stardust copy     |
-| `MEMORY_ENCODE_RETRY_EXHAUSTED`                                                                                                          | memory      | ResourceExhausted          | fallback                          |
+| `MEMORY_ENCODE_RETRY_EXHAUSTED`                                                                                                          | memory      | Unavailable                | reason copy + reported            |
+| `MEMORY_AI_CALL_CAP_REACHED`                                                                                                             | memory      | ResourceExhausted          | reason copy                       |
 | `MEMORY_SCOPE_REQUIRED`                                                                                                                  | memory      | Unauthenticated            | fallback                          |
 | `TWINKLE_INVITE_INPUT_REQUIRED`, `TWINKLE_QUOTE_INPUT_REQUIRED`, `TWINKLE_LEDGER_CURSOR_INVALID`                                         | twinkle     | InvalidArgument            | fallback                          |
 | `TWINKLE_QUOTE_TARGET_NOT_FOUND`                                                                                                         | twinkle     | NotFound                   | fallback                          |

@@ -34,7 +34,7 @@ func (e *RealEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, 
 		Validate: func(vectors [][]float32) error { return validateVectors(vectors, want) },
 	})
 	if err != nil {
-		return nil, err
+		return nil, portError(err)
 	}
 	if err := validateVectors(resp.Vectors, len(texts)); err != nil {
 		return nil, err

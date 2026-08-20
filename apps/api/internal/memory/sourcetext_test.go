@@ -42,8 +42,8 @@ func TestSourceTextAcceptsTheWritersOwnWords(t *testing.T) {
 	for name, texts := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if violation := SourceTextViolation(fidelityDiary, passages(texts...)); violation != "" {
-				t.Errorf("rejected the writer's own words: %s", violation)
+			if violation, ok := SourceTextViolation(fidelityDiary, passages(texts...)); ok {
+				t.Errorf("rejected the writer's own words: %s", violation.Instruction)
 			}
 		})
 	}
@@ -75,12 +75,15 @@ func TestSourceTextRejectsWordsTheWriterDidNotUse(t *testing.T) {
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			violation := SourceTextViolation(fidelityDiary, passages(testCase.texts...))
-			if violation == "" {
+			violation, ok := SourceTextViolation(fidelityDiary, passages(testCase.texts...))
+			if !ok {
 				t.Fatal("accepted a passage the writer did not write")
 			}
-			if !strings.Contains(violation, testCase.wants) {
-				t.Errorf("violation = %q, want it to name %q", violation, testCase.wants)
+			if violation.Kind != ViolationSourceTextNovelToken {
+				t.Errorf("kind = %q, want %q", violation.Kind, ViolationSourceTextNovelToken)
+			}
+			if !strings.Contains(violation.Instruction, testCase.wants) {
+				t.Errorf("violation = %q, want it to name %q", violation.Instruction, testCase.wants)
 			}
 		})
 	}
@@ -93,8 +96,12 @@ func TestSourceTextRejectsWholesaleRewordingWithinTheRepairShape(t *testing.T) {
 	body := "아침 공기 매우 차갑다 그리고 하늘 맑다 오늘 기분 좋다 정말 상쾌한 시작이다"
 	reworded := "아침 공기가 매우 차갑고 그리고 하늘이 맑고 오늘 기분이 좋고 정말 상쾌한 시작이고"
 
-	if violation := SourceTextViolation(body, passages(reworded)); violation == "" {
+	violation, ok := SourceTextViolation(body, passages(reworded))
+	if !ok {
 		t.Fatal("accepted a passage where every clause was reworded")
+	}
+	if violation.Kind != ViolationSourceTextReworded {
+		t.Errorf("kind = %q, want %q", violation.Kind, ViolationSourceTextReworded)
 	}
 }
 
@@ -102,14 +109,17 @@ func TestSourceTextRejectsADroppedScene(t *testing.T) {
 	t.Parallel()
 	// The lunch scene never made it into any passage — the split sampled the diary instead of
 	// partitioning it, and the writer's afternoon would vanish at launch.
-	violation := SourceTextViolation(fidelityDiary, passages(
+	violation, ok := SourceTextViolation(fidelityDiary, passages(
 		"출근길 지하철에 발을 디뎠고 시원한 에어컨 바람에 살 것 같았다.",
 	))
-	if violation == "" {
+	if !ok {
 		t.Fatal("accepted a split that dropped half the diary")
 	}
-	if !strings.Contains(violation, "cover") {
-		t.Errorf("violation = %q, want the coverage instruction", violation)
+	if violation.Kind != ViolationSourceTextCoverage {
+		t.Errorf("kind = %q, want %q", violation.Kind, ViolationSourceTextCoverage)
+	}
+	if !strings.Contains(violation.Instruction, "cover") {
+		t.Errorf("violation = %q, want the coverage instruction", violation.Instruction)
 	}
 }
 
@@ -119,7 +129,7 @@ func TestSourceTextCoverageCountsOccurrences(t *testing.T) {
 	t.Parallel()
 	first := "출근길 지하철에 발을 디뎠고 시원한 에어컨 바람에 살 것 같았다."
 
-	if violation := SourceTextViolation(fidelityDiary, passages(first, first)); violation == "" {
+	if _, ok := SourceTextViolation(fidelityDiary, passages(first, first)); !ok {
 		t.Fatal("a passage repeated twice covered a diary it only half quotes")
 	}
 }
@@ -130,8 +140,8 @@ func TestSourceTextRepairBudgetHasAFloorForShortPassages(t *testing.T) {
 	t.Parallel()
 	body := "비가 왔고 우산을 폈다"
 
-	if violation := SourceTextViolation(body, passages("비가 왔다", "우산을 폈다")); violation != "" {
-		t.Errorf("a short passage could not afford its cut-edge repair: %s", violation)
+	if violation, ok := SourceTextViolation(body, passages("비가 왔다", "우산을 폈다")); ok {
+		t.Errorf("a short passage could not afford its cut-edge repair: %s", violation.Instruction)
 	}
 }
 
@@ -139,8 +149,8 @@ func TestSourceTextIgnoresPunctuationAndSpacingDifferences(t *testing.T) {
 	t.Parallel()
 	body := "비가 왔다. 우산을 폈다!"
 
-	if violation := SourceTextViolation(body, passages("비가 왔다", "우산을, 폈다...")); violation != "" {
-		t.Errorf("punctuation counted as a word change: %s", violation)
+	if violation, ok := SourceTextViolation(body, passages("비가 왔다", "우산을, 폈다...")); ok {
+		t.Errorf("punctuation counted as a word change: %s", violation.Instruction)
 	}
 }
 

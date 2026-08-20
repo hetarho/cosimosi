@@ -47,6 +47,13 @@ function reasonMessage(reason: string): string | undefined {
     // row to point at.
     case ERROR_REASONS.storeInsufficientTwinkle:
       return m.error_store_insufficient()
+    // The split not coming together is not an allowance being spent: the coarse resource-exhausted
+    // line said "한도", which sent the writer looking for a limit that was never reached.
+    case ERROR_REASONS.memoryEncodeRetryExhausted:
+      return m.error_memory_encode_retry_exhausted()
+    // The one refusal that IS an allowance. The window is UTC, so the copy promises no local time.
+    case ERROR_REASONS.memoryAiCallCapReached:
+      return m.error_memory_ai_call_cap_reached()
     case ERROR_REASONS.memorySyncConsentRequired:
       return m.error_memory_sync_consent_required()
     case ERROR_REASONS.memoryOperationConflict:

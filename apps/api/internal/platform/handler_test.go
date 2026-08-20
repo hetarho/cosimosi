@@ -355,6 +355,54 @@ func TestStructuredInternalErrorsAreStableAndReported(t *testing.T) {
 // (not by asserting a source substring). An unmapped raw error must reach the wire as Connect
 // Internal + reason INTERNAL + the masked message + empty metadata + a server request id, with
 // no raw cause leaked.
+// A domain refusal a context marks as reported reaches telemetry WITHOUT being masked: masking and
+// reporting are separate decisions, and the failure nobody else watches for is exactly the one that
+// must stay diagnosable while still telling the writer something true.
+func TestReportedDomainErrorsAreReportedWithoutBeingMasked(t *testing.T) {
+	t.Setenv(apperr.EnvErrorDetail, "")
+
+	reporter := observability.NewInMemoryReporter()
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPlatformService(reportedDomainErrorPlatformService{}),
+		WithObservabilityReporter(reporter),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	_, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{}))
+	if err == nil {
+		t.Fatal("Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeUnavailable {
+		t.Fatalf("code = %s, want unavailable — a reported refusal is not masked to internal", got)
+	}
+	info := requireWireErrorInfo(t, err)
+	if info.GetReason() != "MEMORY_ENCODE_RETRY_EXHAUSTED" || info.GetDomain() != "memory" || info.GetRequestId() == "" {
+		t.Fatalf("wire ErrorInfo = %#v", info)
+	}
+	if got := info.GetMetadata()["violation_kind"]; got != "source_text_novel_token" {
+		t.Fatalf("metadata violation_kind = %q, want the discriminator to survive to the client", got)
+	}
+	events := reporter.Events()
+	if len(events) != 1 {
+		t.Fatalf("reported events = %d, want 1", len(events))
+	}
+	if got := events[0].Attributes["reason"]; got != "MEMORY_ENCODE_RETRY_EXHAUSTED" {
+		t.Fatalf("reported reason = %q", got)
+	}
+	if got := events[0].Attributes["detail_violation_kind"]; got != "source_text_novel_token" {
+		t.Fatalf("reported violation kind = %q, want the refusal's own discriminator", got)
+	}
+	if got := events[0].Attributes["request_id"]; got == "" || got != info.GetRequestId() {
+		t.Fatalf("reported request id = %q, wire request id = %q", got, info.GetRequestId())
+	}
+	// The message can quote the writer's passage, so the event groups by reason and carries no text.
+	if events[0].Error != "reported domain failure: MEMORY_ENCODE_RETRY_EXHAUSTED" {
+		t.Fatalf("reported event = %q, want a stable reason-grouped title with no message", events[0].Error)
+	}
+}
+
 func TestUnmappedCauseBecomesMaskedInternalOnTheWire(t *testing.T) {
 	t.Setenv(apperr.EnvErrorDetail, "")
 	t.Setenv(apperr.EnvDeployEnvironment, "")
@@ -599,6 +647,19 @@ type panicPlatformService struct{}
 
 func (panicPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
 	panic("boom")
+}
+
+type reportedDomainErrorPlatformService struct{}
+
+func (reportedDomainErrorPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
+	// An expected refusal a context asked to be reported: it keeps its own code, reason and
+	// metadata on the wire, and still belongs in the exception feed.
+	return nil, apperr.Reported(apperr.Domain(
+		connect.CodeUnavailable,
+		"MEMORY_ENCODE_RETRY_EXHAUSTED",
+		errors.New("memory encode retry budget exhausted: source_text_novel_token"),
+		map[string]string{"violation_kind": "source_text_novel_token"},
+	))
 }
 
 type internalErrorPlatformService struct{}

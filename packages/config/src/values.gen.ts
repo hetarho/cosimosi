@@ -127,6 +127,8 @@ export const VALUES = {
   encode: {
     minMemories: 2,
     maxMemories: 5,
+    minMemoriesAccepted: 1,
+    underCountNudges: 1,
     minSemanticNeurons: 1,
     maxReviseRetries: 3,
     maxOutputTokens: 6000,

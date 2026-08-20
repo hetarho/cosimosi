@@ -447,7 +447,23 @@ func domainError(err error) error {
 	case errors.Is(err, memory.ErrInsufficientTwinkle):
 		return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficientTwinkle, err, nil)
 	case errors.Is(err, memory.ErrEncodeRetryExhausted):
-		return apperr.Domain(connect.CodeResourceExhausted, reasonEncodeRetryExhausted, err, nil)
+		// Unavailable, not ResourceExhausted: nothing was spent and no allowance was reached — the
+		// extractor could not meet the extraction rules on this diary, and a fresh sample may. The
+		// give-up carries WHICH invariant defeated it, and only that: the re-prompt instruction
+		// quotes the writer's passage and the proposed name, which never leave the process.
+		//
+		// It is also the one domain refusal this context asks to be reported: a model that keeps
+		// missing an invariant is an operator problem the writer cannot solve, and no other
+		// telemetry watches for it.
+		var exhausted *memory.EncodeRetryExhausted
+		if errors.As(err, &exhausted) {
+			return apperr.Reported(apperr.Domain(connect.CodeUnavailable, reasonEncodeRetryExhausted, err, exhausted.Detail()))
+		}
+		return apperr.Reported(apperr.Domain(connect.CodeUnavailable, reasonEncodeRetryExhausted, err, nil))
+	case errors.Is(err, memory.ErrAiCallCapReached):
+		// The one genuine allowance refusal on an AI path — today's per-user call cap. The window is
+		// UTC, so the copy may not promise a local reset time.
+		return apperr.Domain(connect.CodeResourceExhausted, reasonAiCallCapReached, err, nil)
 	case errors.Is(err, memory.ErrEncodeInvalidSplit):
 		// An extractor adapter emitting an out-of-schema shape is a server-side
 		// contract breach, not a client mistake.

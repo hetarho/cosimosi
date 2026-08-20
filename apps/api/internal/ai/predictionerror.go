@@ -37,7 +37,7 @@ func (a *RealPredictionError) Differs(ctx context.Context, currentText string, r
 		Validate:     func(body []byte) error { _, err := parsePredictionError(body); return err },
 	})
 	if err != nil {
-		return false, err
+		return false, portError(err)
 	}
 	return parsePredictionError(resp.JSON)
 }

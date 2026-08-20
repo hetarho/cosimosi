@@ -427,6 +427,8 @@
   "error_twinkle_insufficient": "You don't have enough stardust for that.",
   "error_store_insufficient": "Not enough stardust — nothing was saved.",
   "error_memory_sync_consent_required": "Review and accept memory sync before continuing.",
+  "error_memory_encode_retry_exhausted": "We could not split this diary into stars. Trying again may land differently.",
+  "error_memory_ai_call_cap_reached": "You have used up today's allowance. It comes back after a day.",
   "error_memory_operation_conflict": "That action is already being processed. Try again in a moment.",
   "error_memory_target_not_found": "That memory could not be found.",
   "error_memory_target_unavailable": "That memory is not available for this action.",

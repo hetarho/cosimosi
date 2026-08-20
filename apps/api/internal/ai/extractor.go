@@ -30,23 +30,34 @@ func NewRealExtractor(client LLMClient) (*RealExtractor, error) {
 
 func (a *RealExtractor) Split(ctx context.Context, body string, diaryDate time.Time, existingNeurons []memory.ExistingNeuron) (memory.ExtractResult, error) {
 	inputKey := stableHash("split", body, diaryDate.Format(time.DateOnly), existingNeurons)
-	return a.completeExtract(ctx, inputKey, splitPrompt(body, diaryDate, existingNeurons))
+	return a.completeExtract(ctx, inputKey, splitPrompt(body, diaryDate, existingNeurons), body)
 }
 
 func (a *RealExtractor) ReviseSplit(ctx context.Context, body string, prior memory.ExtractResult, instruction string) (memory.ExtractResult, error) {
 	inputKey := stableHash("revise", body, prior, instruction)
-	return a.completeExtract(ctx, inputKey, revisePrompt(body, prior, instruction))
+	return a.completeExtract(ctx, inputKey, revisePrompt(body, prior, instruction), body)
 }
 
-func (a *RealExtractor) completeExtract(ctx context.Context, inputKey string, prompt string) (memory.ExtractResult, error) {
+func (a *RealExtractor) completeExtract(ctx context.Context, inputKey string, prompt string, body string) (memory.ExtractResult, error) {
 	resp, err := a.client.CompleteJSON(ctx, LLMRequest{
 		Prompt:       prompt,
 		OutputSchema: ExtractOutputSchema(),
 		CacheKey:     inputKey,
 		Validate:     func(body []byte) error { _, err := parseExtractResult(body); return err },
+		// A sample the use-case will re-prompt from is usable but not final, so the seam returns
+		// it without keeping it — otherwise the writer's second press on the same diary would
+		// replay the split that already failed instead of drawing a new one. The judgement is the
+		// domain's; this adapter only asks it.
+		Cacheable: func(raw []byte) bool {
+			result, err := parseExtractResult(raw)
+			if err != nil {
+				return false
+			}
+			return !memory.SplitNeedsRepair(body, result)
+		},
 	})
 	if err != nil {
-		return memory.ExtractResult{}, err
+		return memory.ExtractResult{}, portError(err)
 	}
 	return parseExtractResult(resp.JSON)
 }
@@ -73,7 +84,10 @@ func parseExtractResult(raw []byte) (memory.ExtractResult, error) {
 		return memory.ExtractResult{}, err
 	}
 	if len(envelope.Memories) == 0 {
-		return memory.ExtractResult{}, errors.New("extractor response contains no memories")
+		// A schema-valid empty array is a port that ignored the task, not a split to re-prompt:
+		// name it as the adapter breach the domain already has a class for, so operators keep the
+		// canonical predicate instead of reading a masked internal error.
+		return memory.ExtractResult{}, fmt.Errorf("%w: response contains no memories", memory.ErrEncodeInvalidSplit)
 	}
 	result := memory.ExtractResult{Memories: make([]memory.ExtractedMemory, 0, len(envelope.Memories))}
 	for _, item := range envelope.Memories {

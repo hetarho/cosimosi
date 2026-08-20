@@ -32,6 +32,13 @@ type LLMRequest struct {
 	// poison the identical-input cache for later retries. It stays provider-neutral:
 	// the seam only invokes it, it does not parse.
 	Validate func([]byte) error
+	// Cacheable, if set, decides whether a fresh response may be stored — and is the reason
+	// Validate is not enough on its own. Validate REJECTS: the caller gets an error and no
+	// response. This one lets the response through while keeping it out of the cache, which is
+	// what a repair loop needs: it re-prompts FROM the unusable sample, so it must receive it,
+	// while an identical retry later must re-draw rather than replay a sample already known not
+	// to satisfy the consumer. Cache hits never reach it (they were judged when first stored).
+	Cacheable func([]byte) bool
 }
 
 type LLMResponse struct {

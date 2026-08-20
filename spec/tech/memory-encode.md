@@ -36,15 +36,29 @@ proto↔domain and call it (§2.9#7):
 - **`Encode`** — assembles the dedup-candidate set (neurons whose name occurs in the body, longest names first,
   bounded by `encode.dedup_body_match_limit`; + embedding kNN over the body vector — **best-effort**: a failing
   embedder degrades the assist instead of failing the preview; merged and deduped by id), calls `Extractor.Split`,
-  then enforces: count in
-  `[encode.min_memories, encode.max_memories]`, ≥ `encode.min_semantic_neurons` semantic neuron per memory, types in
-  {semantic, spatial, entity}, **source-text fidelity + coverage** (below), estimated output ≤
+  then enforces: count within
+  `[encode.min_memories_accepted, encode.max_memories]`, ≥ `encode.min_semantic_neurons` semantic neuron per memory,
+  types in {semantic, spatial, entity}, **source-text fidelity + coverage** (below), estimated output ≤
   `encode.max_output_tokens`. Repairable violations re-prompt through
   `Extractor.ReviseSplit(body, prior, instruction)` up to `encode.max_revise_retries`, then `ErrEncodeRetryExhausted`
-  (→ `CodeResourceExhausted`). Structural breaches (unknown mood/type, blank name, blank source text) are
+  (→ `CodeUnavailable`, reported).
+
+  The count is the one **soft** rule: `encode.min_memories`…`encode.max_memories` (2–5) is the target the prompt
+  asks for, and a below-target count is nudged `encode.under_count_nudges` times and then accepted down to
+  `encode.min_memories_accepted` — a day that held one continuous event is one scene, and the prompt's own
+  event-boundary rule forbids inventing a second. Acceptance covers the count alone; the other invariants still hold
+  on the accepted split with the remaining repair budget. An over-count stays hard (merge adjacent scenes).
+
+  Every violation carries a closed `ViolationKind` beside its instruction, and the give-up (`EncodeRetryExhausted`,
+  wrapping the sentinel) carries the kind + the observed count and nothing else — the instruction quotes the
+  writer's passage and the proposed name, so it never leaves the process (`policy/platform/errors.md` §1). A sample
+  that still misses an invariant is returned to the loop and kept out of the identical-input cache
+  (`memory.SplitNeedsRepair` via the seam's `Cacheable` hook), so pressing 별 쪼개기 again re-samples instead of
+  replaying the split that already failed. Structural breaches (unknown mood/type, blank name, blank source text) are
   `ErrEncodeInvalidSplit` immediately — an adapter contract breach is not re-prompted. The revise variant takes the
   **body** as well as the prior split: a repair must be able to re-quote the diary, and a model shown only its own
   prior output can never recover a passage it got wrong.
+
 - **`ReviseSplit`** — validates the client-supplied prior result structurally, then the same enforcement loop.
 - **Source-text fidelity + coverage (`sourcetext.go`, pure)** — each proposed memory carries `SourceText`, the passage
   of the diary that scene occupies, and the domain verifies it against the body rather than trusting the prompt: every
@@ -139,7 +153,8 @@ stages already generated from it ([C7]).
 
 ## 4. Values (`spec/values.yaml` `encode.*`)
 
-`min_memories` 2 · `max_memories` 5 · `min_semantic_neurons` 1 · `max_revise_retries` 3 · `max_output_tokens` 6000 ·
+`min_memories` 2 · `max_memories` 5 (the target) · `min_memories_accepted` 1 · `under_count_nudges` 1 (the floor and
+how it is reached) · `min_semantic_neurons` 1 · `max_revise_retries` 3 · `max_output_tokens` 6000 ·
 `source_text_min_coverage` 0.9 · `source_text_max_repaired_ratio` 0.1 · `source_text_max_repair_edit_distance` 3 ·
 `dedup_similarity_threshold` 0.85 · `dedup_top_k` 8 · `dedup_body_match_limit` 32 · `activation_weight` 1.0.
 Generated into `internal/platform/values` and `packages/config/src/values.gen.ts`; never hardcoded at call sites.

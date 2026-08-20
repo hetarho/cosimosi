@@ -101,9 +101,16 @@ describe('hand-edit helpers', () => {
     expect(mergeMemory(sample, 2)).toEqual(sample)
   })
 
-  it('refuses to merge below the encode minimum (2)', () => {
+  // The floor is what a launch accepts (1), not the 2–5 target: a writer whose day was one scene
+  // may merge down to one memory, and the server takes it.
+  it('merges two memories down to one, the accepted floor', () => {
     const two = sample.slice(0, 2)
-    expect(mergeMemory(two, 0)).toEqual(two)
+    expect(mergeMemory(two, 0)).toHaveLength(1)
+  })
+
+  it('refuses to merge below the accepted floor', () => {
+    const one = sample.slice(0, 1)
+    expect(mergeMemory(one, 0)).toEqual(one)
   })
 
   it('splits a memory into two, halving neuron membership and giving the new half a fresh id', () => {

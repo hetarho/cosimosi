@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/cosimosi/api/internal/memory"
 )
 
 // The typed error set is the only vocabulary of provider failure allowed to cross
@@ -67,6 +69,23 @@ func (e *MalformedStructuredOutputError) Error() string {
 }
 
 func (e *MalformedStructuredOutputError) Unwrap() error { return e.Err }
+
+// portError translates this package's typed failures into the vocabulary of the consumer whose port
+// is being crossed. Only the cost cap needs it today: it is the one provider-side failure the
+// product answers with a specific refusal, and `memory` cannot name `*CostLimitError` itself (this
+// package implements memory's ports, so the dependency points inward and never back).
+//
+// It WRAPS both ways rather than replacing: the RPC layer matches memory's sentinel, while the
+// worker's backoff still finds RetryAt() on the original through the chain.
+func portError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if IsCostLimitError(err) {
+		return fmt.Errorf("%w: %w", memory.ErrAiCallCapReached, err)
+	}
+	return err
+}
 
 func IsRateLimited(err error) bool {
 	var target *RateLimitedError

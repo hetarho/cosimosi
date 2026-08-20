@@ -84,14 +84,23 @@ the same split/name/neurons, embedding vector length, and four semantic stage te
 Cost metering is a **decorator at the capability-interface seam** (`internal/ai/metering.go`), so caps and caching apply
 uniformly to every provider:
 
-- `ai.per_call_token_cap = 1200` is set as the max-output guard on every LLM request at the seam.
+- `ai.per_call_token_cap = 7000` is set as the max-output guard on every LLM request at the seam. It sits above
+  `encode.max_output_tokens` (6000) so the encode split — the largest response the product asks for, since it carries
+  the diary redistributed across the memories — trips its own use-case guard first.
 - `ai.daily_call_cap = 200` limits billable LLM/embedding calls per user per UTC calendar day; one shared meter counts
   LLM and embedding calls together.
 - Identical inputs are cached inside a bounded per-seam cache (keyed by user + the port adapter's content hash) so
-  retries and re-runs do not re-bill and long-running workers do not grow memory without bound. A response the port
-  adapter rejects (its `Validate` hook fails) is **not** cached, so an identical retry can re-sample rather than being
-  served a poisoned entry.
-- Over-limit calls return a typed `CostLimitError` whose retry time is the next UTC calendar day.
+  retries and re-runs do not re-bill and long-running workers do not grow memory without bound. Two hooks keep an
+  unusable sample out of it, and they are not the same decision: `Validate` **rejects** (the caller gets an error and
+  no response), while `Cacheable` **returns the response and drops it** — which is what a repair loop needs, because
+  it re-prompts _from_ the sample it cannot accept. The encode extractor supplies `Cacheable` from the domain's own
+  judgement (`memory.SplitNeedsRepair`), so a split still headed back into the repair loop is never replayed to a
+  later identical call.
+- Over-limit calls return a typed `CostLimitError` whose retry time is the next UTC calendar day. Crossing a memory
+  port it is wrapped as `memory.ErrAiCallCapReached` (a multi-`%w` wrap, so the RPC layer matches memory's sentinel
+  while the worker backoff still reaches `RetryAt` underneath) — `internal/ai` implements memory's ports, so the cap
+  has to reach the domain in the domain's vocabulary. The RPC mapping is `ResourceExhausted`, the one refusal on an
+  AI path that really is an allowance.
 
 Every provider client normalizes vendor failures into the shared typed error set:
 `RateLimitedError` (retryable), `AuthFailedError` (terminal), `CostLimitError` (cost-capped), and

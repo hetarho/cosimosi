@@ -30,7 +30,7 @@ func (s *RealSemanticizer) GenerateSemanticStages(ctx context.Context, item memo
 		Validate:     func(body []byte) error { _, err := parseSemanticStages(body); return err },
 	})
 	if err != nil {
-		return memory.SemanticStages{}, err
+		return memory.SemanticStages{}, portError(err)
 	}
 	return parseSemanticStages(resp.JSON)
 }

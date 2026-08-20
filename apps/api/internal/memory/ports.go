@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
@@ -19,6 +20,14 @@ type UTCUserZone struct{}
 func (UTCUserZone) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
 	return time.UTC, nil
 }
+
+// ErrAiCallCapReached is the canonical "this user has spent today's AI allowance" error for every
+// port below that reaches a real provider. The cap itself is metered in the supporting `ai` context,
+// which memory must not import (ai implements these ports, so the dependency points inward) — so the
+// adapter translates its own typed cap error into this one as it crosses the port, and memory's
+// use-cases and RPC mapping only ever see this. The adapter wraps rather than replaces, keeping the
+// provider's retry hint reachable for the worker's backoff.
+var ErrAiCallCapReached = errors.New("memory: user has reached today's AI call cap")
 
 type Extractor interface {
 	Split(ctx context.Context, body string, diaryDate time.Time, existingNeurons []ExistingNeuron) (ExtractResult, error)

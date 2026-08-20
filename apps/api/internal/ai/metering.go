@@ -20,8 +20,11 @@ type CostLimitError struct {
 	WindowStart time.Time
 }
 
+// Error names no user: the message reaches a client through the port's canonical refusal, and the
+// caller's own id is not a discriminator that belongs in error text. UserID stays on the struct for
+// callers that legitimately have the scope already.
 func (e *CostLimitError) Error() string {
-	return fmt.Sprintf("ai daily call cap exceeded for user %s: limit %d", e.UserID, e.Limit)
+	return fmt.Sprintf("ai daily call cap exceeded: limit %d", e.Limit)
 }
 
 func (e *CostLimitError) RetryAt() time.Time {
@@ -193,7 +196,12 @@ func (c *meteredLLMClient) CompleteJSON(ctx context.Context, req LLMRequest) (LL
 			return LLMResponse{}, err
 		}
 	}
-	c.put(key, resp.JSON)
+	// A response the consumer can use but would not keep (one its repair loop is about to
+	// re-prompt from) is returned and dropped: caching it would make every later identical call
+	// replay a sample already known to fail, so the retry could never differ from the first try.
+	if req.Cacheable == nil || req.Cacheable(resp.JSON) {
+		c.put(key, resp.JSON)
+	}
 	return LLMResponse{JSON: append([]byte(nil), resp.JSON...)}, nil
 }
 

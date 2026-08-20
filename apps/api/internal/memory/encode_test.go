@@ -302,8 +302,12 @@ func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
 	if len(result.Memories) != 2 {
 		t.Fatalf("memories = %d, want the repaired 2 — a clamp would have returned %d", len(result.Memories), values.EncodeMaxMemories)
 	}
-	if len(fixture.extractor.instructions) != 1 || !strings.Contains(fixture.extractor.instructions[0], "between") {
-		t.Fatalf("expected one count repair instruction, got %q", fixture.extractor.instructions)
+	// The instruction has to name what came back and which way to move: an over-count is merged
+	// down, an under-count is looked at again — one string for both told the model nothing.
+	if len(fixture.extractor.instructions) != 1 ||
+		!strings.Contains(fixture.extractor.instructions[0], "at most") ||
+		!strings.Contains(fixture.extractor.instructions[0], fmt.Sprint(values.EncodeMaxMemories+1)) {
+		t.Fatalf("expected one merge-down instruction naming the returned count, got %q", fixture.extractor.instructions)
 	}
 }
 
@@ -332,7 +336,11 @@ func TestEncodeMissingSemanticNeuronIsRepairedNeverPlaceholder(t *testing.T) {
 	}
 }
 
-func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
+// A day that held one continuous event is one scene: [E2]'s 2–5 is the target the prompt asks for,
+// and the prompt's own event-boundary rule forbids inventing a second scene to reach it. So the
+// extractor is nudged once and then believed — the alternative is a legitimate diary that can never
+// be encoded at all.
+func TestEncodeAcceptsASingleSceneSplitAfterOneNudge(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	single := ExtractResult{Memories: []ExtractedMemory{{
@@ -342,16 +350,144 @@ func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 		Neurons:    []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
 	}}}
 	fixture.extractor.splitResult = single
+	fixture.extractor.reviseQueue = []ExtractResult{single}
+
+	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	if err != nil {
+		t.Fatalf("Encode refused a single-scene diary: %v", err)
+	}
+	if len(result.Memories) != 1 {
+		t.Fatalf("memories = %d, want the extractor's 1", len(result.Memories))
+	}
+	if len(fixture.extractor.instructions) != values.EncodeUnderCountNudges {
+		t.Fatalf("nudges = %d, want %d", len(fixture.extractor.instructions), values.EncodeUnderCountNudges)
+	}
+	if !strings.Contains(fixture.extractor.instructions[0], "one continuous event") {
+		t.Fatalf("nudge = %q, want it to allow one memory for one event", fixture.extractor.instructions[0])
+	}
+}
+
+// Accepting the count is not accepting the split: the passages still have to be the writer's words,
+// and an accepted count leaves the rest of the repair budget to get there.
+func TestEncodeStillEnforcesTheOtherInvariantsOnAnAcceptedCount(t *testing.T) {
+	t.Parallel()
+	singleScene := func(mutate func(*ExtractedMemory)) ExtractResult {
+		memory := ExtractedMemory{
+			Name:       "only one",
+			Mood:       MoodJoy,
+			SourceText: testDiaryBody,
+			Neurons:    []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
+		}
+		mutate(&memory)
+		return ExtractResult{Memories: []ExtractedMemory{memory}}
+	}
+	cases := map[string]struct {
+		result ExtractResult
+		want   ViolationKind
+	}{
+		"a word the writer never wrote": {
+			singleScene(func(m *ExtractedMemory) { m.SourceText = testDiaryBody + " Then I flew to the moon." }),
+			ViolationSourceTextNovelToken,
+		},
+		"half the diary left uncovered": {
+			singleScene(func(m *ExtractedMemory) { m.SourceText = "Morning market run for groceries." }),
+			ViolationSourceTextCoverage,
+		},
+		"no semantic neuron": {
+			singleScene(func(m *ExtractedMemory) {
+				m.Neurons = []ExtractedNeuron{{Name: "Mina", Type: NeuronTypeEntity}}
+			}),
+			ViolationSemanticNeuronMissing,
+		},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			fixture := newFixture(t)
+			fixture.extractor.splitResult = testCase.result
+
+			_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+			var exhausted *EncodeRetryExhausted
+			if !errors.As(err, &exhausted) || exhausted.Kind != testCase.want {
+				t.Fatalf("err = %v, want the %q give-up", err, testCase.want)
+			}
+			// The nudge draws on its own budget: the accepted count still leaves the whole repair
+			// budget, so a single-scene diary gets no fewer attempts than a two-scene one.
+			if len(fixture.extractor.instructions) != values.EncodeUnderCountNudges+values.EncodeMaxReviseRetries {
+				t.Fatalf("re-prompts = %d, want %d nudge(s) plus the full repair budget of %d",
+					len(fixture.extractor.instructions), values.EncodeUnderCountNudges, values.EncodeMaxReviseRetries)
+			}
+		})
+	}
+}
+
+func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// A passage the writer never wrote is the unrepairable case that survives every re-prompt.
+	invented := validSplit()
+	invented.Memories[1].SourceText = "Lunch with Mina, catching up. Then I flew to the moon."
+	fixture.extractor.splitResult = invented
 
 	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeRetryExhausted) {
 		t.Fatalf("err = %v, want ErrEncodeRetryExhausted", err)
+	}
+	// The give-up names WHICH invariant defeated it and nothing else: the instruction beside it
+	// quotes the writer's passage, so it may never leave the process.
+	var exhausted *EncodeRetryExhausted
+	if !errors.As(err, &exhausted) || exhausted.Kind != ViolationSourceTextNovelToken {
+		t.Fatalf("give-up = %v, want kind %q", err, ViolationSourceTextNovelToken)
+	}
+	if strings.Contains(err.Error(), "moon") || strings.Contains(err.Error(), "Mina") {
+		t.Fatalf("give-up message carries the writer's words: %q", err.Error())
 	}
 	if len(fixture.extractor.instructions) != values.EncodeMaxReviseRetries {
 		t.Fatalf("repair attempts = %d, want %d", len(fixture.extractor.instructions), values.EncodeMaxReviseRetries)
 	}
 	if fixture.launches.txCount != 0 {
 		t.Fatal("a failed preview must persist nothing")
+	}
+}
+
+// The count give-up carries the count, so an operator reading one report can tell a lazy split from
+// a model that kept over-splitting — the shipped single string could not.
+func TestEncodeCountGiveUpCarriesTheObservedCount(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	tooMany := ExtractResult{}
+	for i := 0; i < values.EncodeMaxMemories+2; i++ {
+		tooMany.Memories = append(tooMany.Memories, ExtractedMemory{
+			Name:       fmt.Sprintf("memory %d", i),
+			Mood:       MoodJoy,
+			SourceText: "Morning market run",
+			Neurons:    []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
+		})
+	}
+	fixture.extractor.splitResult = tooMany
+
+	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	var exhausted *EncodeRetryExhausted
+	if !errors.As(err, &exhausted) {
+		t.Fatalf("err = %v, want EncodeRetryExhausted", err)
+	}
+	if exhausted.Kind != ViolationCountOver || exhausted.MemoryCount != values.EncodeMaxMemories+2 {
+		t.Fatalf("give-up = %+v, want count_over with the returned count", exhausted)
+	}
+	if exhausted.Detail()["violation_kind"] != string(ViolationCountOver) ||
+		exhausted.Detail()["memories"] != fmt.Sprint(values.EncodeMaxMemories+2) {
+		t.Fatalf("detail = %v, want the kind and the count as the metadata channel carries them", exhausted.Detail())
+	}
+	// An over-count is repairable by merging, so it spends the whole repair budget and is never
+	// accepted out of range — only the below-target direction is soft.
+	if len(fixture.extractor.instructions) != values.EncodeMaxReviseRetries {
+		t.Fatalf("merge re-prompts = %d, want the full budget of %d",
+			len(fixture.extractor.instructions), values.EncodeMaxReviseRetries)
+	}
+	for _, instruction := range fixture.extractor.instructions {
+		if strings.Contains(instruction, "fewer than") {
+			t.Fatalf("over-count was told the under-count instruction: %q", instruction)
+		}
 	}
 }
 

@@ -63,6 +63,7 @@ export const ERROR_REASONS = {
   memorySyncConsentRequired: 'MEMORY_SYNC_CONSENT_REQUIRED',
   memoryInsufficientTwinkle: 'MEMORY_INSUFFICIENT_TWINKLE',
   memoryEncodeRetryExhausted: 'MEMORY_ENCODE_RETRY_EXHAUSTED',
+  memoryAiCallCapReached: 'MEMORY_AI_CALL_CAP_REACHED',
   memoryScopeRequired: 'MEMORY_SCOPE_REQUIRED',
   twinkleInviteInputRequired: 'TWINKLE_INVITE_INPUT_REQUIRED',
   twinkleQuoteInputRequired: 'TWINKLE_QUOTE_INPUT_REQUIRED',

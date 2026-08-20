@@ -102,6 +102,9 @@ func StructuredErrorInterceptor(reporter observability.Reporter) connect.UnaryIn
 			requestID := requestIDFromContextOrRequest(ctx, req)
 			code := connect.CodeOf(err)
 			if code != connect.CodeInternal && code != connect.CodeUnknown {
+				if apperr.IsReported(err) {
+					reportDomainFailure(ctx, reporter, req, requestID, code, err)
+				}
 				return resp, apperr.WithRequestID(err, requestID)
 			}
 			errorType := safeErrorType(err)
@@ -199,6 +202,58 @@ func safePanicType(recovered any) string {
 		return ""
 	}
 	return fmt.Sprintf("%T", recovered)
+}
+
+// reportDomainFailure sends an apperr.Reported refusal to the exception feed without masking it.
+// The event carries the reason and the refusal's own metadata — which the error contract already
+// limits to non-content discriminators — and never the error message, because a domain instruction
+// can quote the writer's passage. Grouping is by reason, so one recurring invariant failure reads as
+// one issue. Telemetry must not be able to fail a request: a metadata key the attribute guard
+// refuses degrades to the base attributes instead of panicking.
+func reportDomainFailure(
+	ctx context.Context,
+	reporter observability.Reporter,
+	req connect.AnyRequest,
+	requestID string,
+	code connect.Code,
+	err error,
+) {
+	// A reporter that panics must not turn a refusal that was deliberately NOT masked into a masked
+	// internal one: telemetry is an observer here, never part of the response.
+	defer func() { _ = recover() }()
+
+	reason := apperr.DefaultReason(code)
+	base := map[string]string{
+		"source":     "rpc",
+		"method":     req.Spec().Procedure,
+		"request_id": requestID,
+		"rpc_code":   code.String(),
+	}
+	metadata := map[string]string{}
+	if info, ok := apperr.Info(err); ok {
+		reason = info.GetReason()
+		metadata = info.GetMetadata()
+	}
+	base["reason"] = reason
+
+	attrs := observability.MustAttributes(base)
+	// The guard is applied to the metadata's OWN keys, before they are prefixed: checking
+	// "detail_diary" would normalize away from "diary" and wave the blocked key through.
+	if len(metadata) > 0 {
+		if _, err := observability.NewAttributes(metadata); err == nil {
+			values := make(map[string]string, len(base)+len(metadata))
+			for key, value := range base {
+				values[key] = value
+			}
+			for key, value := range metadata {
+				values["detail_"+key] = value
+			}
+			if enriched, err := observability.NewAttributes(values); err == nil {
+				attrs = enriched
+			}
+		}
+	}
+	reporter.CaptureException(ctx, stableReportError("reported domain failure", reason), attrs)
 }
 
 func stableReportError(message string, discriminator string) error {

@@ -40,6 +40,31 @@ describe('toAppError', () => {
     })
   })
 
+  // The split failing is not an allowance being spent, and the daily AI cap is: before this, both
+  // arrived as ResourceExhausted and read as the same "한도" line, which sent the writer looking for
+  // a limit that was never reached.
+  it('separates the extractor giving up from a real allowance refusal', () => {
+    const giveUp = connectError(Code.Unavailable, {
+      reason: ERROR_REASONS.memoryEncodeRetryExhausted,
+      domain: 'memory',
+      requestId: 'request-give-up',
+      metadata: { violation_kind: 'source_text_novel_token' },
+    })
+    const capped = connectError(Code.ResourceExhausted, {
+      reason: ERROR_REASONS.memoryAiCallCapReached,
+      domain: 'memory',
+      requestId: 'request-capped',
+    })
+
+    const giveUpCopy = presentAppError(giveUp).message
+    const cappedCopy = presentAppError(capped).message
+    expect(giveUpCopy).not.toBe(cappedCopy)
+    expect(giveUpCopy).not.toContain('allowance')
+    expect(cappedCopy).toContain('allowance')
+    // The kind is a discriminator for us, never copy for the writer.
+    expect(giveUpCopy).not.toContain('source_text')
+  })
+
   it('shows only generic internal copy with the correlation id', () => {
     const error = connectError(Code.Internal, {
       reason: ERROR_REASONS.internal,

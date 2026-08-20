@@ -29,12 +29,14 @@ import (
 const sourceTextRepairMinSharedPrefixRunes = 1
 
 // SourceTextViolation reports the first way an extractor's passages fail to be the writer's own
-// words, phrased as the re-prompt instruction the repair loop sends back, or "" when they hold.
+// words: the kind, plus the re-prompt instruction the repair loop sends back. ok is false when the
+// passages hold. The instruction quotes the offending token and the proposed memory name, so it may
+// only ever be shown to the model — the kind is the half that may be reported.
 // Pure: no IO, no clock, no LLM.
-func SourceTextViolation(body string, memories []ExtractedMemory) string {
+func SourceTextViolation(body string, memories []ExtractedMemory) (Violation, bool) {
 	bodyTokens := sourceTextTokens(body)
 	if len(bodyTokens) == 0 {
-		return ""
+		return Violation{}, false
 	}
 	// Occurrence counts, not a set: a diary that says "오늘" three times is only covered by
 	// three passage mentions, so dropping two of the three scenes cannot read as covered.
@@ -55,21 +57,21 @@ func SourceTextViolation(body string, memories []ExtractedMemory) string {
 		for _, token := range passage {
 			match, exact := traceToDiary(token, remaining, distinct)
 			if match == "" {
-				return fmt.Sprintf(
+				return Violation{Kind: ViolationSourceTextNovelToken, Instruction: fmt.Sprintf(
 					"The source_text for %q contains %q, which is not in the diary. Every source_text must be the "+
 						"writer's own words — you may fix a typo and repair the ending where you cut the passage, "+
 						"but never replace a word, rephrase a sentence, or add one.",
 					proposed.Name, token,
-				)
+				)}, true
 			}
 			if !exact {
 				repaired++
 				if repaired > budget {
-					return fmt.Sprintf(
+					return Violation{Kind: ViolationSourceTextReworded, Instruction: fmt.Sprintf(
 						"The source_text for %q rewords the diary in %d places; at most %d may differ. Quote the "+
 							"writer's sentences as they are — repair only typos and the ending at the cut.",
 						proposed.Name, repaired, budget,
-					)
+					)}, true
 				}
 			}
 			if remaining[match] > 0 {
@@ -80,13 +82,13 @@ func SourceTextViolation(body string, memories []ExtractedMemory) string {
 	}
 
 	if float64(covered) < values.EncodeSourceTextMinCoverage*float64(len(bodyTokens)) {
-		return fmt.Sprintf(
+		return Violation{Kind: ViolationSourceTextCoverage, Instruction: fmt.Sprintf(
 			"The source_texts together cover only %d of the diary's %d words. Every part of the diary belongs to "+
 				"one of the memories — split it into consecutive passages that leave nothing out and do not overlap.",
 			covered, len(bodyTokens),
-		)
+		)}, true
 	}
-	return ""
+	return Violation{}, false
 }
 
 // repairBudget is how many of a passage's tokens may differ from the diary. The floor of one

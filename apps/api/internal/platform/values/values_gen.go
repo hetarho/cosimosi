@@ -213,6 +213,8 @@ const (
 const (
 	EncodeMinMemories                     = 2
 	EncodeMaxMemories                     = 5
+	EncodeMinMemoriesAccepted             = 1
+	EncodeUnderCountNudges                = 1
 	EncodeMinSemanticNeurons              = 1
 	EncodeMaxReviseRetries                = 3
 	EncodeMaxOutputTokens                 = 6000

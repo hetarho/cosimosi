@@ -95,6 +95,16 @@ API unexpected failures are handled in two places:
   field. The ordinary message and metadata are always masked. Unknown gate values
   fail closed. Reports include a safe `error_type` discriminator instead of raw
   error messages.
+- The same interceptor also reports — **without masking** — any domain refusal a
+  context marked with `apperr.Reported`. Masking and reporting are separate
+  decisions: the refusal keeps its own code, reason, metadata and copy on the wire,
+  and is captured grouped by reason (`reported domain failure: <REASON>`) with
+  content-free attributes only (source · method · request id · rpc code · reason ·
+  the refusal's own metadata as `detail_*`), never its message. Telemetry cannot fail
+  the request: a metadata key the attribute guard refuses degrades to the base
+  attributes. `MEMORY_ENCODE_RETRY_EXHAUSTED` is the first such reason — a model that
+  keeps missing an encode invariant is an operator problem the writer cannot solve,
+  and nothing else was watching for it.
 - `PanicRecoveryInterceptor` recovers panics, reports a safe panic event, and returns
   the same stable internal error. Reports include a safe `panic_type` discriminator
   instead of the recovered panic value.

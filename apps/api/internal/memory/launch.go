@@ -313,13 +313,16 @@ func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx Prog
 }
 
 // validateConfirmedSplit re-applies the encode invariants to the user-confirmed
-// memories: count within [encode.min_memories, encode.max_memories] [E2], every
+// memories: count within [encode.min_memories_accepted, encode.max_memories] [E2], every
 // memory ≥ encode.min_semantic_neurons semantic neurons [E4], valid mood/type
 // [M1][E3]. Violations are invalid input here — there is no LLM to repair.
+//
+// The floor is the accepted one, not the 2–5 target: the preview may legitimately return a
+// single-scene split, and a launch that refused what the writer was just shown would strand it.
 func validateConfirmedSplit(body string, confirmed []ExtractedMemory) error {
-	if !memoryCountInRange(len(confirmed)) {
+	if !memoryCountAccepted(len(confirmed)) {
 		return fmt.Errorf("%w: %d memories outside [%d, %d]",
-			ErrLaunchInvalidMemories, len(confirmed), values.EncodeMinMemories, values.EncodeMaxMemories)
+			ErrLaunchInvalidMemories, len(confirmed), values.EncodeMinMemoriesAccepted, values.EncodeMaxMemories)
 	}
 	if err := validateSplitStructure(ExtractResult{Memories: confirmed}); err != nil {
 		return fmt.Errorf("%w: %v", ErrLaunchInvalidMemories, err)

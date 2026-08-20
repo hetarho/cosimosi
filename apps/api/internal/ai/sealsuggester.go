@@ -45,7 +45,7 @@ func (a *RealSealSuggester) Suggest(ctx context.Context, summary memory.MemorySu
 		Validate:     func(body []byte) error { _, err := parseSealSuggestion(body); return err },
 	})
 	if err != nil {
-		return memory.SealSuggestion{}, err
+		return memory.SealSuggestion{}, portError(err)
 	}
 	return parseSealSuggestion(resp.JSON)
 }

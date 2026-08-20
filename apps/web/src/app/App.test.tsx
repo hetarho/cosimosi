@@ -46,6 +46,11 @@ const emptyUniverse = {
 
 function seedDefaultColors(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
   resetUserState(userId, { name: 'locale', reset: resetWebLocaleUserState })
+  // That reset re-negotiates from the ambient environment (sign-out behavior), so on a host whose
+  // navigator.language is not English the store lands on another locale — and `renderToString` runs
+  // no effects, so the <App locale> prop cannot correct it. Pin the store to the locale this fixture
+  // seeds on the profile, so the English copy these tests assert does not depend on the dev machine.
+  setActiveLocale('en')
   setClientCacheData(fakes.queryClient, createGetProfileQueryKey(fakes.transport), {
     profile: {
       nickname: 'Test user',

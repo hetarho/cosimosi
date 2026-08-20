@@ -115,18 +115,53 @@ func TestExtractorSchemaPinsMoodAndNeuronTypeEnums(t *testing.T) {
 	}
 }
 
+// A sample the use-case is about to re-prompt from must reach the caller AND stay out of the cache:
+// caching it would make the writer's second press on the same diary replay the split that already
+// failed, so the retry could never differ from the first try. (The shipped seam cached it, which is
+// how a one-scene diary produced the same refusal forever at zero provider cost.)
+func TestMeteredLLMSeamReturnsButDoesNotCacheASampleTheDomainWouldRepair(t *testing.T) {
+	ctx := platform.ContextWithUserID(context.Background(), "user-1")
+	// A passage the diary does not contain: repairable, so the loop needs the sample back.
+	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]},{"name":"Moon","mood":"JOY","source_text":"moon","neurons":[{"name":"moon","type":"semantic"}]}]}`)}
+	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(10, fixedNow)))
+	if err != nil {
+		t.Fatalf("NewRealExtractor failed: %v", err)
+	}
+
+	first, err := extractor.Split(ctx, cacheableSplitDiary, fixedNow(), nil)
+	if err != nil {
+		t.Fatalf("Split failed: %v", err)
+	}
+	if len(first.Memories) != 2 {
+		t.Fatalf("the violating sample must still reach the repair loop, got %d memories", len(first.Memories))
+	}
+	if _, err := extractor.Split(ctx, cacheableSplitDiary, fixedNow(), nil); err != nil {
+		t.Fatalf("second Split failed: %v", err)
+	}
+	if client.calls != 2 {
+		t.Fatalf("client calls = %d, want the identical retry to re-sample rather than replay", client.calls)
+	}
+}
+
+// The metering seam only caches a sample the consumer would keep, so a cache test needs a split the
+// domain calls final: on target for the count, one semantic neuron each, and passages that quote the
+// whole body between them. An under-target fixture would exercise the opposite property.
+const cacheableSplitDiary = "market lunch"
+
+var cacheableSplitJSON = []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]},{"name":"Lunch","mood":"JOY","source_text":"lunch","neurons":[{"name":"lunch","type":"semantic"}]}]}`)
+
 // The metering seam wraps every real LLM path: the per-call token cap is applied to the
 // vendor request, the daily cap trips on distinct inputs, and an identical input is
 // served from cache without re-billing.
 func TestMeteredLLMSeamAppliesTokenCapCostLimitAndCache(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
-	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
+	client := &fakeLLMClient{response: cacheableSplitJSON}
 	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(1, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
 	}
 
-	if _, err := extractor.Split(ctx, "market", fixedNow(), nil); err != nil {
+	if _, err := extractor.Split(ctx, cacheableSplitDiary, fixedNow(), nil); err != nil {
 		t.Fatalf("Split failed: %v", err)
 	}
 	if client.calls != 1 || client.lastRequest.MaxOutputTokens != values.AiPerCallTokenCap {
@@ -136,15 +171,25 @@ func TestMeteredLLMSeamAppliesTokenCapCostLimitAndCache(t *testing.T) {
 		t.Fatalf("seam did not scope request to caller, userID=%q", client.lastRequest.UserID)
 	}
 
-	if _, err := extractor.Split(ctx, "market", fixedNow(), nil); err != nil {
+	if _, err := extractor.Split(ctx, cacheableSplitDiary, fixedNow(), nil); err != nil {
 		t.Fatalf("cached Split failed: %v", err)
 	}
 	if client.calls != 1 {
 		t.Fatalf("cached Split re-billed: calls=%d", client.calls)
 	}
 
-	if _, err := extractor.Split(ctx, "different market", fixedNow(), nil); !IsCostLimitError(err) {
+	// The cap crosses the port in memory's vocabulary while staying an ai.CostLimitError underneath,
+	// so the RPC mapping and the worker's RetryAt backoff read the same one failure.
+	_, err = extractor.Split(ctx, "different market", fixedNow(), nil)
+	if !IsCostLimitError(err) {
 		t.Fatalf("different Split error = %v, want CostLimitError", err)
+	}
+	if !errors.Is(err, memory.ErrAiCallCapReached) {
+		t.Fatalf("different Split error = %v, want memory.ErrAiCallCapReached", err)
+	}
+	var retryable interface{ RetryAt() time.Time }
+	if !errors.As(err, &retryable) || retryable.RetryAt().IsZero() {
+		t.Fatalf("cap error lost its retry hint through the port wrap: %v", err)
 	}
 }
 
@@ -277,18 +322,20 @@ func TestBoundedCacheEvictsOldestEntries(t *testing.T) {
 
 func TestMeteredLLMSeamCacheIsBounded(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
-	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
+	client := &fakeLLMClient{response: cacheableSplitJSON}
 	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(values.AiAdapterCacheMaxEntries+10, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
 	}
+	// The diary DATE varies rather than the body: distinct cache keys, while the one fixed sample
+	// stays a valid split of the same diary and therefore stays cacheable.
 	day := fixedNow()
 	for i := 0; i < values.AiAdapterCacheMaxEntries+1; i++ {
-		if _, err := extractor.Split(ctx, fmt.Sprintf("market-%d", i), day, nil); err != nil {
+		if _, err := extractor.Split(ctx, cacheableSplitDiary, day.AddDate(0, 0, i), nil); err != nil {
 			t.Fatalf("Split %d failed: %v", i, err)
 		}
 	}
-	if _, err := extractor.Split(ctx, "market-0", day, nil); err != nil {
+	if _, err := extractor.Split(ctx, cacheableSplitDiary, day, nil); err != nil {
 		t.Fatalf("evicted Split failed: %v", err)
 	}
 	if client.calls != values.AiAdapterCacheMaxEntries+2 {

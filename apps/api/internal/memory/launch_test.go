@@ -535,7 +535,7 @@ func TestPersistEncodedAcceptsAPassageTheWriterRewrote(t *testing.T) {
 	); err != nil {
 		t.Fatalf("a writer-edited passage must launch, got: %v", err)
 	}
-	if SourceTextViolation(testDiaryBody, edited) == "" {
+	if _, ok := SourceTextViolation(testDiaryBody, edited); !ok {
 		t.Fatal("the fixture no longer exercises a passage the extractor rule would reject")
 	}
 }
@@ -766,9 +766,27 @@ func TestPersistEncodedProgressionFailureRollsBackLaunch(t *testing.T) {
 	}
 }
 
+// A4: what the preview can return, the launch must accept — a single-scene split included.
+func TestPersistEncodedLaunchesASingleSceneSplit(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	single := confirmedFixture()[:1]
+	single[0].SourceText = testDiaryBody
+
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), single)
+	if err != nil {
+		t.Fatalf("PersistEncoded refused a single-scene split: %v", err)
+	}
+	if len(result.MemoryIDs) != 1 {
+		t.Fatalf("memory ids = %d, want the one confirmed memory", len(result.MemoryIDs))
+	}
+}
+
 func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 	t.Parallel()
-	tooFew := confirmedFixture()[:1]
+	// One memory is a legitimate split (a day that held one scene), so the floor a launch refuses
+	// is encode.min_memories_accepted — nothing at all — not the 2–5 target.
+	none := confirmedFixture()[:0]
 	noSemantic := confirmedFixture()
 	noSemantic[0].Neurons = []ExtractedNeuron{{Name: "Market", Type: NeuronTypeSpatial}}
 	badMood := confirmedFixture()
@@ -784,12 +802,12 @@ func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 	longerThanDiary[0].SourceText = testDiaryBody + " and then some."
 
 	cases := map[string][]ExtractedMemory{
-		"count below minimum":       tooFew,
-		"missing semantic neuron":   noSemantic,
-		"unknown mood":              badMood,
-		"invalid neuron type":       badType,
-		"blank passage":             blankPassage,
-		"passage longer than diary": longerThanDiary,
+		"count below the accepted floor": none,
+		"missing semantic neuron":        noSemantic,
+		"unknown mood":                   badMood,
+		"invalid neuron type":            badType,
+		"blank passage":                  blankPassage,
+		"passage longer than diary":      longerThanDiary,
 	}
 	for name, confirmed := range cases {
 		fixture := newFixture(t)
