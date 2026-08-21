@@ -9,7 +9,11 @@ import { VALUES } from '@cosimosi/config'
 
 import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
 import type { UniverseCanvasProps } from './UniverseCanvas.tsx'
-import { DEFAULT_CANVAS_DPR, DEFAULT_CANVAS_FOV } from './canvas-defaults.ts'
+import {
+  DEFAULT_CANVAS_CAMERA_POSITION,
+  DEFAULT_CANVAS_DPR,
+  DEFAULT_CANVAS_FOV,
+} from './canvas-defaults.ts'
 import { resolveToneMapping } from './tone-mapping.ts'
 
 export type { UniverseCanvasProps } from './UniverseCanvas.tsx'
@@ -48,7 +52,7 @@ function frameloopFor(status: AppStateStatus | null): 'always' | 'never' {
 /** The live values the device effect must not re-key on — see the effect split below. */
 type LiveConfig = Pick<
   Required<UniverseCanvasProps>,
-  'dpr' | 'fov' | 'far' | 'clearColor' | 'toneMapping' | 'exposure'
+  'dpr' | 'fov' | 'far' | 'cameraPosition' | 'clearColor' | 'toneMapping' | 'exposure'
 >
 
 /**
@@ -81,6 +85,7 @@ export function UniverseCanvas({
   dpr = DEFAULT_CANVAS_DPR,
   fov = DEFAULT_CANVAS_FOV,
   far = UNIVERSE_CANVAS_FAR,
+  cameraPosition = DEFAULT_CANVAS_CAMERA_POSITION,
   clearColor = 0x000000,
   forceWebGL = false,
   toneMapping = VALUES.rendering.toneMapping,
@@ -92,8 +97,16 @@ export function UniverseCanvas({
   const renderer = useRef<THREE.WebGPURenderer | null>(null)
   const r3fState = useRef<RootState | null>(null)
 
-  const live = useRef<LiveConfig>({ dpr, fov, far, clearColor, toneMapping, exposure })
-  live.current = { dpr, fov, far, clearColor, toneMapping, exposure }
+  const live = useRef<LiveConfig>({
+    dpr,
+    fov,
+    far,
+    cameraPosition,
+    clearColor,
+    toneMapping,
+    exposure,
+  })
+  live.current = { dpr, fov, far, cameraPosition, clearColor, toneMapping, exposure }
 
   // Applied both from the live-config effect and from `onCreated`: the root's Provider mounts on a
   // microtask after `render()`, so props that move between the device effect and that callback
@@ -141,7 +154,9 @@ export function UniverseCanvas({
       size: { top: 0, left: 0, width: canvas.clientWidth, height: canvas.clientHeight },
       dpr: resolvePixelRatio(initial.dpr),
       events,
-      camera: { fov: initial.fov, far: initial.far, position: [0, 0, 90] },
+      // The entry pose is read once at device bring-up (like fov/far's initial read): it is where
+      // the camera ENTERS, and every later move belongs to the rig/controls, not to a prop.
+      camera: { fov: initial.fov, far: initial.far, position: [...initial.cameraPosition] },
       // Async gl factory: R3F awaits it before starting the render loop, so the WebGPU
       // backend is initialized before the first render() (a bare renderer would throw
       // "render() called before the backend is initialized").

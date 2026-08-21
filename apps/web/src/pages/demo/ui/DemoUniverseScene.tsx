@@ -16,11 +16,13 @@ import {
 import { createForceSimNodeIndex } from '@cosimosi/force-sim'
 import { paletteVersion } from '@cosimosi/emotion'
 import {
+  UNIVERSE_ARRIVAL_CAMERA_POSITION,
   UNIVERSE_CAMERA_ENVELOPE,
   advanceSkyRate,
   buildUniverseGraph,
   createUniverseSimBridge,
   generateLatentField,
+  gistStageOffset,
   universeEmotionSlices,
   useEpisodicMemoryStore,
   useNeuronStore,
@@ -138,6 +140,7 @@ function DemoCanvasHost({
       dpr={[1, VALUES.rendering.maxPixelRatio]}
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
+      cameraPosition={UNIVERSE_ARRIVAL_CAMERA_POSITION}
     >
       {/* `rateRef` is the shared sky-rate ref the demo's time presentation writes per frame while a
           jump plays, so the backdrop flows and eases back — the product widget's own wiring. */}
@@ -175,7 +178,7 @@ function DemoCanvasHost({
       />
       <BandFog
         zMin={VALUES.forceSim.hippocampusZMax}
-        zMax={VALUES.forceSim.neocortexZMin}
+        zMax={VALUES.forceSim.hippocampusZMin + gistStageOffset(1)}
         radius={VALUES.rendering.latentFieldRadius}
         intensity={VALUES.rendering.gistRiseLayerFog}
       />

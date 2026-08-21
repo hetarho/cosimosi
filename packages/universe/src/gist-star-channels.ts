@@ -1,6 +1,6 @@
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
-import { SEMANTIC_MAX_STAGE, effectiveStrength, gistCoordinate } from '@cosimosi/memory-logic'
+import { SEMANTIC_MAX_STAGE, effectiveStrength, gistZOffset } from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -14,12 +14,14 @@ import { hexToLinearRgb, lerpClamp } from './star-channels.ts'
 // object). The stage texts still persist and 변천사 still lists every crossed rung — what changed
 // is how many bodies the sky shows, not what is remembered ([C6][C7]).
 //
-// Position: x, y ride the live hippocampal sim buffer per frame (copied, never simulated for the
-// neocortex [C6][I5]); only z is carried here, derived through the golden-parity gistCoordinate —
-// no parallel z math, so a stage rise moves the one body upward. Color = the memory's emotion via
-// the single palette seam and nothing else ([M3][I3]); size = EffectiveStrength mapped into the
-// quieter gist range ([V3]); softness = the [V5] diffuse look, deepening with stage. No `three`,
-// no rendering-vocab dependency — deterministic functions over domain facts.
+// Position: the FULL (x, y, z) rides the live hippocampal sim buffer per frame (copied, never
+// simulated for the neocortex — [C6][I5]); only the stage's z LIFT is
+// carried here, derived through the golden-parity gistZOffset — no parallel z math, so a stage rise
+// moves the one body further upward while it keeps shadowing its memory's spot in the lens. Color =
+// the memory's emotion via the single palette seam and nothing else ([M3][I3]); size =
+// EffectiveStrength mapped into the quieter gist range ([V3]); softness = the [V5] diffuse look,
+// deepening with stage. No `three`, no rendering-vocab dependency — deterministic functions over
+// domain facts.
 
 export interface GistStarInstance {
   readonly memoryId: string
@@ -27,8 +29,8 @@ export interface GistStarInstance {
   readonly stage: number
   /** The selection id a pick emits — parseGistNodeId round-trips it ([R8]). */
   readonly nodeId: string
-  /** Neocortical z for the stage (gistCoordinate) — x, y come from the sim buffer per frame. */
-  readonly z: number
+  /** The stage's z lift (gistZOffset) — added to the live hippocampal (x, y, z) per frame. */
+  readonly zOffset: number
   /** Emotion color, linear RGB 0..1 ([M3][I3]). */
   readonly color: readonly [number, number, number]
   /** World scale from EffectiveStrength within [gistStarSizeMin, gistStarSizeMax] ([V3]). */
@@ -57,8 +59,8 @@ export function parseGistNodeId(nodeId: string): { episodicMemoryId: string } | 
   return { episodicMemoryId }
 }
 
-export function gistStageZ(stage: number): number {
-  return gistCoordinate(0, 0, stage).z
+export function gistStageOffset(stage: number): number {
+  return gistZOffset(stage)
 }
 
 export function gistStarInstances(
@@ -83,10 +85,10 @@ export function gistStarInstances(
       memoryId: memory.id,
       stage: risen,
       nodeId: gistNodeId(memory.id),
-      // Only z is taken — the x, y arguments are placeholders because the real x, y are
-      // copied from the live sim buffer per frame; the z derivation stays the golden-parity
-      // `gistCoordinate`'s alone ([I5]).
-      z: gistStageZ(risen),
+      // A lift, not a coordinate: the renderer adds it to the live (x, y, z) it reads from the
+      // sim buffer per frame; the lift derivation stays the golden-parity `gistZOffset`'s alone
+      // ([I5]).
+      zOffset: gistStageOffset(risen),
       color,
       size,
       // Stage 1 reads at the base gist softness; the ladder top reads fully diffuse ([V5]).

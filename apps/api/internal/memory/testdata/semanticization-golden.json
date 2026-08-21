@@ -2,8 +2,8 @@
   "tolerance": 1e-9,
   "values": {
     "gist_units_per_stage": 10,
-    "neocortex_z_min": 27,
-    "neocortex_z_max": 45,
+    "gist_z_offset_min": 36,
+    "gist_z_offset_max": 54,
     "max_stage": 4
   },
   "cases": [
@@ -106,69 +106,39 @@
       "expected": 18
     },
     {
-      "function": "gist_coordinate",
+      "function": "gist_z_offset",
       "inputs": {
-        "hippocampal_x": 3.5,
-        "hippocampal_y": -7.25,
         "stage": 0
       },
-      "expected_coord": {
-        "x": 3.5,
-        "y": -7.25,
-        "z": 27
-      }
+      "expected": 36
     },
     {
-      "function": "gist_coordinate",
+      "function": "gist_z_offset",
       "inputs": {
-        "hippocampal_x": 3.5,
-        "hippocampal_y": -7.25,
         "stage": 1
       },
-      "expected_coord": {
-        "x": 3.5,
-        "y": -7.25,
-        "z": 31.5
-      }
+      "expected": 40.5
     },
     {
-      "function": "gist_coordinate",
+      "function": "gist_z_offset",
       "inputs": {
-        "hippocampal_x": 3.5,
-        "hippocampal_y": -7.25,
         "stage": 2
       },
-      "expected_coord": {
-        "x": 3.5,
-        "y": -7.25,
-        "z": 36
-      }
+      "expected": 45
     },
     {
-      "function": "gist_coordinate",
+      "function": "gist_z_offset",
       "inputs": {
-        "hippocampal_x": 3.5,
-        "hippocampal_y": -7.25,
         "stage": 3
       },
-      "expected_coord": {
-        "x": 3.5,
-        "y": -7.25,
-        "z": 40.5
-      }
+      "expected": 49.5
     },
     {
-      "function": "gist_coordinate",
+      "function": "gist_z_offset",
       "inputs": {
-        "hippocampal_x": 3.5,
-        "hippocampal_y": -7.25,
         "stage": 4
       },
-      "expected_coord": {
-        "x": 3.5,
-        "y": -7.25,
-        "z": 45
-      }
+      "expected": 54
     }
   ]
 }

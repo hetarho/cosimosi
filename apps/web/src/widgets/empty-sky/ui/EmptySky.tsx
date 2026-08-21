@@ -11,7 +11,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { moodColor } from '@cosimosi/emotion'
 import { ObservedErrorBoundary } from '@cosimosi/observability/react'
-import { generateLatentField } from '@cosimosi/universe'
+import { UNIVERSE_ARRIVAL_CAMERA_POSITION, generateLatentField } from '@cosimosi/universe'
 import { LatentStarField } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 
@@ -64,6 +64,7 @@ function EmptySkyCanvas() {
       dpr={[1, VALUES.rendering.maxPixelRatio]}
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
+      cameraPosition={UNIVERSE_ARRIVAL_CAMERA_POSITION}
     >
       <SkySphere stops={stops} reducedMotion={reducedMotion} rateRef={rateRef} />
       <LatentStarField field={field} reducedMotion={reducedMotion} />

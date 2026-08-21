@@ -189,7 +189,9 @@ rendering:
   # this on-screen size costs the dust nothing it can be seen to lose.
   latent_star_segments: 6
   latent_star_segments_mobile: 4
-  # World radius of the x,y disc the field scatters within (z comes from the hippocampus band).
+  # World radius of the x,y disc the field scatters within. The z allowance tapers to nothing at
+  # this rim (an ellipsoidal cap over the hippocampus band), so the field reads as the lens the
+  # layout settles into, not as a cylinder with sliced faces.
   latent_field_radius: 56
   # Latent point world radius — small and dim; below cell_star_point_size so a real neuron reads
   # as brighter/larger than the silent field it wakes from.
@@ -674,26 +676,39 @@ force_sim:
   # scale knob: the cluster seed radii derive from it, and the rendered body sizes
   # (rendering.star_size_*, cell_star_point_size, gist_star_size_*) must stay well under the spacing
   # it produces, or big stars overlap their neighbours instead of hanging apart in space.
-  link_distance: 20
+  link_distance: 22
   # Center pull coefficient; connectivity scales this so self-relevant nodes settle nearer the origin.
   # This — not link_distance — is what sets how tightly the whole universe balls up: the springs reach
   # their rest length long before the center force stops squeezing, so spacing is won here. Weakening
   # it stretches the cloud while keeping the relative gradient (a well-connected node still sits
   # nearer the origin than a lonely one).
-  center_strength: 0.008
+  center_strength: 0.005
   # Barnes-Hut repulsion coefficient for baseline pattern separation — the local lever: it decides how
   # close the closest pair ends up, where center_strength decides the cloud's overall size.
-  repulsion: 5
+  repulsion: 10
   # Per-tick alpha cooling, tuned for stable convergence without freezing the first launch.
   tick_alpha_decay: 0.022
   # Velocity retained per tick (1 = no damping); lower settles the layout faster but stiffer.
   velocity_damping: 0.62
   # Alpha floor so the layout keeps a little residual motion instead of freezing hard.
   min_alpha: 0.02
-  hippocampus_z_min: 0
-  hippocampus_z_max: 18
-  neocortex_z_min: 27
-  neocortex_z_max: 45
+  # Hippocampus band, centered on the world origin so radius-from-(0,0,0) = connectivity reads in
+  # all three axes ([I7][V1], change 13). Must stay symmetric (min = -max): the lens's mid-plane IS
+  # the origin the center force pulls toward.
+  hippocampus_z_min: -16
+  hippocampus_z_max: 16
+  # Anisotropic z multiplier on the center pull — the lens's oblateness. The same connectivity-scaled
+  # force, applied this many times harder along z, so the settled cloud tapers inside the band
+  # instead of piling on the clamp faces. 1 would make the cloud as deep as it is wide; tuned on a
+  # dev-scale graph (38 neurons), where this setting reads a memory-star z span of ~0.4 of the
+  # cloud's xy diameter — volumetric without collapsing the two-layer separation.
+  z_center_gain: 1.5
+  # Per-stage gist z-offset ladder ([C6], change 13): a risen memory's gist body sits at its episodic
+  # star's LIVE (x, y, z) plus a stage-monotonic offset drawn linearly from this range — an offset
+  # contract, not an absolute band. Layer separation is guaranteed by construction:
+  # hippocampus_z_min + offset(stage 1) must clear hippocampus_z_max (guard-tested in memory-logic).
+  gist_z_offset_min: 36
+  gist_z_offset_max: 54
   seed: 190019
 
 diary_reader:

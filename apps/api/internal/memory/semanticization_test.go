@@ -115,32 +115,33 @@ func TestConsumeGistUnitsInvariants(t *testing.T) {
 	}
 }
 
-// TestGistCoordinateInvariants covers A7: x,y verbatim, z inside the neocortex band and disjoint from
-// the hippocampus band for every stage 1..max.
-func TestGistCoordinateInvariants(t *testing.T) {
+// TestGistZOffsetInvariants covers A7: the offset stays inside the ladder, is stage-monotonic, and
+// the worst-case gist floor (hippocampus_z_min + offset(1)) clears the lens top — the by-construction
+// layer separation ([C5][V9], change 13).
+func TestGistZOffsetInvariants(t *testing.T) {
 	t.Parallel()
 
-	zMin := float64(values.ForceSimNeocortexZMin)
-	zMax := float64(values.ForceSimNeocortexZMax)
-	hippoZMax := float64(values.ForceSimHippocampusZMax)
+	offsetMin := float64(values.ForceSimGistZOffsetMin)
+	offsetMax := float64(values.ForceSimGistZOffsetMax)
 
 	for stage := 1; stage <= semanticMaxStage; stage++ {
-		x, y, z := GistCoordinate(3.5, -7.25, stage)
-		if x != 3.5 || y != -7.25 {
-			t.Fatalf("GistCoordinate stage %d moved x,y: (%v,%v)", stage, x, y)
+		offset := GistZOffset(stage)
+		if offset < offsetMin-1e-9 || offset > offsetMax+1e-9 {
+			t.Fatalf("GistZOffset stage %d = %v outside [%v,%v]", stage, offset, offsetMin, offsetMax)
 		}
-		if z < zMin-1e-9 || z > zMax+1e-9 {
-			t.Fatalf("GistCoordinate stage %d z=%v outside [%v,%v]", stage, z, zMin, zMax)
-		}
-		if z <= hippoZMax {
-			t.Fatalf("GistCoordinate stage %d z=%v not disjoint from hippocampus band (<= %v)", stage, z, hippoZMax)
+		if stage > 1 && offset <= GistZOffset(stage-1) {
+			t.Fatalf("GistZOffset not monotone at stage %d: %v <= %v", stage, offset, GistZOffset(stage-1))
 		}
 	}
-	// Deeper stage sits higher toward the neocortex (monotone z).
-	_, _, zLow := GistCoordinate(0, 0, 1)
-	_, _, zHigh := GistCoordinate(0, 0, semanticMaxStage)
-	if zHigh <= zLow {
-		t.Fatalf("z not monotone in stage: %v <= %v", zHigh, zLow)
+	// The clamp holds both ends of the ladder.
+	if GistZOffset(-3) != GistZOffset(0) || GistZOffset(99) != GistZOffset(semanticMaxStage) {
+		t.Fatalf("GistZOffset clamp drifted: %v / %v", GistZOffset(-3), GistZOffset(99))
+	}
+	// Layer separation by construction: a gist body inherits its memory's live z (≥ hippocampus_z_min)
+	// plus at least the stage-1 lift, so even the worst case sits above the lens top.
+	worstFloor := float64(values.ForceSimHippocampusZMin) + GistZOffset(1)
+	if worstFloor <= float64(values.ForceSimHippocampusZMax) {
+		t.Fatalf("gist floor %v does not clear the hippocampus band top %v", worstFloor, values.ForceSimHippocampusZMax)
 	}
 }
 
@@ -154,22 +155,15 @@ type semanticFixture struct {
 
 type semanticFixtureValues struct {
 	GistUnitsPerStage float64 `json:"gist_units_per_stage"`
-	NeocortexZMin     float64 `json:"neocortex_z_min"`
-	NeocortexZMax     float64 `json:"neocortex_z_max"`
+	GistZOffsetMin    float64 `json:"gist_z_offset_min"`
+	GistZOffsetMax    float64 `json:"gist_z_offset_max"`
 	MaxStage          int     `json:"max_stage"`
 }
 
-type semanticCoord struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-	Z float64 `json:"z"`
-}
-
 type semanticCase struct {
-	Function      string         `json:"function"`
-	Inputs        semanticInputs `json:"inputs"`
-	Expected      *float64       `json:"expected,omitempty"`
-	ExpectedCoord *semanticCoord `json:"expected_coord,omitempty"`
+	Function string         `json:"function"`
+	Inputs   semanticInputs `json:"inputs"`
+	Expected *float64       `json:"expected,omitempty"`
 }
 
 type semanticInputs struct {
@@ -179,8 +173,6 @@ type semanticInputs struct {
 	TimerResetAt       string   `json:"timer_reset_at,omitempty"`
 	Arousal            *float64 `json:"arousal,omitempty"`
 	ConnectionStrength *float64 `json:"connection_strength,omitempty"`
-	HippocampalX       *float64 `json:"hippocampal_x,omitempty"`
-	HippocampalY       *float64 `json:"hippocampal_y,omitempty"`
 	Stage              *int     `json:"stage,omitempty"`
 }
 
@@ -189,8 +181,8 @@ func TestSemanticizationGoldenFixture(t *testing.T) {
 
 	fixture := readSemanticFixture(t)
 	if fixture.Values.GistUnitsPerStage != values.SemanticGistUnitsPerStage ||
-		fixture.Values.NeocortexZMin != float64(values.ForceSimNeocortexZMin) ||
-		fixture.Values.NeocortexZMax != float64(values.ForceSimNeocortexZMax) ||
+		fixture.Values.GistZOffsetMin != float64(values.ForceSimGistZOffsetMin) ||
+		fixture.Values.GistZOffsetMax != float64(values.ForceSimGistZOffsetMax) ||
 		fixture.Values.MaxStage != semanticMaxStage {
 		t.Fatalf("fixture values drifted from generated constants: %+v", fixture.Values)
 	}
@@ -204,12 +196,9 @@ func TestSemanticizationGoldenFixture(t *testing.T) {
 		case "gist_units_elapsed":
 			got := float64(GistUnitsElapsed(date(t, in.Now), date(t, in.TimerResetAt), derefFloat(in.Arousal), derefFloat(in.ConnectionStrength)))
 			assertAlmostEqual(t, testCase.Function, got, *testCase.Expected, fixture.Tolerance)
-		case "gist_coordinate":
-			x, y, z := GistCoordinate(derefFloat(in.HippocampalX), derefFloat(in.HippocampalY), derefInt(in.Stage))
-			want := testCase.ExpectedCoord
-			assertAlmostEqual(t, "gist_coordinate.x", x, want.X, fixture.Tolerance)
-			assertAlmostEqual(t, "gist_coordinate.y", y, want.Y, fixture.Tolerance)
-			assertAlmostEqual(t, "gist_coordinate.z", z, want.Z, fixture.Tolerance)
+		case "gist_z_offset":
+			got := GistZOffset(derefInt(in.Stage))
+			assertAlmostEqual(t, testCase.Function, got, *testCase.Expected, fixture.Tolerance)
 		default:
 			t.Fatalf("unknown golden function %q", testCase.Function)
 		}
@@ -268,23 +257,19 @@ func TestWriteSemanticizationGolden(t *testing.T) {
 		cases = append(cases, semanticCase{Function: "gist_units_elapsed", Inputs: in, Expected: fptr(got)})
 	}
 
-	// gist_coordinate: x,y verbatim, z per stage 0..max.
+	// gist_z_offset: the per-stage lift, stage 0..max (clamped ends included via the range itself).
 	for stage := 0; stage <= semanticMaxStage; stage++ {
-		in := semanticInputs{HippocampalX: fptr(3.5), HippocampalY: fptr(-7.25), Stage: iptr(stage)}
-		x, y, z := GistCoordinate(derefFloat(in.HippocampalX), derefFloat(in.HippocampalY), stage)
-		cases = append(cases, semanticCase{
-			Function:      "gist_coordinate",
-			Inputs:        in,
-			ExpectedCoord: &semanticCoord{X: x, Y: y, Z: z},
-		})
+		in := semanticInputs{Stage: iptr(stage)}
+		got := GistZOffset(stage)
+		cases = append(cases, semanticCase{Function: "gist_z_offset", Inputs: in, Expected: fptr(got)})
 	}
 
 	fixture := semanticFixture{
 		Tolerance: 1e-9,
 		Values: semanticFixtureValues{
 			GistUnitsPerStage: values.SemanticGistUnitsPerStage,
-			NeocortexZMin:     float64(values.ForceSimNeocortexZMin),
-			NeocortexZMax:     float64(values.ForceSimNeocortexZMax),
+			GistZOffsetMin:    float64(values.ForceSimGistZOffsetMin),
+			GistZOffsetMax:    float64(values.ForceSimGistZOffsetMax),
 			MaxStage:          semanticMaxStage,
 		},
 		Cases: cases,

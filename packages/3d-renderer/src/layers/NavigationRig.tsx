@@ -67,6 +67,8 @@ export interface NavigationRigProps {
   readonly pinnedTiltUp: number
   /** Largest dip below it — a positive number, like the rise. */
   readonly pinnedTiltDown: number
+  /** Elevation the pinned view opens at, in radians — inside the tilt allowance. */
+  readonly pinnedOpeningElevation: number
   /** Exp-damp responsiveness of the return to the pinned pose. */
   readonly pinnedReturnLambda: number
   readonly pinnedRotateSpeed: number
@@ -117,6 +119,7 @@ export function NavigationRig({
   getPinnedView,
   pinnedTiltUp,
   pinnedTiltDown,
+  pinnedOpeningElevation,
   pinnedReturnLambda,
   pinnedRotateSpeed,
   pinnedDampingFactor,
@@ -243,6 +246,7 @@ export function NavigationRig({
           cameraGoal,
           memory: pinnedMemory.current,
           instant: opening,
+          openingElevation: pinnedOpeningElevation,
           liveOffset,
           goalRotation,
           goalQuaternion,
@@ -310,11 +314,11 @@ interface PinnedMemory {
   /** Whether last frame was held — the frame a hold is released on must not overwrite `home`. */
   held: boolean
   /**
-   * True until this rig has drawn its first frame at all. The scene hands the camera in looking
-   * straight down, which is the one view the pinned mode exists to refuse, so a universe that OPENS
-   * pinned takes the flat pose outright rather than gliding into it — easing there would spend the
-   * arrival on a swing nobody asked for. It is spent on the first frame in either mode, so a later
-   * swap into pinned is a change the viewer made and gets to watch happen.
+   * True until this rig has drawn its first frame at all. Wherever the scene hands the camera in
+   * from, a universe that OPENS pinned takes its seated pose outright rather than gliding into it —
+   * easing there would spend the arrival on a swing nobody asked for. It is spent on the first
+   * frame in either mode, so a later swap into pinned is a change the viewer made and gets to
+   * watch happen.
    */
   firstFrame: boolean
 }
@@ -331,6 +335,8 @@ interface PinnedStep {
   readonly memory: PinnedMemory
   /** This rig's opening frame — take the pose outright instead of easing into it. */
   readonly instant: boolean
+  /** Elevation the opening pose is seated at (inside the tilt allowance). */
+  readonly openingElevation: number
   readonly liveOffset: PinnedOffset
   readonly goalRotation: Matrix4
   readonly goalQuaternion: Quaternion
@@ -367,6 +373,7 @@ function stepPinnedView({
   cameraGoal,
   memory,
   instant,
+  openingElevation,
   liveOffset,
   goalRotation,
   goalQuaternion,
@@ -392,11 +399,11 @@ function stepPinnedView({
     memory.home.radius = liveOffset.radius
     memory.hasHome = true
   }
-  // Opening dead level rather than at whatever the incoming camera clamps to. The scene hands this
-  // rig a camera looking straight down, so the clamp alone would seat the view against the TOP of
-  // the allowance with nothing left to rise into; from the flat, both directions of the tilt are
-  // still there to spend — the rise the depth reads from, and the smaller dip beneath it.
-  if (instant) memory.home.elevation = 0
+  // Opening at the rig's own elevation rather than at whatever the incoming camera clamps to: the
+  // clamp alone would seat the view against the TOP of the allowance with nothing left to rise
+  // into, and dead level would put the eye in the lens's mid-plane where its depth collapses to a
+  // line. The seated rise shows the lens on arrival and still leaves tilt to spend both ways.
+  if (instant) memory.home.elevation = openingElevation
   // A held frame is orbited from wherever the viewer already is; a released one returns to the pose
   // they left. Both offsets were clamped on the way in, so either goal is inside the envelope.
   const goalOffset = view.held ? liveOffset : memory.home

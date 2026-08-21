@@ -28,14 +28,19 @@ not detached.
 
 ## Layout Rules
 
-Neuron nodes own forces. Connectivity scales the center pull, so more self-relevant nodes settle nearer the origin.
-Synapses are undirected neuron-to-neuron springs. Barnes-Hut repulsion applies to neurons as baseline pattern separation.
+Neuron nodes own forces. Connectivity scales the center pull, so more self-relevant nodes settle nearer the origin —
+the true world origin (0,0,0), on all three axes. Synapses are undirected neuron-to-neuron springs. Barnes-Hut
+repulsion applies to neurons as baseline pattern separation.
 
 Episodic-memory nodes do not have independent springs, charges, or memory-to-memory forces. Each tick places them at the
 activation-weighted centroid of their neurons. A zero activation weight contributes no pull.
 
-All z output is clamped to the hippocampus band. The neocortex band is exported only as a reserved coordinate contract:
-future gist nodes copy hippocampus `x,y` and raise `z`; no force simulation runs there.
+The hippocampus band is symmetric about the origin (`hippocampus_z_min = -hippocampus_z_max`), and all z output is
+clamped to it. The center pull's z term carries the anisotropic `z_center_gain` multiplier, so the settled cloud
+tapers into an oblate lens inside the band instead of piling on the clamp faces; cluster seeds span the band's
+half-thickness rather than hugging the mid-plane. The neocortex layer is not this package's: it is a per-stage
+z-offset copy (`gist_z_offset_*`, memory-logic's `gistZOffset`) added to the live coordinates by the renderer; no
+force simulation runs there.
 
 ## Determinism
 
@@ -57,10 +62,10 @@ cross-engine implementations must reproduce the fixture contract before they are
 - `tick_alpha_decay`
 - `velocity_damping`
 - `min_alpha`
-- `hippocampus_z_min`
-- `hippocampus_z_max`
-- `neocortex_z_min`
-- `neocortex_z_max`
+- `hippocampus_z_min` / `hippocampus_z_max` (origin-symmetric: min = −max)
+- `z_center_gain`
+- `gist_z_offset_min` / `gist_z_offset_max` (the per-stage gist lift ladder — consumed by memory-logic, not by this
+  package)
 - `seed`
 
 Formulas, buffer packing, and array lengths stay in code.

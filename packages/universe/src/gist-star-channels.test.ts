@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { VALUES } from '@cosimosi/config'
 import { createEmotion } from '@cosimosi/emotion'
-import { SEMANTIC_MAX_STAGE, effectiveStrength, gistCoordinate } from '@cosimosi/memory-logic'
+import { SEMANTIC_MAX_STAGE, effectiveStrength, gistZOffset } from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -63,22 +63,22 @@ describe('gistStarInstances', () => {
     expect(gistStarInstances([memory({ semanticStage: Number.NaN })])).toEqual([])
   })
 
-  it('takes z from the golden-parity gistCoordinate inside the neocortex band [I5][V9]', () => {
+  it('takes the z lift from the golden-parity gistZOffset inside the offset ladder [I5][V9]', () => {
     for (let stage = 1; stage <= SEMANTIC_MAX_STAGE; stage++) {
       const [instance] = gistStarInstances([memory({ semanticStage: stage })])
-      expect(instance!.z).toBe(gistCoordinate(0, 0, stage).z)
-      expect(instance!.z).toBeGreaterThanOrEqual(forceSim.neocortexZMin)
-      expect(instance!.z).toBeLessThanOrEqual(forceSim.neocortexZMax)
+      expect(instance!.zOffset).toBe(gistZOffset(stage))
+      expect(instance!.zOffset).toBeGreaterThanOrEqual(forceSim.gistZOffsetMin)
+      expect(instance!.zOffset).toBeLessThanOrEqual(forceSim.gistZOffsetMax)
     }
   })
 
-  it('rises: a deeper stage puts the one body higher [A2]', () => {
-    const zByStage = Array.from(
+  it('rises: a deeper stage lifts the one body higher [A2]', () => {
+    const liftByStage = Array.from(
       { length: SEMANTIC_MAX_STAGE },
-      (_, i) => gistStarInstances([memory({ semanticStage: i + 1 })])[0]!.z,
+      (_, i) => gistStarInstances([memory({ semanticStage: i + 1 })])[0]!.zOffset,
     )
-    for (let i = 1; i < zByStage.length; i++) {
-      expect(zByStage[i]!).toBeGreaterThan(zByStage[i - 1]!)
+    for (let i = 1; i < liftByStage.length; i++) {
+      expect(liftByStage[i]!).toBeGreaterThan(liftByStage[i - 1]!)
     }
   })
 

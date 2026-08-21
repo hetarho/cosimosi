@@ -14,6 +14,16 @@ export const UNIVERSE_CAMERA_ENVELOPE = {
   maxDistance: 420,
 } as const
 
+/**
+ * Where a universe surface's camera ENTERS the world, passed to the canvas host by every surface
+ * that shows the real (or demo/empty) universe. Elevated, never on the z axis: the universe is an
+ * origin-centered lens whose depth is its z spread ([C5][V0]), and a straight-down entry is the one
+ * direction that projects that spread away entirely. ~90 world units out (the distance the
+ * straight-down bench default frames the field at), risen ~28° off the flat. Benches and staged
+ * scenes keep the canvas's own straight-down default instead — their content is authored against it.
+ */
+export const UNIVERSE_ARRIVAL_CAMERA_POSITION: readonly [number, number, number] = [0, -80, 42]
+
 export const UNIVERSE_CAMERA_RIG = {
   ...UNIVERSE_CAMERA_ENVELOPE,
   /** Camera-to-node distance a focus/fly glide lands at — scaled with force_sim.link_distance so a
@@ -27,19 +37,25 @@ export const UNIVERSE_CAMERA_RIG = {
   arriveTimeoutSeconds: 6,
   /**
    * How far off the flat the pinned view may tilt, in radians — one allowance for rising above the
-   * flat and a separate, smaller one for dipping below it. The pinned view opens LEVEL, so these are
-   * the give it has in each direction from there.
+   * flat and a separate, smaller one for dipping below it.
    *
-   * The z axis is the universe's own up — memories lie in the hippocampus band and their gists float
-   * in the neocortex band above ([V9]) — so a level camera is the one pose where that separation
-   * reads as height rather than as scatter. The two halves are unequal because the two directions
-   * are not worth the same: rising looks DOWN onto the band the memories lie in and across at the
-   * gists above them, which is the view that shows the depth, while dipping only puts the near stars
-   * between the eye and everything else. Both stay small enough that the horizon never leaves the
-   * frame.
+   * The z axis is the universe's own up — memories fill the origin-centered lens and their gists
+   * float in the offset copy above ([V9]) — so a near-level camera is the pose where
+   * that separation reads as height rather than as scatter. The two halves are unequal because the
+   * two directions are not worth the same: rising looks DOWN onto the lens the memories fill and
+   * across at the gists above it, which is the view that shows the depth, while dipping only puts
+   * the near stars between the eye and everything else. Both stay small enough that the horizon
+   * never leaves the frame.
    */
   pinnedTiltUp: (20 * Math.PI) / 180,
   pinnedTiltDown: (10 * Math.PI) / 180,
+  /**
+   * Where in that allowance the pinned view OPENS. Dead level (0) would put the eye in the lens's
+   * own mid-plane, where the band-deep cloud collapses to a line and the z the layout genuinely
+   * spreads ([C5]) is invisible; a modest rise shows the depth on arrival while leaving
+   * tilt to spend in both directions.
+   */
+  pinnedOpeningElevation: (12 * Math.PI) / 180,
   /** Exp-damp responsiveness of the return to the pinned pose after a glide lets the camera go. */
   pinnedReturnLambda: 2.6,
   /** Trackball-equivalent feel for the pinned orbit: slower than a free tumble, because every drag

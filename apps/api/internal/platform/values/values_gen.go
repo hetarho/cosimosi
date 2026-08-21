@@ -323,16 +323,17 @@ const (
 // force_sim
 const (
 	ForceSimCharge          = 0.035
-	ForceSimLinkDistance    = 20
-	ForceSimCenterStrength  = 0.008
-	ForceSimRepulsion       = 5
+	ForceSimLinkDistance    = 22
+	ForceSimCenterStrength  = 0.005
+	ForceSimRepulsion       = 10
 	ForceSimTickAlphaDecay  = 0.022
 	ForceSimVelocityDamping = 0.62
 	ForceSimMinAlpha        = 0.02
-	ForceSimHippocampusZMin = 0
-	ForceSimHippocampusZMax = 18
-	ForceSimNeocortexZMin   = 27
-	ForceSimNeocortexZMax   = 45
+	ForceSimHippocampusZMin = -16
+	ForceSimHippocampusZMax = 16
+	ForceSimZCenterGain     = 1.5
+	ForceSimGistZOffsetMin  = 36
+	ForceSimGistZOffsetMax  = 54
 	ForceSimSeed            = 190019
 )
 

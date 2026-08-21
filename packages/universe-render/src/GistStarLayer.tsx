@@ -12,7 +12,7 @@ import {
 } from '@cosimosi/3d-renderer'
 
 import {
-  gistStageZ,
+  gistStageOffset,
   gistStarInstances,
   useEpisodicMemoryStore,
   type GistStarInstance,
@@ -45,11 +45,11 @@ export interface GistStarLayerProps {
 // only earns its place once a scalar needs cross-surface tuning (the camera-rig precedent).
 const GIST_RISE_DURATION_SECONDS = 1.4
 
-// A settled body: risen (or seeded already-up) and sitting at its band z, so the frame loop
-// skips the ease math. A frozen shared sentinel, distinct from the {start, startZ} of a body
-// still animating.
-const SETTLED = Object.freeze({ start: 0, startZ: 0 })
-type RiseEntry = { start: number | null; startZ: number | null } | typeof SETTLED
+// A settled body: risen (or seeded already-up) and riding its memory at the full stage lift, so
+// the frame loop skips the ease math. A frozen shared sentinel, distinct from the
+// {start, startOffset} of a body still animating.
+const SETTLED = Object.freeze({ start: 0, startOffset: 0 })
+type RiseEntry = { start: number | null; startOffset: number } | typeof SETTLED
 
 // Per-body rise state keyed by node id, plus whether the read model has hydrated once. `hydrated`
 // gates on the episodic STORE being non-empty, not the gist projection: a universe with memories
@@ -133,7 +133,12 @@ export function reconcileGistRiseState(
   for (const instance of snapshot.instances) {
     alive.add(instance.nodeId)
     const previousStage = state.stageSeen.get(instance.nodeId)
-    state.stageSeen.set(instance.nodeId, instance.stage)
+    // The seen stage never goes down: a stage is one-way ([C6a]), so a lower stage here is a stale
+    // read racing a fresh one. Recording it would replay the rise when the fresh read returns.
+    state.stageSeen.set(
+      instance.nodeId,
+      previousStage === undefined ? instance.stage : Math.max(previousStage, instance.stage),
+    )
     // Two ways a rise happens now: a memory's first gist appears, or the body already on screen
     // moves to a deeper rung. Both re-arm the ease; a stage that did not move leaves the body
     // wherever it already is (settled or mid-rise), so nothing replays on an ordinary refetch.
@@ -141,9 +146,12 @@ export function reconcileGistRiseState(
     const rose = !isNew && instance.stage > previousStage
     if (!isNew && !rose) continue
     if (state.hydrated) {
+      // A first appearance lifts off from the hippocampal body itself (offset 0); a stage
+      // deepening starts from the previous stage's lift. Both ride the live (x, y, z) underneath,
+      // so neither origin can reverse if the sim drifts mid-rise.
       state.seen.set(instance.nodeId, {
         start: null,
-        startZ: previousStage === undefined ? null : gistStageZ(previousStage),
+        startOffset: previousStage === undefined ? 0 : gistStageOffset(previousStage),
       })
       risen.push({ memoryId: instance.memoryId, stage: instance.stage })
     } else {
@@ -182,20 +190,16 @@ export function mapGistInstancePosition(
   const indexed = riseState.indexed === snapshot
   const entry = indexed ? riseState.byInstance[index] : riseState.seen.get(instance.nodeId)
   if (entry === undefined) return false
+  // The gist body shadows its memory's LIVE lens position on all three axes ([C6]); only the
+  // stage lift is composed on top, so the neocortex layer is a z-shifted copy of the lens.
+  const liveZ = buffer[offset + 2] ?? 0
   out[0] = buffer[offset] ?? 0
   out[1] = buffer[offset + 1] ?? 0
   if (entry === SETTLED) {
-    out[2] = instance.z
+    out[2] = liveZ + instance.zOffset
     return true
   }
-  if (entry.start === null) {
-    // A first appearance starts at the hippocampal body. A stage deepening was pre-seeded with
-    // its previous band z, so neither origin can reverse if the sim moves mid-rise.
-    entry.start = elapsedSeconds
-    if (entry.startZ === null) entry.startZ = buffer[offset + 2] ?? 0
-  }
-  const startZ = entry.startZ
-  if (startZ === null) return false
+  if (entry.start === null) entry.start = elapsedSeconds
   const progress = Math.min(
     1,
     Math.max(0, (elapsedSeconds - entry.start) / GIST_RISE_DURATION_SECONDS),
@@ -203,13 +207,13 @@ export function mapGistInstancePosition(
   if (progress >= 1) {
     riseState.seen.set(instance.nodeId, SETTLED)
     // The index is a projection of `seen`, so it settles with it — otherwise every later frame
-    // would keep re-reading the finished {start, startZ} record and redo the ease math forever.
+    // would keep re-reading the finished {start, startOffset} record and redo the ease math forever.
     if (indexed) riseState.byInstance[index] = SETTLED
-    out[2] = instance.z
+    out[2] = liveZ + instance.zOffset
     return true
   }
   const eased = 1 - (1 - progress) ** 3
-  out[2] = startZ + (instance.z - startZ) * eased
+  out[2] = liveZ + entry.startOffset + (instance.zOffset - entry.startOffset) * eased
   return true
 }
 
@@ -220,11 +224,12 @@ export function gistSelectionAt(snapshot: GistRenderSnapshot, index: number): Gi
 
 // The instanced R3F binding for the neocortical gist body ([V9]): it projects each risen memory to
 // ONE instance (model — gistStarInstances), feeds tint/softness as per-instance attributes, and
-// derives positions per frame — x, y copied live from the memory's hippocampal sim slot, z the
-// current stage's gistCoordinate band position ([C6][I5]; the neocortex runs no sim). A stage rise
-// moves that one body upward on a one-way ease ([I10] — the rise never reverses); the bodies
-// present at first hydration seed silently so a page load never mass-animates, and an empty advance
-// moves no instance so nothing plays (A8).
+// derives positions per frame — the full (x, y, z) copied live from the memory's hippocampal sim
+// slot plus the current stage's gistZOffset lift ([C6][I5]; the neocortex runs no sim — it is a
+// z-shifted copy of the lens). A stage rise moves that one body upward on a
+// one-way ease ([I10] — the rise never reverses); the bodies present at first hydration seed
+// silently so a page load never mass-animates, and an empty advance moves no instance so nothing
+// plays (A8).
 export function GistStarLayer({
   positions,
   shape = DEFAULT_GIST_SHAPE,

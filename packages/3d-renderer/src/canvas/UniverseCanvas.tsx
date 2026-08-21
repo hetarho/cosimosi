@@ -5,7 +5,11 @@ import * as THREE from 'three/webgpu'
 import { VALUES } from '@cosimosi/config'
 
 import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
-import { DEFAULT_CANVAS_DPR, DEFAULT_CANVAS_FOV } from './canvas-defaults.ts'
+import {
+  DEFAULT_CANVAS_CAMERA_POSITION,
+  DEFAULT_CANVAS_DPR,
+  DEFAULT_CANVAS_FOV,
+} from './canvas-defaults.ts'
 import { resolveToneMapping, type ToneMappingKey } from './tone-mapping.ts'
 
 // Register three/webgpu's catalogue with R3F (runtime side of jsx-elements.ts).
@@ -35,6 +39,11 @@ export interface UniverseCanvasProps {
    * deployment could turn independently is exactly what would break it.
    */
   readonly far?: number
+  /**
+   * Where the camera enters the world. Defaults to the straight-down bench framing; universe
+   * surfaces pass `UNIVERSE_ARRIVAL_CAMERA_POSITION` so the lens's depth reads on arrival.
+   */
+  readonly cameraPosition?: readonly [number, number, number]
   /** Pin the WebGL2 fallback (skip WebGPU) — for parity testing. */
   readonly forceWebGL?: boolean
   /**
@@ -74,6 +83,7 @@ export function UniverseCanvas({
   dpr = DEFAULT_CANVAS_DPR,
   fov = DEFAULT_CANVAS_FOV,
   far = UNIVERSE_CANVAS_FAR,
+  cameraPosition = DEFAULT_CANVAS_CAMERA_POSITION,
   clearColor = 0x000000,
   forceWebGL = false,
   transparent = false,
@@ -121,7 +131,7 @@ export function UniverseCanvas({
     <Canvas
       frameloop={frameloop}
       dpr={dpr}
-      camera={{ fov, far, position: [0, 0, 90] }}
+      camera={{ fov, far, position: cameraPosition as [number, number, number] }}
       style={transparent ? { background: 'transparent' } : undefined}
       onCreated={(state) => state.setSize(state.size.width, state.size.height)}
       gl={(props) => {

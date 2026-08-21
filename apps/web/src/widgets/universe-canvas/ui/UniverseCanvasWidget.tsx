@@ -10,6 +10,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { useReducedMotion } from '@cosimosi/ui'
+import { UNIVERSE_ARRIVAL_CAMERA_POSITION } from '@cosimosi/universe'
 import {
   UNIVERSE_BACKDROP,
   UniverseSceneLayers,
@@ -56,7 +57,12 @@ function UniverseCanvasHost({
 
   return (
     <div className="relative h-full w-full">
-      <UniverseCanvas dpr={dpr} fov={skin.camera.fov} clearColor={skin.sky.night}>
+      <UniverseCanvas
+        dpr={dpr}
+        fov={skin.camera.fov}
+        clearColor={skin.sky.night}
+        cameraPosition={UNIVERSE_ARRIVAL_CAMERA_POSITION}
+      >
         <UniverseSceneLayers
           scene={scene}
           bloom={skin.bloom}

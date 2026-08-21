@@ -132,8 +132,55 @@ describe('force-sim layout rules', () => {
       const coordinate = readForceSimCoordinate(simulation.coordinates, entry.index)
       expect(coordinate.z).toBeGreaterThanOrEqual(testValues.hippocampusZMin)
       expect(coordinate.z).toBeLessThanOrEqual(testValues.hippocampusZMax)
-      expect(coordinate.z).toBeLessThan(testValues.neocortexZMin)
     }
+  })
+
+  it('settles a populated universe into an origin-centered lens, not a slab on the clamp faces', () => {
+    // Deterministic many-node graph: enough bodies that the z distribution is a shape, not noise.
+    const neurons = Array.from({ length: 60 }, (_, i) => ({
+      id: `n${i}`,
+      connectivity: (i % 6) * 0.5,
+    }))
+    const synapses = Array.from({ length: 90 }, (_, i) => ({
+      sourceNeuronId: `n${i % 60}`,
+      targetNeuronId: `n${(i * 7 + 11) % 60}`,
+      strength: 0.2 + (i % 5) * 0.15,
+    })).filter((synapse) => synapse.sourceNeuronId !== synapse.targetNeuronId)
+    const episodicMemories = Array.from({ length: 15 }, (_, i) => ({ id: `m${i}` }))
+    const activations = episodicMemories.flatMap((memory, i) => [
+      { episodicMemoryId: memory.id, neuronId: `n${(i * 4) % 60}`, weight: 1 },
+      { episodicMemoryId: memory.id, neuronId: `n${(i * 4 + 1) % 60}`, weight: 0.6 },
+      { episodicMemoryId: memory.id, neuronId: `n${(i * 4 + 2) % 60}`, weight: 0.4 },
+    ])
+    const graph: ForceSimGraph = { neurons, synapses, episodicMemories, activations }
+
+    const simulation = createForceSimulation(graph, { values: testValues })
+    tick(simulation, 600)
+
+    const zs = []
+    const halfBand = (testValues.hippocampusZMax - testValues.hippocampusZMin) / 2
+    const mid = (testValues.hippocampusZMax + testValues.hippocampusZMin) / 2
+    for (const entry of simulation.nodeIndex.entries) {
+      if (entry.kind !== 'neuron') continue
+      zs.push(readForceSimCoordinate(simulation.coordinates, entry.index).z)
+    }
+    for (const z of zs) {
+      expect(z).toBeGreaterThanOrEqual(testValues.hippocampusZMin)
+      expect(z).toBeLessThanOrEqual(testValues.hippocampusZMax)
+    }
+    // Origin-centered: the settled cloud's z centroid sits near the band mid (= 0 in product values).
+    const meanZ = zs.reduce((sum, z) => sum + z, 0) / zs.length
+    expect(Math.abs(meanZ - mid)).toBeLessThan(halfBand * 0.35)
+    // A lens, not a plane: depth genuinely spreads…
+    const span = Math.max(...zs) - Math.min(...zs)
+    expect(span).toBeGreaterThan(halfBand)
+    // …and not by piling on the clamp faces: most nodes settle in the band interior.
+    const onFaces = zs.filter(
+      (z) =>
+        z - testValues.hippocampusZMin < halfBand * 0.06 ||
+        testValues.hippocampusZMax - z < halfBand * 0.06,
+    ).length
+    expect(onFaces / zs.length).toBeLessThan(0.3)
   })
 
   it('separates neurons that receive the same seed hint', () => {
@@ -153,6 +200,23 @@ describe('force-sim layout rules', () => {
     expect(
       distance(simulation.getPosition('neuron', 'a'), simulation.getPosition('neuron', 'b')),
     ).toBeGreaterThan(1)
+  })
+
+  it('rejects an off-origin hippocampus band and a non-positive link distance', () => {
+    const graph: ForceSimGraph = {
+      neurons: [],
+      synapses: [],
+      episodicMemories: [],
+      activations: [],
+    }
+    expect(() =>
+      createForceSimulation(graph, {
+        values: { ...testValues, hippocampusZMin: 0, hippocampusZMax: 18 },
+      }),
+    ).toThrow(/symmetric about the origin/)
+    expect(() =>
+      createForceSimulation(graph, { values: { ...testValues, linkDistance: 0 } }),
+    ).toThrow(/linkDistance must be positive/)
   })
 
   it('rejects emotion and time fields at the runtime boundary', () => {

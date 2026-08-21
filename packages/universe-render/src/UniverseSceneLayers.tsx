@@ -12,7 +12,7 @@ import {
   type BloomParams,
   type StarFieldProfile,
 } from '@cosimosi/3d-renderer'
-import { UNIVERSE_CAMERA_RIG, advanceSkyRate } from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_RIG, advanceSkyRate, gistStageOffset } from '@cosimosi/universe'
 
 import { AwakenNeuron } from './AwakenNeuron.tsx'
 import { CellStarLayer } from './CellStarLayer.tsx'
@@ -151,11 +151,13 @@ export function UniverseSceneLayers({
         universeTime={sceneTime}
         reducedMotion={reducedMotion}
       />
-      {/* The neocortex band ([V9]): gist bodies at the memories' copied x,y, risen z — plus
-          the restrained gap haze that makes the two bands read as depth, never a wall. */}
+      {/* The neocortex layer ([V9]): gist bodies at the memories' copied live (x, y, z) plus the
+          stage lift — plus the restrained gap haze between the lens top and the lowest reach any
+          gist body can have (lens floor + stage-1 lift), so the two layers read as depth, never
+          a wall. */}
       <BandFog
         zMin={VALUES.forceSim.hippocampusZMax}
-        zMax={VALUES.forceSim.neocortexZMin}
+        zMax={VALUES.forceSim.hippocampusZMin + gistStageOffset(1)}
         radius={VALUES.rendering.latentFieldRadius}
         intensity={VALUES.rendering.gistRiseLayerFog}
       />

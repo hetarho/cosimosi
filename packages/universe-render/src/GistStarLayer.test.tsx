@@ -5,7 +5,7 @@ import {
   GIST_INSTANCE_TINT,
   type InstanceAttributeChannel,
 } from '@cosimosi/3d-renderer'
-import { gistNodeId, gistStageZ, type GistStarInstance } from '@cosimosi/universe'
+import { gistNodeId, gistStageOffset, type GistStarInstance } from '@cosimosi/universe'
 
 import {
   createGistRenderSnapshot,
@@ -25,7 +25,7 @@ function instance(
     memoryId,
     stage,
     nodeId: gistNodeId(memoryId),
-    z: gistStageZ(stage),
+    zOffset: gistStageOffset(stage),
     color: [stage / 10, stage / 5, stage / 4],
     size: 0.5 + stage / 10,
     softness: 0.6 + stage / 20,
@@ -59,7 +59,11 @@ function expectConsistentSnapshot(
     expect(slot).toBeDefined()
     const out = new Float32Array(3)
     expect(mapGistInstancePosition(snapshot, riseState, index, buffer, out, 0)).toBe(true)
-    expect(Array.from(out)).toEqual([buffer[slot! * 3], buffer[slot! * 3 + 1], source.z])
+    expect(Array.from(out)).toEqual([
+      buffer[slot! * 3],
+      buffer[slot! * 3 + 1],
+      buffer[slot! * 3 + 2]! + source.zOffset,
+    ])
     expect(gistSelectionAt(snapshot, index)).toEqual({
       memoryId: source.memoryId,
       stage: source.stage,
@@ -111,7 +115,7 @@ describe('gist render snapshot', () => {
 
     const out = new Float32Array(3)
     expect(committedPosition(0, out)).toBe(true)
-    expect(Array.from(out)).toEqual([10, 11, alpha.z])
+    expect(Array.from(out)).toEqual([10, 11, 12 + alpha.zOffset])
     expect(committedSelection(0)).toEqual({ memoryId: 'alpha', stage: 1 })
     expect(committed.channels.scales?.[0]).toBeCloseTo(alpha.size, 6)
   })
@@ -135,18 +139,21 @@ describe('gist render snapshot', () => {
     // Re-reconciling the same stage is not another rise — an ordinary refetch replays nothing.
     expect(reconcileGistRiseState(riseState, advanced, true)).toEqual([])
 
-    // A deepening starts at the previous stage's settled band z, never back at the sim z.
+    // A deepening starts at the previous stage's LIFT, riding the live sim z underneath.
     expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 4)).toBe(true)
-    expect(Array.from(out)).toEqual([10, 11, alpha.z])
+    expect(Array.from(out)).toEqual([10, 11, 12 + alpha.zOffset])
+    // The sim moving mid-rise moves the body WITH its memory (the copy contract), but the lift
+    // itself only ever grows — the rise never reverses ([I10]).
     riseBuffer[5] = -40
-    let previousZ = out[2] as number
+    let previousLift = (out[2] as number) - 12
     for (const elapsed of [4.2, 4.5, 4.9, 5.4]) {
       expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, elapsed)).toBe(true)
-      expect(out[2]).toBeGreaterThanOrEqual(previousZ)
-      previousZ = out[2] as number
+      const lift = (out[2] as number) - (riseBuffer[5] as number)
+      expect(lift).toBeGreaterThanOrEqual(previousLift)
+      previousLift = lift
     }
     expect(mapGistInstancePosition(advanced, riseState, 0, riseBuffer, out, 100)).toBe(true)
-    expect(Array.from(out)).toEqual([10, 11, risenAlpha.z])
+    expect(Array.from(out)).toEqual([10, 11, -40 + risenAlpha.zOffset])
 
     // A memory that leaves the projection drops both records, so its next appearance is new again.
     reconcileGistRiseState(riseState, createGistRenderSnapshot([], slots), true)
@@ -193,14 +200,14 @@ describe('gist render snapshot', () => {
     expect(riseState.byInstance).toHaveLength(2)
 
     const out = new Float32Array(3)
-    // Mid-rise: the indexed entry is the live {start, startZ} record, not the settled sentinel.
+    // Mid-rise: the indexed entry is the live {start, startOffset} record, not the settled sentinel.
     expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 0)).toBe(true)
-    expect(out[2]).not.toBe(risenBeta.z)
+    expect(out[2]).not.toBe(22 + risenBeta.zOffset)
     expect(riseState.byInstance[1]).not.toBe(riseState.byInstance[0])
 
     // Past the rise: both the map and its index settle, so later frames skip the ease math.
     expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 100)).toBe(true)
-    expect(out[2]).toBe(risenBeta.z)
+    expect(out[2]).toBe(22 + risenBeta.zOffset)
     expect(riseState.byInstance[1]).toBe(riseState.seen.get(risenBeta.nodeId))
   })
 
@@ -217,8 +224,8 @@ describe('gist render snapshot', () => {
 
     const out = new Float32Array(3)
     expect(mapGistInstancePosition(reordered, riseState, 0, buffer, out, 0)).toBe(true)
-    // Index 0 of the un-indexed snapshot is beta, whose slot is 0 → buffer x,y = (20, 21).
-    expect(Array.from(out)).toEqual([20, 21, beta.z])
+    // Index 0 of the un-indexed snapshot is beta, whose slot is 0 → buffer xyz = (20, 21, 22).
+    expect(Array.from(out)).toEqual([20, 21, 22 + beta.zOffset])
   })
 
   it('hides instances with no committed sim-slot source without disturbing neighboring picks', () => {

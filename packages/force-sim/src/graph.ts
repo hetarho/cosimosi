@@ -49,8 +49,7 @@ export interface ForceSimValues {
   readonly minAlpha: number
   readonly hippocampusZMin: number
   readonly hippocampusZMax: number
-  readonly neocortexZMin: number
-  readonly neocortexZMax: number
+  readonly zCenterGain: number
   readonly seed: number
 }
 

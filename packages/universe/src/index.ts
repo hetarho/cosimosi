@@ -21,7 +21,11 @@ export {
   type UniverseNavigationEvent,
   type UniverseNavigationMode,
 } from './universe-navigation.machine.ts'
-export { UNIVERSE_CAMERA_ENVELOPE, UNIVERSE_CAMERA_RIG } from './camera-rig.ts'
+export {
+  UNIVERSE_ARRIVAL_CAMERA_POSITION,
+  UNIVERSE_CAMERA_ENVELOPE,
+  UNIVERSE_CAMERA_RIG,
+} from './camera-rig.ts'
 export {
   UNIVERSE_DEFAULT_VIEW_MODE,
   useUniverseViewStore,
@@ -231,7 +235,7 @@ export {
 } from './current-decay-text.ts'
 export {
   gistNodeId,
-  gistStageZ,
+  gistStageOffset,
   gistStarInstances,
   parseGistNodeId,
   type GistStarInstance,

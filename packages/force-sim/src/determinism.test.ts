@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
@@ -18,6 +18,17 @@ const fixture = JSON.parse(
 ) as GoldenFixture
 
 describe('force-sim determinism', () => {
+  // Mirrors the Go golden convention (TestWriteSemanticizationGolden): the committed fixture is the
+  // parity contract, and a deliberate layout change re-bakes it here instead of by hand.
+  it('regenerates the canonical fixture (set UPDATE_GOLDEN=1)', () => {
+    if (!process.env.UPDATE_GOLDEN) return
+    writeFileSync(
+      fileURLToPath(new URL('./fixtures/canonical.json', import.meta.url)),
+      `${JSON.stringify({ ...fixture, coordinates: runFixture(fixture.seed) }, null, 2)}\n`,
+      'utf8',
+    )
+  })
+
   it('matches the canonical coordinate-buffer fixture byte-for-byte', () => {
     expect(runFixture(fixture.seed)).toEqual(fixture.coordinates)
   })

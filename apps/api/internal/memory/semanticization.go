@@ -85,14 +85,15 @@ func ConsumeGistUnits(anchor time.Time, crossedUnits int, arousal float64, conne
 	return anchorDate.AddDate(0, 0, consumed)
 }
 
-// GistCoordinate places a gist body: x, y copied VERBATIM from the emergent hippocampal coordinates (the
-// neocortex has no force-sim and no independent coordinate authority, [I5]), and z a stage-progressive
-// linear map into the reserved neocortex band [neocortex_z_min, neocortex_z_max] (15..25), disjoint
-// from the hippocampus band (0..10) ([C5][C6][V9]). The map shape is code; only the band bounds are
-// values (reused from force_sim).
-func GistCoordinate(hippocampalX float64, hippocampalY float64, stage int) (float64, float64, float64) {
-	zMin := float64(values.ForceSimNeocortexZMin)
-	zMax := float64(values.ForceSimNeocortexZMax)
+// GistZOffset is the per-stage z LIFT of a gist body, not an absolute coordinate: the renderer adds
+// it to the memory's LIVE hippocampal (x, y, z), so the neocortex layer is a literal z-shifted copy
+// of the lens ([C5][C6]). The server derives no absolute coordinate at all
+// ([I5] — positions are client-emergent; this pure map exists only for TS↔Go golden parity).
+// Stage-monotonic (the rise is one-way, [C6a]); a stage-progressive linear map over
+// [gist_z_offset_min, gist_z_offset_max]. The map shape is code; only the ladder bounds are values.
+func GistZOffset(stage int) float64 {
+	offsetMin := float64(values.ForceSimGistZOffsetMin)
+	offsetMax := float64(values.ForceSimGistZOffsetMax)
 	clamped := stage
 	if clamped < 0 {
 		clamped = 0
@@ -100,6 +101,5 @@ func GistCoordinate(hippocampalX float64, hippocampalY float64, stage int) (floa
 	if clamped > semanticMaxStage {
 		clamped = semanticMaxStage
 	}
-	z := zMin + (float64(clamped)/float64(semanticMaxStage))*(zMax-zMin)
-	return hippocampalX, hippocampalY, z
+	return offsetMin + (float64(clamped)/float64(semanticMaxStage))*(offsetMax-offsetMin)
 }

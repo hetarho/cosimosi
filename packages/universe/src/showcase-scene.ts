@@ -244,7 +244,7 @@ export function gistShowcaseScene(): GistShowcaseScene {
     const slot = memories.findIndex((memory) => memory.id === instance.memoryId)
     gistPositions[i * 3] = positions[slot * 3] ?? 0
     gistPositions[i * 3 + 1] = positions[slot * 3 + 1] ?? 0
-    gistPositions[i * 3 + 2] = instance.z
+    gistPositions[i * 3 + 2] = (positions[slot * 3 + 2] ?? 0) + instance.zOffset
     gistTints[i * 3] = instance.color[0]
     gistTints[i * 3 + 1] = instance.color[1]
     gistTints[i * 3 + 2] = instance.color[2]
@@ -309,7 +309,7 @@ export function gistShapesShowcaseScene(): GistShowcaseScene {
     const slot = memories.findIndex((memory) => memory.id === instance.memoryId)
     gistPositions[i * 3] = positions[slot * 3] ?? 0
     gistPositions[i * 3 + 1] = positions[slot * 3 + 1] ?? 0
-    gistPositions[i * 3 + 2] = instance.z
+    gistPositions[i * 3 + 2] = (positions[slot * 3 + 2] ?? 0) + instance.zOffset
     gistTints[i * 3] = instance.color[0]
     gistTints[i * 3 + 1] = instance.color[1]
     gistTints[i * 3 + 2] = instance.color[2]

@@ -4,29 +4,96 @@
   "dt": 0.016666666666666666,
   "graph": {
     "neurons": [
-      { "id": "n_self", "connectivity": 8, "seedHint": { "x": 18, "y": -4, "z": 4 } },
-      { "id": "n_place", "connectivity": 3, "seedHint": { "x": -10, "y": 12, "z": 6 } },
-      { "id": "n_detail", "connectivity": 1, "seedHint": { "x": 4, "y": 20, "z": 5 } },
-      { "id": "n_seeded", "connectivity": 2 }
+      {
+        "id": "n_self",
+        "connectivity": 8,
+        "seedHint": {
+          "x": 18,
+          "y": -4,
+          "z": 4
+        }
+      },
+      {
+        "id": "n_place",
+        "connectivity": 3,
+        "seedHint": {
+          "x": -10,
+          "y": 12,
+          "z": 6
+        }
+      },
+      {
+        "id": "n_detail",
+        "connectivity": 1,
+        "seedHint": {
+          "x": 4,
+          "y": 20,
+          "z": 5
+        }
+      },
+      {
+        "id": "n_seeded",
+        "connectivity": 2
+      }
     ],
     "synapses": [
-      { "sourceNeuronId": "n_self", "targetNeuronId": "n_place", "strength": 0.8 },
-      { "sourceNeuronId": "n_place", "targetNeuronId": "n_detail", "strength": 0.35 },
-      { "sourceNeuronId": "n_detail", "targetNeuronId": "n_seeded", "strength": 0.45 }
+      {
+        "sourceNeuronId": "n_self",
+        "targetNeuronId": "n_place",
+        "strength": 0.8
+      },
+      {
+        "sourceNeuronId": "n_place",
+        "targetNeuronId": "n_detail",
+        "strength": 0.35
+      },
+      {
+        "sourceNeuronId": "n_detail",
+        "targetNeuronId": "n_seeded",
+        "strength": 0.45
+      }
     ],
-    "episodicMemories": [{ "id": "e_first" }, { "id": "e_second" }],
+    "episodicMemories": [
+      {
+        "id": "e_first"
+      },
+      {
+        "id": "e_second"
+      }
+    ],
     "activations": [
-      { "episodicMemoryId": "e_first", "neuronId": "n_self", "weight": 3 },
-      { "episodicMemoryId": "e_first", "neuronId": "n_place", "weight": 1 },
-      { "episodicMemoryId": "e_second", "neuronId": "n_place", "weight": 1 },
-      { "episodicMemoryId": "e_second", "neuronId": "n_detail", "weight": 2 },
-      { "episodicMemoryId": "e_second", "neuronId": "n_seeded", "weight": 1 }
+      {
+        "episodicMemoryId": "e_first",
+        "neuronId": "n_self",
+        "weight": 3
+      },
+      {
+        "episodicMemoryId": "e_first",
+        "neuronId": "n_place",
+        "weight": 1
+      },
+      {
+        "episodicMemoryId": "e_second",
+        "neuronId": "n_place",
+        "weight": 1
+      },
+      {
+        "episodicMemoryId": "e_second",
+        "neuronId": "n_detail",
+        "weight": 2
+      },
+      {
+        "episodicMemoryId": "e_second",
+        "neuronId": "n_seeded",
+        "weight": 1
+      }
     ]
   },
   "coordinates": [
-    8.353013038635254, -1.2386665344238281, 5.876155853271484, -5.171448230743408,
-    5.549404621124268, 6.795924663543701, 8.273927688598633, 10.659419059753418, 7.305065631866455,
-    21.679092407226562, -6.399000644683838, 11.082454681396484, 4.971897602081299,
-    0.4583512246608734, 6.106098175048828, 8.263875007629395, 5.117310523986816, 8.122127532958984
+    9.907291412353516, -1.705603837966919, 2.7444236278533936, -6.2859368324279785,
+    6.522880554199219, 3.873990535736084, 10.250587463378906, 12.204760551452637, 3.701382875442505,
+    27.813610076904297, -8.456707954406738, 4.140665531158447, 5.858984470367432,
+    0.35151731967926025, 3.026815414428711, 10.507211685180664, 5.618923187255859,
+    3.8543553352355957
   ]
 }

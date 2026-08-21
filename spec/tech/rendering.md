@@ -572,22 +572,26 @@ bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` kee
 
 ## Gist-star / z-layer rendering (plan 42 as-built)
 
-The universe renders its **two z-bands as one navigable 3D depth** ([V9][V0]): the hippocampus band
-(`force_sim.hippocampus_z_*`; episodic stars + latent field) below, the neocortex band (`force_sim.neocortex_z_*`;
-gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no second camera.
+The universe renders its **two z-layers as one navigable 3D depth** ([V9][V0]): the origin-centered hippocampus lens
+(`force_sim.hippocampus_z_*`; episodic stars + latent field) below, the gist layer — the lens's per-stage z-offset
+copy (`force_sim.gist_z_offset_*`) — above, with `BandFog` filling the guaranteed gap between the lens top and the
+lowest gist reach (`hippocampus_z_min + gistZOffset(1)`); one scene, the plan-23 camera rig, no mode toggle, no
+second camera.
 
-- **A gist star copies the episodic `(x, y)` and raises only z** ([C6][I5]). The neocortex runs **no force-sim**:
-  `GistStarLayer` (`@cosimosi/universe-render`) derives each instance's position per frame — x, y read live from the
-  memory's hippocampal sim slot, z from the memory-logic golden-parity `gistCoordinate` for the instance's stage — via
-  `InstancedNodeLayer`'s optional `getInstancePosition` mapper (per-frame, allocation-free; the default
-  contiguous-slot path is unchanged). No gist coordinate is ever stored or reverse-projected. `COORDINATE_STRIDE` is
+- **A gist star copies the episodic live `(x, y, z)` and adds only a stage offset** ([C6][I5]). The neocortex runs
+  **no force-sim**: `GistStarLayer` (`@cosimosi/universe-render`) derives each instance's position per frame — the
+  full (x, y, z) read live from the memory's hippocampal sim slot, plus the memory-logic golden-parity
+  `gistZOffset` lift for the instance's stage — via `InstancedNodeLayer`'s optional `getInstancePosition` mapper
+  (per-frame, allocation-free; the default contiguous-slot path is unchanged). A rise eases only the offset delta
+  (previous stage's lift → current), so the body keeps shadowing its drifting memory mid-rise and the lift itself is
+  one-way. No absolute gist coordinate is ever stored, server-derived, or reverse-projected. `COORDINATE_STRIDE` is
   exported by the renderer as the coordinate-buffer contract's owner. A memoized `GistRenderSnapshot` owns the
   committed instance order, count, appearance arrays, and precomputed hippocampal slots; frame and pick callbacks close
   over that object. No render-phase ref publication can expose a work-in-progress ordering to the committed mesh.
 - **One instance per risen MEMORY — the trace transforms, it does not stack.** `gist-star-channels.ts`
-  (`@cosimosi/universe`, pure, shared web+mobile) emits exactly one instance for any `semanticStage ≥ 1`, whose z and
-  softness read that current stage; a rise moves that one body upward rather than adding a rung beside it (CLS: one
-  gradually-consolidated neocortical representation). Color = `moodColor(mood)` through the single palette seam and
+  (`@cosimosi/universe`, pure, shared web+mobile) emits exactly one instance for any `semanticStage ≥ 1`, whose z
+  lift and softness read that current stage; a rise moves that one body upward rather than adding a rung beside it
+  (CLS: one gradually-consolidated neocortical representation). Color = `moodColor(mood)` through the single palette seam and
   nothing else ([M3][I3]); size = `EffectiveStrength` lerped into `rendering.gist_star_size_*` (a quieter echo of the
   episodic range [V3]); softness = `rendering.gist_star_diffuse` at stage 1 deepening to fully diffuse at the ladder
   top ([V5]). The body's selection id is `gist:<memoryId>` — a function of the memory alone, stable across every rise,

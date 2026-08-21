@@ -81,7 +81,10 @@ function applyCenterForces(
 
     forces[offset] += -positions[offset] * gain
     forces[offset + 1] += -positions[offset + 1] * gain
-    forces[offset + 2] += (centerZ - positions[offset + 2]) * gain
+    // The same connectivity-scaled pull, zCenterGain times harder along z: repulsion would spread z
+    // as wide as x,y, so without the anisotropy the band clamp — not the force balance — would set
+    // the depth and nodes would pile on the clamp faces instead of tapering into a lens ([C5][V9]).
+    forces[offset + 2] += (centerZ - positions[offset + 2]) * gain * values.zCenterGain
   }
 }
 

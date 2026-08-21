@@ -60,6 +60,7 @@ vi.mock('@react-three/fiber', () => ({
 
 const TILT_UP = (20 * Math.PI) / 180
 const TILT_DOWN = (10 * Math.PI) / 180
+const OPENING_ELEVATION = (12 * Math.PI) / 180
 const RIG = {
   minDistance: 8,
   maxDistance: 420,
@@ -69,6 +70,7 @@ const RIG = {
   arriveTimeoutSeconds: 6,
   pinnedTiltUp: TILT_UP,
   pinnedTiltDown: TILT_DOWN,
+  pinnedOpeningElevation: OPENING_ELEVATION,
   pinnedReturnLambda: 2.6,
   pinnedRotateSpeed: 0.7,
   pinnedDampingFactor: 0.12,
@@ -137,10 +139,10 @@ describe('NavigationRig — pinned', () => {
     frame?.(null, 1 / 60)
 
     const opened = offsetFrom([0, 0, 0])
-    // Level, not merely legal: clamping the overhead camera would seat the view against the top of
-    // the allowance with nothing left to rise into. From the flat, both directions of the tilt are
-    // still there.
-    expect(opened.elevation).toBeCloseTo(0, 6)
+    // Seated at its own opening rise, not merely legal: clamping the overhead camera would seat the
+    // view against the top of the allowance with nothing left to rise into, and dead level would
+    // hide the lens's depth. The seated rise leaves tilt to spend in both directions.
+    expect(opened.elevation).toBeCloseTo(OPENING_ELEVATION, 6)
     // The distance the scene chose is kept; only the angle off the flat was out of bounds.
     expect(opened.radius).toBeCloseTo(150, 6)
     expect(orbits[0]?.enabled).toBe(true)

@@ -29,9 +29,10 @@ second coefficient. The modulation uses **arousal only, never valence** ([I3]).
 
 **Semanticization deletes nothing and never lays out a coordinate authority** ([I1][I2][I5]). Rising a stage removes no
 memory, neuron, or synapse and never mutates the `Diary`; the concrete hippocampal memory and its `current_text` remain.
-The gist body's `x, y` are **copied verbatim** from the emergent hippocampal coordinates and only its `z` rises into the
-reserved neocortex band (disjoint from the hippocampus band) — the neocortex has no force-sim and no independent
-coordinate authority ([C5][C6][V9]).
+The gist body's live `x, y, z` are **copied verbatim** from the emergent hippocampal coordinates and only a
+stage-monotonic z offset lifts it into the neocortex layer (whose lowest reach clears the hippocampus band by
+construction) — the neocortex has no force-sim and no independent coordinate authority, and the server derives no
+absolute coordinate ([C5][C6][V9][I5]).
 
 **The stage is a depth signal, not a price** ([R8][G4], CC3). `semantic_stage` is exposed as the gist-depth signal the
 gist-view cost curve reads; this axis defines no Twinkle price — pricing is the Twinkle economy's.
@@ -39,13 +40,13 @@ gist-view cost curve reads; this axis defines no Twinkle price — pricing is th
 ## The shape (what is a value, what is not)
 
 The **numeric functions are pure and golden-parity-pinned** (Go `internal/memory` ↔ TS `packages/memory-logic`):
-`Semanticize`, `GistUnitsElapsed` (the timer), and `GistCoordinate`. A shared golden fixture holds client render
+`Semanticize`, `GistUnitsElapsed` (the timer), and `GistZOffset`. A shared golden fixture holds client render
 byte/tolerance-equal to server computation.
 
 Only **`semantic.gist_units_per_stage`** is a new value. The modulation **reuses**
-`forgetting.{arousal,connection}_slow_coefficient` (no second knob) and the neocortex band reuses
-`force_sim.neocortex_z_min/max`. Excluded (code/content): the unit-crossing division, the modulation shape, the stage→z
-map, the clamp, and `SEMANTIC_MAX_STAGE` (the derived ladder length).
+`forgetting.{arousal,connection}_slow_coefficient` (no second knob) and the gist lift ladder reuses
+`force_sim.gist_z_offset_min/max`. Excluded (code/content): the unit-crossing division, the modulation shape, the
+stage→offset map, the clamp, and `SEMANTIC_MAX_STAGE` (the derived ladder length).
 
 ## Non-rules (owned elsewhere)
 

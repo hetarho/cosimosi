@@ -10,8 +10,8 @@ export {
 export { neighborForgettingDelta, reshape } from './reconsolidation.ts'
 export {
   SEMANTIC_MAX_STAGE,
-  gistCoordinate,
   gistUnitsElapsed,
+  gistZOffset,
   semanticize,
 } from './semanticization.ts'
 export { elapsedUniverseDays } from './universe-time.ts'

@@ -40,17 +40,15 @@ function timerModulation(arousal: number, connectionStrength: number): number {
   return 1 / slowFactor(arousal, connectionStrength)
 }
 
-// gistCoordinate places a gist body: x, y copied verbatim from the emergent hippocampal coordinates (the
-// neocortex has no force-sim, [I5]), z a stage-progressive linear map into the reserved neocortex band
-// [neocortexZMin, neocortexZMax] (27..45), disjoint from the hippocampus band ([C5][C6][V9]).
-export function gistCoordinate(
-  hippocampalX: number,
-  hippocampalY: number,
-  stage: number,
-): { readonly x: number; readonly y: number; readonly z: number } {
-  const zMin = VALUES.forceSim.neocortexZMin
-  const zMax = VALUES.forceSim.neocortexZMax
+// gistZOffset is the per-stage z LIFT of a gist body, not an absolute coordinate: the renderer adds
+// it to the memory's live hippocampal (x, y, z), so the neocortex layer is a literal z-shifted copy
+// of the lens ([C5][C6]; [I5] — the server derives no absolute coordinate).
+// Stage-monotonic (the rise is one-way, [C6a]); a stage-progressive linear map over
+// [gistZOffsetMin, gistZOffsetMax]. Layer separation is by construction:
+// hippocampusZMin + gistZOffset(1) > hippocampusZMax, guard-tested next to this function.
+export function gistZOffset(stage: number): number {
+  const offsetMin = VALUES.forceSim.gistZOffsetMin
+  const offsetMax = VALUES.forceSim.gistZOffsetMax
   const clamped = Math.min(Math.max(stage, 0), SEMANTIC_MAX_STAGE)
-  const z = zMin + (clamped / SEMANTIC_MAX_STAGE) * (zMax - zMin)
-  return { x: hippocampalX, y: hippocampalY, z }
+  return offsetMin + (clamped / SEMANTIC_MAX_STAGE) * (offsetMax - offsetMin)
 }

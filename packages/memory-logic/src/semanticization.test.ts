@@ -6,8 +6,8 @@ import { VALUES } from '@cosimosi/config'
 
 import {
   SEMANTIC_MAX_STAGE,
-  gistCoordinate,
   gistUnitsElapsed,
+  gistZOffset,
   semanticize,
 } from './semanticization.ts'
 
@@ -15,8 +15,8 @@ interface SemanticFixture {
   readonly tolerance: number
   readonly values: {
     readonly gist_units_per_stage: number
-    readonly neocortex_z_min: number
-    readonly neocortex_z_max: number
+    readonly gist_z_offset_min: number
+    readonly gist_z_offset_max: number
     readonly max_stage: number
   }
   readonly cases: readonly {
@@ -28,12 +28,9 @@ interface SemanticFixture {
       readonly timer_reset_at?: string
       readonly arousal?: number
       readonly connection_strength?: number
-      readonly hippocampal_x?: number
-      readonly hippocampal_y?: number
       readonly stage?: number
     }
     readonly expected?: number
-    readonly expected_coord?: { readonly x: number; readonly y: number; readonly z: number }
   }[]
 }
 
@@ -47,8 +44,8 @@ describe('semanticization', () => {
     const fixture = readFixture()
     expect(fixture.values).toEqual({
       gist_units_per_stage: VALUES.semantic.gistUnitsPerStage,
-      neocortex_z_min: VALUES.forceSim.neocortexZMin,
-      neocortex_z_max: VALUES.forceSim.neocortexZMax,
+      gist_z_offset_min: VALUES.forceSim.gistZOffsetMin,
+      gist_z_offset_max: VALUES.forceSim.gistZOffsetMax,
       max_stage: SEMANTIC_MAX_STAGE,
     })
   })
@@ -68,16 +65,9 @@ describe('semanticization', () => {
           required(inputs.connection_strength),
         )
         expect(got).toBe(required(testCase.expected))
-      } else if (testCase.function === 'gist_coordinate') {
-        const got = gistCoordinate(
-          required(inputs.hippocampal_x),
-          required(inputs.hippocampal_y),
-          required(inputs.stage),
-        )
-        const want = required(testCase.expected_coord)
-        expect(Math.abs(got.x - want.x)).toBeLessThanOrEqual(fixture.tolerance)
-        expect(Math.abs(got.y - want.y)).toBeLessThanOrEqual(fixture.tolerance)
-        expect(Math.abs(got.z - want.z)).toBeLessThanOrEqual(fixture.tolerance)
+      } else if (testCase.function === 'gist_z_offset') {
+        const got = gistZOffset(required(inputs.stage))
+        expect(Math.abs(got - required(testCase.expected))).toBeLessThanOrEqual(fixture.tolerance)
       }
     }
   })
@@ -107,16 +97,25 @@ describe('semanticization', () => {
     expect(gistUnitsElapsed('2026-01-01', '2027-01-01', 0, 0)).toBe(0)
   })
 
-  it('gist coordinate copies x,y and keeps z inside the neocortex band, disjoint from hippocampus', () => {
+  it('gist z-offset is a clamped, stage-monotonic lift inside the offset ladder', () => {
     for (let stage = 1; stage <= SEMANTIC_MAX_STAGE; stage += 1) {
-      const { x, y, z } = gistCoordinate(3.5, -7.25, stage)
-      expect(x).toBe(3.5)
-      expect(y).toBe(-7.25)
-      expect(z).toBeGreaterThanOrEqual(VALUES.forceSim.neocortexZMin)
-      expect(z).toBeLessThanOrEqual(VALUES.forceSim.neocortexZMax)
-      expect(z).toBeGreaterThan(VALUES.forceSim.hippocampusZMax)
+      const offset = gistZOffset(stage)
+      expect(offset).toBeGreaterThanOrEqual(VALUES.forceSim.gistZOffsetMin)
+      expect(offset).toBeLessThanOrEqual(VALUES.forceSim.gistZOffsetMax)
+      if (stage > 1) expect(offset).toBeGreaterThan(gistZOffset(stage - 1))
     }
-    expect(gistCoordinate(0, 0, SEMANTIC_MAX_STAGE).z).toBeGreaterThan(gistCoordinate(0, 0, 1).z)
+    expect(gistZOffset(-3)).toBe(gistZOffset(0))
+    expect(gistZOffset(99)).toBe(gistZOffset(SEMANTIC_MAX_STAGE))
+  })
+
+  it('layer separation holds by construction: the lowest gist reach clears the lens top [C5][V9]', () => {
+    // A gist body inherits its memory's live z (≥ hippocampusZMin) plus at least the stage-1 lift,
+    // so the WORST-CASE gist floor must still sit above the hippocampus band's ceiling — otherwise
+    // an episodic memory could stand above a gist body and the two-layer read collapses. This
+    // guards the values.yaml numbers themselves; a retune that breaks it must move the offsets.
+    expect(VALUES.forceSim.hippocampusZMin + gistZOffset(1)).toBeGreaterThan(
+      VALUES.forceSim.hippocampusZMax,
+    )
   })
 })
 

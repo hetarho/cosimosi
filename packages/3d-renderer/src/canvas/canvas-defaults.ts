@@ -15,3 +15,12 @@ export const DEFAULT_CANVAS_DPR: [number, number] = [1, VALUES.rendering.maxPixe
 
 export const DEFAULT_CANVAS_FOV =
   UNIVERSE_SKINS[resolveActiveSkin(VALUES.rendering.activeSkin)].camera.fov
+
+/**
+ * Where a camera enters the world when the host has no opinion: straight down the z axis. The
+ * design benches and staged scenes author their content against exactly this framing (rings in the
+ * xy plane, near-camera z slots), so it stays the default; universe surfaces pass the elevated
+ * `UNIVERSE_ARRIVAL_CAMERA_POSITION` instead, because a straight-down entry is the one direction
+ * that projects the lens's z spread away entirely ([C5][V0]).
+ */
+export const DEFAULT_CANVAS_CAMERA_POSITION: [number, number, number] = [0, 0, 90]

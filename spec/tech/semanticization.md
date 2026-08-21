@@ -8,8 +8,8 @@
 ## 1. Runtime homes
 
 The Go domain implementation lives in `apps/api/internal/memory/semanticization.go`: `Semanticize`, `GistUnitsElapsed`,
-`GistCoordinate`, and the private `timerModulation` + `semanticMaxStage`. The TypeScript mirror lives in
-`packages/memory-logic/src/semanticization.ts` (`semanticize`, `gistUnitsElapsed`, `gistCoordinate`, `SEMANTIC_MAX_STAGE`).
+`GistZOffset`, and the private `timerModulation` + `semanticMaxStage`. The TypeScript mirror lives in
+`packages/memory-logic/src/semanticization.ts` (`semanticize`, `gistUnitsElapsed`, `gistZOffset`, `SEMANTIC_MAX_STAGE`).
 Web and mobile consume the package for read-time gist math.
 
 ## 2. Purity and boundaries
@@ -28,16 +28,18 @@ SDK, or randomness. No new sqlc query, migration, proto field, or RPC: the unit 
 - **`timerModulation(arousal, connectionStrength)`** = `1 / slowFactor(arousal, connectionStrength)` ∈ (0, 1] — REUSES
   the forgetting slow-factor (job's `forgetting.{arousal,connection}_slow_coefficient`), so a high-arousal / well-connected
   memory gistifies slower just as it forgets slower. Arousal only, never valence ([F6][F7][I3]).
-- **`GistCoordinate(hippocampalX, hippocampalY, stage)`** — `x, y` copied verbatim; `z = neocortex_z_min +
-(clamp(stage,0,max)/max)·(neocortex_z_max − neocortex_z_min)`, inside the reserved neocortex band (27..45), disjoint
-  from the hippocampus band (0..18) ([C5][C6][V9][I5]). The map shape is code; only the band bounds are values (reused).
+- **`GistZOffset(stage)`** — the per-stage z LIFT, not an absolute coordinate: `offset = gist_z_offset_min +
+(clamp(stage,0,max)/max)·(gist_z_offset_max − gist_z_offset_min)` (27..45). The renderer adds it to the memory's
+  live hippocampal (x, y, z), so the neocortex layer is a z-shifted copy of the lens; the lowest lift clears the
+  hippocampus band top by construction ([C5][C6][V9][I5]). The map shape is code; only the ladder bounds are values
+  (reused).
 
 ## 4. Values and formulas
 
 Only one new key lives in `spec/values.yaml`: `semantic.gist_units_per_stage = 10`. **Reused, not owned:**
 `forgetting.arousal_slow_coefficient` / `forgetting.connection_slow_coefficient` (the modulation), and
-`force_sim.neocortex_z_min` / `force_sim.neocortex_z_max` (the band). Code, not values: the unit-crossing division, the
-modulation shape, the stage→z map, the clamp, and `SEMANTIC_MAX_STAGE` = the derived gist-ladder length (Go
+`force_sim.gist_z_offset_min` / `force_sim.gist_z_offset_max` (the lift ladder). Code, not values: the unit-crossing
+division, the modulation shape, the stage→offset map, the clamp, and `SEMANTIC_MAX_STAGE` = the derived gist-ladder length (Go
 `len(SemanticStages{})` = 4; the TS mirror pins the same constant, verified by the fixture).
 
 ## 5. Golden parity

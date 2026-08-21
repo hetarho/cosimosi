@@ -136,8 +136,7 @@ function validateForceSimValues(values: ForceSimValues): void {
     ['tickAlphaDecay', values.tickAlphaDecay],
     ['hippocampusZMin', values.hippocampusZMin],
     ['hippocampusZMax', values.hippocampusZMax],
-    ['neocortexZMin', values.neocortexZMin],
-    ['neocortexZMax', values.neocortexZMax],
+    ['zCenterGain', values.zCenterGain],
     ['seed', values.seed],
   ]
 
@@ -147,8 +146,16 @@ function validateForceSimValues(values: ForceSimValues): void {
   if (values.hippocampusZMin >= values.hippocampusZMax) {
     throw new Error('force-sim hippocampus z band must have ascending bounds')
   }
-  if (values.neocortexZMin <= values.hippocampusZMax) {
-    throw new Error('force-sim neocortex z band must sit above the hippocampus band')
+  // The band's mid-plane IS the origin the center force pulls toward ([C5][I7]) — an off-center
+  // band would silently move "radius from center" off the world origin.
+  if (values.hippocampusZMin !== -values.hippocampusZMax) {
+    throw new Error('force-sim hippocampus z band must be symmetric about the origin')
+  }
+  if (values.linkDistance <= 0) {
+    throw new Error('force-sim linkDistance must be positive')
+  }
+  if (values.zCenterGain <= 0) {
+    throw new Error('force-sim zCenterGain must be positive')
   }
   if (values.tickAlphaDecay < 0 || values.tickAlphaDecay >= 1) {
     throw new Error('force-sim tickAlphaDecay must be in [0, 1)')

@@ -156,10 +156,14 @@ function seedForNewNeuron(
 function seededClusterCenter(values: ForceSimValues, rng: SeededRng): ForceSimCoordinate {
   const radius = values.linkDistance * rng.between(1.4, 2.2)
   const vector = rng.vector(radius)
+  // The z component is remapped from the cluster radius onto the band's half-thickness, so seeds
+  // fill the whole lens interior; the anisotropic center pull shapes the taper from there. Scaling
+  // by a fixed fraction instead would hug the mid-plane and read as a flat sheet.
+  const halfBand = (values.hippocampusZMax - values.hippocampusZMin) / 2
   return {
     x: vector.x,
     y: vector.y,
-    z: hippocampusMidZ(values) + vector.z * 0.25,
+    z: hippocampusMidZ(values) + (vector.z / radius) * halfBand,
   }
 }
 

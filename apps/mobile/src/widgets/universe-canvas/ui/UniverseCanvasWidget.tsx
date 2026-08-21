@@ -9,6 +9,7 @@ import {
   useSkin,
 } from '@cosimosi/3d-renderer'
 import { useReducedMotion } from '@cosimosi/ui'
+import { UNIVERSE_ARRIVAL_CAMERA_POSITION } from '@cosimosi/universe'
 import {
   UNIVERSE_BACKDROP,
   UniverseSceneLayers,
@@ -45,7 +46,12 @@ function UniverseCanvasHost({
   const dpr = useMemo<[number, number]>(() => [ADAPTIVE_DPR_FLOOR, pixelRatioCap], [pixelRatioCap])
 
   return (
-    <UniverseCanvas dpr={dpr} fov={skin.camera.fov} clearColor={skin.sky.night}>
+    <UniverseCanvas
+      dpr={dpr}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+      cameraPosition={UNIVERSE_ARRIVAL_CAMERA_POSITION}
+    >
       <UniverseSceneLayers
         scene={scene}
         bloom={skin.bloom}
