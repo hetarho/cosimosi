@@ -33,17 +33,24 @@ export {
   type SequenceRunSnapshot,
 } from './sequence.machine.ts'
 export {
-  CENTERED_CAPTION_MIDLINE,
   currentStep,
   isActive,
   progress,
-  resolveCaptionPlacement,
-  resolveCenteredCaptionPlacement,
-  type CaptionPlacement,
   type SequenceProgress,
   type SequenceRect,
   type SequenceViewport,
 } from './select.ts'
+export {
+  CAPTION_EDGE_INSET_PX,
+  CAPTION_EYELINE,
+  CAPTION_TOP_INSET_PX,
+  CAPTION_SURFACE_GAP_PX,
+  resolveCaptionPosition,
+  type CaptionPosition,
+  type CaptionRoom,
+  type CaptionSlot,
+  type CaptionSlotKind,
+} from './caption-placement.ts'
 export {
   measureAnchor,
   useSequenceAnchorRegistry,

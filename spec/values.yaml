@@ -802,11 +802,18 @@ demo:
   # There is deliberately NO monotonicity, cost or consent key beside this one: the demo clock is
   # exempt, and that exemption is expressible only here because no shared code knows the demo exists.
   time_travel_month_days: 30
-  # How long the tutorial's covering mask stays lifted after a launch or a time sweep finishes, so
-  # the scene the press just caused — a memory going up, the sky settling after a jump — plays in
-  # the clear before the covering returns. Long enough for the awaken choreography to land, short
-  # enough that the tour does not read as paused.
-  mask_lift_linger_ms: 2400
+  # How long the tutorial's covering stays lifted for a press whose consequence is the ONLY thing
+  # playing — a memory being born on the canvas, a recalled star coming back brighter. Nothing else
+  # had the screen for it, so this interval IS the reveal: long enough for the awaken choreography to
+  # land, short enough that the tour does not read as paused. While it runs the next beat's caption
+  # and ring hold back and a surface the beat would stage waits, so it is also how long the visitor
+  # waits before the tour speaks again.
+  reveal_hold_ms: 2400
+  # How long the same covering waits after a TIME SWEEP, which has already had the screen to itself
+  # for its own duration — up to a few seconds of memories dimming as the clock walks. Only the
+  # settled canvas is left to read, so this is a beat rather than a second reveal: a full
+  # `reveal_hold_ms` stacked on top of the sweep is what makes one press feel like a pause.
+  sweep_settle_ms: 800
 
 landing:
   # How far the walkthrough's `fade` step pushes its clock, in universe-days. Tuned AGAINST other keys

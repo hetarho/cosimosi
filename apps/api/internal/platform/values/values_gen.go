@@ -375,7 +375,8 @@ const (
 // demo
 const (
 	DemoTimeTravelMonthDays = 30
-	DemoMaskLiftLingerMs    = 2400
+	DemoRevealHoldMs        = 2400
+	DemoSweepSettleMs       = 800
 )
 
 // landing

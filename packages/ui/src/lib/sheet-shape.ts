@@ -20,6 +20,18 @@ export function isSheetShape(): boolean {
   return window.matchMedia?.(SHEET_VIEWPORT)?.matches === true
 }
 
+/**
+ * Stamped on the PANEL of every surface that takes a screen edge — `Dialog`'s sheet shape and
+ * `Sheet`'s both wear it.
+ *
+ * It exists for chrome that paints ABOVE the modal layer and therefore has to keep off what is
+ * under it: a guided run's caption, which must never lie across the surface it is describing. Such
+ * chrome measures the marked panels rather than being told about each one, which is what lets it
+ * clear a panel it has never heard of — and the marker is an attribute rather than an export
+ * because the reader is in another package and the panel is in a portal.
+ */
+export const SURFACE_PANEL_ATTR = 'data-cosimosi-surface'
+
 /** A drag that starts on a control is that control's press, not the sheet's. */
 const INTERACTIVE = 'button, a, input, textarea, select, [role="button"], [role="slider"]'
 

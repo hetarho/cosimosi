@@ -8,6 +8,11 @@
 // highlighted and never gated — an exit, like skip, sits above the tour rather than inside it.
 export type DemoAnchor =
   | 'diary-card'
+  /** The read affordance inside that card — beat 1's own press, and so where beat 1's ring goes.
+   *  Separate from `diary-card` because the two answer different questions: the card is the region
+   *  the beat lights up to be READ, and this is the one control in it that moves the run on. A ring
+   *  around the whole card points at a paragraph and lands its corner on the sheet's close. */
+  | 'diary-read-action'
   | 'write-action'
   | 'split-action'
   | 'launch-action'
@@ -15,6 +20,13 @@ export type DemoAnchor =
   | 'time-week-action'
   | 'time-month-action'
   | 'recall-action'
+  /** The two controls of the recall walk that press opens — send the sentence back, then come out
+   *  to the changed universe. They exist for the RING alone, the mirror of the gate-only members
+   *  above: the walk is a modal surface with a scrim, so there is nothing beside them to gate, and
+   *  listing them for the mask would shrink its hole to one button and cover the words the beat is
+   *  asking to be read. */
+  | 'recall-confirm-action'
+  | 'recall-dismiss-action'
   | 'entry-open-action'
   | 'decorate-action'
   /** One catalog row inside the decoration sheet — where the decorating beat's ring goes once the

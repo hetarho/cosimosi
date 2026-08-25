@@ -21,9 +21,18 @@ it. Not video. Not a carousel.
   account without relaxing anything: during a tour, universe time is still monotonic, a diary is still
   immutable, the meaning layer is untouched and a recall still costs Twinkle, purely because every
   state change is the user pressing the real control.
-- **One caption at a time, bottom center.** It relocates to the top band only to get out of the way of
-  the control it is describing — never for variety. It is a polite live region, so a step change is
-  announced without stealing the reader's place.
+- **One caption at a time, and it never sits on what it is describing.** Where it goes is a named
+  ROOM rather than a coordinate a host picked: the free screen edge, the reader's eyeline just above
+  the middle, or the space above a surface that owns the bottom edge — measured from that surface's
+  own top edge, so a sheet of any height is cleared by the same gap. Nothing carries a band per
+  panel, and the chrome reads the screen rather than being told what is open on it, which is what
+  lets it clear a surface it has never heard of. It moves only to get out of the way, never for
+  variety. It is a polite live region, so a step change is announced without stealing the reader's
+  place.
+- **A control that is still arriving is not measured yet.** A bottom sheet comes in on a transform,
+  so a rect read mid-arrival is the position the surface is LEAVING — off by a panel height on a
+  phone. The highlight and the caption both wait out the arrival, which is why the engine's measure
+  seam is a promise.
 - **The caption is the guaranteed channel; the highlight is an enhancement.** An anchor that cannot be
   resolved leaves the ring out and changes nothing else: no timeout, no retry, no error surface, and
   the run stays completable.

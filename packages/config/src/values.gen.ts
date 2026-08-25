@@ -256,7 +256,8 @@ export const VALUES = {
   },
   demo: {
     timeTravelMonthDays: 30,
-    maskLiftLingerMs: 2400,
+    revealHoldMs: 2400,
+    sweepSettleMs: 800,
   },
   landing: {
     walkthroughFadeSpanDays: 150,

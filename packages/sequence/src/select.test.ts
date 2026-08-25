@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { defineScript } from './script.ts'
 import { initialSequenceRunSnapshot } from './sequence.machine.ts'
-import {
-  CENTERED_CAPTION_MIDLINE,
-  currentStep,
-  isActive,
-  progress,
-  resolveCaptionPlacement,
-  resolveCenteredCaptionPlacement,
-} from './select.ts'
+import { currentStep, isActive, progress } from './select.ts'
 
 type Anchor = 'write' | 'recall'
 type Signal = 'wrote' | 'recalled'
@@ -32,9 +25,6 @@ const script = defineScript<Anchor, Signal>({
     },
   ],
 })
-
-const VIEWPORT = { width: 400, height: 800 }
-const BAND = 96
 
 describe('sequence selectors', () => {
   it('joins the snapshot cursor to the script the machine never holds', () => {
@@ -59,51 +49,5 @@ describe('sequence selectors', () => {
     expect(isActive(initialSequenceRunSnapshot)).toBe(false)
     expect(isActive({ ...initialSequenceRunSnapshot, runId: 'r' })).toBe(true)
     expect(isActive({ ...initialSequenceRunSnapshot, runId: 'r', outcome: 'skipped' })).toBe(false)
-  })
-
-  it('moves the caption only when the highlighted control is under it', () => {
-    // A control up the page: the caption stays where the reader expects it.
-    expect(resolveCaptionPlacement({ x: 0, y: 100, width: 200, height: 40 }, VIEWPORT, BAND)).toBe(
-      'bottom',
-    )
-    // The bottom-center writing sheet — exactly the collision the rule exists for.
-    expect(resolveCaptionPlacement({ x: 0, y: 720, width: 400, height: 80 }, VIEWPORT, BAND)).toBe(
-      'top',
-    )
-    // Ending exactly at the band's top edge is not yet an overlap.
-    expect(resolveCaptionPlacement({ x: 0, y: 604, width: 400, height: 100 }, VIEWPORT, BAND)).toBe(
-      'bottom',
-    )
-    // No anchor at all, and a rect entirely below the viewport, both leave it alone.
-    expect(resolveCaptionPlacement(null, VIEWPORT, BAND)).toBe('bottom')
-    expect(resolveCaptionPlacement({ x: 0, y: 900, width: 10, height: 10 }, VIEWPORT, BAND)).toBe(
-      'bottom',
-    )
-  })
-
-  it('floats the opted-in caption just above the middle except over a crossing control', () => {
-    // The floating band is ABOVE the middle, so the bottom half — where a narrow screen's sheets
-    // come up from — is never where the line lands.
-    expect(CENTERED_CAPTION_MIDLINE).toBeLessThan(0.5)
-    // A control along the top edge leaves the floating band free.
-    expect(
-      resolveCenteredCaptionPlacement({ x: 0, y: 40, width: 200, height: 40 }, VIEWPORT, BAND),
-    ).toBe('center')
-    // A control sitting where a bottom sheet does is well clear of the band and does not push the
-    // line off it — the whole point of floating above the middle rather than under it.
-    expect(
-      resolveCenteredCaptionPlacement({ x: 0, y: 560, width: 400, height: 240 }, VIEWPORT, BAND),
-    ).toBe('center')
-    // No anchor (a narration-only step) floats too.
-    expect(resolveCenteredCaptionPlacement(null, VIEWPORT, BAND)).toBe('center')
-    // A centered dialog reaches into the floating band: the caption yields to the edge resolution
-    // rather than sitting on the very control it describes.
-    expect(
-      resolveCenteredCaptionPlacement({ x: 200, y: 300, width: 400, height: 200 }, VIEWPORT, BAND),
-    ).toBe('bottom')
-    // A mid-crossing control that ALSO owns the bottom band pushes it to the top.
-    expect(
-      resolveCenteredCaptionPlacement({ x: 200, y: 300, width: 400, height: 450 }, VIEWPORT, BAND),
-    ).toBe('top')
   })
 })

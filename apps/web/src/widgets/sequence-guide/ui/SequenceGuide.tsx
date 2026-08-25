@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 
 import {
-  resolveCaptionPlacement,
-  resolveCenteredCaptionPlacement,
+  resolveCaptionPosition,
+  type CaptionSlot,
+  type CaptionSlotKind,
   type SequenceCaption as CaptionAccessor,
   type SequenceProgress,
   type SequenceRect,
@@ -15,6 +16,7 @@ import {
   SequenceCaption,
 } from '../../../features/show-sequence-caption/index.ts'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
+import { useBottomSurface } from '../lib/use-bottom-surface.ts'
 import { useViewport } from '../lib/use-viewport.ts'
 
 export interface SequenceGuideProps {
@@ -25,14 +27,16 @@ export interface SequenceGuideProps {
   readonly onSkip: () => void
   /** The engine's `remeasure`; called when the window size changes under the highlight. */
   readonly onRemeasure: () => void
-  /** How the caption should sit on a NARROW screen, where the host's surfaces own the bottom edge:
-   *  `center` floats it just above the middle (yielding to the edges when the anchored control
-   *  crosses that band); `top` pins it to the top band (for a host surface that owns the middle AND
-   *  the bottom, like a bottom sheet); `attached` glues it right under the highlighted control —
-   *  over it when the bottom edge is too close — for steps staged inside a panel; the default keeps
-   *  the edge-band resolution. From `md` up every style collapses to the edge resolution, because a
-   *  wide screen's interrupting surfaces are centred and the bottom band is free. */
-  readonly captionStyle?: 'edge' | 'center' | 'top' | 'attached'
+  /**
+   * Overrides where the caption sits. Leave it out: the default reads the screen — a bottom sheet on
+   * it puts the line just above that sheet, and a clear screen puts the line in the eyeline on a
+   * phone and in the bottom band on a wide one, whose interrupting surfaces are centred.
+   *
+   * It exists for the one thing the default cannot see: a host whose surface is not a marked panel,
+   * and which therefore has to name the room itself. `aboveSurface` with nothing measured falls back
+   * to the edge band rather than pinning the line to a surface that is not there.
+   */
+  readonly captionSlot?: CaptionSlotKind
 }
 
 /** The shared sheet breakpoint converted once from its generated rem source. */
@@ -43,8 +47,11 @@ const WIDE_MIN_WIDTH_PX = SHEET_BREAKPOINT.px
 // so this widget holds no run state — which is what lets one guide serve a public sandbox and a live
 // signed-in session without knowing which it is over.
 //
-// It owns exactly one platform concern: the window size. The engine is platform-neutral and cannot
-// subscribe to a resize, so the chrome that re-renders on one tells it to measure again.
+// It owns exactly two platform concerns, and both are the same concern in the end: where the free
+// room on this screen is. The window size, because the engine is platform-neutral and cannot
+// subscribe to a resize; and the surfaces currently taking the bottom edge, because guidance must
+// never lie across the panel it is describing. Neither is a host's business to spell out, which is
+// why no page here carries a band per sheet.
 export function SequenceGuide({
   active,
   caption,
@@ -52,9 +59,10 @@ export function SequenceGuide({
   progress,
   onSkip,
   onRemeasure,
-  captionStyle = 'edge',
+  captionSlot,
 }: SequenceGuideProps) {
   const viewport = useViewport()
+  const surface = useBottomSurface(active, viewport)
 
   useEffect(() => {
     if (active) onRemeasure()
@@ -64,37 +72,33 @@ export function SequenceGuide({
 
   // The one breakpoint the chrome reads, and it is the same one `Dialog` reads: at `md` an
   // interrupting surface stops being a bottom sheet and becomes a CENTRED modal, which frees the
-  // bottom edge and occupies the middle. So on a wide screen every host style collapses to the edge
-  // resolution — the line goes to the bottom band it can own outright, instead of over the panel it
-  // is describing — and only a narrow screen keeps the host's own choice, where the bottom belongs
-  // to the sheet and the guidance has to float above it.
+  // bottom edge and occupies the middle. So on a wide screen with nothing in the way the line takes
+  // the bottom band rather than floating into the space a modal will want.
   const wide = viewport.width >= WIDE_MIN_WIDTH_PX
-
-  const placement =
-    !wide && captionStyle === 'top'
-      ? 'top'
-      : !wide && captionStyle === 'center'
-        ? resolveCenteredCaptionPlacement(anchorRect, viewport, CAPTION_BAND_HEIGHT_PX)
-        : resolveCaptionPlacement(anchorRect, viewport, CAPTION_BAND_HEIGHT_PX)
-
-  // Attached mode pins the line to the highlighted control itself: below it, or above it when the
-  // band would run off the bottom edge. `bottom`-pinning for the above case needs no guess at the
-  // bubble's real height. Without a measured control it falls back to the band resolution — as does
-  // every wide screen, where the bottom band is the better answer than gluing the line into a
-  // centred modal's own body.
-  const ATTACH_GAP_PX = 12
-  const pin =
-    !wide && captionStyle === 'attached' && anchorRect
-      ? anchorRect.y + anchorRect.height + ATTACH_GAP_PX + CAPTION_BAND_HEIGHT_PX <= viewport.height
-        ? { top: anchorRect.y + anchorRect.height + ATTACH_GAP_PX }
-        : { bottom: viewport.height - anchorRect.y + ATTACH_GAP_PX }
-      : null
+  const slot = captionRoom(
+    captionSlot ?? (surface ? 'aboveSurface' : wide ? 'edge' : 'eyeline'),
+    surface,
+  )
+  const position = resolveCaptionPosition({
+    slot,
+    anchorRect,
+    viewport,
+    bandHeight: CAPTION_BAND_HEIGHT_PX,
+  })
 
   return (
     <>
       <SequenceSpotlight rect={anchorRect} />
-      {caption ? <SequenceCaption caption={caption} placement={placement} pin={pin} /> : null}
+      {caption ? <SequenceCaption caption={caption} position={position} /> : null}
       <SequenceSkip progress={progress} onSkip={onSkip} />
     </>
   )
+}
+
+// The measured surface joins the named kind here, so a host (or the default above) can say
+// `aboveSurface` without holding a rect — and asking for it with nothing on screen is answered by
+// the edge band rather than by a pin to a panel that is not there.
+function captionRoom(kind: CaptionSlotKind, surface: SequenceRect | null): CaptionSlot {
+  if (kind !== 'aboveSurface') return { kind }
+  return surface ? { kind, surface } : { kind: 'edge' }
 }

@@ -171,9 +171,11 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     writingState,
   ])
 
-  // Two beats do their work across a surface the first press OPENS, so their ring walks with the
-  // visitor instead of staying parked on a button already pressed. The engine's own anchor stays
-  // what the script says; this is a page-side view override, measured through the same registry.
+  // Three beats do their work across a surface the first press OPENS, so their ring walks with the
+  // visitor instead of staying parked on a button already pressed — and for the recall beat it has
+  // to: pressing 회고하기 closes the panel that held it, so the beat's own anchor stops existing
+  // while the beat is still running. The engine's own anchor stays what the script says; this is a
+  // page-side view override, measured through the same registry.
   // `none` is a deliberate third state: the last leg of the decorating beat is "come back out", and
   // the way out is the sheet's own close — a control the shared primitive owns, which this page
   // cannot wrap in an anchor and must not learn about. So the ring stands down and the caption,
@@ -185,6 +187,18 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     // The neuron-reuse beat: drawing is only its first press — 쪼개기 and 띄우기 finish the diary.
     if (phaseKey === 'neuron_reuse' && writingState && sheetOpen) {
       const target = writingState.splitRevealed ? 'launch-action' : 'split-action'
+      let live = true
+      void measureAnchor(target).then((rect) => {
+        if (live) setRingOverride({ kind: 'rect', rect })
+      })
+      return () => {
+        live = false
+      }
+    }
+    // The recall beat: 회고하기 opens the walk, and the walk's own two presses finish it — send the
+    // sentence back, then come out to the changed universe.
+    if (phaseKey === 'recall' && recallMemoryId) {
+      const target = recallApplied ? 'recall-dismiss-action' : 'recall-confirm-action'
       let live = true
       void measureAnchor(target).then((rect) => {
         if (live) setRingOverride({ kind: 'rect', rect })
@@ -208,30 +222,44 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       }
     }
     setRingOverride(null)
-  }, [decorateOpen, decorateTasted, engineRect, phaseKey, sheetOpen, writingState])
+  }, [
+    decorateOpen,
+    decorateTasted,
+    engineRect,
+    phaseKey,
+    recallApplied,
+    recallMemoryId,
+    sheetOpen,
+    writingState,
+  ])
   const guideAnchorRect = ringOverride
     ? ringOverride.kind === 'rect'
       ? ringOverride.rect
       : null
     : run.anchorRect
 
-  // The covering yields to the scene when the scene IS the point: a launch and a time sweep both
-  // play out on the covered canvas, so the whole layer fades out for their duration plus a linger,
-  // then returns. Pressability never changes with it — the lift is the mask's business only.
-  const [maskLifted, setMaskLifted] = useState(false)
-  const liftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const holdMaskLift = useCallback(() => {
-    if (liftTimerRef.current) clearTimeout(liftTimerRef.current)
-    liftTimerRef.current = null
-    setMaskLifted(true)
+  // The scene's own turn to speak. A launch, a recall and a time sweep all play out on the canvas
+  // the tutorial covers, so while one runs the covering lifts, the next beat's line and ring hold
+  // back, and a surface the beat would stage waits its turn — three things off ONE flag, because
+  // they are one decision: nothing may be put in front of the scene while the scene is the answer to
+  // what was just pressed. Pressability never rides it.
+  const [sceneRevealing, setSceneRevealing] = useState(false)
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openReveal = useCallback(() => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+    revealTimerRef.current = null
+    setSceneRevealing(true)
   }, [])
-  const releaseMaskLift = useCallback(() => {
-    if (liftTimerRef.current) clearTimeout(liftTimerRef.current)
-    liftTimerRef.current = setTimeout(() => setMaskLifted(false), VALUES.demo.maskLiftLingerMs)
+  // The hold is what is left to WATCH once whatever played has finished, which is why the two callers
+  // pass different ones: a sweep has already had the screen for its own duration and needs only the
+  // settled sky read, while a birth or a return had nothing else and the hold is the whole reveal.
+  const closeReveal = useCallback((holdMs: number) => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+    revealTimerRef.current = setTimeout(() => setSceneRevealing(false), holdMs)
   }, [])
   useEffect(
     () => () => {
-      if (liftTimerRef.current) clearTimeout(liftTimerRef.current)
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
     },
     [],
   )
@@ -266,19 +294,19 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const playSweep = useCallback(
     (previous: string, current: string) => {
       if (current <= previous) return
-      holdMaskLift()
+      openReveal()
       // The displayed clock starts at `previous` in the SAME commit the sweep begins, or the first
       // frame would flash the committed final date before the rAF loop walks back and forward.
       setSweepTime(previous)
       setSweep({ previous, current })
     },
-    [holdMaskLift],
+    [openReveal],
   )
   const onSweepDone = useCallback(() => {
     setSweep(null)
     setSweepTime(null)
-    releaseMaskLift()
-  }, [releaseMaskLift])
+    closeReveal(VALUES.demo.sweepSettleMs)
+  }, [closeReveal])
 
   const onDiaryRead = useCallback(() => signal('diary_read'), [signal])
 
@@ -308,12 +336,13 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     if (draft.diaryDate > previous) {
       playSweep(previous, draft.diaryDate)
     } else {
-      // No clock jump still births a memory on the canvas — lift the covering for the awaken.
-      holdMaskLift()
-      releaseMaskLift()
+      // No clock jump still births a memory on the canvas — lift the covering for the awaken, which
+      // is then the only thing playing and gets the full hold.
+      openReveal()
+      closeReveal(VALUES.demo.revealHoldMs)
     }
     signal('launched')
-  }, [demo, holdMaskLift, playSweep, releaseMaskLift, signal])
+  }, [closeReveal, demo, openReveal, playSweep, signal])
 
   const onSheetClose = useCallback(() => {
     if (!isDemoAnchorInteractive(phase, 'write-action')) return
@@ -347,19 +376,23 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
 
   const onRecallConfirm = useCallback(() => {
     if (!recallMemoryId || recallApplied) return
+    // The sentence lands on the canvas at once — the memory brightens and reshapes where it stands —
+    // so the surface that asked for it steps DOWN for the reveal and comes back up with the result.
+    // Watching your own memory come back through the sheet you sent it from shows nothing.
     demo.recall(recallMemoryId)
     setRecallApplied(true)
-  }, [demo, recallApplied, recallMemoryId])
+    openReveal()
+    closeReveal(VALUES.demo.revealHoldMs)
+  }, [closeReveal, demo, openReveal, recallApplied, recallMemoryId])
 
   const onRecallClose = useCallback(() => {
     const applied = recallApplied
     setRecallMemoryId(null)
     setRecallApplied(false)
-    if (!applied) return
-    holdMaskLift()
-    releaseMaskLift()
-    signal('recalled')
-  }, [holdMaskLift, recallApplied, releaseMaskLift, signal])
+    // Only a walk that actually sent something back finishes the beat; dismissing it early leaves the
+    // beat where it was, and the staging below puts its panel up again.
+    if (applied) signal('recalled')
+  }, [recallApplied, signal])
 
   // Beat 8 is a consequence rather than an action: once the universe holds enough re-read emotion,
   // the sky takes its colour. The page applies it and then reports, so the caption never runs ahead.
@@ -452,11 +485,17 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // If the staged panel is dismissed before that work starts, selection is re-armed immediately;
   // otherwise the mask would be left pointing at a control that no longer exists. The writing sheet
   // arrives under the same tutorial rule, already open on beat 1.
+  // The staging is wanted while the beat still has work to do and the scene is not mid-reveal. The
+  // second half is read off the DOMAIN fact rather than a flag: a memory that has been returned to
+  // needs no panel opened over it, so the staging cannot put the dismissed panel back on the way out.
+  const stagingWanted =
+    !sceneRevealing && (state.memoryFacts[tutorialRecallMemoryId]?.recallCount ?? 0) === 0
   useTutorialRecallPanelSelection(
     phaseKey,
     selectedMemoryId,
     recallMemoryId,
     tutorialRecallMemoryId,
+    stagingWanted,
     setSelectedMemoryId,
   )
 
@@ -520,7 +559,8 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         onClose={() => setSelectedMemoryId(null)}
       />
       <DemoRecallSheet
-        open={!!recallMemoryId}
+        // Down while the scene speaks, up again for the reading that came back.
+        open={!!recallMemoryId && !sceneRevealing}
         memory={recallMemory}
         universeTime={displayTime}
         reconsolidatedText={
@@ -559,33 +599,21 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       )}
 
       {/* One covering layer over everything but the current beat's controls; the sequence chrome
-          (ring, caption, skip) paints above it on `z-guide`, and the launch/sweep moments lift it. */}
-      <DemoTutorialMask hole={maskHole} lifted={maskLifted} />
+          (ring, caption, skip) paints above it on `z-guide`, and the scene's own moments lift it. */}
+      <DemoTutorialMask hole={maskHole} lifted={sceneRevealing} />
 
+      {/* Nothing here says where the line goes: the guide reads the screen itself, so a sheet this
+          page opens and a sheet it has never heard of are cleared by the same rule. */}
       <SequenceGuide
         active={run.active}
-        // While the mask is lifted the SCENE is speaking — a launch bursting, a sweep dimming the
-        // field — so the next beat's line and ring hold back and arrive together with the
-        // covering's return. The skip stays; it must never blink out.
-        caption={maskLifted ? null : (run.step?.caption ?? null)}
-        anchorRect={maskLifted ? null : guideAnchorRect}
+        // While the scene is revealing it is SPEAKING — a launch bursting, a sweep dimming the field
+        // — so the next beat's line and ring hold back and arrive together with the covering's
+        // return. The skip stays; it must never blink out.
+        caption={sceneRevealing ? null : (run.step?.caption ?? null)}
+        anchorRect={sceneRevealing ? null : guideAnchorRect}
         progress={run.progress}
         onSkip={run.skip}
         onRemeasure={run.remeasure}
-        // How the line should sit on a NARROW screen, where every surface here comes up from the
-        // bottom edge (from `md` up the guide puts it in the bottom band regardless, because the
-        // surfaces centre and the edge is free). The write flow is the one surface whose steps point
-        // at its own fields in sequence, so its line glues to the highlighted control; every other
-        // open surface — the star's panel, the recall walk, a diary, the catalog — takes the top
-        // band, clear of the sheet it would otherwise lie across. With nothing open the line floats
-        // in the eyeline.
-        captionStyle={
-          sheetOpen && writing
-            ? 'attached'
-            : decorateOpen || selectedMemoryId || recallMemoryId || readingDiaryId
-              ? 'top'
-              : 'center'
-        }
       />
     </main>
   )

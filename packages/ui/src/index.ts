@@ -5,6 +5,7 @@
 export { tokens, type Tokens, type ColorToken } from './tokens.ts'
 export { cx } from './lib/cx.ts'
 export { SHEET_BREAKPOINT } from './lib/sheet-geometry.ts'
+export { SURFACE_PANEL_ATTR } from './lib/sheet-shape.ts'
 
 // The queued-toast seam: one Toast in the tree, two owners pushing into it.
 export {

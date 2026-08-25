@@ -5,6 +5,7 @@ import { useFocusTrap } from '../a11y/use-focus-trap.ts'
 import { usePresence } from '../a11y/use-presence.ts'
 import { cx } from '../lib/cx.ts'
 import { SHEET_GESTURE } from '../lib/sheet-geometry.ts'
+import { SURFACE_PANEL_ATTR } from '../lib/sheet-shape.ts'
 import { useSheetDrag } from '../lib/use-sheet-drag.ts'
 import type { DialogOwnProps } from './types.ts'
 
@@ -64,6 +65,9 @@ function DialogSurface({
         ref={containerRef}
         role="dialog"
         aria-modal="true"
+        // Marks the panel for chrome painting above the modal layer, which has to measure what it
+        // must not lie across (sheet-shape.ts).
+        {...{ [SURFACE_PANEL_ATTR]: '' }}
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel}
         aria-describedby={description ? descriptionId : undefined}

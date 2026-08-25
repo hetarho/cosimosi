@@ -2,7 +2,9 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 import { Button, Dialog, ObscuredText, TextArea } from '@cosimosi/ui'
 import { currentDecaySpans } from '@cosimosi/universe'
 
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
+import type { DemoAnchor } from '../model/anchors.ts'
 
 export interface DemoRecallSheetProps {
   readonly open: boolean
@@ -37,14 +39,22 @@ export function DemoRecallSheet({
   onConfirm,
   onClose,
 }: DemoRecallSheetProps) {
-  if (!open || !memory) return null
+  // Only the missing memory unmounts this. `open` rides through to the Dialog, so the surface can go
+  // DOWN and come back up the way it came in — which is what a beat whose payoff plays on the canvas
+  // behind it needs: the sheet gets out of the way, the change is watched, the result comes back.
+  if (!memory) return null
 
   // A memory the set authored no re-reading for comes back as it went in — so the sentence the
   // visitor sends back IS the current one, and the result says "clearer again, unchanged".
   const rewrite = reconsolidatedText ?? memory.currentText
 
   return (
-    <Dialog open onClose={onClose} title={m.recall_flow_title()} closeLabel={m.common_dismiss()}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={m.recall_flow_title()}
+      closeLabel={m.common_dismiss()}
+    >
       <div className="flex flex-col gap-4">
         {done ? (
           <>
@@ -61,9 +71,11 @@ export function DemoRecallSheet({
               </p>
             )}
             <div className="flex justify-end">
-              <Button color="neutral" onClick={onClose}>
-                {m.common_dismiss()}
-              </Button>
+              <SequenceAnchor id={'recall-dismiss-action' satisfies DemoAnchor}>
+                <Button color="neutral" onClick={onClose}>
+                  {m.common_dismiss()}
+                </Button>
+              </SequenceAnchor>
             </div>
           </>
         ) : (
@@ -87,9 +99,11 @@ export function DemoRecallSheet({
             />
             <p className="text-sm text-text-subtle">{m.demo_recall_prepared_note()}</p>
             <div className="flex justify-end">
-              <Button color="primary" onClick={onConfirm}>
-                {m.recall_confirm()}
-              </Button>
+              <SequenceAnchor id={'recall-confirm-action' satisfies DemoAnchor}>
+                <Button color="primary" onClick={onConfirm}>
+                  {m.recall_confirm()}
+                </Button>
+              </SequenceAnchor>
             </div>
           </>
         )}

@@ -58,11 +58,13 @@ export function demoRunPhase(value: StateValue): DemoRunPhase {
   return { kind: 'freePlay' }
 }
 
-// Which controls a tutorial step leaves interactive — the ONE derivation the chrome may gate from.
-// Exhaustive over the beats, so a beat added to the scenario without a gating row is a compile
-// error. Three beats deliberately widen past their own anchor. The neuron-reuse beat opens the whole
-// write flow rather than one button: drawing is only its first press, and the split and launch
-// that finish the drawn diary are the beat's own work. The decorating beat opens the catalog rows
+// Which controls a tutorial step leaves interactive — the ONE derivation the chrome may gate from,
+// and the same list the mask cuts its hole from. Exhaustive over the beats, so a beat added to the
+// scenario without a gating row is a compile error. Four beats deliberately widen past their own
+// anchor. The opening beat lights the diary card as well as the control that reads it, because a
+// beat asking someone to read a diary has to leave the diary uncovered. The neuron-reuse beat opens
+// the whole write flow rather than one button: drawing is only its first press, and the split and
+// launch that finish the drawn diary are the beat's own work. The decorating beat opens the catalog rows
 // beside its own button for the same reason — the beat is the round trip through the sheet, and a
 // visitor who may press only the one row the ring happens to sit on is being shown a slideshow.
 // The closing CTA beat opens EVERYTHING —
@@ -72,7 +74,7 @@ export function demoRunPhase(value: StateValue): DemoRunPhase {
 // `DemoAnchor` — it lives in the sequence chrome, above this gate, and stays interactive
 // throughout ([O4]).
 const TUTORIAL_INTERACTIVE: Readonly<Record<DemoBeatId, readonly DemoAnchor[] | null>> = {
-  diary_appears: ['diary-card'],
+  diary_appears: ['diary-card', 'diary-read-action'],
   split: ['split-action'],
   launch: ['launch-action'],
   neuron_reuse: ['write-action', 'split-action', 'launch-action'],

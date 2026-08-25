@@ -47,7 +47,7 @@ newcomer can find the right group without scrolling 600 lines of YAML; when the 
 - `deletion`: soft-delete retention window.
 - `release`: release-gate scalars.
 - `sequence`: guided-run caption dwell and spotlight pulse period, shared by both hosts.
-- `demo`: the sandbox's time-jump grain and tutorial mask linger ([Z2]).
+- `demo`: the sandbox's time-jump grain and the two tutorial reveal holds ([Z2]).
 - `landing`: the walkthrough's fade span and mirror recall count, both tuned against `forgetting.*`/`synapse.*`.
 
 ## 2. Schema

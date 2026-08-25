@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import {
-  resolveCaptionPlacement,
+  resolveCaptionPosition,
   type SequenceCaption as CaptionAccessor,
   type SequenceProgress,
   type SequenceRect,
@@ -48,12 +48,19 @@ export function SequenceGuide({
 
   if (!active) return null
 
-  const placement = resolveCaptionPlacement(anchorRect, viewport, CAPTION_BAND_HEIGHT)
+  // The edge slot: a native screen's surfaces are not marked panels this fork can measure, so the
+  // line takes the free edge and gets off the highlighted control when that control owns the bottom.
+  const position = resolveCaptionPosition({
+    slot: { kind: 'edge' },
+    anchorRect,
+    viewport,
+    bandHeight: CAPTION_BAND_HEIGHT,
+  })
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <SequenceSpotlight rect={anchorRect} />
-      {caption ? <SequenceCaption caption={caption} placement={placement} /> : null}
+      {caption ? <SequenceCaption caption={caption} position={position} /> : null}
       <SequenceSkip progress={progress} onSkip={onSkip} />
     </View>
   )

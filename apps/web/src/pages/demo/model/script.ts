@@ -36,7 +36,9 @@ const BEAT_CAPTIONS: Readonly<Record<DemoBeatId, () => string>> = {
 // show dimming (and a gist stage) in one press.
 const BEAT_STEPS: Readonly<Record<DemoBeatId, { anchor?: DemoAnchor; signal: DemoSignal | null }>> =
   {
-    diary_appears: { anchor: 'diary-card', signal: 'diary_read' },
+    // The ring goes on the read control rather than on the card around it: the card is what the
+    // beat lights up to be read, the control is what the beat waits for.
+    diary_appears: { anchor: 'diary-read-action', signal: 'diary_read' },
     split: { anchor: 'split-action', signal: 'split_revealed' },
     launch: { anchor: 'launch-action', signal: 'launched' },
     neuron_reuse: { anchor: 'write-action', signal: 'launched' },

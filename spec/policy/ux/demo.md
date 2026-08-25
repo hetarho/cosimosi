@@ -62,21 +62,29 @@ remembered afterwards.
   blurred, with a single hole cut where the current beat's controls live — never a page of
   individually faded widgets; the sequence chrome (ring, caption, skip) paints above the mask, and
   a beat that opens nothing to press (the sky taking its colour) plays unmasked, because there the
-  scene itself is the show. **The mask yields to the scene's own moments**: while a launch's awaken
-  or a time sweep plays, the whole layer lifts (fades out, without unmounting) and returns a short
-  linger after the presentation ends — a memory going up is never watched through the covering.
-  The next beat's caption and ring hold back through the lift and arrive **together with the
-  covering's return**, so the scene speaks first and the guidance second; the skip never blinks
-  out. Pressability never rides the lift. **Guidance never sits on the surface it describes, and
-  where the free room is depends on the screen.** On a desktop the interrupting surfaces are centred
-  modals, so the line takes the **bottom band** — the edge they leave free — for every step. On a
-  phone they are bottom sheets, so the line floats **just above the middle** at readable size,
-  clear of the sheet and still in the eyeline; a step staged inside an open surface glues its line
-  to the highlighted control itself (just below it, or just above near the bottom edge), and a
-  surface the beat merely stands in — the catalog, a recall walk, a diary being read — pins it to
-  the top band. A beat whose work is a flow rather than one press moves the
-  ring with the visitor — 쪼개기, then 띄우기 for the second diary's walk; the 꾸미기 control, then a
-  catalog row for the decorating beat — instead of staying parked on a button already pressed. Where
+  scene itself is the show. **While the scene is speaking, nothing is put in front of it.** A
+  launch's awaken, a recall's return and a time sweep all play on the covered canvas, so for their
+  duration the covering lifts (fades out, without unmounting), the next beat's caption and ring hold
+  back, and a surface the beat would STAGE waits its turn — one decision, not three, and the reason
+  the tour never raises a sheet over the thing the sheet is about. The hold that follows is what is
+  left to watch: a sweep has already had the screen for seconds of dimming and needs only the
+  settled sky read, while a birth or a return had nothing else and the hold is the whole reveal. The
+  guidance and the staged surface then arrive **together with the covering's return**, so the scene
+  speaks first and the tour second; the skip never blinks out and pressability never rides the lift.
+  **Guidance never sits on the surface it describes, and the chrome works out where the free room
+  is rather than being told.** On a desktop the interrupting surfaces are centred modals, so the
+  line takes the **bottom band** — the edge they leave free. On a phone they are bottom sheets, so
+  the line sits **just above the open sheet**, cleared from that sheet's own top edge by one gap
+  whatever height it has been dragged to, and **floats in the eyeline** when nothing is open. No
+  page carries a band per surface, which is what lets the line clear a sheet the chrome has never
+  heard of. A beat whose work is a flow rather than one press moves the
+  ring with the visitor — 쪼개기, then 띄우기 for the second diary's walk; 되돌리기, then the way out
+  for the recall walk; the 꾸미기 control, then a catalog row for the decorating beat — instead of
+  staying parked on a button already pressed. For the recall beat it has no choice: the press that
+  starts the walk closes the panel that held the beat's own anchor, so a ring that did not walk would
+  simply vanish for the rest of the beat. The
+  ring always circles a CONTROL, never the region a beat lights up to be read: the opening beat
+  uncovers the whole diary card and rings the one press that moves on from it. Where
   the last leg of a beat is a control the shared primitives own (a sheet's own close), the ring
   stands down and the caption carries that leg alone; the caption is the run's one guaranteed
   channel. **The camera is free play's**: drag/zoom navigation stays unmounted while the tour runs,
@@ -88,7 +96,10 @@ remembered afterwards.
   panel in the product's shapes (the star rendered in its own frame, what is known about it, the
   current words with the forgetting smeared in), with 회고하기 standing in the open and 원본 일기
   보기 beside it. Recall walks the product's own three steps (the faded words, the sentence sent back,
-  what came back). Where the demo diverges it is because the sandbox cannot honestly carry the
+  what came back) — and the surface **steps down for the middle one**: the sentence lands on the canvas
+  at once, the memory brightens and reshapes where it stands, and watching that through the sheet you
+  sent it from shows nothing. So the sheet goes out of the way for the reveal and comes back up with
+  the reading that returned. Where the demo diverges it is because the sandbox cannot honestly carry the
   product's thing: no balance ([Z8]), no archive route (a star's diary opens from the star), and
   the time controls, which no signed-in screen has, sit under the clock they move.
   **The signup CTA sits outside the tour entirely**: parked top-right under the skip's corner,
@@ -144,10 +155,13 @@ remembered afterwards.
   real control. Nothing is performed on their behalf. The tour may still put a surface in front of
   them — the opening diary arrives already open, and the recall beat arrives with its own star
   picked, because which star it is about is the scenario's and hunting for it among look-alikes is a
-  search task no caption can help with. That scenario-staged recall panel cannot strand the beat:
-  dismissing it before the recall walk starts immediately selects the target again, while starting
-  the walk hands off normally to the recall surface. What is never done for them is the beat's own
-  work.
+  search task no caption can help with. That staged panel waits for the sky it is standing in front
+  of: the month jump that hands the beat over gets the screen to itself, and the panel and the
+  caption come up together when it is done. It cannot strand the beat either — dismissing it before
+  the recall walk starts immediately selects the target again, while starting the walk hands off
+  normally to the recall surface — and it does not come back once the beat's work is done, which is
+  read off the memory having been returned to rather than off a flag, so a spent panel can never be
+  left standing over the beats that follow. What is never done for them is the beat's own work.
 - **Nothing survives leaving.** The read models, the clock, the awaken registry and the palette are all
   cleared on the way out, and nothing was ever written to storage, a URL or a server — so a visitor
   who signs up afterwards starts from a genuinely empty universe.

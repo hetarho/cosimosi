@@ -3,6 +3,7 @@ import { Badge, Button, Dialog, TextArea, TextField } from '@cosimosi/ui'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
+import type { DemoAnchor } from '../model/anchors.ts'
 import { isDemoAnchorInteractive, type DemoRunPhase } from '../model/run-machine.ts'
 
 /** One proposed memory of the drawn diary, shaped the way the product's review list shows one. */
@@ -84,18 +85,20 @@ export function DemoWritingSheet({
                   readOnly
                   onChange={() => undefined}
                 />
-                {/* Beat 1's own affordance: reading the diary is what advances it. Inside the
-                    diary-card anchor, because reading is the CARD's act — the beat that opens
-                    only `diary-card` must leave this pressable. */}
+                {/* Beat 1's own affordance, and its own anchor: the card around it is the region the
+                    beat lights up to be read, while THIS is the press the beat waits for — so the
+                    ring belongs here rather than around a paragraph. */}
                 {showReadAffordance && (
                   <div className="flex justify-end">
-                    <Button
-                      color="neutral"
-                      onClick={onDiaryRead}
-                      disabled={!isDemoAnchorInteractive(phase, 'diary-card')}
-                    >
-                      {m.demo_diary_read_action()}
-                    </Button>
+                    <SequenceAnchor id={'diary-read-action' satisfies DemoAnchor}>
+                      <Button
+                        color="neutral"
+                        onClick={onDiaryRead}
+                        disabled={!isDemoAnchorInteractive(phase, 'diary-read-action')}
+                      >
+                        {m.demo_diary_read_action()}
+                      </Button>
+                    </SequenceAnchor>
                   </div>
                 )}
               </div>
