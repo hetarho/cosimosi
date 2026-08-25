@@ -41,7 +41,6 @@ export type DemoSignal =
   | 'time_advanced'
   | 'recalled'
   | 'gist_risen'
-  | 'sky_filled'
   /** The decorating beat's whole arc is open → try something on → come back out, so what finishes it
    *  is the sheet CLOSING over a changed universe, not the first row pressed. */
   | 'decorate_closed'

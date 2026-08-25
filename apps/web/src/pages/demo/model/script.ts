@@ -25,9 +25,8 @@ const BEAT_CAPTIONS: Readonly<Record<DemoBeatId, () => string>> = {
 }
 
 // What each beat points at, and what counts as done. Every beat the visitor must DO is a `signal`
-// step — a dwell step here would fake progress nobody made. The two beats that are consequences
-// rather than actions (the gist rising, the sky filling) are also signals, fired by the page once it
-// has applied the change, so the caption never runs ahead of what is on screen.
+// step — a dwell step here would fake progress nobody made. The gist rising is a consequence rather
+// than an action, so it is a signal too, reported by the page from the press that pushes time.
 //
 // The neuron-reuse beat anchors the WRITE control and waits for `launched`: pressing it draws one
 // more prepared diary through the same flow the first diary walked, and the beat is done when that
@@ -45,7 +44,11 @@ const BEAT_STEPS: Readonly<Record<DemoBeatId, { anchor?: DemoAnchor; signal: Dem
     time_accelerates: { anchor: 'time-month-action', signal: 'time_advanced' },
     recall: { anchor: 'recall-action', signal: 'recalled' },
     gist_rise: { anchor: 'time-month-action', signal: 'gist_risen' },
-    color: { signal: 'sky_filled' },
+    // The sky already carries the universe's colour — it has since the first `EpisodicMemory`
+    // launched — so this beat asks for nothing and applies nothing; it names what is already
+    // overhead. A signal here would have to be fired by the page on arrival, which advances the run
+    // in the same commit that starts it and leaves the sentence unread.
+    color: { signal: null },
     // The decorating beat anchors the 꾸미기 control and waits for the sheet to CLOSE: opening it,
     // trying something on and coming back out to the changed universe is one beat's work, so its
     // ring walks (page-side) from the control to the row and its caption covers the whole arc.
@@ -69,9 +72,10 @@ export const DEMO_SCRIPT: SequenceScript<DemoAnchor, DemoSignal> = defineScript<
       // Omitted rather than set to undefined when a beat points at nothing, so a narration-only step
       // carries no anchor key at all.
       ...(anchor ? { anchor } : {}),
-      // The closing beat is the one `dwell`: pressing the CTA leaves the page, so the run ends by
-      // going rather than by a tenth signal. Its caption holds, then the chrome retires and the CTA
-      // stays where it is.
+      // The two `dwell` beats are the ones with nothing to press: the sky beat explains the colour
+      // already overhead, and the closing beat ends by the visitor GOING rather than by a tenth
+      // signal. Each caption holds, then the run moves on; after the last one the chrome retires and
+      // the CTA stays where it is.
       advance: signal ? { on: 'signal' as const, signal } : { on: 'dwell' as const },
     }
   }),

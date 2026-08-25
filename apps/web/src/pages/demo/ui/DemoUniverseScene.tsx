@@ -118,13 +118,11 @@ function DemoCanvasHost({
     [],
   )
 
-  // Beat 8: the sky's ramp is filled from the universe's OWN strength-weighted emotions — the honest
-  // definition made visible, not an average. Before that beat it stays the bare night, so the moment
-  // the colour arrives is the moment the beat says it does.
-  const skyStops = useMemo(
-    () => (scene.skyFilled ? universeEmotionSlices(scene.memories) : []),
-    [scene.memories, scene.skyFilled],
-  )
+  // The sky's ramp is filled from the universe's OWN emotions — the honest definition made visible,
+  // not an average. It follows the launched memories directly: an empty universe opens on the bare
+  // night, and the first star to go up is what puts colour in the sky, which is the same rule the
+  // product surface renders under.
+  const skyStops = useMemo(() => universeEmotionSlices(scene.memories), [scene.memories])
 
   const neuronCount = graph.neurons.length
   // Bloom and the camera's field of view stay the fixed skin's: the taster offers every kind the

@@ -59,7 +59,6 @@ describe('the demo run', () => {
     expect(result.current.writingDiary?.body).toBeTruthy()
     expect(result.current.scene.memories).toHaveLength(0)
     expect(result.current.scene.neurons).toHaveLength(0)
-    expect(result.current.scene.skyFilled).toBe(false)
   })
 
   // Every set the draw can land on, because the beat-4 property is a property of each one: the

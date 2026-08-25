@@ -394,15 +394,6 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     if (applied) signal('recalled')
   }, [recallApplied, signal])
 
-  // Beat 8 is a consequence rather than an action: once the universe holds enough re-read emotion,
-  // the sky takes its colour. The page applies it and then reports, so the caption never runs ahead.
-  const stepId = run.step?.id
-  useEffect(() => {
-    if (stepId !== 'color' || state.skyFilled) return
-    demo.fillSky()
-    signal('sky_filled')
-  }, [demo, signal, state.skyFilled, stepId])
-
   // A tried-on ornament applies at once — a selection simply IS the sky now ([Z8] discharged by
   // absence: no preview, no save, no total). Nothing is reported here: what finishes the decorating
   // beat is the trip back out to the universe, which is where the change is actually seen.

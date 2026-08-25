@@ -116,7 +116,6 @@ interface DemoRunState {
    *  no diary-date constraint — the demo just passes this down as the `universeTime` the layers
    *  already accept, which is why the exemption needs no shared-code support ([Z2][I10]). */
   readonly clock: string
-  readonly skyFilled: boolean
   readonly taste: DemoTaste
 }
 
@@ -150,7 +149,6 @@ function freshRun(today: string, draw01: number, runId: string): DemoRunState {
     // The clock opens on the first diary's own date, so its memories go up vivid and time has
     // somewhere to travel FROM.
     clock: firstDiary.diaryDate,
-    skyFilled: false,
     taste: NO_TASTE,
   }
 }
@@ -170,7 +168,6 @@ export interface DemoRun {
   advanceClock: (days: number) => void
   /** Per-memory and repeatable: any launched memory, any number of times ([Z2][Z8] — free). */
   recall: (memoryId: string) => void
-  fillSky: () => void
   taste: (next: Partial<DemoTaste>) => void
 }
 
@@ -181,8 +178,6 @@ export interface DemoScene {
   readonly universeTime: string
   /** Announced to the awaken layer — the neurons this launch genuinely brought into being. */
   readonly newNeuronIds: readonly string[]
-  /** Beat 8 has happened: the sky may take the universe's own colour. */
-  readonly skyFilled: boolean
 }
 
 export function useDemoRun(initial: { today: string; draw01: number; runId: string }): DemoRun {
@@ -318,8 +313,6 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
     [],
   )
 
-  const fillSky = useCallback(() => setState((run) => ({ ...run, skyFilled: true })), [])
-
   const taste = useCallback(
     (next: Partial<DemoTaste>) => setState((run) => ({ ...run, taste: { ...run.taste, ...next } })),
     [],
@@ -344,7 +337,6 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
     launchDiary,
     advanceClock,
     recall,
-    fillSky,
     taste,
   }
 }
@@ -391,7 +383,6 @@ function projectScene(run: DemoRunState): DemoScene {
     synapses,
     universeTime: run.clock,
     newNeuronIds: neurons.map((neuron) => neuron.id),
-    skyFilled: run.skyFilled,
   }
 }
 
