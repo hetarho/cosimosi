@@ -160,10 +160,22 @@ how it is reached) · `min_semantic_neurons` 1 · `max_revise_retries` 3 · `max
 Generated into `internal/platform/values` and `packages/config/src/values.gen.ts`; never hardcoded at call sites.
 The output budget is sized for a **diary**, not a list of names — the passages quote the whole entry between them, so
 they dominate `estimateOutputTokens`; `ai.per_call_token_cap` (7000) was raised with it so encode's own guard still
-trips before the generic one. Because the body now decides whether the response fits, `Encode`/`ReviseSplit` check it
+trips before the generic one. Because the body largely decides whether the response fits, `Encode`/`ReviseSplit` check it
 **on the way in** (`bodyWithinOutputBudget`, estimated with the same token model so the two cannot drift): a diary too
 long to be quoted back returns `ErrEncodeBodyTooLong` (→ `CodeInvalidArgument`, `MEMORY_ENCODE_BODY_TOO_LONG`) before
-a single LLM call. It is deliberately not a repair condition — a shorter split would break the coverage rule, so the
+a single LLM call.
+
+The in-guard prices the **structure a split cannot avoid**, not the passages alone (`minimumAdmissibleSplit`). Every
+memory carries a name, a mood and at least `min_semantic_neurons` neurons, so measuring only the body admits entries
+for which no legal split fits — those spend the whole repair budget on `output_too_large` and return the give-up error
+instead of this one. The reservation is worst-cased exactly where the writer has no say: the memory count is
+`max_memories` (a five-scene day is admissible and nobody chooses otherwise), and the mood and neuron-type strings are
+the costliest members of their closed enums, derived from the catalogues so adding a member re-prices the guard. Names
+are taken at their smallest legal size instead, because name and neuron verbosity is what the `output_too_large`
+re-prompt can still take back — pricing it here would refuse diaries a terser split fits. The passages are
+distributed across the reserved memories rather than duplicated, since they jointly quote the diary ([E1]) and every
+memory's passage must be non-empty. At the as-built tuning this admits a Korean entry of ~5871 runes (from ~5983 when
+only the passages were priced), and that entry's cheapest legal split lands exactly on the 6000-token budget. It is deliberately not a repair condition — a shorter split would break the coverage rule, so the
 repair budget would burn down ping-ponging between "too large" and "you dropped a scene", and only the writer can
 shorten the entry. The over-budget check that remains in the repair loop runs **last** and now covers only what the
 model can still trim: the names and neurons around the pinned passages.

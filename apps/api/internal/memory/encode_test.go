@@ -278,6 +278,14 @@ func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 	if fixture.launches.txCount != 0 {
 		t.Fatalf("launch tx ran %d times during preview, want 0", fixture.launches.txCount)
 	}
+	// An ordinary diary reaches the extractor exactly once and its split is returned untouched: the
+	// body budget is a ceiling on unfittable entries, never a cost on the common path.
+	if fixture.extractor.splitCalls != 1 {
+		t.Fatalf("split calls = %d, want exactly 1", fixture.extractor.splitCalls)
+	}
+	if len(fixture.extractor.instructions) != 0 {
+		t.Fatalf("repair re-prompts = %d, want 0 for a valid split", len(fixture.extractor.instructions))
+	}
 }
 
 func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
@@ -521,6 +529,106 @@ func TestEncodeRefusesADiaryTooLongToQuoteBeforeCallingTheExtractor(t *testing.T
 	// An ordinary diary is unaffected — the guard is a ceiling, not a new input rule.
 	if err := bodyWithinOutputBudget(testDiaryBody); err != nil {
 		t.Fatalf("an ordinary diary tripped the budget: %v", err)
+	}
+}
+
+// The guard's whole point: there must be no body it admits that a LEGAL split then overflows.
+// Measuring the body alone satisfies neither half — it admitted diaries for which even the cheapest
+// admissible split was over budget, so the repair loop spent every re-prompt on a violation the
+// model could not fix and returned the give-up error instead of this one.
+//
+// Driven off the generated values rather than a pinned rune count, so retuning max_memories,
+// min_semantic_neurons or max_output_tokens re-derives the bound instead of pinning a stale one.
+func TestBodyBudgetLeavesRoomForEveryAdmissibleSplit(t *testing.T) {
+	t.Parallel()
+	// The largest Korean body the guard admits: one rune per token in the estimate, so a binary
+	// search over rune counts lands exactly on the boundary.
+	low, high := 1, values.EncodeMaxOutputTokens*2
+	for low < high {
+		mid := (low + high + 1) / 2
+		if bodyWithinOutputBudget(strings.Repeat("가", mid)) == nil {
+			low = mid
+		} else {
+			high = mid - 1
+		}
+	}
+	largest := strings.Repeat("가", low)
+	if err := bodyWithinOutputBudget(largest); err != nil {
+		t.Fatalf("binary search landed outside the admitted range: %v", err)
+	}
+	if bodyWithinOutputBudget(strings.Repeat("가", low+1)) == nil {
+		t.Fatal("binary search did not land on the boundary")
+	}
+
+	// That body, split the cheapest legal way, must still fit the budget the output guard enforces.
+	estimate := estimateOutputTokens(minimumAdmissibleSplit(largest))
+	if estimate > values.EncodeMaxOutputTokens {
+		t.Fatalf("the largest admitted body (%d runes) needs %d tokens as its cheapest legal split, over the %d budget",
+			low, estimate, values.EncodeMaxOutputTokens)
+	}
+
+	// And the reservation is priced from the enums, not a literal: the costliest mood and neuron type
+	// the model may pick are the ones the guard assumed.
+	split := minimumAdmissibleSplit(largest)
+	if len(split.Memories) != values.EncodeMaxMemories {
+		t.Fatalf("reserved for %d memories, want the admissible maximum of %d",
+			len(split.Memories), values.EncodeMaxMemories)
+	}
+	for _, mood := range AllMoods() {
+		if len(mood) > len(split.Memories[0].Mood) {
+			t.Fatalf("mood %q costs more than the reserved %q", mood, split.Memories[0].Mood)
+		}
+	}
+	for _, neuronType := range AllNeuronTypes() {
+		if len(neuronType) > len(split.Memories[0].Neurons[0].Type) {
+			t.Fatalf("neuron type %q costs more than the reserved %q", neuronType, split.Memories[0].Neurons[0].Type)
+		}
+	}
+	// A legal split must always carry the required neurons, or the reservation is a fiction.
+	if !hasRequiredSemanticNeurons(split.Memories[0]) {
+		t.Fatal("the reserved split does not itself satisfy the semantic-neuron rule")
+	}
+	if err := validateSplitStructure(split); err != nil {
+		t.Fatalf("the reserved split is not structurally admissible: %v", err)
+	}
+}
+
+// The band the old guard let through: long enough that no legal split fits, short enough that
+// measuring the passages alone said yes. Those bodies now get the actionable error, before the
+// extractor is billed — not EncodeRetryExhausted after three re-prompts that cannot help.
+func TestEncodeRefusesABodyNoLegalSplitCouldFit(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// Inside the band by construction: the passages alone fit, the cheapest legal split does not.
+	body := ""
+	for runes := values.EncodeMaxOutputTokens; runes > 0; runes-- {
+		candidate := strings.Repeat("가", runes)
+		passagesOnly := estimateOutputTokens(ExtractResult{Memories: []ExtractedMemory{{SourceText: candidate}}})
+		if passagesOnly <= values.EncodeMaxOutputTokens {
+			body = candidate
+			break
+		}
+	}
+	if body == "" {
+		t.Fatal("could not construct a body whose passages alone fit")
+	}
+	if estimateOutputTokens(minimumAdmissibleSplit(body)) <= values.EncodeMaxOutputTokens {
+		t.Skip("no trap band at the current tuning — the structural reservation is smaller than one rune")
+	}
+
+	_, err := fixture.service.Encode(context.Background(), testScope(t), body, testDiaryDate())
+	if !errors.Is(err, ErrEncodeBodyTooLong) {
+		t.Fatalf("err = %v, want ErrEncodeBodyTooLong", err)
+	}
+	if errors.Is(err, ErrEncodeRetryExhausted) {
+		t.Fatal("the writer was told the split failed, not that the entry is too long")
+	}
+	if fixture.extractor.splitCalls != 0 {
+		t.Fatalf("split calls = %d, want 0 — no LLM call is billed to learn the entry is too long",
+			fixture.extractor.splitCalls)
+	}
+	if len(fixture.extractor.instructions) != 0 {
+		t.Fatalf("repair re-prompts = %d, want 0", len(fixture.extractor.instructions))
 	}
 }
 

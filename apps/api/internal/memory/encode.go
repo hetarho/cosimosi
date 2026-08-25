@@ -27,10 +27,12 @@ var (
 	ErrEncodeInvalidSplit = errors.New("memory encode received an invalid split")
 	// ErrEncodeBodyTooLong is the canonical over-budget error for the diary itself.
 	// Since each memory carries its own passage, the split response holds the diary
-	// redistributed across the memories — so the body, not the model's verbosity,
-	// decides whether the result fits encode.max_output_tokens. The writer is told
-	// before a single LLM call, instead of after the repair budget burns down on a
-	// violation no re-prompt can fix (a shorter split would break coverage).
+	// redistributed across the memories, so a body long enough to crowd out the
+	// structure around it can never fit encode.max_output_tokens however terse the
+	// model is — a shorter split would break coverage. The writer is told before a
+	// single LLM call, instead of after the repair budget burns down on a violation
+	// no re-prompt can fix. Verbosity the model CAN take back (long names, surplus
+	// neurons) is not priced here; that is ViolationOutputTooLarge's job.
 	ErrEncodeBodyTooLong = errors.New("memory encode diary body exceeds the output budget")
 	// ErrScopeRequired guards every use-case entry point (§4 per-user isolation).
 	ErrScopeRequired = errors.New("memory use-case requires an authenticated user scope")
@@ -308,19 +310,97 @@ func SplitNeedsRepair(body string, result ExtractResult) bool {
 	return needsRepair
 }
 
-// bodyWithinOutputBudget refuses a diary whose passages alone cannot fit encode.max_output_tokens.
-// It is checked on the way IN, before any LLM call: the split must quote the whole diary back
-// ([E1]), so an over-long body is not something a re-prompt can repair — the repair budget would
-// burn down ping-ponging between "too large" and "you dropped a scene". Estimated against a
-// single-memory split so the check measures the body itself and not the split's overhead, and
-// with the same token model the output guard uses, so the two cannot drift apart.
+// bodyWithinOutputBudget refuses a diary that cannot fit encode.max_output_tokens even as the
+// cheapest split the domain would accept. It is checked on the way IN, before any LLM call: the
+// split must quote the whole diary back ([E1]), so an over-long body is not something a re-prompt
+// can repair — the repair budget would burn down ping-ponging between "too large" and "you dropped
+// a scene".
+//
+// The estimate has to include the split's own structure, not just the passages. Measuring the body
+// alone admits diaries for which NO legal split fits: every memory carries a name, a mood and at
+// least one neuron, so a body inside the budget by less than that scaffolding costs is refused only
+// after the repair budget is spent, with the give-up error instead of this one — the exact outcome
+// this guard exists to prevent.
 func bodyWithinOutputBudget(body string) error {
-	estimate := estimateOutputTokens(ExtractResult{Memories: []ExtractedMemory{{SourceText: body}}})
+	estimate := estimateOutputTokens(minimumAdmissibleSplit(body))
 	if estimate > values.EncodeMaxOutputTokens {
 		return fmt.Errorf("%w: %d estimated tokens over the %d budget",
 			ErrEncodeBodyTooLong, estimate, values.EncodeMaxOutputTokens)
 	}
 	return nil
+}
+
+// minimumAdmissibleSplit is the CHEAPEST result the domain would accept for this body, used to price
+// the structure a split cannot avoid carrying.
+//
+// Cheapest, not typical, and the split is worst-cased only where the writer has no say. The memory
+// count is encode.max_memories: a five-scene day is admissible and nobody can choose otherwise, so
+// reserving for fewer would let the guard admit a body that a legal split then overflows. Mood and
+// neuron type are worst-cased over their closed enums for the same reason. Names are taken at their
+// smallest legal size instead, because name and neuron verbosity is precisely what the
+// ViolationOutputTooLarge re-prompt can still fix — pricing it here would refuse diaries that a
+// terser split fits.
+//
+// How the body is distributed across the memories does not matter: the estimate counts the passage
+// characters once wherever they sit, and the source texts jointly quote the diary ([E1]).
+func minimumAdmissibleSplit(body string) ExtractResult {
+	// Every memory carries a non-empty passage (validateSplitStructure), and the passages jointly
+	// quote the diary ([E1]) — so the body is DISTRIBUTED, not duplicated. Total passage cost is the
+	// body's either way; what the distribution buys is a result that is actually admissible, which is
+	// what makes the reservation a bound rather than a guess.
+	runes := []rune(body)
+	count := values.EncodeMaxMemories
+	if len(runes) < count {
+		// A diary with fewer runes than the maximum scene count cannot be split that far. Such a body
+		// is nowhere near the budget, so pricing it against a count it can never reach would only
+		// invent a ceiling.
+		count = len(runes)
+	}
+	if count < 1 {
+		count = 1
+	}
+	memories := make([]ExtractedMemory, 0, count)
+	for i := 0; i < count; i++ {
+		start := len(runes) * i / count
+		end := len(runes) * (i + 1) / count
+		memory := ExtractedMemory{
+			Name:       minimumName,
+			Mood:       longestMood(),
+			SourceText: string(runes[start:end]),
+		}
+		for n := 0; n < values.EncodeMinSemanticNeurons; n++ {
+			memory.Neurons = append(memory.Neurons, ExtractedNeuron{Name: minimumName, Type: longestNeuronType()})
+		}
+		memories = append(memories, memory)
+	}
+	return ExtractResult{Memories: memories}
+}
+
+// The shortest name the structure check accepts, priced as one non-ASCII token — the floor a split
+// cannot go below, while anything longer is the model's to take back on a re-prompt.
+const minimumName = "가"
+
+// The enum members whose spelling costs the most, so the reservation cannot be undone by the model
+// picking a longer mood or type than the one we priced. Derived from the catalogues rather than
+// spelled out, so adding a mood or a neuron type re-prices the guard instead of silently loosening it.
+func longestMood() Mood {
+	longest := Mood("")
+	for _, mood := range AllMoods() {
+		if len(mood) > len(longest) {
+			longest = mood
+		}
+	}
+	return longest
+}
+
+func longestNeuronType() NeuronType {
+	longest := NeuronType("")
+	for _, neuronType := range AllNeuronTypes() {
+		if len(neuronType) > len(longest) {
+			longest = neuronType
+		}
+	}
+	return longest
 }
 
 // memoryCountAccepted and hasRequiredSemanticNeurons are the single owners of the [E2]/[E4]
