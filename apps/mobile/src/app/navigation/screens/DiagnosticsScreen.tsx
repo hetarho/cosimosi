@@ -8,14 +8,14 @@ import { platformFeatureFlags } from '@cosimosi/observability'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { Button, defaultThemeKey, tokens } from '@cosimosi/ui'
 
-import { diagnosticsSurfaceFlag, mobileAppVersion } from '../../shared/config/index.ts'
-import { m, useActiveLocale } from '../../shared/i18n/index.ts'
+import { diagnosticsSurfaceFlag, mobileAppVersion } from '../../../shared/config/index.ts'
+import { m, useActiveLocale } from '../../../shared/i18n/index.ts'
 import {
   useMobileApiBaseUrl,
   useMobileApiTransport,
   useSessionSnapshot,
-} from '../providers/index.ts'
-import { type RootStackScreenProps } from '../navigation/routes.ts'
+} from '../../providers/index.ts'
+import { type RootStackScreenProps } from '../routes.ts'
 
 type PingState = { kind: 'idle' | 'pending' | 'ok' | 'error'; text: string }
 

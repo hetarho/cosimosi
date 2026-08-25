@@ -26,7 +26,7 @@ import {
   mobileLinkingPrefixes,
   subscribeToInviteUrls,
 } from '../../shared/native/index.ts'
-import { DiagnosticsScreen } from '../diagnostics/index.ts'
+import { DiagnosticsScreen } from './screens/DiagnosticsScreen.tsx'
 import {
   MobileDecorationBootstrap,
   MobileProfileGate,

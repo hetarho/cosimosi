@@ -24,7 +24,17 @@ const APP_ROOT_ALLOW = new Set([
   'index.css',
   'index.ts',
 ])
-const MOBILE_NAVIGATION_SCREEN_ALLOW = new Set(['BootScreen.tsx'])
+// Neutral app-shell infrastructure, not product composition: the boot shell, and the provider-health
+// surface that reports locale/theme/session/transport and deliberately renders no product data (its
+// own suite asserts the deep-linked surface leaks nothing). Both need app-layer context a `pages`
+// slice may not import, which is why they are here rather than promoted.
+const MOBILE_NAVIGATION_SCREEN_ALLOW = new Set(['BootScreen.tsx', 'DiagnosticsScreen.tsx'])
+// The app layer's segments are a CLOSED set (ARCHITECTURE §3.1). The router segment differs by
+// platform and that difference is part of the contract, so neither app may borrow the other's name.
+const APP_SEGMENT_ALLOW = {
+  'apps/web': new Set(['providers', 'routes', 'model', 'styles']),
+  'apps/mobile': new Set(['providers', 'navigation', 'model', 'styles']),
+}
 const CODE_EXT = /\.(ts|tsx|js|jsx|css)$/
 const PURE_MODULE_EXT = /\.(ts|tsx|js|jsx)$/
 const PURE_MODULE_SEGMENT =
@@ -154,12 +164,29 @@ export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
 
     const appAbs = join(srcAbs, 'app')
     if (existsSync(appAbs)) {
+      const allowedSegments = APP_SEGMENT_ALLOW[app]
       for (const entry of readdirSync(appAbs, { withFileTypes: true })) {
         if (!entry.isDirectory() && CODE_EXT.test(entry.name) && !APP_ROOT_ALLOW.has(entry.name)) {
           problems.push(
             `${app}/src/app/${entry.name} — loose file in the app layer. Move it into a segment ` +
               `(app/providers · app/routes|navigation · app/model · app/styles). Only ` +
               `[${[...APP_ROOT_ALLOW].join(', ')}] may sit at the app root.`,
+          )
+          continue
+        }
+        // A whole unknown segment is the violation that actually happens — nobody drops one file at
+        // the app root, they add a folder. Checking only files left the larger drift unenforced while
+        // §3.1 claimed this gate covered the contract.
+        if (
+          entry.isDirectory() &&
+          allowedSegments &&
+          !allowedSegments.has(entry.name) &&
+          !PROBE_FIXTURE_DIR.test(entry.name)
+        ) {
+          problems.push(
+            `${app}/src/app/${entry.name}/ — unknown app-layer segment. The app layer is segmented ` +
+              `by technical role and the set is closed: [${[...allowedSegments].join(', ')}]. A screen ` +
+              `belongs in pages/<slice>/ui; app-shell infrastructure belongs in the router segment.`,
           )
         }
       }
