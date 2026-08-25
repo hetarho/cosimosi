@@ -9,6 +9,7 @@ import { resetUniverseUserState, type AdvanceInterval } from '@cosimosi/universe
 
 import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
+import type { DemoSignal } from '../model/anchors.ts'
 import { DEMO_SCRIPT } from '../model/script.ts'
 import {
   demoRunMachine,
@@ -44,6 +45,13 @@ import { DemoWritingSheet, type DemoProposedMemory } from './DemoWritingSheet.ts
 // presentation (caption, highlight, dwell, skip chrome); the demo-local run machine owns the run's
 // PHASE — tutorial step ↔ free play — and every control's availability derives from it alone.
 // `syncDemoRunMachine` in the effect below is the only place they meet.
+
+// A sweep that owes the tour nothing, shared so the empty case allocates once.
+const NO_REPORTS: readonly DemoSignal[] = []
+
+/** What a time jump reports once its months have run past on screen. */
+const TIME_JUMP_REPORTS: readonly DemoSignal[] = ['time_advanced', 'gist_risen']
+
 interface DemoEntry {
   readonly today: string
   readonly draw01: number
@@ -291,22 +299,36 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // in front of the viewer — the product's own sequencing, rendered demo-locally.
   const [sweep, setSweep] = useState<AdvanceInterval | null>(null)
   const [sweepTime, setSweepTime] = useState<string | null>(null)
+  // What the sweep in flight owes the tour when it LANDS. A beat whose work is a stretch of time is
+  // done when that time has actually passed on screen, not when the button went down: reported at
+  // press time it hands the next beat's line to the covered stretch, where a caption-only beat
+  // spends its whole dwell unread. A ref because the sweep's own presentation is the only thing
+  // waiting on it — nothing renders from it, so a state write would buy a re-render per jump.
+  const sweepReportsRef = useRef<readonly DemoSignal[]>(NO_REPORTS)
   const playSweep = useCallback(
-    (previous: string, current: string) => {
-      if (current <= previous) return
+    (previous: string, current: string, reports: readonly DemoSignal[] = NO_REPORTS) => {
+      // Nothing to walk means nothing to wait for; whatever the press owed is owed now.
+      if (current <= previous) {
+        for (const report of reports) signal(report)
+        return
+      }
+      sweepReportsRef.current = reports
       openReveal()
       // The displayed clock starts at `previous` in the SAME commit the sweep begins, or the first
       // frame would flash the committed final date before the rAF loop walks back and forward.
       setSweepTime(previous)
       setSweep({ previous, current })
     },
-    [openReveal],
+    [openReveal, signal],
   )
   const onSweepDone = useCallback(() => {
     setSweep(null)
     setSweepTime(null)
     closeReveal(VALUES.demo.sweepSettleMs)
-  }, [closeReveal])
+    const reports = sweepReportsRef.current
+    sweepReportsRef.current = NO_REPORTS
+    for (const report of reports) signal(report)
+  }, [closeReveal, signal])
 
   const onDiaryRead = useCallback(() => signal('diary_read'), [signal])
 
@@ -327,6 +349,10 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     // the clock jump is real the same passing-time presentation plays. A re-drawn diary that has
     // already launched goes up as a no-op — reporting `launched` for it would advance a tutorial
     // beat past work that put nothing new in the sky.
+    //
+    // `launched` is reported from the press rather than handed to the sweep, because a launch has a
+    // second path with no sweep to land on, and every beat it hands to waits on a press of its own —
+    // their line arrives with the settled scene either way.
     const draft = demo.writingDiary
     const launches = !!draft && !demo.state.launchedDiaryIds.includes(draft.id)
     const previous = demo.state.clock
@@ -354,13 +380,12 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       const days = DEMO_TIME_JUMPS[grain]
       const previous = demo.state.clock
       demo.advanceClock(days)
-      playSweep(previous, shiftDemoDate(previous, days))
-      // Both outcomes of pushing time are reported; the engine keeps whichever its current beat
-      // waits for and drops the other — beat 5 hears the advance, beat 7 hears the rise.
-      signal('time_advanced')
-      signal('gist_risen')
+      // Both outcomes of pushing time are handed to the sweep, which reports them once the months
+      // have actually run past; the engine keeps whichever its current beat waits for and drops the
+      // other — beat 5 hears the advance, beat 7 hears the rise.
+      playSweep(previous, shiftDemoDate(previous, days), TIME_JUMP_REPORTS)
     },
-    [demo, playSweep, signal],
+    [demo, playSweep],
   )
 
   // 회고하기 walks the product's own three steps — the star's panel hands the memory to the recall
