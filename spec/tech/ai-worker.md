@@ -119,7 +119,14 @@ escapes the package.
 - `CompleteJob`: marks a claimed job `done`.
 - `RetryJob`: marks a failed attempt `pending`, increments attempts to the caller-computed value, and writes
   `next_run_at`.
-- `FailJob`: marks an exhausted or unhandled job `failed`.
+- `FailJob`: marks a job whose retry budget is spent `failed`. It is the POLICY give-up, and a queue may
+  override it — `retention_sweep`, `withdrawal_sweep` and `achievement_settle` are each the only durable
+  trigger for something the user cannot re-request, so a spent budget retries them instead.
+- The runner's SAFETY stops take a separate transition, `DeadLetter`, carrying the cause: the hard claim
+  ceiling (`ai.job_max_claims` — a handler that kills its worker before any failure can be recorded) and
+  an unregistered kind (retrying cannot grow a handler). A queue that overrides `FailJob` must not
+  override this one, or its loop-breaker is decoration. The write is the same terminal `failed` row, so
+  nothing is deleted and an operator can still see and requeue it.
 - Current-source reads and conditional derived writes are scoped by `user_id`, target identity, and
   `representation_revision`.
 - `PurgeTerminalJobs` removes a bounded batch of terminal queue metadata older than
@@ -127,13 +134,15 @@ escapes the package.
 
 Backoff is deterministic: `ai.job_backoff_base_ms * 2^attempts`, no jitter. A claimed `running` row uses
 `next_run_at` as its lease deadline for `ai.job_lease_ms`. Ordinary jobs are marked `failed` after
-`ai.job_max_attempts`; retention jobs remain retryable because they are the durable executor for a user-originated
-release. A cost-limit error is scheduled for the next UTC calendar day without incrementing `attempts`. Regular AI
+`ai.job_max_attempts`; the durable kinds remain retryable because they are the durable executors for
+user-originated work. `ai.job_max_claims` applies to every kind including those, since it answers a
+different question — not "has this failed enough times" but "is running this again incapable of helping". A cost-limit error is scheduled for the next UTC calendar day without incrementing `attempts`. Regular AI
 handlers never delete domain rows. The narrow `retention_sweep` handler is the sole worker path that hard-deletes data,
 and it can act only on an existing user-created release group at or after that group's restore deadline.
 
 `consolidate` is now an active identity/revision-fenced re-embedding path. Still-unhandled reserved kinds (`extract`,
-`link`) are marked `failed` by the generic runner without panicking.
+`link`) are dead-lettered by the generic runner without panicking — the unhandled-kind cause above, not
+an attempt failure.
 
 Transient queue I/O errors during claim, complete, retry, or fail are logged and the runner continues polling. Context
 cancelation remains the shutdown signal.

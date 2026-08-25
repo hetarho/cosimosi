@@ -318,8 +318,13 @@ apps/web/src/
 > Pure cross-app modules (shared domain logic, deterministic compute, the shader toolkit, the generated transport
 > client, generated config) live in `packages/`. **Both apps are consumers from the start**, so pure code is designed
 > cross-platform up front and placed in `packages/` directly — not built web-first and extracted later.
-> The root `lint:fsd:layout` gate enforces this placement: mobile product composition cannot live under
-> `app/navigation/screens` (only the neutral boot shell may), and normalized-equivalent same-relative pure modules
+> The root `lint:fsd:layout` gate enforces this placement: the app layer's segment set is closed and checked against
+> directories as well as loose files (`providers` · `routes`|`navigation` · `model` · `styles`, with `routes` for web and
+> `navigation` for mobile — that difference is the contract, so neither app may borrow the other's name); mobile product
+> composition cannot live under `app/navigation/screens`, where exactly two neutral app-shell surfaces are allowlisted
+> by name — the boot shell, and the provider-health screen that reports locale/theme/session/transport and renders no
+> product data. Both need app-layer context a `pages` slice may not import; admitting a third requires the same argument
+> in writing. And normalized-equivalent same-relative pure modules
 > under app-local `api`/`model`/`lib`/`config`/`shared` paths or `app/providers`/`app/model` fail until promoted to
 > their owning package. Identifier-only renames and comment/format churn do not evade this comparison.
 > **`ui` is in scope too, conditionally** — a `ui` file joins the comparison when it carries no platform marker (no
