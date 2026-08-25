@@ -6,6 +6,7 @@ import { SEMANTIC_MAX_STAGE, effectiveStrength, gistZOffset } from '@cosimosi/me
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
+import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 import { gistNodeId, gistStarInstances, parseGistNodeId } from './gist-star-channels.ts'
 import { hexToLinearRgb } from './star-channels.ts'
 import { moodColor } from '@cosimosi/emotion'
@@ -124,5 +125,30 @@ describe('gistNodeId / parseGistNodeId', () => {
   it('recognizes nothing else — episodic/neuron ids and malformed gist ids resolve null', () => {
     expect(parseGistNodeId('memory-1')).toBeNull()
     expect(parseGistNodeId('gist:')).toBeNull()
+  })
+})
+
+// The gist body's whole appearance is derived from the stage, so the one-way rule has to hold on the
+// way in rather than in each channel. Read through the store the layer actually projects from.
+describe('a stale stage cannot walk a gist body back down', () => {
+  it('keeps the z lift and the softness at the rung the memory reached', () => {
+    useEpisodicMemoryStore.getState().clear()
+    const { setAll } = useEpisodicMemoryStore.getState()
+
+    setAll([memory({ semanticStage: 3 })])
+    const risen = gistStarInstances(Object.values(useEpisodicMemoryStore.getState().byId))[0]!
+
+    // A refetch races in a rung behind.
+    setAll([memory({ semanticStage: 1 })])
+    const afterStaleRead = gistStarInstances(
+      Object.values(useEpisodicMemoryStore.getState().byId),
+    )[0]!
+
+    expect(afterStaleRead.stage).toBe(3)
+    expect(afterStaleRead.zOffset).toBe(risen.zOffset)
+    expect(afterStaleRead.softness).toBe(risen.softness)
+    // The lift is the ladder's, never re-derived here.
+    expect(afterStaleRead.zOffset).toBe(gistZOffset(3))
+    useEpisodicMemoryStore.getState().clear()
   })
 })

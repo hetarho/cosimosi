@@ -19,6 +19,14 @@ to now, so the gist-timer recomputes to 0 elapsed units — the next rise is del
 `semantic_stage` is kept ([C6a][C7][F5]). There is no operation that lowers a gist stage; the axis is monotonic like
 universe time ([I10]).
 
+**The client mirror holds the rule too.** `semantic_stage` is one-way on the server, so a client response reporting a
+LOWER stage than the one already mirrored is a stale read racing a fresh one, not a memory that un-rose. The episodic
+read-model store holds each memory's stage at its high-water mark for the life of the collection, applied before its
+content comparison so such a response is recognized as no change at all. Everything derived from the stage — the gist
+body's z lift, its diffuse softness, which rung a detail surface offers — is therefore consistent by construction
+rather than guarded once per reader. The floor is released with the collection (a user reset clears it), and a stage that
+must genuinely be corrected downward arrives on the next full load.
+
 **The gist axis is independent of forgetting** ([F] vs [C]). The gist-timer measures universe-days since
 `semanticize_timer_reset_at`; forgetting decay measures them since `last_recalled_universe_time`. A memory may be deeply
 decayed yet barely gistified, or vice versa — the two axes never derive from one anchor.

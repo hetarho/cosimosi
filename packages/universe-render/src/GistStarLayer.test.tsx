@@ -228,6 +228,25 @@ describe('gist render snapshot', () => {
     expect(Array.from(out)).toEqual([20, 21, 22 + beta.zOffset])
   })
 
+  it('still raises a body on a genuine rise, easing from the rung it left', () => {
+    const riseState = createGistRiseState()
+    const seed = createGistRenderSnapshot([instance('alpha', 1)], { alpha: 0 })
+    reconcileGistRiseState(riseState, seed, true)
+
+    const risenSnapshot = createGistRenderSnapshot([instance('alpha', 2)], { alpha: 0 })
+    expect(reconcileGistRiseState(riseState, risenSnapshot, true)).toEqual([
+      { memoryId: 'alpha', stage: 2 },
+    ])
+
+    const buffer = new Float32Array([10, 11, 12])
+    const out = new Float32Array(3)
+    // The ease leaves from stage 1's lift, not from the hippocampal body underneath it.
+    mapGistInstancePosition(risenSnapshot, riseState, 0, buffer, out, 0)
+    expect(out[2]).toBeCloseTo(12 + gistStageOffset(1), 5)
+    mapGistInstancePosition(risenSnapshot, riseState, 0, buffer, out, 99)
+    expect(out[2]).toBe(12 + gistStageOffset(2))
+  })
+
   it('hides instances with no committed sim-slot source without disturbing neighboring picks', () => {
     const snapshot = createGistRenderSnapshot([alpha, beta], { alpha: 1 })
     const riseState = createGistRiseState()

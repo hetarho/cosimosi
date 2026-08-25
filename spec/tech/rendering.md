@@ -625,7 +625,10 @@ second camera.
   memory's hippocampal sim z into its first band z. A body deepening from stage N to N+1 instead eases from stage N's
   canonical `gistCoordinate` band z; it never snaps back to the sim layer and therefore never reverses. Both origins
   are fixed for the duration of the ease, so live sim motion cannot bend the rise downward. The first non-empty
-  projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing plays. The
+  projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing plays. The layer
+  guards the EASE against a stale read (its seen stage never goes down, so a rise cannot replay); the rendered POSITION
+  is one-way because the read model it projects from holds the stage at its high-water mark — the invariant lives in the
+  domain mirror, not as a second copy in the renderer (`policy/domain/semanticization.md`). The
   per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the later-authored
   pulled-upward/relate-star replay choreography consumes; nothing more is built.
 - **A gist star is read-only** ([R8][I8]). Its pick payload is `gistNodeId(memoryId)`; a pick sends the navigation
