@@ -168,6 +168,9 @@ func (concurrentWorkerQueue) ClaimDue(context.Context, time.Time) (Job, error) {
 func (concurrentWorkerQueue) Complete(context.Context, Job) error                { return nil }
 func (concurrentWorkerQueue) Retry(context.Context, Job, int32, time.Time) error { return nil }
 func (concurrentWorkerQueue) Fail(context.Context, Job, int32) error             { return nil }
+func (concurrentWorkerQueue) DeadLetter(context.Context, Job, jobqueue.DeadLetterCause) error {
+	return nil
+}
 
 type concurrentTerminalJobCleaner struct {
 	mu    sync.Mutex
@@ -234,6 +237,58 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 	}
 }
 
+// The finding this split exists for: maintenanceQueue could not tell the runner's SAFETY stops from
+// the policy give-up it means to override, so job_max_claims — the documented hard loop-breaker —
+// was inert for exactly the three kinds that keep retrying. A poisoned withdrawal_sweep was
+// re-queued at the base backoff forever, holding the queue head, while the runner logged that it
+// had been dead-lettered.
+func TestMaintenanceQueueDoesNotSwallowTheRunnersSafetyStops(t *testing.T) {
+	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
+	for _, kind := range []JobKind{JobKindWithdrawal, JobKindRetention, JobKindAchievementSettle} {
+		queue := &fakeWorkerQueue{}
+		maintained := maintenanceQueue{
+			JobQueue: queue,
+			now:      func() time.Time { return now },
+			backoff:  5 * time.Minute,
+		}
+		job := revisionedJob(kind, JobTarget{Kind: JobTargetUser, ID: "user-1"})
+		job.LeaseGeneration = int64(values.AiJobMaxClaims) + 1
+
+		if err := maintained.DeadLetter(context.Background(), job, jobqueue.DeadLetterClaimCeiling); err != nil {
+			t.Fatalf("%s DeadLetter failed: %v", kind, err)
+		}
+		if queue.deadLetters != 1 {
+			t.Fatalf("%s: dead-letters = %d, want 1 — the safety stop must reach the queue", kind, queue.deadLetters)
+		}
+		if queue.retries != 0 {
+			t.Fatalf("%s: the claim ceiling was rescheduled %d time(s); the loop-breaker is inert", kind, queue.retries)
+		}
+		if len(queue.deadCauses) != 1 || queue.deadCauses[0] != jobqueue.DeadLetterClaimCeiling {
+			t.Fatalf("%s: causes = %v, want the claim ceiling", kind, queue.deadCauses)
+		}
+	}
+}
+
+// The other half: the policy give-up IS still overridden, so a spent retry budget never drops a
+// durable trigger the user cannot ask for again. Both halves have to hold at once.
+func TestMaintenanceQueueStillRetriesASpentBudgetForDurableKinds(t *testing.T) {
+	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
+	queue := &fakeWorkerQueue{}
+	maintained := maintenanceQueue{
+		JobQueue: queue,
+		now:      func() time.Time { return now },
+		backoff:  5 * time.Minute,
+	}
+	job := revisionedJob(JobKindWithdrawal, JobTarget{Kind: JobTargetUser, ID: "user-1"})
+
+	if err := maintained.Fail(context.Background(), job, int32(values.AiJobMaxAttempts)); err != nil {
+		t.Fatalf("withdrawal Fail failed: %v", err)
+	}
+	if queue.retries != 1 || queue.fails != 0 || queue.deadLetters != 0 {
+		t.Fatalf("retries %d fails %d dead-letters %d, want the durable retry", queue.retries, queue.fails, queue.deadLetters)
+	}
+}
+
 type fakeWorkerQueue struct {
 	claimJob      Job
 	claimErr      error
@@ -241,6 +296,8 @@ type fakeWorkerQueue struct {
 	completes     int
 	retries       int
 	fails         int
+	deadLetters   int
+	deadCauses    []jobqueue.DeadLetterCause
 	retryAttempts int32
 	retryAt       time.Time
 }
@@ -264,6 +321,12 @@ func (f *fakeWorkerQueue) Retry(_ context.Context, _ Job, attempts int32, nextRu
 
 func (f *fakeWorkerQueue) Fail(context.Context, Job, int32) error {
 	f.fails++
+	return nil
+}
+
+func (f *fakeWorkerQueue) DeadLetter(_ context.Context, _ Job, cause jobqueue.DeadLetterCause) error {
+	f.deadLetters++
+	f.deadCauses = append(f.deadCauses, cause)
 	return nil
 }
 

@@ -280,6 +280,14 @@ func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, ne
 	return ignoreLostLease(err)
 }
 
+// DeadLetter ends a job the runner refuses to run again. It is the same terminal write as Fail —
+// the row survives, so nothing is deleted and an operator can still see and requeue it — kept as a
+// separate method so a queue wrapper that overrides the retry policy cannot also disable the
+// runner's kill-loop breaker.
+func (s Store) DeadLetter(ctx context.Context, job memory.Job, _ jobqueue.DeadLetterCause) error {
+	return s.Fail(ctx, job, job.Attempts)
+}
+
 func (s Store) Fail(ctx context.Context, job memory.Job, nextAttempts int32) error {
 	if err := s.readyJob(job); err != nil {
 		return err

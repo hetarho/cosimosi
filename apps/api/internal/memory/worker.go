@@ -11,7 +11,10 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
-var ErrDuplicateJobHandler = errors.New("memory worker job handler kind is already registered")
+var (
+	ErrDuplicateJobHandler = errors.New("memory worker job handler kind is already registered")
+	ErrInvalidJobHandler   = errors.New("memory worker job handler needs a kind and a non-nil handler")
+)
 
 type WorkerConfig struct {
 	MaxAttempts  int32
@@ -98,14 +101,17 @@ func NewJobRunner(
 		string(JobKindConsolidate): NewConsolidateJobHandler(embedder, sources, embeddingWriter),
 		string(JobKindRetention):   NewRetentionSweepJobHandler(sweeper, now),
 	}
+	// A malformed entry is refused, not skipped. Silently dropping one leaves a worker that starts
+	// clean and then never processes that kind — and jobqueue.NewRunner filters nil handlers again
+	// downstream, so a skip here would be invisible on both sides.
 	for _, extra := range extraHandlers {
 		for kind, handler := range extra {
 			key := string(kind)
+			if key == "" || handler == nil {
+				return jobqueue.Runner[Job]{}, ErrInvalidJobHandler
+			}
 			if _, exists := handlers[key]; exists {
 				return jobqueue.Runner[Job]{}, ErrDuplicateJobHandler
-			}
-			if key == "" || handler == nil {
-				continue
 			}
 			handlers[key] = handler
 		}
@@ -122,9 +128,14 @@ func NewJobRunner(
 
 // maintenanceQueue puts bounded queue cleanup in the worker's existing polling
 // loop. Cleanup is the one documented global maintenance scan and fails open so
-// transient housekeeping errors never stop due product work. The kinds
-// retriedIndefinitely names never dead-letter here: each is the only durable
-// trigger for something the user cannot ask for a second time.
+// transient housekeeping errors never stop due product work.
+//
+// The kinds retriedIndefinitely names do not give up on a spent retry budget: each is the only
+// durable trigger for something the user cannot ask for a second time. That override covers Fail
+// ALONE. DeadLetter is deliberately not overridden and not even declared here, so the embedded queue
+// answers it: the runner's claim ceiling and its unhandled-kind stop are safety transitions, and a
+// retry policy that swallowed them would turn a job that kills its worker into an endless loop at
+// the head of the queue — with a log line claiming it had been contained.
 type maintenanceQueue struct {
 	JobQueue
 	cleaner          TerminalJobCleaner
@@ -187,6 +198,7 @@ func (q *maintenanceQueue) reopenCleanupWindow(now time.Time) {
 	q.nextCleanupAt = now
 }
 
+// Fail is the POLICY give-up — the retry budget is spent. Only this one is overridden.
 func (q *maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
 	if !retriedIndefinitely(job.Kind) {
 		return q.JobQueue.Fail(ctx, job, nextAttempts)

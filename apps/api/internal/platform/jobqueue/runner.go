@@ -26,11 +26,30 @@ type Job interface {
 	JobLeaseGeneration() int64
 }
 
+// DeadLetterCause names why the runner is stopping a job that never finished. It exists so a queue
+// wrapper can tell a POLICY give-up (attempts spent — `Fail`) from a SAFETY stop, which no retry
+// policy may override: the cases below are not "this job failed a few times", they are "running this
+// job again cannot help, and running it forever costs the whole queue".
+type DeadLetterCause string
+
+const (
+	// DeadLetterClaimCeiling: re-claimed past MaxClaims without ever finishing — the signature of a
+	// handler that kills its worker before any failure can be recorded.
+	DeadLetterClaimCeiling DeadLetterCause = "claim_ceiling"
+	// DeadLetterUnhandledKind: no handler is registered for the kind. Retrying cannot grow one.
+	DeadLetterUnhandledKind DeadLetterCause = "unhandled_kind"
+)
+
 type Queue[J Job] interface {
 	ClaimDue(ctx context.Context, now time.Time) (J, error)
 	Complete(ctx context.Context, job J) error
 	Retry(ctx context.Context, job J, nextAttempts int32, nextRunAt time.Time) error
+	// Fail ends a job whose retry budget is spent. A queue may legitimately override this — a kind
+	// that is the only durable trigger for something the user cannot re-request is retried instead.
 	Fail(ctx context.Context, job J, nextAttempts int32) error
+	// DeadLetter ends a job the runner is refusing to run again, whatever the retry policy says. A
+	// queue that overrides Fail must NOT override this, or its kill-loop breaker is decoration.
+	DeadLetter(ctx context.Context, job J, cause DeadLetterCause) error
 }
 
 type Handler[J Job] func(context.Context, J) error
@@ -132,11 +151,11 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	// OOM, SIGKILL) every run, which would otherwise loop forever since a killed worker
 	// never records a failure.
 	if r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
-		if err := r.queue.Fail(ctx, job, job.JobAttempts()); err != nil {
+		if err := r.queue.DeadLetter(ctx, job, DeadLetterClaimCeiling); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err
 			}
-			r.logf("job %s fail transition failed: %v", job.JobID(), err)
+			r.logf("job %s dead-letter transition failed: %v", job.JobID(), err)
 			return true, nil
 		}
 		r.logf("job %s dead-lettered after %d claims", job.JobID(), job.JobLeaseGeneration())
@@ -145,15 +164,14 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 
 	handler, ok := r.handlers[job.JobKind()]
 	if !ok {
-		nextAttempts := r.nextAttempts(job)
-		if err := r.queue.Fail(ctx, job, nextAttempts); err != nil {
+		if err := r.queue.DeadLetter(ctx, job, DeadLetterUnhandledKind); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err
 			}
-			r.logf("job %s fail transition failed: %v", job.JobID(), err)
+			r.logf("job %s dead-letter transition failed: %v", job.JobID(), err)
 			return true, nil
 		}
-		r.logf("job %s failed: unhandled kind %q", job.JobID(), job.JobKind())
+		r.logf("job %s dead-lettered: unhandled kind %q", job.JobID(), job.JobKind())
 		return true, nil
 	}
 

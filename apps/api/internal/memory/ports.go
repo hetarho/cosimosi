@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 // UserZone is memory's consumer-owned real-clock boundary. The composition root resolves
@@ -50,6 +51,7 @@ type JobQueue interface {
 	Complete(ctx context.Context, job Job) error
 	Retry(ctx context.Context, job Job, nextAttempts int32, nextRunAt time.Time) error
 	Fail(ctx context.Context, job Job, nextAttempts int32) error
+	DeadLetter(ctx context.Context, job Job, cause jobqueue.DeadLetterCause) error
 }
 
 // NeuronCandidateRepo assembles the per-user dedup-candidate set Encode hands the

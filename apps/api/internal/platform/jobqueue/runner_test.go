@@ -62,6 +62,8 @@ func TestRunnerSchedulesRetryWithoutIncrementingAttempts(t *testing.T) {
 	}
 }
 
+// The two stops are different transitions, and the split is what lets a queue override the retry
+// policy without also disabling the runner's safety stops.
 func TestRunnerFailsExhaustedAndUnhandledJobs(t *testing.T) {
 	now := fixedRunnerNow()
 	exhausted := &fakeQueue{claim: testJob{id: "job-1", userID: "user-1", kind: "embed", attempts: 2}}
@@ -75,13 +77,18 @@ func TestRunnerFailsExhaustedAndUnhandledJobs(t *testing.T) {
 		t.Fatalf("exhausted fail state = %+v attempts=%d", exhausted.failed, exhausted.failAttempts)
 	}
 
+	// No handler is a misconfiguration, not a spent budget: retrying cannot grow one, so it takes the
+	// safety transition and never reaches a retry policy that might keep it alive.
 	unhandled := &fakeQueue{claim: testJob{id: "job-2", userID: "user-1", kind: "extract"}}
 	runner = mustRunner(t, unhandled, map[string]Handler[testJob]{}, now)
 	if _, err := runner.RunOnce(context.Background()); err != nil {
 		t.Fatalf("RunOnce unhandled failed: %v", err)
 	}
-	if unhandled.failed.id != "job-2" || unhandled.failAttempts != 1 {
-		t.Fatalf("unhandled fail state = %+v attempts=%d", unhandled.failed, unhandled.failAttempts)
+	if unhandled.deadLettered.id != "job-2" || unhandled.deadCause != DeadLetterUnhandledKind {
+		t.Fatalf("unhandled dead-letter state = %+v cause=%q", unhandled.deadLettered, unhandled.deadCause)
+	}
+	if unhandled.failed.id != "" {
+		t.Fatalf("unhandled kind took the policy Fail path: %+v", unhandled.failed)
 	}
 }
 
@@ -115,11 +122,16 @@ func TestRunnerDeadLettersJobReclaimedPastMaxClaims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunOnce failed: %v", err)
 	}
-	if !worked || queue.failed.id != "job-1" {
-		t.Fatalf("over-claimed job not dead-lettered: worked=%v failed=%+v", worked, queue.failed)
+	if !worked || queue.deadLettered.id != "job-1" || queue.deadCause != DeadLetterClaimCeiling {
+		t.Fatalf("over-claimed job not dead-lettered: worked=%v dead=%+v cause=%q", worked, queue.deadLettered, queue.deadCause)
+	}
+	// It must NOT arrive as a policy give-up: that is the path a retry-forever queue overrides, and
+	// routing the ceiling through it is what turns a worker-killing job into an endless loop.
+	if queue.failed.id != "" {
+		t.Fatalf("claim ceiling took the policy Fail path: %+v", queue.failed)
 	}
 	if handlerRan {
-		t.Fatal("handler ran for a dead-lettered job; it must be failed without executing")
+		t.Fatal("handler ran for a dead-lettered job; it must be stopped without executing")
 	}
 }
 
@@ -223,17 +235,20 @@ type fakeQueue struct {
 	claim    testJob
 	claimErr error
 
-	completed testJob
-	retried   testJob
-	failed    testJob
+	completed    testJob
+	retried      testJob
+	failed       testJob
+	deadLettered testJob
+	deadCause    DeadLetterCause
 
 	retryAttempts int32
 	failAttempts  int32
 	retryAt       time.Time
 
-	completeErr error
-	retryErr    error
-	failErr     error
+	completeErr   error
+	retryErr      error
+	failErr       error
+	deadLetterErr error
 }
 
 func (q *fakeQueue) ClaimDue(context.Context, time.Time) (testJob, error) {
@@ -267,6 +282,17 @@ func (q *fakeQueue) Fail(_ context.Context, job testJob, nextAttempts int32) err
 	}
 	q.failed = job
 	q.failAttempts = nextAttempts
+	return nil
+}
+
+// Tracked apart from Fail so a test can prove the runner used the SAFETY transition — a queue that
+// overrides the retry policy must not be able to swallow it.
+func (q *fakeQueue) DeadLetter(_ context.Context, job testJob, cause DeadLetterCause) error {
+	if q.deadLetterErr != nil {
+		return q.deadLetterErr
+	}
+	q.deadLettered = job
+	q.deadCause = cause
 	return nil
 }
 
