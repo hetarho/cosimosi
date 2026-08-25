@@ -65,6 +65,42 @@ describe('toAppError', () => {
     expect(giveUpCopy).not.toContain('source_text')
   })
 
+  it('tells the operator to narrow a search instead of blaming an allowance', () => {
+    const tooBroad = connectError(Code.ResourceExhausted, {
+      reason: ERROR_REASONS.adminUserSearchTooBroad,
+      domain: 'admin',
+      requestId: 'request-too-broad',
+    })
+    const capped = connectError(Code.ResourceExhausted, {
+      reason: ERROR_REASONS.memoryAiCallCapReached,
+      domain: 'memory',
+      requestId: 'request-capped',
+    })
+
+    const tooBroadCopy = presentAppError(tooBroad).message
+    // Both are ResourceExhausted, so the coarse code cannot tell them apart — only the reason can.
+    expect(tooBroadCopy).not.toBe(presentAppError(capped).message)
+    expect(tooBroadCopy).not.toContain('allowance')
+    expect(tooBroadCopy).toContain('search')
+  })
+
+  it('leaves a registered-but-uncopied reason on its coarse code line', () => {
+    // Registering a reason makes it branchable; it must not silently change what the user reads.
+    const invalidCursor = connectError(Code.InvalidArgument, {
+      reason: ERROR_REASONS.twinkleLedgerCursorInvalid,
+      domain: 'twinkle',
+      requestId: 'request-cursor',
+    })
+    const bareInvalid = connectError(Code.InvalidArgument, {
+      reason: ERROR_REASONS.accountNicknameInvalid,
+      domain: 'account',
+      requestId: 'request-nickname',
+    })
+
+    expect(presentAppError(invalidCursor).message).toBe(presentAppError(bareInvalid).message)
+    expect(isReason(invalidCursor, ERROR_REASONS.twinkleLedgerCursorInvalid)).toBe(true)
+  })
+
   it('shows only generic internal copy with the correlation id', () => {
     const error = connectError(Code.Internal, {
       reason: ERROR_REASONS.internal,

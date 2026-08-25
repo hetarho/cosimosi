@@ -436,6 +436,7 @@
   "error_memory_already_released": "이미 놓아준 기억이에요.",
   "error_memory_restore_window_expired": "이 일기를 되돌릴 수 있는 기간이 지났어요.",
   "error_admin_forbidden": "관리자 콘솔을 사용할 권한이 없어요.",
+  "error_admin_user_search_too_broad": "검색어가 너무 짧아 계정을 다 훑지 못했어요. 더 길게 입력해 주세요.",
   "error_invalid_argument": "입력한 내용을 확인하고 다시 시도해요.",
   "error_unauthenticated": "계속하려면 로그인해 주세요.",
   "error_permission_denied": "이 작업을 할 권한이 없어요.",

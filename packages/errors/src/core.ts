@@ -14,6 +14,7 @@ export const ERROR_REASONS = {
   accountTimezoneInvalid: 'ACCOUNT_TIMEZONE_INVALID',
   accountLocaleInvalid: 'ACCOUNT_LOCALE_INVALID',
   accountInviteLinkUnavailable: 'ACCOUNT_INVITE_LINK_UNAVAILABLE',
+  accountMoodColorInvalid: 'ACCOUNT_MOOD_COLOR_INVALID',
   accountNotWithdrawn: 'ACCOUNT_NOT_WITHDRAWN',
   accountRestoreWindowExpired: 'ACCOUNT_RESTORE_WINDOW_EXPIRED',
   adminForbidden: 'ADMIN_FORBIDDEN',
@@ -30,6 +31,8 @@ export const ERROR_REASONS = {
   adminProviderNotImplemented: 'ADMIN_PROVIDER_NOT_IMPLEMENTED',
   adminProviderKeyMissing: 'ADMIN_PROVIDER_KEY_MISSING',
   adminSecretboxDisabled: 'ADMIN_SECRETBOX_DISABLED',
+  adminModelListingUnavailable: 'ADMIN_MODEL_LISTING_UNAVAILABLE',
+  adminUserSearchTooBroad: 'ADMIN_USER_SEARCH_TOO_BROAD',
   memoryDiaryDateInvalid: 'MEMORY_DIARY_DATE_INVALID',
   memoryEncodeInputRequired: 'MEMORY_ENCODE_INPUT_REQUIRED',
   memoryEncodeBodyTooLong: 'MEMORY_ENCODE_BODY_TOO_LONG',
@@ -74,6 +77,7 @@ export const ERROR_REASONS = {
   twinkleInviteNotEligible: 'TWINKLE_INVITE_NOT_ELIGIBLE',
   twinkleInviteGrantConflict: 'TWINKLE_INVITE_GRANT_CONFLICT',
   twinkleQuoteTargetUnavailable: 'TWINKLE_QUOTE_TARGET_UNAVAILABLE',
+  twinkleLedgerCursorInvalid: 'TWINKLE_LEDGER_CURSOR_INVALID',
   twinkleScopeRequired: 'TWINKLE_SCOPE_REQUIRED',
   // The decoration save's own refusals. storeInsufficientTwinkle is deliberately NOT
   // twinkleInsufficient: this one means the WHOLE save was refused, and it carries the ornament the

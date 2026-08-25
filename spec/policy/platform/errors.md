@@ -66,7 +66,7 @@ behavior. `fallback` means localized copy comes from the coarse Connect code.
 | `ACCOUNT_SCOPE_REQUIRED`                                                                                                                 | account     | Unauthenticated            | fallback                          |
 | `ACCOUNT_NOT_PROVISIONED`                                                                                                                | account     | FailedPrecondition         | fallback                          |
 | `ACCOUNT_SIGNUP_REQUIRED`                                                                                                                | account     | FailedPrecondition         | fallback                          |
-| `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID`                                                         | account     | InvalidArgument            | fallback                          |
+| `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID`, `ACCOUNT_MOOD_COLOR_INVALID`                           | account     | InvalidArgument            | fallback                          |
 | `ACCOUNT_INVITE_LINK_UNAVAILABLE`                                                                                                        | account     | FailedPrecondition         | fallback                          |
 | `ACCOUNT_NOT_WITHDRAWN`, `ACCOUNT_RESTORE_WINDOW_EXPIRED`                                                                                | account     | FailedPrecondition         | job 93 restore flow               |
 | `ADMIN_FORBIDDEN`                                                                                                                        | admin       | PermissionDenied           | reason copy                       |
@@ -75,10 +75,14 @@ behavior. `fallback` means localized copy comes from the coarse Connect code.
 | `ADMIN_UNKNOWN_CAPABILITY`, `ADMIN_PROVIDER_REQUIRED`, `ADMIN_PROVIDER_KEY_REQUIRED`                                                     | admin       | InvalidArgument            | fallback                          |
 | `ADMIN_UNKNOWN_PROVIDER`, `ADMIN_PROVIDER_CAPABILITY_MISMATCH`                                                                           | admin       | InvalidArgument            | fallback                          |
 | `ADMIN_PROVIDER_NOT_IMPLEMENTED`, `ADMIN_PROVIDER_KEY_MISSING`, `ADMIN_SECRETBOX_DISABLED`, `ADMIN_GRANT_ID_CONFLICT`                    | admin       | FailedPrecondition         | fallback                          |
+| `ADMIN_MODEL_LISTING_UNAVAILABLE`                                                                                                        | admin       | Unavailable                | fallback                          |
+| `ADMIN_USER_SEARCH_TOO_BROAD`                                                                                                            | admin       | ResourceExhausted          | reason copy                       |
 | `MEMORY_DIARY_DATE_INVALID`, `MEMORY_ENCODE_INPUT_REQUIRED`, `MEMORY_LAUNCH_INVALID_MEMORIES`                                            | memory      | InvalidArgument            | fallback                          |
 | `MEMORY_RECALL_INPUT_REQUIRED`, `MEMORY_VIEW_SEMANTIC_INPUT_REQUIRED`, `MEMORY_PROVENANCE_INPUT_REQUIRED`                                | memory      | InvalidArgument            | fallback                          |
 | `MEMORY_EXPORT_FORMAT_REQUIRED`, `MEMORY_DIARY_PAGE_TOKEN_INVALID`, `MEMORY_RELEASE_INPUT_REQUIRED`                                      | memory      | InvalidArgument            | fallback                          |
 | `MEMORY_LET_GO_INVALID_APPROVED`, `MEMORY_OPERATION_ID_REQUIRED`                                                                         | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_ENCODE_BODY_TOO_LONG`, `MEMORY_DIARY_SEARCH_QUERY_TOO_SHORT`, `MEMORY_DIARY_MOOD_FILTER_INVALID`                                 | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_DIARY_DATE_RANGE_INVALID`, `MEMORY_DIARY_SORT_INVALID`, `MEMORY_DIARY_COUNT_RANGE_INVALID`                                       | memory      | InvalidArgument            | fallback                          |
 | `MEMORY_OPERATION_CONFLICT`                                                                                                              | memory      | AlreadyExists              | reason copy                       |
 | `MEMORY_RECALL_MEMORY_NOT_FOUND`, `MEMORY_VIEW_SEMANTIC_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_MEMORY_NOT_FOUND`                             | memory      | NotFound                   | target-not-found copy             |
 | `MEMORY_RECALL_NO_LIVE_MEMORIES`, `MEMORY_PROVENANCE_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_NO_LIVE_MEMORIES`, `MEMORY_RESTORE_NOT_RELEASED` | memory      | NotFound                   | fallback                          |
@@ -123,6 +127,12 @@ happened to the save, and this one must — "nothing was saved" is the honest li
 one thing. It is the one reason whose metadata names a domain object (`ornament_id`, beside the economy's own
 `cost`/`eligible`/`shortfall`), so the panel can point at the row the balance ran out on; the generic copy never names
 an item, since only the surface can resolve an id to a name.
+
+`ADMIN_USER_SEARCH_TOO_BROAD` is the other reason whose copy cannot be the coarse code's. It means the directory walk
+passed `admin.search_scan_max_accounts` before it could resolve the requested page, which the operator fixes by typing
+MORE of the prefix — while the generic `ResourceExhausted` line reads as an allowance, a limit that was never reached
+and that waiting would not restore. It is returned instead of a short page on purpose: an admin list quietly missing a
+user reads as "this account does not exist".
 
 The platform reason constants and per-context `rpc/reasons.go` registries are the
 code source for this table. Adding a canonical domain error requires a unique reason,

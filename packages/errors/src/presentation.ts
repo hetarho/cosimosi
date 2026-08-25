@@ -73,6 +73,11 @@ function reasonMessage(reason: string): string | undefined {
       return m.error_memory_restore_window_expired()
     case ERROR_REASONS.adminForbidden:
       return m.error_admin_forbidden()
+    // The directory walk gave up on a prefix too rare to resolve, which the operator fixes by typing
+    // MORE of it. The coarse resource-exhausted line says "한도" — an allowance no amount of waiting
+    // restores, and one that was never reached.
+    case ERROR_REASONS.adminUserSearchTooBroad:
+      return m.error_admin_user_search_too_broad()
     case ERROR_REASONS.achievementScopeRequired:
       return m.error_achievement_scope_required()
     case ERROR_REASONS.achievementInputRequired:

@@ -436,6 +436,7 @@
   "error_memory_already_released": "That memory has already been let go.",
   "error_memory_restore_window_expired": "The time to restore that diary has passed.",
   "error_admin_forbidden": "You don't have permission to use the admin console.",
+  "error_admin_user_search_too_broad": "The search was too broad to finish. Try a longer search term.",
   "error_invalid_argument": "Check the information and try again.",
   "error_unauthenticated": "Sign in to continue.",
   "error_permission_denied": "You don't have permission to do that.",
