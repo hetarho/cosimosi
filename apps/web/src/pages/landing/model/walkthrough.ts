@@ -2,12 +2,16 @@ import { VALUES } from '@cosimosi/config'
 import {
   arousalToInitialStrength,
   createEmotion,
-  toEmotionSlices,
   type EmotionSlice,
   type Mood,
 } from '@cosimosi/emotion'
-import { decayStageText, effectiveStrength, reshape } from '@cosimosi/memory-logic'
-import { currentDecaySpans, currentDecayText, type DecayTextSpan } from '@cosimosi/universe'
+import { decayStageText, reshape } from '@cosimosi/memory-logic'
+import {
+  currentDecaySpans,
+  currentDecayText,
+  universeEmotionSlices,
+  type DecayTextSpan,
+} from '@cosimosi/universe'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -248,28 +252,10 @@ export function walkthroughSceneFacts(
     universeTime,
     // The sky arrives with the accumulation step, the way the demo's does — the moment the colour
     // shows up is the moment the caption says it does.
-    skyStops: hasHappened(state, 'color') ? walkthroughSkyStops(memories) : [],
+    skyStops: hasHappened(state, 'color') ? universeEmotionSlices(memories) : [],
     // The plain string stays as the crossfade's identity — what changed is the words — while the
     // spans beside it are what gets drawn.
     focusText: focus === null ? null : currentDecayText(focus, universeTime),
     focusSpans: focus === null ? null : currentDecaySpans(focus, universeTime),
   }
-}
-
-/**
- * The sky as [M5] defines it: each memory weighs in with its EffectiveStrength — the size recall
- * accumulation grows ([R3]) — so the emotions the writer returns to claim more of the colour than
- * the ones merely written down. Composed of two shipped rules (`effectiveStrength` per memory,
- * `toEmotionSlices` for the normalized shares); nothing here invents a weighting.
- */
-export function walkthroughSkyStops(memories: readonly EpisodicMemory[]): EmotionSlice[] {
-  const weights = new Map<Mood, number>()
-  for (const memory of memories) {
-    const mood = memory.emotion.mood
-    weights.set(
-      mood,
-      (weights.get(mood) ?? 0) + effectiveStrength(memory.baseStrength, memory.recallCount),
-    )
-  }
-  return toEmotionSlices(weights)
 }

@@ -45,6 +45,14 @@ sky: { effect, night }, bloom, camera }` (`assets/skins/presets.ts`): `SkySphere
 surface. The old gradient/nebula node builders, `Background` layer, registry, and unused `UniverseScene` composition
 were retired when the emotion sky became the product backdrop; a main scene cannot accidentally mount both systems.
 
+**The ramp's shares are `EffectiveStrength`, not a head count.** `universeEmotionSlices` sums each memory's
+`effectiveStrength(base_strength, recall_count)` under its mood and hands the raw weights to `toEmotionSlices` for the
+normalized shares — the one rule every surface that paints a sky reads (the universe screen, the demo, the landing
+walkthrough, both design benches). That is [M5]: a feeling a writer keeps returning to claims more of the sky than one
+written down and left, so the colour is the mirror of what is re-read rather than the average of what was written. It is
+also the weight the nebula gives a memory's bleed radius, so the two colour surfaces cannot disagree about what one
+memory is worth. An empty (or all-zero-strength) universe yields no stops, and the ramp is the bare night.
+
 Scene-level ambiance — `bloom` (post) and `camera` (fov) — stays at the skin top level. The active skin is the
 build-time `rendering.active_skin` value (`spec/values.yaml` → `@cosimosi/config`), resolved through `SkinProvider` +
 `useSkin()`. The seam stays typed for future ambiance variants, but only the shipped `emotion` skin is currently
