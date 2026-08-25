@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
@@ -17,7 +16,6 @@ import { m } from '../../../shared/i18n/index.ts'
 export function AccountSection() {
   const transport = useTransport()
   const { userId, signingOut, signOut } = useAccountSession()
-  const [confirming, setConfirming] = useState(false)
   const profile = useQuery(createGetProfileQueryOptions(transport))
   const providers = useQuery(createListAuthProvidersQueryOptions(transport))
 
@@ -41,34 +39,23 @@ export function AccountSection() {
           ) : null
         })}
       </View>
-      {confirming ? (
-        <View style={styles.confirmRow}>
-          <Text style={styles.confirm}>{m.me_sign_out_confirm()}</Text>
-          <View style={styles.actions}>
-            <Button color="neutral" size="sm" onPress={() => setConfirming(false)}>
-              {m.common_cancel()}
-            </Button>
-            <Button
-              color="neutral"
-              size="sm"
-              disabled={signingOut}
-              onPress={() => {
-                // The rejected case is already surfaced on the auth session snapshot; the flag reset in
-                // the api keeps the action usable.
-                signOut().catch(() => undefined)
-              }}
-            >
-              {m.me_sign_out()}
-            </Button>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.signOutRow}>
-          <Button color="neutral" size="sm" onPress={() => setConfirming(true)}>
-            {m.me_sign_out()}
-          </Button>
-        </View>
-      )}
+      {/* Sign-out is the press itself. Nothing is destroyed by leaving and the way back in is the
+          login screen the gate already routes to, so a confirm step would only charge a second tap
+          for a reversible action. Withdrawal, which does destroy, keeps its own confirmation. */}
+      <View style={styles.signOutRow}>
+        <Button
+          color="neutral"
+          size="sm"
+          disabled={signingOut}
+          onPress={() => {
+            // The rejected case is already surfaced on the auth session snapshot; the flag reset in
+            // the api keeps the action usable.
+            signOut().catch(() => undefined)
+          }}
+        >
+          {m.me_sign_out()}
+        </Button>
+      </View>
     </View>
   )
 }
@@ -95,8 +82,5 @@ const styles = StyleSheet.create({
     fontSize: tokens.fontSize.sm,
     textAlign: 'right',
   },
-  confirmRow: { gap: 12 },
-  confirm: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
-  actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
   signOutRow: { alignItems: 'flex-end' },
 })

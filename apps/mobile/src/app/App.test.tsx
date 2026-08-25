@@ -710,9 +710,9 @@ describe('mobile me screen', () => {
     }
   })
 
-  // A3: sign-out sits behind a plain confirm — cancel does nothing, confirm signs out once and
-  // the plan-53 gate lands on login (the section itself never navigates).
-  it('signs out through the confirm step and returns to login; cancel stays put', async () => {
+  // A3: sign-out is the press itself — one tap ends the session and the plan-53 gate lands on
+  // login (the section itself never navigates).
+  it('signs out on the press and returns to login', async () => {
     const fakes = createMobileShellFakes({
       userId: 'me-test-user',
       transport: createMobileAppTransport(),
@@ -721,15 +721,6 @@ describe('mobile me screen', () => {
     const view = await openMe(fakes)
     try {
       fireEvent.press(screen.getByText(m.me_sign_out()))
-      await waitFor(() => expect(screen.getByText(m.me_sign_out_confirm())).toBeTruthy())
-      fireEvent.press(screen.getByText(m.common_cancel()))
-      await waitFor(() => expect(screen.queryByText(m.me_sign_out_confirm())).toBeNull())
-      expect(screen.getAllByText(m.me_tab_profile()).length).toBeGreaterThan(0)
-      expect(fakes.authFacade.snapshot.status).toBe('authenticated')
-
-      fireEvent.press(screen.getByText(m.me_sign_out()))
-      await waitFor(() => expect(screen.getByText(m.me_sign_out_confirm())).toBeTruthy())
-      fireEvent.press(screen.getAllByText(m.me_sign_out()).at(-1) as never)
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
       expect(fakes.authFacade.snapshot.status).toBe('signedOut')
       expect(screen.queryByText(m.me_tab_profile())).toBeNull()

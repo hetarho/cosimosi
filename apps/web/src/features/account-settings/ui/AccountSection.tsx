@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
@@ -16,7 +14,6 @@ import { m } from '../../../shared/i18n/index.ts'
 export function AccountSection() {
   const transport = useTransport()
   const { userId, signingOut, signOut } = useAccountSession()
-  const [confirming, setConfirming] = useState(false)
   const profile = useQuery(createGetProfileQueryOptions(transport))
   const providers = useQuery(createListAuthProvidersQueryOptions(transport))
 
@@ -47,34 +44,23 @@ export function AccountSection() {
           })}
         </ul>
       </div>
-      {confirming ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-text">{m.me_sign_out_confirm()}</p>
-          <div className="flex shrink-0 gap-2">
-            <Button color="neutral" size="sm" onClick={() => setConfirming(false)}>
-              {m.common_cancel()}
-            </Button>
-            <Button
-              color="neutral"
-              size="sm"
-              disabled={signingOut}
-              onClick={() => {
-                // The rejected case is already surfaced on the auth session snapshot; the flag reset in
-                // the api keeps the action usable.
-                signOut().catch(() => undefined)
-              }}
-            >
-              {m.me_sign_out()}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-end">
-          <Button color="neutral" size="sm" onClick={() => setConfirming(true)}>
-            {m.me_sign_out()}
-          </Button>
-        </div>
-      )}
+      {/* Sign-out is the press itself. Nothing is destroyed by leaving and the way back in is the
+          login screen the gate already routes to, so a confirm step would only charge a second tap
+          for a reversible action. Withdrawal, which does destroy, keeps its own confirmation. */}
+      <div className="flex justify-end">
+        <Button
+          color="neutral"
+          size="sm"
+          disabled={signingOut}
+          onClick={() => {
+            // The rejected case is already surfaced on the auth session snapshot; the flag reset in
+            // the api keeps the action usable.
+            signOut().catch(() => undefined)
+          }}
+        >
+          {m.me_sign_out()}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -72,7 +72,6 @@
   "me_provider_password": "이메일과 비밀번호",
   "me_provider_linked_at": "{linkedAt}에 연결",
   "me_sign_out": "로그아웃",
-  "me_sign_out_confirm": "정말 로그아웃할까요?",
   "withdraw_start": "계정 탈퇴",
   "withdraw_title": "이 계정을 떠나기",
   "withdraw_description": "계정은 {days}일 동안 보관된 뒤 완전히 정리돼요.",

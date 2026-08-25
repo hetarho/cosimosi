@@ -60,7 +60,7 @@ decoded text to the native share sheet, and retains no diary content in the quer
 
 The account rows at the foot of the profile show the signed-in identity and linked Google/password
 providers read-only. They offer neither provider linking, credential changes, nor email changes.
-Sign-out keeps one plain confirmation and deletes nothing.
+Sign-out is the press itself — no confirmation — and deletes nothing.
 
 Withdrawal uses a second explicit confirmation. It states the configured soft-delete retention
 period, offers CSV/Markdown export in place, then withdraws and immediately signs the local session
