@@ -24,6 +24,14 @@ owned by the extractor adapter's prompt.
   lives in the use-case as **retry/repair** — never a silent clamp and never an injected placeholder neuron. The
   repair budget is `encode.max_revise_retries`; the output budget is `encode.max_output_tokens`; exhausting either
   returns a canonical error.
+- **The diary itself has a ceiling, and the writer is told before any LLM call.** The split must quote the whole entry
+  back ([E1]), so an entry too long to fit `encode.max_output_tokens` is not repairable by re-prompting — a shorter
+  split would break coverage. The pre-flight check prices the structure every admissible split must carry
+  (`encode.max_memories` memories, each with a name, a mood and `encode.min_semantic_neurons` neurons), not the
+  passages alone, so there is no entry it admits that a legal split then overflows. Over the ceiling returns
+  `ErrEncodeBodyTooLong` / `MEMORY_ENCODE_BODY_TOO_LONG`, before the extractor is billed. At the as-built tuning that
+  admits a Korean entry of roughly 5900 characters; the exact bound is derived, never a literal — see
+  `spec/tech/memory-encode.md`.
 - The count has a **target** and a **floor**, and they are not the same rule. `encode.min_memories` …
   `encode.max_memories` (2–5) is what the prompt asks for and what a re-prompt moves toward; the floor the domain
   admits is `encode.min_memories_accepted`. Above the target the model is told to merge adjacent scenes, which a

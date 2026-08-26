@@ -25,7 +25,10 @@ read-model store holds each memory's stage at its high-water mark for the life o
 content comparison so such a response is recognized as no change at all. Everything derived from the stage — the gist
 body's z lift, its diffuse softness, which rung a detail surface offers — is therefore consistent by construction
 rather than guarded once per reader. The floor is released with the collection (a user reset clears it), and a stage that
-must genuinely be corrected downward arrives on the next full load.
+must genuinely be corrected downward arrives on the next full load. The floor is held by
+`packages/universe/src/episodic-memory-store.ts` (`setAll`), and it has one cost: a surface that writes staged
+fixtures straight into that store must release them between scenes, or a scene scripting a rise cannot be replayed
+from its own start — the previous run's floor is still standing.
 
 **The gist axis is independent of forgetting** ([F] vs [C]). The gist-timer measures universe-days since
 `semanticize_timer_reset_at`; forgetting decay measures them since `last_recalled_universe_time`. A memory may be deeply

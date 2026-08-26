@@ -134,6 +134,13 @@ MORE of the prefix — while the generic `ResourceExhausted` line reads as an al
 and that waiting would not restore. It is returned instead of a short page on purpose: an admin list quietly missing a
 user reads as "this account does not exist".
 
+**This is gated.** `pnpm lint:error-reasons` (`scripts/check-error-reasons.mjs`) diffs every `reason*` constant in
+`apps/api/internal/*/rpc/reasons.go` against the FE `ERROR_REASONS` union **and** against the §2 table above, failing
+on either gap — so this file is a parsed artifact and its row shape is load-bearing (reasons live in the first cell,
+backticked, comma-separated). The check asserts **membership only**: a reason may deliberately fall back to its coarse
+Connect-code line, and a registry entry no handler emits is reported as a note rather than a failure. `FE` in the table
+means the shared presentation seam has reason-specific behavior; `fallback` means the copy comes from the coarse code.
+
 The platform reason constants and per-context `rpc/reasons.go` registries are the
 code source for this table. Adding a canonical domain error requires a unique reason,
 an existing/coherent Connect code, mapping coverage, and this registry update. An

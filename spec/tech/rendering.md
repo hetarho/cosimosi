@@ -628,7 +628,7 @@ second camera.
   projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing plays. The layer
   guards the EASE against a stale read (its seen stage never goes down, so a rise cannot replay); the rendered POSITION
   is one-way because the read model it projects from holds the stage at its high-water mark — the invariant lives in the
-  domain mirror, not as a second copy in the renderer (`policy/domain/semanticization.md`). The
+  domain mirror, not as a second copy in the renderer ([policy/domain/semanticization](../policy/domain/semanticization.md)). The
   per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the later-authored
   pulled-upward/relate-star replay choreography consumes; nothing more is built.
 - **A gist star is read-only** ([R8][I8]). Its pick payload is `gistNodeId(memoryId)`; a pick sends the navigation
