@@ -12,10 +12,11 @@ import { createGetCatalogQueryKey } from '@cosimosi/api-client'
 import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { Skeleton, tokens } from '@cosimosi/ui'
+import { useErrorToast } from '@cosimosi/errors/react'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { AchievementRow } from './AchievementRow.tsx'
 import { RewardRevealDialog } from './RewardRevealDialog.tsx'
 

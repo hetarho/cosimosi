@@ -27,11 +27,11 @@ import {
   type universeNavigationMachine,
 } from '@cosimosi/universe'
 
+import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../features/current-memory-text/index.ts'
 import { MetaBlock } from '../../../features/star-meta/index.ts'
 import { ProvenanceList, useProvenanceQuery } from '../../../features/star-provenance/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine, useSelector } from '../../../shared/model/index.ts'
 import { STAR_DETAIL_PANEL } from '../config/panel.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
 

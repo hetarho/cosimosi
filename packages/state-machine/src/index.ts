@@ -3,7 +3,7 @@
  *
  * Both apps/web and apps/mobile consume this package. It stays free of
  * React, three.js, and DOM/native deps; the React binding seam lives under
- * @cosimosi/state-machine/react and app shared/model re-exports it.
+ * @cosimosi/state-machine/react, which both apps import directly.
  *
  * Catalog (this package ships platform-level patterns; product workflows are
  * authored by their feature slices):

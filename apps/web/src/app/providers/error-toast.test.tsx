@@ -8,9 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErrorInfoSchema } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 import { ERROR_REASONS } from '@cosimosi/errors'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { m, setActiveLocale } from '../../shared/i18n/index.ts'
 
-import { useErrorToast } from '../../shared/model/index.ts'
 import { WebToastProvider } from './toast-provider.tsx'
 
 describe('the web error toast', () => {

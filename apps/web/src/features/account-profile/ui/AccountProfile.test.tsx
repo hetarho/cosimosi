@@ -8,10 +8,10 @@ import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { AccountService, type UpdateProfileRequest } from '@cosimosi/api-client'
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { getActiveLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 
 import { readStoredLocale, writeStoredLocale } from '../../../shared/lib/locale-storage.ts'
-import { ErrorToastContext } from '../../../shared/model/index.ts'
 import { AccountProfile } from './AccountProfile.tsx'
 
 const storedLocales = new Map<string, string>()

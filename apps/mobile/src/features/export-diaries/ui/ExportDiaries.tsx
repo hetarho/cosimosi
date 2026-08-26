@@ -8,7 +8,7 @@ import { createMemoryClient, ExportFormat } from '@cosimosi/api-client'
 import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
-import { useErrorToast } from '../../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { deliverDiaryExport } from '../lib/deliver-export.ts'
 
 export function ExportDiaries() {

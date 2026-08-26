@@ -15,7 +15,7 @@ import {
 } from '@cosimosi/universe'
 
 import { useRecallDraftStore } from '@cosimosi/universe'
-import { ErrorToastContext } from '../../../shared/model/index.ts'
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { RecallFlowSheet } from './RecallFlowSheet.tsx'
 
 // The cost gate's quote hook is mocked to a fixed covered quote so the flow reaches the rewrite

@@ -10,8 +10,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AdminService } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
-import { ErrorToastContext } from '../../../shared/model/index.ts'
 import { UsersSection } from './UsersSection.tsx'
 
 const queryClients = new Set<QueryClient>()

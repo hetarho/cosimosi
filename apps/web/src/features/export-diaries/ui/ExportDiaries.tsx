@@ -6,8 +6,8 @@ import { useMutation } from '@tanstack/react-query'
 import { createMemoryClient, ExportFormat } from '@cosimosi/api-client'
 import { Button, Card } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
 import { deliverDiaryExport } from '../lib/deliver-export.ts'
 
 export function ExportDiaries() {

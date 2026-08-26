@@ -22,7 +22,8 @@ import { LaunchButton, useLaunchedNeuronsStore } from '../../../features/launch-
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { WriteDiaryFields, useDiaryDraftStore } from '../../../features/write-diary/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { useProposalStore } from '@cosimosi/universe'
 
 // The diary date defaults to *today in the user's own timezone* ([W5]). `toISOString()` would emit

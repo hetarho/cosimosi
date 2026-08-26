@@ -9,7 +9,7 @@ import { VALUES } from '@cosimosi/config'
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe'
 
-import { ErrorToastContext } from '../../../shared/model/index.ts'
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { RestoreSection } from './RestoreSection.tsx'
 
 // Cleared after each test: clearing cancels pending cache gc timers, which would otherwise

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 
-import { createActorContext } from '../../shared/model/index.ts'
+import { createActorContext } from '@cosimosi/state-machine/react'
 import { appShellMachine } from '../model/app-shell.machine.ts'
 
 /**

@@ -20,9 +20,8 @@ import {
 } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { writeStoredLocale } from '../../../shared/lib/locale-storage.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 export function AccountProfile() {
   const transport = useTransport()
   const queryClient = useQueryClient()

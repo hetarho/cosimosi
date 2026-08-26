@@ -12,9 +12,8 @@ import {
 import { VALUES } from '@cosimosi/config'
 import { Badge, Button, TextField } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 // The user list (metadata only, [I2]): search + paginate accounts, grant stardust (별가루 증정), and
 // promote/revoke admins inline; the grant history below is the accountability record. No memory
 // content is ever shown — only identity, balance, and non-content counts.

@@ -13,7 +13,7 @@ import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/
 import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { Button, Card, TextField } from '@cosimosi/ui'
 
-import { useMachine } from '../../../shared/model/index.ts'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { InviteAcknowledgment } from './InviteAcknowledgment.tsx'
 
 export interface NicknameStepProps {

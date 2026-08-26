@@ -5,7 +5,7 @@ import { Button, Dialog } from '@cosimosi/ui'
 import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { useRestoreMemory } from '@cosimosi/universe/react'
 
 // features/restore-memory ui ([X2]): the "지운 일기" way back — a plain word the archive header carries,

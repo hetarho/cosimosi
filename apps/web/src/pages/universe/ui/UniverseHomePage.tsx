@@ -36,9 +36,9 @@ import {
   useRecallTargetStore,
 } from '@cosimosi/universe'
 
+import { useActorRef } from '@cosimosi/state-machine/react'
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { UniverseViewToggle } from '../../../features/pin-universe-view/index.ts'
-import { useActorRef } from '../../../shared/model/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'

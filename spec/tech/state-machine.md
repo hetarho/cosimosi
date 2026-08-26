@@ -6,18 +6,39 @@
 
 ## 1. Packages and the React seam
 
-| Concern                                                                                                | Location                                                                               | Depends on                                                |
-| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Catalog machines (`asyncCommandMachine`, `panelMachine`) + types                                       | `packages/state-machine`                                                               | `xstate` only — no React, no DOM, no native               |
-| Auth/session machine (auth-domain lifecycle reference)                                                 | `packages/auth`                                                                        | `xstate`, `@supabase/supabase-js`, `@cosimosi/api-client` |
-| React binding hooks (`createActorContext`, `useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `@cosimosi/state-machine/react`; apps re-export it from `shared/model/xstate-react.ts` | `@xstate/react`, `react`                                  |
-| Per-feature machines (when they arrive)                                                                | `apps/{web,mobile}/src/<slice>/model/<name>.machine.ts`                                | imported from `@cosimosi/state-machine` or feature-local  |
+| Concern                                                                                                | Location                                                         | Depends on                                                |
+| ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------- |
+| Catalog machines (`asyncCommandMachine`, `panelMachine`) + types                                       | `packages/state-machine`                                         | `xstate` only — no React, no DOM, no native               |
+| Auth/session machine (auth-domain lifecycle reference)                                                 | `packages/auth`                                                  | `xstate`, `@supabase/supabase-js`, `@cosimosi/api-client` |
+| React binding hooks (`createActorContext`, `useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `@cosimosi/state-machine/react` — imported directly by both apps | `@xstate/react`, `react`                                  |
+| Per-feature machines (when they arrive)                                                                | `apps/{web,mobile}/src/<slice>/model/<name>.machine.ts`          | imported from `@cosimosi/state-machine` or feature-local  |
 
 Both apps consume `@cosimosi/state-machine` directly. The package's root export
 stays React-free so the same catalog works in tests, Web Workers, and R3F
 frame-loops without dragging React into them. The optional `/react` export owns
-the shared binding seam once, and each app's `shared/model` re-exports it so
-feature call sites stay stable.
+the shared binding seam once, and **both apps import it directly**. There is no app-local
+re-export: a barrel that only forwards one package entry holds no implementation, so two
+copies of it are two things to keep in step for nothing — and they did drift, which is how
+the R3F guidance below went missing from one app. The selection guide lives in
+`packages/state-machine/src/react.ts`, where both platforms read one copy.
+
+### 1.1 The app-wide actor mount point
+
+`app/model` is where an app-wide lifecycle machine lives, and the two apps are deliberately
+not symmetric about it today:
+
+- **mobile** has one — `app/model/app-shell.machine.ts` (`booting → ready`), mounted through
+  `MachineActorsProvider` as `AppShellActor`. It is a **reserved seam, not live control state**:
+  nothing sends `READY` and nothing selects from the actor. Its purpose is to establish the single
+  documented boundary later app-wide actors join, instead of each feature spawning its own
+  long-lived actor. Its own docstring is explicit that stack selection is _not_ read from it — the
+  auth gate maps the session snapshot to a stack directly, so there is no competing authority.
+- **web** has none, and that is not a gap. Its shell lifecycle is expressed by the router's auth
+  gate; it has never needed an app-wide actor, so it has not created the mount point. When it does,
+  it creates the same shape.
+
+The asymmetry is therefore about _when each app needed the seam_, not about one app missing a
+rule. Neither app reads shell state from two places, which is the property that actually matters.
 
 ## 2. Machine placement
 
@@ -100,8 +121,8 @@ an action, fully replayable in tests.
   `shallowEqual` when it returns an object slice.
 - Use `useMachine(machine)` for small component-owned machines where rerendering
   on every transition is fine.
-- All hooks are imported from `shared/model` (the app seam), not from `@xstate/react`
-  directly.
+- All hooks are imported from `@cosimosi/state-machine/react`, never from `@xstate/react`
+  directly — that indirection is the swap seam, and it is the package's, not each app's.
 
 ### 5.2 The R3F `useFrame` pattern — no React state per frame
 
@@ -111,7 +132,7 @@ fps through React state. The pattern, in pseudocode:
 
 ```ts
 import { useFrame } from '@react-three/fiber'
-import { useActorRef } from '@shared/model'        // the seam
+import { useActorRef } from '@cosimosi/state-machine/react' // the seam
 import { useRef } from 'react'
 
 function MemoryField({ ... }) {

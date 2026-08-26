@@ -4,10 +4,10 @@ import { VALUES } from '@cosimosi/config'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
 import { TwinkleDetailSheet } from './TwinkleDetailSheet.tsx'
 
 // widgets/stardust ([G2][G3]): the persistent economy overlay over the running canvas — it composes

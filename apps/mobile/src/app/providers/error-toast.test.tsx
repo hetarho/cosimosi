@@ -8,7 +8,7 @@ import { VALUES } from '@cosimosi/config'
 import { ERROR_REASONS } from '@cosimosi/errors'
 import { m, setActiveLocale } from '@cosimosi/i18n'
 
-import { useErrorToast } from '../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { MobileToastProvider } from './toast-provider.tsx'
 
 describe('the mobile error toast', () => {

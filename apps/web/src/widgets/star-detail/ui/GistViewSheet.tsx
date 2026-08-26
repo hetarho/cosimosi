@@ -15,10 +15,9 @@ import {
 
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
+import { useErrorToast } from '@cosimosi/errors/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 // widgets/star-detail ui ([R8][G4], A5): the gist-view (요지 보기) surface, priced before it
 // happens. Selecting a neocortical gist body opens this over the canvas; the cost display shows the
 // gist quote and, only on its proceed, the ViewSemantic read fires — the spend the server gate

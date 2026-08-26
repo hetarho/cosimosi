@@ -5,8 +5,8 @@ import { BrandMark, Button, Card, TextField } from '@cosimosi/ui'
 
 import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'
 import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
 import { EmptySky } from '../../../widgets/empty-sky/index.ts'
 
 export interface LoginPageProps {

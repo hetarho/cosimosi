@@ -7,12 +7,11 @@ import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
 import { IconButton, NoticeIcon, tokens } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 // widgets/stardust (RN fork, [G2][G3]): the persistent economy overlay over the running canvas — it
 // composes the balance HUD, the earn guide, and the write-earn feedback. It never remounts the
 // renderer and imports no three/visual entity (§3.4); the figures live in Query/config (§3.2). Shares

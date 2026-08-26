@@ -8,11 +8,10 @@ import {
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useOrnamentCatalog, useSaveDecoration } from '@cosimosi/store/react'
 import { Sheet } from '@cosimosi/ui'
+import { useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { SaveDecorationButton } from '../../../features/buy-ornament/index.ts'
 import { OrnamentGroupList } from '../../../features/preview-ornament/index.ts'
-import { useActorRef, useSelector } from '../../../shared/model/index.ts'
-
 // widgets/decoration-panel: 우주 꾸미기 over the running universe ([P5]). A Sheet, not a Dialog —
 // nothing is dimmed and nothing is trapped, because the whole reason to open this is to watch the
 // change land in the universe beside it, which stays camera-interactive and is never remounted.

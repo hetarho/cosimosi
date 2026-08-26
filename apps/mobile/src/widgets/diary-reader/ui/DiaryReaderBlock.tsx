@@ -40,7 +40,8 @@ import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/ind
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
 import { DiaryCalendar, useDiaryCalendar } from '../../../features/diary-calendar/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { useInvalidateUniverse, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
 
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read

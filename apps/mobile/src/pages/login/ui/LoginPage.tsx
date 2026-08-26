@@ -6,9 +6,8 @@ import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 
+import { useMachine } from '@cosimosi/state-machine/react'
 import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
-
 /**
  * The mobile login entry ([U3][U4]): the RN mirror of the web LoginPage over the SAME auth-facade
  * actions — parity by discipline, not a shared route package (§3.5). Sign-in and sign-up share

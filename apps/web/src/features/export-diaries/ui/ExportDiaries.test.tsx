@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { ExportFormat, MemoryService } from '@cosimosi/api-client'
 
-import { ErrorToastContext } from '../../../shared/model/index.ts'
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { ExportDiaries } from './ExportDiaries.tsx'
 
 afterEach(cleanup)

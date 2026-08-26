@@ -30,9 +30,9 @@ import {
 
 import { useDecorationRequestStore } from '@cosimosi/store'
 
+import { useActorRef } from '@cosimosi/state-machine/react'
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { UniverseViewToggle } from '../../../features/pin-universe-view/index.ts'
-import { useActorRef } from '../../../shared/model/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'

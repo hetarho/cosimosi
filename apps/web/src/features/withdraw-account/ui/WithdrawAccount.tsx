@@ -9,9 +9,8 @@ import { useAuthFacade } from '@cosimosi/auth/react'
 import { VALUES } from '@cosimosi/config'
 import { Button, Card } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 export function WithdrawAccount({ exportOffer }: { exportOffer: ReactNode }) {
   const transport = useTransport()
   const auth = useAuthFacade()

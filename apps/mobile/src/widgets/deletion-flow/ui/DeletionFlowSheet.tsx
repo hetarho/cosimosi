@@ -20,7 +20,8 @@ import {
   useSuggestLetGo,
 } from '../../../features/let-go/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast } from '@cosimosi/errors/react'
+import { useMachine } from '@cosimosi/state-machine/react'
 import { useDeletionDraftStore } from '@cosimosi/universe'
 
 // widgets/deletion-flow (RN fork, [X1][X4]): the bottom-sheet/modal host over the running canvas.

@@ -7,8 +7,8 @@ import { useSequenceRun } from '@cosimosi/sequence/react'
 import { VALUES } from '@cosimosi/config'
 import { resetUniverseUserState, type AdvanceInterval } from '@cosimosi/universe'
 
+import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
-import { shallowEqual, useActorRef, useSelector } from '../../../shared/model/index.ts'
 import { DEMO_SCRIPT } from '../model/script.ts'
 import {
   demoRunMachine,

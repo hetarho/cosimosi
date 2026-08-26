@@ -13,9 +13,8 @@ import {
 } from '@cosimosi/api-client'
 import { Badge, Button, Select, TextField } from '@cosimosi/ui'
 
+import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '../../../shared/model/index.ts'
-
 // Provider API keys are managed once per provider (not per capability). Each capability then selects
 // among the keyed providers. The key input is WRITE-ONLY — only "set/unset" + a masked hint shows.
 export function ProviderKeysSection() {

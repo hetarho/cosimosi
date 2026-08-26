@@ -7,12 +7,11 @@ import {
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useOrnamentCatalog, useSaveDecoration } from '@cosimosi/store/react'
 import { Sheet } from '@cosimosi/ui'
+import { useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { m } from '../../../shared/i18n/index.ts'
 
 import { SaveDecorationButton } from '../../../features/buy-ornament/index.ts'
 import { OrnamentGroupList } from '../../../features/preview-ornament/index.ts'
-import { useActorRef, useSelector } from '../../../shared/model/index.ts'
-
 // widgets/decoration-panel (native fork of the web sheet): 우주 꾸미기 over the running universe
 // ([P5]). Not a Modal — the canvas above stays visible and gesture-interactive, which is the whole
 // point of opening this. `active` gates consumption on the focused screen: the universe screen stays

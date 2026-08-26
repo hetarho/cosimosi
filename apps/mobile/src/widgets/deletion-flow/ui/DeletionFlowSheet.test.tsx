@@ -13,7 +13,7 @@ import {
   useReleasedGroupsStore,
 } from '@cosimosi/universe'
 
-import { ErrorToastContext } from '../../../shared/model/index.ts'
+import { ErrorToastContext } from '@cosimosi/errors/react'
 import { DeletionFlowSheet } from './DeletionFlowSheet.tsx'
 
 // Cleared after each test: clearing cancels pending cache gc timers, which would otherwise
