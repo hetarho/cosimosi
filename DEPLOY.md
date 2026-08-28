@@ -293,6 +293,11 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 - **`.env`를 바꾼 뒤 `caddy reload`는 안 먹는다** — reload는 기존 프로세스의 env를 그대로 보므로 새 변수가
   안 들어간다. `docker compose up -d`로 재생성해야 한다. 반대로 `conf.d/`만 바뀌면 reload로 무중단(§4.2).
 - **GHCR 로그인은 ubuntu 계정으로**(sudo ✕) — 배포가 ubuntu로 pull한다.
+- **`docker image prune -f`는 SHA 태그 이미지를 못 지운다** — 모든 이미지가 커밋 SHA로 태그돼 dangling이
+  되지 않으므로 그냥 돌리면 아무것도 회수되지 않고 배포마다 ~119MB씩 쌓인다. 롤아웃은
+  `-a -f --filter "until=336h"`로 지운다(2주치 태그는 로컬 롤백용으로 남고, 그보다 오래된 건 §6의
+  롤백이 어차피 `compose pull`로 다시 받는다). 도는 컨테이너가 쓰는 이미지는 대상에서 제외되므로 공유
+  박스에서도 남의 라이브 이미지는 안전하다.
 - **DNS 회색 구름** — 주황(프록시)이면 Let's Encrypt 발급 실패.
 - **goose 공식 Docker 이미지는 없다** — `ghcr.io/kukymbr/goose-docker:3.27.1` 사용(로컬 `scripts/db.mjs`와 동일).
 - **Workers Builds 10001 인증 에러** — 빌드 토큰이 죽은 것. Worker → Settings → Build → API token에서 새로 생성.

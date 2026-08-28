@@ -222,11 +222,18 @@ jobs:
             fi
 
             # 4) The successful migration commits the already-recorded IMAGE_TAG. Start
-            #    the API and worker from that same image, then prune dangling layers.
+            #    the API and worker from that same image, then reclaim superseded ones.
             #    --remove-orphans: drop containers for services removed from the compose
             #    file (e.g. the old per-stack caddy) instead of leaving them running.
             compose up -d --remove-orphans api worker
-            docker image prune -f
+            # Every image carries its commit SHA, so none is ever dangling — a bare
+            # `image prune` collects nothing while the box gains one ~119MB image per
+            # deploy. `-a` with an age filter is what actually reclaims: two weeks of tags
+            # stay for a fast local rollback, and older ones come back from GHCR, which is
+            # what DEPLOY.md §6's rollback pulls anyway. An image a running container uses
+            # is never touched — on this shared box that protects every project's live
+            # image, while collecting the unused older tags of all of them.
+            docker image prune -a -f --filter "until=336h"
 
       - name: Verify deployed health and CORS preflight
         uses: appleboy/ssh-action@v1.2.0
