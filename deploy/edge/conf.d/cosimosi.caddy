@@ -1,0 +1,22 @@
+# cosimosi — prod api. Owned by the cosimosi repo (deploy/edge/conf.d/cosimosi.caddy →
+# /srv/edge/conf.d/). Never merge it into another project's fragment, and never let another
+# project's domain in here — every project brings its own file.
+#
+# Upstream: the prod stack's api alias on the external `edge` docker network
+# (docker-compose.prod.yml, API_UPSTREAM), speaking h2c — Connect over HTTP/2 cleartext.
+# CORS belongs to the API (connectrpc.com/cors, allowed origins = that stack's
+# COSIMOSI_CORS_ORIGINS), not to this proxy. If the api container is down only this domain
+# 502s; every other site on the box keeps serving.
+#
+# The COSIMOSI_ prefix is mandatory: /srv/edge/.env is shared by every project on the box,
+# so a bare API_DOMAIN_PROD would collide with a sibling's and expand two site blocks to
+# one address — `ambiguous site definition`, whole config rejected, every project loses
+# TLS. The variable must also be SET: unset expands to an empty site address, which is
+# `server block without any key` — likewise a rejection of the whole box's config.
+{$COSIMOSI_API_DOMAIN_PROD} {
+	reverse_proxy cosimosi-api-prod:8080 {
+		transport http {
+			versions h2c 2
+		}
+	}
+}

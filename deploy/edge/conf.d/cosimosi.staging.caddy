@@ -1,0 +1,17 @@
+# cosimosi — staging api (the `develop` stack). Same rules as cosimosi.caddy, in its own
+# file so the two environments switch on and off independently: `import conf.d/*.caddy`
+# only globs *.caddy, so appending `.disabled` to this filename takes staging out of the
+# assembled config without deleting it, and turning it back on is a rename.
+#
+# COSIMOSI_API_DOMAIN_STAGING must be set in /srv/edge/.env for as long as this file is
+# active — an unset variable expands to an empty site address and Caddy rejects the WHOLE
+# box's config (`server block without any key`), prod and every sibling project included.
+# So the variable and the filename move together in one step, then validate, then
+# `docker compose up -d` (an .env change needs a recreate, not a reload).
+{$COSIMOSI_API_DOMAIN_STAGING} {
+	reverse_proxy cosimosi-api-staging:8080 {
+		transport http {
+			versions h2c 2
+		}
+	}
+}

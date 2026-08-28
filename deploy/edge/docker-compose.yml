@@ -1,9 +1,10 @@
-# Single shared Caddy for the whole VPS — the only binder of ports 80/443. Lives at
-# /srv/edge (copied there once, managed manually: edit → `docker compose up -d`). It is
-# NOT part of the per-env deploy workflow; api stacks roll independently underneath it.
-# Reaches each stack's api via the external `edge` network (docker network create edge),
+# The shared edge Caddy for the whole VPS (see Caddyfile for the ownership contract).
+# Lives at /srv/edge, copied there once and managed by hand. This file belongs to the BOX,
+# not to cosimosi: nothing in it is per-project, which is the point — landing a second and
+# third project touches conf.d/ and .env, never this file. On a box that already runs it,
+# this copy is a reference and re-copying it must be a no-op.
+# Reaches each stack's api over the external `edge` network (docker network create edge),
 # where the stacks register unique aliases (cosimosi-api-staging / cosimosi-api-prod).
-# /srv/edge/.env provides API_DOMAIN_PROD and API_DOMAIN_STAGING.
 services:
   caddy:
     image: caddy:2-alpine
@@ -11,11 +12,17 @@ services:
     ports:
       - '80:80'
       - '443:443'
-    environment:
-      API_DOMAIN_PROD: ${API_DOMAIN_PROD}
-      API_DOMAIN_STAGING: ${API_DOMAIN_STAGING}
+    # Every project's domain variables in one shot, so a new project never has to edit this
+    # shared file to get its {$..._API_DOMAIN_...} through to Caddy. The whole file lands in
+    # the container's environment, so /srv/edge/.env carries DOMAINS ONLY — runtime secrets
+    # live in each stack's own /srv/cosimosi-<env>/.env (chmod 600), never here.
+    env_file: .env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # One fragment per project. Read-only: Caddy never writes its own config.
+      - ./conf.d:/etc/caddy/conf.d:ro
+      # Issued certificates live here. Never delete this volume — recreating the container
+      # is free, re-issuing from ACME is rate-limited.
       - caddy_data:/data
       - caddy_config:/config
     networks:
@@ -23,7 +30,7 @@ services:
 
 networks:
   edge:
-    external: true
+    external: true # one-time on the VPS: docker network create edge
 
 volumes:
   caddy_data:

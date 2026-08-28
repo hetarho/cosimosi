@@ -132,7 +132,7 @@ for s in "${STACKS[@]}"; do
 done
 # 배포는 $TARGET_USER로 SSH해 이 디렉터리에 compose/.env/migrations를 쓴다 → 소유권을 넘긴다.
 sudo chown -R "$TARGET_USER":"$TARGET_USER" "${STACKS[@]/#/$STACK_BASE/}"
-ok "준비됨 — 각 디렉터리에 docker-compose.prod.yml·Caddyfile·.env(비추적)를 둘 것"
+ok "준비됨 — 각 디렉터리에 docker-compose.prod.yml·.env(비추적)를 둘 것"
 
 # ── 5. GHCR 로그인 (compose pull용) — 자격증명이 주어졌을 때만 ─────────────────
 if [[ -n "${GHCR_USER:-}" && -n "${GHCR_PAT:-}" ]]; then
@@ -165,7 +165,8 @@ cat <<DONE
 $(printf '\033[1;32m부트스트랩 완료.\033[0m') 남은 1회성 작업(DEPLOY.md §3·§4):
   1. Lightsail 콘솔 Networking → 인바운드 TCP 22·80·443 열기 (+ Static IP 부여)
   2. 배포용 SSH 공개키를 ~/.ssh/authorized_keys 에 등록 (이미 됐으면 통과)
-  3. $STACK_BASE/${STACKS[0]} · $STACK_BASE/${STACKS[1]} 에 docker-compose.prod.yml·Caddyfile·.env 배치
+  3. $STACK_BASE/${STACKS[0]} · $STACK_BASE/${STACKS[1]} 에 docker-compose.prod.yml·.env 배치
+     (TLS는 스택이 아니라 공유 edge Caddy가 맡는다 — /srv/edge 배치는 DEPLOY.md §4)
   4. GitHub Secrets: SSH_HOST(고정 IP)·SSH_USER($TARGET_USER)·SSH_KEY·DIRECT_DATABASE_URL
   5. Cloudflare DNS: api(.staging).<도메인> A → 고정 IP (DNS-only 또는 Full(strict), Flexible 금지)
   6. repo 변수 DEPLOY_ENABLED=true → develop/main push로 자동 배포
