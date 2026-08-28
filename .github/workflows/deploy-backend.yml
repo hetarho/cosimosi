@@ -230,9 +230,9 @@ jobs:
             # `image prune` collects nothing while the box gains one ~119MB image per
             # deploy. `-a` with an age filter is what actually reclaims: two weeks of tags
             # stay for a fast local rollback, and older ones come back from GHCR, which is
-            # what DEPLOY.md §6's rollback pulls anyway. An image a running container uses
-            # is never touched — on this shared box that protects every project's live
-            # image, while collecting the unused older tags of all of them.
+            # what DEPLOY.md §6's rollback pulls anyway. An image any container still
+            # references — stopped ones included — is never touched, so on this shared box
+            # every project's live image is safe while the unreferenced older tags go.
             docker image prune -a -f --filter "until=336h"
 
       - name: Verify deployed health and CORS preflight
