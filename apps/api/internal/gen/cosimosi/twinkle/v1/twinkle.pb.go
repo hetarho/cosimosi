@@ -131,7 +131,7 @@ func (LedgerEntryKind) EnumDescriptor() ([]byte, []int) {
 //   - NO DAILY_GRANT — the daily SMALL refill is a DERIVATION from the stored window anchor, not an
 //     event, so it has no row and no wire value. A client cannot mistake the refill for a
 //     transaction; the history renders it as a labelled day marker from the same derivation.
-//   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PRD §8.3) and nothing
+//   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PROD-16) and nothing
 //     writes this reason, but the ledger is append-only, so rows written before it left must stay
 //     readable ([I1]).
 type LedgerEntryReason int32

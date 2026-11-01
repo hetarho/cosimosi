@@ -41,7 +41,7 @@ var (
 // ViolationKind names WHICH encode invariant a sample missed. It is a closed set because it is the
 // only half of a violation allowed to leave the process: the instruction beside it is written for
 // the model and quotes the proposed memory name and a passage token, which the error contract
-// forbids sending to a client or a reporter (policy/platform/errors.md §1). The kind plus a count
+// forbids sending to a client or a reporter (ERR-6). The kind plus a count
 // is enough to tell an operator which rule gave up without ever handling the writer's words.
 type ViolationKind string
 
@@ -94,7 +94,7 @@ func (e *EncodeRetryExhausted) Detail() map[string]string {
 // dedup-candidate set, call the schema-forced extractor, and enforce the domain
 // invariants with repair re-prompts. It persists nothing and computes no
 // coordinate, color, strength, or seed.
-func (s *Service) Encode(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time) (ExtractResult, error) {
+func (s *EncodingService) Encode(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time) (ExtractResult, error) {
 	if scope.UserID() == "" {
 		return ExtractResult{}, ErrScopeRequired
 	}
@@ -118,7 +118,7 @@ func (s *Service) Encode(ctx context.Context, scope platform.UserScope, body str
 
 // ReviseSplit re-runs the split from a natural-language instruction + the prior
 // result [W4a], against the same schema-forced output and the same invariants.
-func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, body string, previous ExtractResult, instruction string) (ExtractResult, error) {
+func (s *EncodingService) ReviseSplit(ctx context.Context, scope platform.UserScope, body string, previous ExtractResult, instruction string) (ExtractResult, error) {
 	if scope.UserID() == "" {
 		return ExtractResult{}, ErrScopeRequired
 	}
@@ -146,7 +146,7 @@ func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, bod
 // canonicalization ([E10]): neurons whose name appears in the diary body, plus the
 // narrow embedding nearest-neighbour assist over the body's vector. It is a
 // candidate list, never a merge decision.
-func (s *Service) dedupCandidates(ctx context.Context, scope platform.UserScope, body string) ([]ExistingNeuron, error) {
+func (s *EncodingService) dedupCandidates(ctx context.Context, scope platform.UserScope, body string) ([]ExistingNeuron, error) {
 	inBody, err := s.candidates.ListNeuronCandidatesInBody(ctx, scope, body, values.EncodeDedupBodyMatchLimit)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (s *Service) dedupCandidates(ctx context.Context, scope platform.UserScope,
 // accepted as the writer's day. Acceptance covers the count alone — every other invariant still has
 // to hold on the accepted result, with the WHOLE repair budget to get there: the nudge has its own
 // counter, so a single-scene diary is not left fewer attempts than a two-scene one.
-func (s *Service) repairUntilValid(ctx context.Context, body string, result ExtractResult) (ExtractResult, error) {
+func (s *EncodingService) repairUntilValid(ctx context.Context, body string, result ExtractResult) (ExtractResult, error) {
 	attempt, nudges, countUnderAccepted := 0, 0, false
 	for {
 		if err := validateSplitStructure(result); err != nil {

@@ -1,5 +1,5 @@
 // Package store is the supporting context for 우주 꾸미기 — the decoration catalog, what a user
-// owns of it, and what their universe wears right now (ARCHITECTURE §2.2).
+// owns of it, and what their universe wears right now (ARCH-6).
 //
 // One invariant shapes every type here: an ornament sells a RENDER-PARAMETER ID and nothing else.
 // No type in this package, no column in its two tables, and no field in its proto has anywhere to

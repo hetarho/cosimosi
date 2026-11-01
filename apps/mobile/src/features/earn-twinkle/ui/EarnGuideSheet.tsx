@@ -7,7 +7,7 @@ import { m } from '../../../shared/i18n/index.ts'
 
 // features/earn-twinkle ui (RN fork, [G3]): the guide a shortfall opens. It explains how 별가루
 // gathers and performs NO mutation — no client, no transport call, no error state — because v2 has no
-// purchase path (PRD §8.3) and the other three paths are earned by living in the product, not by
+// purchase path (PROD-16) and the other three paths are earned by living in the product, not by
 // pressing a button here.
 //
 // It lists only the REPEATABLE paths. The one-time signup bonus is deliberately absent: naming a grant

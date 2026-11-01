@@ -5,7 +5,7 @@ import { assign, setup } from 'xstate'
  * error → closed. Designed for the `/test` page panels and feature overlays
  * that load data on open. Context carries only the control mode + diagnostic
  * error; loaded rows live in the Query cache and are looked up by id.
- * ARCHITECTURE §3.2: control state only.
+ * ARCH-24: control state only.
  */
 export type PanelStatus = 'closed' | 'open' | 'loading' | 'ready' | 'error'
 

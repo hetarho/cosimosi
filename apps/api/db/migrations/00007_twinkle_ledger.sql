@@ -20,7 +20,7 @@ CREATE TABLE twinkle_balances (
 -- idempotent (NULL = not deduped; PG treats NULLs as distinct under UNIQUE). kind/reason are TEXT
 -- closed sets owned by the domain (like neuron_type / jobs.kind), not PG enums.
 CREATE TABLE twinkle_ledger_entries (
-    id              TEXT PRIMARY KEY,                     -- nanoid, backend-minted (ARCHITECTURE §5)
+    id              TEXT PRIMARY KEY,                     -- nanoid, backend-minted (ARCH-14)
     user_id         TEXT NOT NULL,                        -- per-user isolation [U1]
     kind            TEXT NOT NULL,                        -- 'earn' | 'spend'
     reason          TEXT NOT NULL,                        -- 'payment' | 'invite' | 'write_diary' | 'recall'

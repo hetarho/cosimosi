@@ -6,7 +6,7 @@ import { tokens } from '@cosimosi/ui'
 // entities/episodic-memory ui (RN fork): a memory's `Emotion` as a bare dot, for the places a chip
 // would be too much — beside a field label, in a dense row. Decorative by construction: the colour is
 // the emotion package's projection and the meaning always sits in the words next to it
-// (design-language §2.3). `MoodChip` is the labelled form.
+// (UI-34). `MoodChip` is the labelled form.
 export function MoodDot({ mood }: { mood: string }) {
   return (
     <View

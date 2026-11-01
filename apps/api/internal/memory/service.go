@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"time"
-
-	"github.com/cosimosi/api/internal/platform"
 )
 
 var (
@@ -33,36 +31,17 @@ var (
 	ErrSealSuggesterRequired    = errors.New("memory service requires a seal suggester")
 )
 
-// Service owns the encode use-cases: Encode / ReviseSplit previews and
-// the PersistEncoded launch, plus the Universe read. All policy — split-count,
-// semantic-neuron, dedup, caps, and the monotonic launch guard — lives here, not
-// in the RPC handlers (ARCHITECTURE §2.9#7).
+// Service is the compatibility facade over encoding, graph commands and free reads.
+// New callers construct the capability they consume; roots may compose all RPC capabilities.
 type Service struct {
-	extractor        Extractor
-	embedder         Embedder
-	candidates       NeuronCandidateRepo
-	launches         LaunchRepo
-	universe         UniverseReader
-	linker           Linker
-	progression      AdvanceProgression
-	recalls          RecallRepo
-	spendGate        SpendGate
-	earn             EarnPort
-	achievements     AchievementRecorder
-	signupSettlement SignupSettlementPort
-	predictionError  PredictionError
-	gists            GistReader
-	viewSemantics    ViewSemanticRepo
-	signals          SpendSignalRepo
-	provenance       ProvenanceReader
-	exports          ExportReader
-	diaries          DiaryReader
-	releases         ReleaseRepo
-	sealSuggester    SealSuggester
-	userZone         UserZone
-	now              func() time.Time
-	newID            func() string
-	newSeed          func() int64
+	*EncodingService
+	*CommandService
+	universe   UniverseReader
+	gists      GistReader
+	signals    SpendSignalRepo
+	provenance ProvenanceReader
+	exports    ExportReader
+	diaries    DiaryReader
 }
 
 type ServiceDeps struct {
@@ -134,110 +113,84 @@ type ServiceDeps struct {
 	NewSeed func() int64
 }
 
+type ReadServiceDeps struct {
+	Universe   UniverseReader
+	Gists      GistReader
+	Signals    SpendSignalRepo
+	Provenance ProvenanceReader
+	Exports    ExportReader
+	Diaries    DiaryReader
+}
+
 func NewService(deps ServiceDeps) (*Service, error) {
-	if deps.Extractor == nil {
+	encoding, err := NewEncodingService(EncodingDeps{Extractor: deps.Extractor, Embedder: deps.Embedder, Candidates: deps.Candidates})
+	if err != nil {
+		return nil, err
+	}
+	commands, err := NewCommandService(CommandDeps{
+		Launches:         deps.Launches,
+		Linker:           deps.Linker,
+		Progression:      deps.Progression,
+		Recalls:          deps.Recalls,
+		SpendGate:        deps.SpendGate,
+		Earn:             deps.Earn,
+		Achievements:     deps.Achievements,
+		SignupSettlement: deps.SignupSettlement,
+		PredictionError:  deps.PredictionError,
+		ViewSemantics:    deps.ViewSemantics,
+		Releases:         deps.Releases,
+		SealSuggester:    deps.SealSuggester,
+		UserZone:         deps.UserZone,
+		Now:              deps.Now,
+		NewID:            deps.NewID,
+		NewSeed:          deps.NewSeed,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return NewServiceWithCapabilities(encoding, commands, ReadServiceDeps{
+		Universe:   deps.Universe,
+		Gists:      deps.Gists,
+		Signals:    deps.Signals,
+		Provenance: deps.Provenance,
+		Exports:    deps.Exports,
+		Diaries:    deps.Diaries,
+	})
+}
+
+func NewServiceWithCapabilities(encoding *EncodingService, commands *CommandService, reads ReadServiceDeps) (*Service, error) {
+	if encoding == nil {
 		return nil, ErrExtractorRequired
 	}
-	if deps.Embedder == nil {
-		return nil, ErrEmbedderRequired
-	}
-	if deps.Candidates == nil {
-		return nil, ErrCandidatesRequired
-	}
-	if deps.Launches == nil {
+	if commands == nil {
 		return nil, ErrLaunchesRequired
 	}
-	if deps.Universe == nil {
+	if reads.Universe == nil {
 		return nil, ErrUniverseRequired
 	}
-	if deps.Linker == nil {
-		return nil, ErrLinkerRequired
-	}
-	if deps.Progression == nil {
-		return nil, ErrProgressionRequired
-	}
-	if deps.Recalls == nil {
-		return nil, ErrRecallsRequired
-	}
-	if deps.SpendGate == nil {
-		return nil, ErrSpendGateRequired
-	}
-	if deps.Earn == nil {
-		return nil, ErrEarnRequired
-	}
-	if deps.Achievements == nil {
-		return nil, ErrAchievementsRequired
-	}
-	if deps.SignupSettlement == nil {
-		return nil, ErrSignupSettlementRequired
-	}
-	if deps.PredictionError == nil {
-		return nil, ErrPredictionErrorRequired
-	}
-	if deps.Gists == nil {
+	if reads.Gists == nil {
 		return nil, ErrGistsRequired
 	}
-	if deps.ViewSemantics == nil {
-		return nil, ErrViewSemanticsRequired
-	}
-	if deps.Signals == nil {
+	if reads.Signals == nil {
 		return nil, ErrSignalsRequired
 	}
-	if deps.Provenance == nil {
+	if reads.Provenance == nil {
 		return nil, ErrProvenanceRequired
 	}
-	if deps.Exports == nil {
+	if reads.Exports == nil {
 		return nil, ErrExportsRequired
 	}
-	if deps.Diaries == nil {
+	if reads.Diaries == nil {
 		return nil, ErrDiariesRequired
 	}
-	if deps.Releases == nil {
-		return nil, ErrReleasesRequired
-	}
-	if deps.SealSuggester == nil {
-		return nil, ErrSealSuggesterRequired
-	}
-	if deps.UserZone == nil {
-		deps.UserZone = UTCUserZone{}
-	}
-	service := &Service{
-		extractor:        deps.Extractor,
-		embedder:         deps.Embedder,
-		candidates:       deps.Candidates,
-		launches:         deps.Launches,
-		universe:         deps.Universe,
-		linker:           deps.Linker,
-		progression:      deps.Progression,
-		recalls:          deps.Recalls,
-		spendGate:        deps.SpendGate,
-		earn:             deps.Earn,
-		achievements:     deps.Achievements,
-		signupSettlement: deps.SignupSettlement,
-		predictionError:  deps.PredictionError,
-		gists:            deps.Gists,
-		viewSemantics:    deps.ViewSemantics,
-		signals:          deps.Signals,
-		provenance:       deps.Provenance,
-		exports:          deps.Exports,
-		diaries:          deps.Diaries,
-		releases:         deps.Releases,
-		sealSuggester:    deps.SealSuggester,
-		userZone:         deps.UserZone,
-		now:              deps.Now,
-		newID:            deps.NewID,
-		newSeed:          deps.NewSeed,
-	}
-	if service.now == nil {
-		service.now = func() time.Time { return time.Now().UTC() }
-	}
-	if service.newID == nil {
-		service.newID = platform.NewID
-	}
-	if service.newSeed == nil {
-		service.newSeed = randomSeed
-	}
-	return service, nil
+	return &Service{EncodingService: encoding, CommandService: commands,
+		universe:   reads.Universe,
+		gists:      reads.Gists,
+		signals:    reads.Signals,
+		provenance: reads.Provenance,
+		exports:    reads.Exports,
+		diaries:    reads.Diaries,
+	}, nil
 }
 
 func randomSeed() int64 {

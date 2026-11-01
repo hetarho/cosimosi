@@ -235,7 +235,7 @@
   /* Text — bare label, faint tint on hover; toolbars/tab strips of these cost nothing.
      The border is DECLARED and transparent rather than absent: under `forced-colors: active` the
      browser strips fills, shadows and blur, and a control whose edge existed only as a fill would
-     vanish — a real border gives the OS palette something to draw (ui-principles §5). It costs no
+     vanish — a real border gives the OS palette something to draw (UI-7). It costs no
      layout, since every control here is border-box and fixed-size. */
   .btn-text {
     background-image: none;
@@ -741,7 +741,7 @@
  *
  * The transparent border is DECLARED rather than absent for the same reason `.btn-text`'s is: under
  * `forced-colors` a fill is stripped and an edge that existed only as one disappears with it
- * (ui-principles §5).
+ * (UI-7).
  */
 @layer components {
   .menu-row {

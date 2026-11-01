@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 // The JS/TS linter for `packages/**` — the third of the three, beside `lint:web` (oxlint, cwd
 // apps/web) and `lint:mobile` (eslint, cwd apps/mobile). Neither of those can see `packages/`, which
 // left the cross-app core — the highest-leverage code in the repo — the least checked code in it.
-// ARCHITECTURE §4: "a gate's scope is part of the rule."
+// ARCH-42: "a gate's scope is part of the rule."
 //
 // It lives at the repo root rather than per package because 23 packages sharing one rule set is the
 // point; a per-package `lint` script would also duplicate the root pass (and none exists — see the

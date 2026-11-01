@@ -1,0 +1,232 @@
+# DIARY diary archive
+> r1 | the free, time-frozen archive of the immutable `Diary`: reading, split view, search, filters and calendar, the one paid whole-diary recall, the provenance read and the CSV/MD export
+
+## decisions
+- DIARY-1 [o] selecting a star opens its detail: metadata only, free, with no clock advance and no reinforcement; an episodic star's detail leads to recall, to its provenance history and to its original diary
+  - episodic star: shape, emotion colour, brightness, written date, strength, forgetting state and the forgotten current memory text, all free →~RECALL-1
+  - neuron star: information only, no emotion →~INV-3
+  - gist star: selecting it opens the paid gist view →=RECALL-8
+  - recall spends and may reconsolidate →=RECALL-6
+  - provenance history: the in-panel list reads `GetProvenance` →!DIARY-13
+  - original diary (`star_detail_open_diary`): a deep link into the reader at that memory's diary →!DIARY-5
+  - the panel never shows a mutable original; the immutable body is reached only through the reader →~INV-2
+  - panel layout, menu, reading hints and deletion hand-offs →=RECALL
+- DIARY-2 [o] the diary reader (`일기장`, `diary_reader_title`) is a separate page in a fully supporting role: the universe stays the primary surface, and the reader is where the written record is kept and read back
+  - web route `/diary` (the universe is `/universe`); mobile screen `ROUTES.diaryReader` with deep-link prefix `diary`
+  - it holds only the caller's own diaries; every read is user-scoped →=ACCT-1
+  - one archive, two shapes: the list (default) →~DIARY-7 and the month calendar →~DIARY-12
+  - the reader never mutates a diary →!DIARY-4, and nothing on it spends except the whole-diary recall →!DIARY-11
+- DIARY-3 [o] an opened diary shows which episodic memories it split into and offers one paid action, the whole-diary recall `RecallDiaryStars` (`diary_reader_recall_action`): every still-live memory born from that diary is recalled at once, and none is rewritten
+  - split view: one chip per still-live memory, its name with a dot in its mood colour (`moodColor`) →~ENC-2
+  - cost: the sum of the per-memory recall costs, each priced by that memory's decay depth →=TWINK-4
+  - each memory takes the recall-effects bundle: brightness, decay stage and gist timer recover, strength rises, neighbours shift →=RECALL →~FORGET-5
+  - never a reconsolidation: no `current_text` change, no `seed` change, no provenance row; rewriting happens per star only →!INV-8
+  - the clock syncs to today inside the recall's own transaction, only with the user's consent, through the shared consent modal →=TIME-15/16/18
+  - a diary with no still-live memory has nothing to recall: the action is disabled and the server refuses
+  - server contract →!DIARY-21; client flow →!DIARY-22
+- DIARY-4 [o] the original `Diary` is immutable and read verbatim: no system path, recall or reconsolidation rewrites it, and the reader never edits, deletes or re-splits one ← the star is a lossy, rewritten trace and the diary the objective record; that contrast is the product's emotional core
+  - the invariant →=INV-2; recall leaves the diary untouched →~RECALL-7
+  - the one exception is the user's own full delete: the diary leaves the archive at release and the sweep hard-deletes it after the restore window →=DEL-1/2
+  - guards: `diaries.sql` and `provenance.sql` hold SELECT statements only; `DiaryReader`, `ProvenanceReader` and `ExportReader` return rows with no setter shape; the recall transaction exposes no `Diary` write
+  - the wire carries the verbatim `body` and nothing derived from it: `DiaryDto` has no preview, summary or snippet field →~DIARY-6
+- DIARY-5 [o] the reader has exactly two doors: the universe page's archive control lands at the top of the list, and the star detail's original-diary door opens that memory's diary
+  - universe control: a `DiaryIcon` button labelled `diary_reader_title` in the universe page chrome, on web and mobile
+  - deep link: the star detail parks the memory id in `open-diary-target-store` (`packages/universe`); the reader opens the diary whose split membership holds it as the same modal a card opens, and on web scrolls the list to its card →~DIARY-19
+  - resolution runs over `GetDiaries` membership, so no memory→diary RPC exists; active conditions are lifted first (a filtered archive would run out of pages), then the reader auto-pages until the diary is found
+  - an exhausted archive drops the request; so does an entry the reader already opened, which is never swapped out from under them
+- DIARY-6 [o] no title exists at any layer: `Diary` has no `title` column and no title UI; a closed card shows the date, a body preview, the live star count and the mood dots, nothing else ← writing friction is what the product fights, so the card carries recognition instead of a headline
+  - preview: `diaryPreview(body, diary_reader.body_preview_length)` (`packages/memory`): whitespace collapsed, the first N code points, `…` only when cut; computed on the client and held to one line
+  - the preview is always a prefix of the verbatim body: never `CurrentText`, never a server summary, never an excerpt re-centred on a search hit →!DIARY-10
+  - star count (`diary_reader_star_count`): the diary's still-live memories; `0` for a past-dated diary that launched nothing →~TIME-1
+  - mood dots: the distinct moods of those memories in `MOODS` declaration order, coloured by `moodColor`, capped at `diary_reader.row_mood_dot_max` with a `+N` remainder (`diary_reader_mood_more`)
+  - dots are decorative to assistive tech; a visually hidden list (`diary_reader_mood_list`) names them through `moodLabel`
+  - zero live memories ⇒ no dots and never `NEUTRAL`'s colour: the absence of a recorded feeling is not a feeling →~MOOD-3
+  - every card has the same height: date, preview and footer are one line each
+- DIARY-7 [o] the archive is chronological, newest-first or oldest-first, and grows by infinite scroll that stays fast on a large archive
+  - order is `(diary_date, id)` and nothing else: two static sqlc queries, `ListDiariesPageDesc` and `ListDiariesPageAsc`; no runtime-built `ORDER BY`, no relevance or similarity ranking
+  - keyset pages, never `OFFSET`, served by `diaries_user_diary_date_idx (user_id, diary_date, id)`
+  - the cursor carries the direction (`base64url("<diary_date>|<id>|<newest|oldest>")`); a token whose direction disagrees with `sort` is refused (`MEMORY_DIARY_PAGE_TOKEN_INVALID`), so a sort flip always starts a fresh page
+  - `sort` unspecified means `NEWEST`; an unknown sort ⇒ `MEMORY_DIARY_SORT_INVALID`
+  - `diary_reader.page_size` is both the default and the hard cap of a page
+  - infinite scroll, no load-more button: web loads the next page from a sentinel at `diary_reader.infinite_scroll_root_margin_px`, mobile from `FlatList onEndReached` at `diary_reader.infinite_scroll_end_threshold`; never a second fetch while one is in flight
+  - the list speaks only while fetching (`diary_reader_loading`, `diary_reader_loading_more`) or on failure (`diary_reader_error`): no line marks the end of the archive, so a last page and a paused scroll look the same
+  - an empty archive (`diary_reader_empty`) and no results under active conditions (`diary_reader_no_results`, with the clear-conditions action) are distinct states
+- DIARY-8 [o] filters apply per `Diary`: an inclusive date range, a mood set and a still-live memory count range; a diary's mood is an existence fact over its still-live memories, never a representative mood
+  - mood: a diary matches iff at least one of its still-live (`deleted_at IS NULL`) memories has one of the requested moods; several moods are OR'd →~MOOD-2
+  - an `EXISTS` semi-join, never a `JOIN`: a diary's several memories would duplicate rows and break the keyset page
+  - a representative mood is rejected: a four-mood diary would be unfindable by three of its own moods
+  - a diary with no still-live memory matches no mood and still lists when no mood is asked; letting go keeps a memory live with its mood →~DEL-4
+  - date range: `from` and `to` inclusive over `diary_date`, each side optional
+  - count range: `min_memories` and `max_memories` inclusive over the still-live memory count, each `optional` on the wire because zero is a real bound, distinct from unset
+  - refused, never silently narrowed (InvalidArgument): an unknown mood (`MEMORY_DIARY_MOOD_FILTER_INVALID`), a non-ISO date or `from` after `to` (`MEMORY_DIARY_DATE_RANGE_INVALID`), a negative or inverted count range (`MEMORY_DIARY_COUNT_RANGE_INVALID`)
+- DIARY-9 [o] keyword search is a case-insensitive substring match over `Diary.body`, served by a trigram index ← measured on the deployment image: a whitespace text-search config misses Korean words with particles attached, and no Korean analyzer is available
+  - `pg_trgm` with the GIN index `diaries_body_trgm_idx` (`gin_trgm_ops`); predicate `body ILIKE '%' || keyword || '%'`
+  - the keyword is trimmed; fewer than `diary_reader.search_min_query_length` code points ⇒ refused (`MEMORY_DIARY_SEARCH_QUERY_TOO_SHORT`), since a one-character trigram query degrades to a full scan
+  - user `%`, `_` and `\` are escaped before binding and match literally
+  - no `tsvector`, no morphological analysis, no embedding or semantic search over diaries
+  - matching lives in Postgres only, with no TS twin; the client highlighter mirrors it (case-insensitive, literal) for marking only →~DIARY-10
+- DIARY-10 [o] search and filters never reach a forgotten representation: the immutable `Diary.body` is the only text searched, ordered by or excerpted ← restoring for free a word that forgetting removed would break the forgetting metaphor and the recall economy at once
+  - never matched, ranked, ordered by or excerpted: `CurrentText`, `DecayStages`, `SemanticStages`, provenance text, neuron text →~FORGET-1 →~TWINK-1
+  - search is free like reading the original →~TWINK-4, and it is lookup, never linking →~LINK-3
+  - guard: `DiaryFilter` has one text field, a predicate over `diaries.body`; no port, row or DTO in the archive reads has a field for memory text; `ORDER BY` reads only `diary_date` and `id`
+  - no server-side snippet and no highlight offsets on any message
+  - FE guard: the highlighter is `highlightSegments(diaryBody, query)`; the keyword reaches a card or an opened entry only through the injected `renderBodyText` seam over the diary body, so no query reaches a `CurrentText` render; split chips are never marked; marking never moves the visible window
+- DIARY-11 [o] the archive never advances universe time and never spends: listing, previewing, sorting, filtering, searching, the calendar and reading the original are free and effect-free; the whole-diary recall is the only exception →!DIARY-3
+  - the general rule, viewing never advances time →=TIME-3
+  - guard: `GetDiaries` and `GetDiaryCalendar` receive no clock port, no `SpendGate` and no `EconomyTx` and open no transaction; `diaries.sql` holds no `INSERT`, `UPDATE` or `DELETE`
+  - both are `NO_SIDE_EFFECTS` and classified exactly once with `userScopedUnaryReadPolicy` (`packages/client-cache/src/http-policy.ts`: authenticated GET, never shared-CDN cacheable); a missing or duplicate classification fails the transport before I/O →~ARCH
+  - the boundary is visible by shape, not by a sentence: exactly one control on the page wears a Twinkle marker (a `twinkle_balance_general_label` badge beside the whole-diary recall, with no amount), and no line states that the archive is free
+  - free surfaces cannot price by shape: `DiaryListProps` and the calendar grid's props carry no cost, balance, quote or spend field and no action slot; `features/read-diary-list` imports no economy or clock module
+  - paid and destructive are kept apart by distance and form: the paid door sits under the opened body, the delete is a glyph in the entry's corner →~DIARY-19
+- DIARY-12 [o] the calendar is a month view of the same archive: every written day is marked with that day's representative mood colour, and selecting a day opens that day's writing
+  - representative mood: the top slice of `toEmotionSlices` over the day's `(mood, weight)` rows (`dayRepresentativeMood`), inheriting its weight-descending, `localeCompare` tie-break and its drop of non-positive weights
+  - the same weighted blend the universe paints, collapsed to its loudest mood: never an average and never a per-diary pick →~MOOD-4
+  - a written day whose diaries hold no still-live memory (past-dated diaries that launched nothing) shows a border-token outline, never `NEUTRAL`'s colour, because the writing happened; its accessible name is `calendar_day_unmarked_hint` →~MOOD-3
+  - an unwritten day and an out-of-month cell are inert recessed text: no control, no role
+  - the mark is a filled disc under the day number; nothing animates
+  - the grid renders no diary text of any kind; its read carries none, so a snippet is unrepresentable there →~DIARY-10
+  - no year or heat-map view, no streaks, no per-day statistic →~ACH-7
+  - view and navigation →!DIARY-24; client read rules →!DIARY-25; the day modal →!DIARY-26
+- DIARY-13 [o] `GetProvenance(episodic_memory_id)` returns one memory's provenance history: a created baseline synthesized at read, then every appended `memory_provenance` row in universe-time order; free and side-effect-free
+  - entry `{kind, source, text, universe_time}`: kind `created`, `semanticized` or `reconsolidated`; source `original`, `system` or `user`; what they mean →=RECALL-10
+  - baseline: `created` / `original` at `created_universe_time`, text = the memory's `SourceText`, or the immutable `Diary` body for a memory with none (encoded before per-memory passages); never `current_text`, never a stored or backfilled row
+  - appended rows follow in `universe_time`, then `created_at`, then `id` order, so the read is deterministic
+  - no distortion flag: change is found by reading the list
+  - the `Diary` is never an entry: the objective record is reached only through the reader and `Export` →~INV-2
+  - missing, another user's or soft-deleted ⇒ `MEMORY_PROVENANCE_MEMORY_NOT_FOUND` (NotFound), with no cross-user leak; an empty id ⇒ `MEMORY_PROVENANCE_INPUT_REQUIRED`
+  - `NO_SIDE_EFFECTS`, `userScopedUnaryReadPolicy`; no clock, no write, no Twinkle, no `SpendGate`
+  - writers of the rows: reconsolidation →=RECALL, gist stages →=CONSOL; the panel that renders the list →=RECALL
+- DIARY-14 [o] `Export(format)` hands the whole account's retained diaries out as one CSV or Markdown file: the objective record byte-verbatim, never the mutable trace →~WRITE-6
+  - format `EXPORT_FORMAT_CSV` or `EXPORT_FORMAT_MD`; unspecified ⇒ `MEMORY_EXPORT_FORMAT_REQUIRED` (InvalidArgument)
+  - each diary in `(diary_date, id)` order with its body, plus its still-live memories' identity only: name, mood, `created_universe_time`; never `current_text` or stage texts
+  - no sanitizing and no spreadsheet-formula guard: a leading `=`, `+`, `-` or `@` stays as written, because the user's own record must come back unaltered
+  - CSV: columns `diary_date, diary_body, memory_name, mood, created_universe_time`, one row per diary × live memory, one row for a memory-less diary; MD: a dated section per diary with its body, then its memories as a list
+  - included: a past-dated diary that launched nothing, and a released diary inside its restore window (body only, its memories being soft-deleted); the sweep is what removes one →~DEL-2
+  - soft-deleted memories are excluded; neuron content is never read, so sealing is honoured structurally →~DEL-3
+  - the whole account in one call: no range or selection parameter, no size cap; response `{content, content_type, filename}` (`cosimosi-export.csv` or `cosimosi-export.md`)
+  - `NO_SIDE_EFFECTS`, `userScopedUnaryReadPolicy`; no clock, no write, no Twinkle; the export deletes nothing →~INV-1
+  - hosted by the my-page diary tab and offered by the withdrawal confirm →=ACCT-9/10; the deletion flows' reassurance →=DEL
+- DIARY-15 [o] `GetDiaries` is the single archive list read: unary, `NO_SIDE_EFFECTS`, user-scoped and keyset-paginated; search, filters and sort extend its request, and no second list RPC exists
+  - request: `page_size` (0 = server default), `page_token`, `query`, `moods`, `from`, `to`, `sort`, `optional` `min_memories` / `max_memories`; no `user_id` field, scope comes from `platform.UserScope`
+  - response: `DiaryDto{id, body, diary_date, created_universe_time, memories}` and `next_page_token` (empty = last page)
+  - `memories` is the split membership `DiarySplitRef{episodic_memory_id, name, mood}` of still-live memories, carried on the page so cards and chips need no second fetch; empty when none remains
+  - `created_universe_time` is the launch universe time the diary's memories share; empty for a diary that launched nothing
+  - no position, colour, preview, snippet or other derived field →~INV-5
+  - FE: one infinite archive query per list (`useDiaryArchive(input)` over the generated request shape, no hand-written mirror type); exactly one read per screen owns the shared diary mirror →=CLIENT
+- DIARY-16 [o] a released diary is invisible to the list, search, filters and calendar while its `release_groups` row exists, and reappears on Restore with no further write ← a copied `diaries.deleted_at` flag would duplicate the release ledger and make Restore need a second write →!DIARY-10
+  - every list, search, filter and calendar query carries a `NOT EXISTS` anti-join on `release_groups`; `diaries` has no `deleted_at` column and none may be added
+  - the release ledger, Restore and the sweep →=DEL-2
+  - only a released diary is hidden: a diary that launched nothing still lists →~INV-1
+  - release and restore invalidate the whole archive (the input-less `createGetDiariesInfiniteQueryKey(transport)` matches every filter and sort variant) and the calendar key →=CLIENT
+  - `Export` is not an archive view and keeps a released diary until the sweep →~DIARY-14
+- DIARY-17 [o] `GetDiaryCalendar(from, to)` returns, for each written day in the window, that day's per-mood weights and nothing else: no colour, no diary id, no text
+  - weight = the sum of `EffectiveStrength(base_strength, recall_count)` over the day's still-live memories of that mood in non-released diaries, computed in Go so the parity-pinned formula is never copied into SQL →~MOOD-4
+  - `from` and `to` are required inclusive ISO dates; missing, malformed or inverted ⇒ `MEMORY_DIARY_DATE_RANGE_INVALID`
+  - day-grained pages: distinct written days ascending, cursor `base64url("<diary_date>")`, page size `diary_reader.calendar_month_page_size` owned by the server (no request field), so no day splits across pages
+  - every written day in range yields a `DiaryDayDto`; a day whose diaries hold no still-live memory carries an empty mood list; a day absent from the response was never written
+  - moods come in `AllMoods()` order; a stored mood outside the 13 fails the read
+  - no `sort`, page-size or keyword field, and no request field can touch a memory's mood, strength or position →~INV-11
+  - the FE mirror `DiaryDay{diaryDate, moods}` stays nested, never flattened, so an empty-mood day stays distinct from an unwritten one; an empty or unknown mood reads as no live mood
+- DIARY-18 [o] the reader page is a header, the restore way back, one row of conditions and the archive body
+  - header: the way back to the universe on the left (`diary_reader_back`, a bare arrow with no fill or rim), the title centred, the list/calendar toggle on the right →~UI
+  - the restore way back (`deletion_restore_section_title`) stands above the conditions and is absent when nothing is restorable →=DEL
+  - the list is a grid whose column count is the measured width divided by `diary_reader.row_min_width_px`, given to the window virtualizer as its lane count; no breakpoint table; mobile shows one column
+  - windowing: web with `diary_reader.row_estimate_height_px`, `row_overscan` and `row_gap_px`, a focused card staying mounted after it scrolls out; mobile with `FlatList`
+  - the page is not capped at a reading column: long reading happens in the opened entry's dialog
+- DIARY-19 [o] a card opens its diary as a modal over the archive and never expands in place; the opened entry is one shared body wherever it is opened from ← an expanding card shifts the list and loses the reader's place, and one body keeps a diary reading and answering the same everywhere
+  - a card is one press with no control of its own (`aria-haspopup="dialog"` on web, `diary_reader_open_entry_hint` on mobile); dismissing lands back on that card
+  - `DiaryEntry`: the verbatim body, the split chips or, with no live memory, the note `diary_reader_all_let_go`, and one action slot the composing widget fills; the dialog title is the diary date
+  - slot contents: the whole-diary recall under the body, and the delete as a bare danger glyph in the entry's top-right corner (`deletion_delete_entry_action`, as accessible name and web tooltip) →=DEL
+  - the delete sits in the entry's corner, not the dialog header, because on a narrow screen the header is the sheet's drag surface
+  - the delete is disabled for an entry with no live memory, which Release refuses →=DEL
+  - taking either control closes the entry first: no dialog stacks on another
+  - an opened entry whose diary leaves the result set (released elsewhere, a narrower refetch) closes
+- DIARY-20 [o] the archive's conditions share one unframed row that wraps: keyword, order, mood fold, star count and a clear glyph; a condition the read would refuse is never committed
+  - the keyword stands in the open, committed after `diary_reader.search_debounce_ms`; below `diary_reader.search_min_query_length` it stays a draft with the hint `diary_search_keyword_too_short`, and the previous results stay
+  - the 13 mood chips fold behind one toggle (`diary_search_mood_toggle`) that shows how many are chosen (`diary_search_mood_selected`); a chosen chip is lit in its own mood colour, an unchosen one is a quiet outline with a dimmed dot
+  - star count, behind a button (`diary_search_memory_count_*`): all, each exact count from 0, and the top count or more, the top being `encode.max_memories` (`diaryMemoryCountOptions`); zero is a real choice; an option the build does not offer reads as no condition
+  - the order toggle shows the order the archive is in and is named by the action a press performs (`diary_reader_sort_to_oldest` / `diary_reader_sort_to_newest`); it is not a condition, so clearing never turns the archive over
+  - a narrowing condition (moods, star count) wears the accent while on; the order never lights
+  - the date range has no control: `from` / `to` stay read and URL fields that count as a condition; the archive's way to a single day is the calendar
+  - clear-conditions is a reset glyph named `diary_reader_clear_conditions`, outside the fold, so a folded panel never hides an active filter or the way out
+  - changing any condition starts a fresh keyset page, scrolls to the top and closes the opened entry
+  - web: conditions live in the URL (`q`, `moods`, `from`, `to`, `sort`, `memories`), validated or dropped by `parseDiarySearch`, written with `replace` through an update function, so a shared link reproduces the archive and Back leaves it; mobile keeps the same shape in screen state
+  - conditions are data, not control state: no XState machine; `useDiaryConditions` holds only uncommitted drafts →~DIARY-23
+- DIARY-21 [o] `RecallDiaryStars(diary_id, operation_id, sync_consent)` is one transaction that commits wholly or not at all: lock, receipt replay, consented sync, live-memory load, every spend, every reinforce, receipt →!DIARY-3
+  - order: per-user lock → receipt replay → sync to today (consent gate) → load the diary's still-live memories → spend each → reinforce each → achievement counters → receipt →~TIME-15
+  - zero still-live memories for the caller (released, never launched, or another user's diary) ⇒ `MEMORY_RECALL_NO_LIVE_MEMORIES` (NotFound) before any spend or receipt; the sync rolls back with it →~ACCT-1
+  - every member is priced from one pre-recall snapshot at the post-sync clock, before any reinforce, so the charge equals the quote →=TWINK-4
+  - each member spends under its own dedup key (operation id + member id); one denial (`MEMORY_INSUFFICIENT_TWINKLE`, ResourceExhausted) aborts all →=TWINK
+  - a retry of a committed `operation_id` with the same `diary_id` replays the stored response before the consent gate; the same id with another input ⇒ `MEMORY_OPERATION_CONFLICT`; the receipt mechanism →=RECALL
+  - request: `diary_id` and `operation_id`, both required (`MEMORY_RECALL_INPUT_REQUIRED`, `MEMORY_OPERATION_ID_REQUIRED`), plus `sync_consent`; response `{diary_id, episodic_memory_ids, previous_universe_time, universe_time}`; affected ids, price and interval are server-derived
+  - not `NO_SIDE_EFFECTS`; never calls the prediction-error compare or `Reconsolidate`
+  - each member counts as one recall for achievements →=ACH
+- DIARY-22 [o] the jump asks before it spends: quote, consent when the clock is behind, one recall, then arrival in the universe; leaving at any step before the recall moves no clock and spends nothing →!DIARY-21
+  - the quote is fetched once, in the jump dialog (`QuoteSpend(kind=SPEND_KIND_DIARY_RECALL, diary_id)`), with cost, coverage and shortfall; no card shows a price and the client computes none →=TWINK
+  - the action is disabled when the diary has no still-live memory
+  - proceeding reads `SyncStatus.needs_sync` fresh; true ⇒ the shared consent modal, reject ⇒ cancel →=TIME-18
+  - while recalling (`diary_reader_jumping`) the way back, dialog close and cancel are inert, and only the active attempt's result applies
+  - one operation id per attempt (`createPaidActionSession`): an ambiguous failure re-issues once with the same id, then returns to the quote keeping it; a known refusal re-quotes under a fresh id →=ERR
+  - a missing-consent refusal reopens the consent modal; once consent was given, no other refusal loops back to it →~TIME-16
+  - insufficient Twinkle ⇒ the earn guide →=TWINK
+  - success: the acceleration plays over the returned interval →=TIME-19; the reader navigates to the universe, parks the first recalled memory for the camera (`pending-fly-target-store`) and names every recalled memory in `spotlight-store`, ids only →=VIS
+  - recovered brightness, decay and gist timer surface on the next `GetUniverse` read, never from client math; balance, achievements and `SyncStatus` are invalidated
+- DIARY-23 [o] the jump's control state is one XState machine, `diaryReaderMachine` (`packages/universe`), with empty context; browsing, conditions, the calendar and the quote are data →=ARCH
+  | state | meaning | exits |
+  |---|---|---|
+  | `browsing` | archive shown, jump idle (resting state) | `JUMP` needing sync → `confirming`; `JUMP` otherwise → `recalling` |
+  | `confirming` | consent modal open | `ACCEPT` → `recalling`; `REJECT` → `browsing` |
+  | `recalling` | `RecallDiaryStars` in flight, no cancel | `DONE` → `flying`; `ERROR` → `browsing`; `CONSENT_REQUIRED` → `confirming` |
+  | `flying` | terminal; the reader unmounts on the route change | - |
+  - the target diary id, the quote, the operation attempt and the result live outside the machine (widget state, Query, shared stores)
+- DIARY-24 [o] the calendar is a view of `/diary`, not a destination: one toggle swaps the list body for the month grid and every other reader affordance stays mounted →!DIARY-12
+  - the toggle (`calendar_list_view_action` / `calendar_view_action`, group `calendar_view_label`) sits at the header's right end and names the shape the page is in; a press anywhere on it lands on the other view; no new route or screen
+  - the header, the restore way back, the conditions, the deep-link consumer and the deletion mount survive the switch; only the order control is withheld in the calendar
+  - stepping is prev / next one month, unbounded, with the month label between; no today button, no month picker
+  - initial month: the `month` param, else the month of the newest diary already cached, else the device-local current month; the resolved month is not written back
+  - web: `view` keeps only `calendar` (list is the absent default) and writes `replace`; `month` (`YYYY-MM`) pushes, so Back returns the previous month; neither is an archive condition; mobile keeps both in screen state
+  - the grid ignores the archive conditions: it marks every written day →~DIARY-26
+  - no XState machine: the month is a query input and the view is routed state →~DIARY-23
+- DIARY-25 [o] a month is painted only from a complete, current read of exactly that month →!DIARY-17
+  - the read covers the displayed month (first to last day), never the grid span, and is issued only while the calendar shows
+  - a month renders only when fully paged; a partly loaded month shows `calendar_loading`, since a missing high-weight mood would promote the runner-up
+  - dates never pass through a `Date` UTC conversion: integer `(y, m, d)` arithmetic and `YYYY-MM-DD` strings (`packages/universe/src/diary-calendar.ts`), so no mark shifts a day west of UTC →~WRITE-5
+  - freshness: `diary_reader.calendar_stale_ms` (entering refetches) and `diary_reader.calendar_prefetch_months` months warmed either side; `diary_reader.calendar_week_start_day` sets the first column, the weekday headers rotating with it
+  - release, restore and letting go invalidate the calendar key (`useInvalidateDiaryCalendar`); a recall's shift of a day's top mood waits for the next fetch; no polling →=CLIENT
+  - an empty month reads `calendar_empty_month`, not an error; a failed month reads `calendar_error`
+  - colour is resolved only at render through `moodColor`, so a palette change recolours the calendar with no code change →~MOOD-6
+- DIARY-26 [o] selecting a written day opens all of that day's diaries in a modal over the month, read through `GetDiaries` bounded to `from = to = day` ← the calendar carries no diary id, so the date is its only way back to the writing
+  - bounded by the date alone (order kept, conditions not applied), so a marked day always opens to what it is marked for; the list's conditions and the displayed month stay untouched
+  - the read runs only once a day is picked and never owns the shared diary mirror (`mirror: false`)
+  - every diary of the day, never a guessed single entry, each as the shared opened entry →!DIARY-19
+  - the widget mounts the modal; the grid's only outward prop is `onSelectDay(date)` and it has no action slot
+  - title `calendar_day_title`; loading `calendar_day_loading`; none left `calendar_day_empty`
+- DIARY-27 [o] BE placement: the archive, provenance, export and whole-diary recall use-cases live in the core `internal/memory` context, not a context of their own →=ARCH
+  - use-cases: `GetDiaries` (`diaries.go`), `GetDiaryCalendar` (`calendar.go`), `GetProvenance` (`provenance.go`), `Export` (`export.go`), `RecallDiaryStars` (`recall.go`)
+  - consumer-owned ports declared in `internal/memory`: `DiaryReader`, `ProvenanceReader`, `ExportReader`; `memory/pg` is the only sqlc seam, bound at `cmd/api`; no proto or sqlc type crosses inward
+  - queries `db/queries/memory/diaries.sql` and `provenance.sql`: user-scoped (`pnpm lint:persistence`), static sqlc with nullable arguments; no hand-built dynamic SQL, because the isolation lint scans only `db/queries/**/*.sql`
+  - handlers stay thin: parse ISO dates and enums, call the use-case, map errors through `reasons.go`
+  - `DiaryQuery`, `DiaryFilter`, `DiarySort` and `DiaryDayMood` are UL nouns →=UL
+  - no golden parity: keyword matching has no TS twin; the calendar reuses the pinned `EffectiveStrength` pair
+- DIARY-28 [o] FE placement: `pages/diary-reader` renders `widgets/diary-reader`, which composes four features; web and mobile run the same slices and fork only `ui` →=ARCH
+  - features: `read-diary-list` (cards, `DiaryEntry`), `search-diary` (conditions, `HighlightedBody`), `recall-diary-stars` (the paid door), `diary-calendar` (month grid)
+  - `DiaryReaderBlock` owns the header, the view branch, the entry and day modals, the jump sequencing and the deep-link consumer; features import neither one another nor the router
+  - navigation is injected as callback props (`onOpenReader`, `onExit`) by `app/routes` on web and `app/navigation` on mobile
+  - shared pure code in `packages/memory`: `diaryPreview`, `highlightSegments`, `diaryMoods`, the star-count options, the DTO mappers, `isKeywordSearchable`, `shouldAdoptCommitted`
+  - shared in `packages/universe`: `diaryReaderMachine`, the diary, open-diary-target, pending-fly-target and spotlight stores, `diary-calendar.ts`, `useDiaryArchive`, `useDiaryCalendar`, `useDiaryConditions`
+  - the month grid is slice-local layout: no calendar or date-picker primitive in `packages/ui`
+  - the reader imports no `three` and no visual entity; the fly and the spotlight are id-only hand-offs →~VIS
+  - copy under `diary_reader_*`, `diary_search_*` and `calendar_*`; mood names through `moodLabel`, no `mood_*` keys →=CLIENT
+
+## flow
+- browse: `/diary` → `GetDiaries`(conditions) → card → opened entry(read | whole-diary recall | delete)
+- whole-diary recall: quote → `SyncStatus.needs_sync`(false | true: consent modal(reject: cancel | accept)) → `RecallDiaryStars`(refused: re-quote | consent modal) → acceleration → universe(fly + spotlight)
+- calendar: toggle → `GetDiaryCalendar`(displayed month, fully paged) → day → day modal(`GetDiaries` from = to = day) → opened entry
+- deep link: star detail original-diary door → `/diary`(lift conditions → page until found | exhausted: drop) → opened entry
+
+## constraints
+- every archive tuning number is a `diary_reader.*` key in `spec/values.yaml`; FE code hardcodes no page size, preview length, staleness, prefetch count or week start; provenance and export own no values key (no export cap)
+- the demo has no archive route and calls no archive RPC; its read-only opened-entry twin belongs to the demo →=DEMO
+
+## chg
+- r1 261102 initial

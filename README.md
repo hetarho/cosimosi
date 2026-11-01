@@ -2,22 +2,23 @@
 
 **내 일기는 기억의 우주.** 일기를 쓰면 AI가 그 기억을 **별(엔그램)** 로 띄우고, 의미가 닿는 기억끼리 **시냅스(빛의 선)** 로 잇는다. 함께 떠올린 기억은 연결이 굵어지고, 오래 안 떠올린 별은 어두워지되 **사라지지 않는다**(침묵 엔그램). 자신의 기억이 빚은 우주를 탐험하며 삶을 되돌아보는 감성 3D 일기 서비스.
 
-> 신경과학 **엔그램 이론**(헵 가소성·재공고화·침묵 엔그램)을 데이터 구조와 인터랙션 전체에 매핑했다. 자세한 비전은 [spec/concept.md](spec/concept.md).
+> 신경과학 **엔그램 이론**(헵 가소성·재공고화·침묵 엔그램)을 데이터 구조와 인터랙션 전체에 매핑했다. 제품 정의는 [spec/ssot/PROD.md](spec/ssot/PROD.md), 신경과학 근거는 [spec/ssot/SCI.md](spec/ssot/SCI.md).
 
 ## 문서 (source of truth)
 
-이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. _무엇을·왜·어떻게·지금 무엇을_ 짓는지가 전부 `spec/`에 있다. 읽는 순서: **concept → ubiquitous-language → ARCHITECTURE → plan**.
+이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. 스펙은 [haeram-spec-creator](https://github.com/hetarho/haeram-spec-creator) 구조를 따르고, _지금 유효한 규칙_ 은 전부 `spec/ssot/`에 도메인별 결정으로 있다. 읽는 순서: **PROD → INV → UL → ARCH → 필요한 도메인**.
 
-| 문서                                                       | 내용                                                                                             |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [spec/concept.md](spec/concept.md)                         | **무엇을 / 왜** — 엔그램 우주 비전과 신경과학 가드레일                                           |
-| [spec/ubiquitous-language.md](spec/ubiquitous-language.md) | **용어** — 규범적 용어 목록                                                                      |
-| [spec/ARCHITECTURE.md](spec/ARCHITECTURE.md)               | **어떻게** — 레이어·경계·배치 규칙, 스택 결정                                                    |
-| [spec/plan/](spec/plan/)                                   | **지금 무엇을 / 언제** — 번호별 작업 스펙. [00.overview](spec/plan/00.overview.md)가 색인·로드맵 |
+| 문서                             | 내용                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [spec/STATE.md](spec/STATE.md)   | **지금 어디까지** — 도메인별 SSOT 개정(rev) 현황, 남은 태스크, 다음 할 일                             |
+| [spec/FORMAT.md](spec/FORMAT.md) | **표기 규칙** — 결정 ID(`TWINK-4`), 문서 골격, 상태 규칙. 코드의 `[G4]` 같은 옛 규칙 ID 대응표도 여기 |
+| [spec/ssot/](spec/ssot/)         | **무엇을 / 왜 / 어떻게** — 도메인별 SSOT. 제품 `PROD`, 불변식 `INV`, 용어 `UL`, 아키텍처 `ARCH` 등    |
+| [spec/tasks/](spec/tasks/)       | **남은 일** — 태스크. `tasks/done/`은 완료 이력(옛 plan·job·change 원문 포함, 현재 규칙의 근거 아님)  |
+| [spec/review/](spec/review/)     | **코드 리뷰** — 우선순위가 붙은 finding과 채택 여부                                                   |
 
 ## 상태
 
-**플랫폼 재구축 — 토대 단계.** 깨끗한 `apps/{api,web,mobile}` 루트가 각각 "hello world"를 띄우는 빈 무대다. 아직 도메인·전송(RPC)·DB·렌더링은 없다 — [00.overview](spec/plan/00.overview.md)의 순서대로 유닛을 쌓아 올린다.
+진행 상황·남은 태스크·다음 할 일은 [spec/STATE.md](spec/STATE.md)에 있다.
 
 이전 MVP 코드·스펙은 **git 히스토리에 보존**돼 있다(현재 트리에는 없음 — 클린 재구축이 끝나 참조용 사본은 정리했다).
 
@@ -84,7 +85,7 @@ The root gate is split into composable commands:
 | `pnpm check:api` | api gofmt, vet, test, and build together                                                           |
 
 Backend gates run on host Go when available and fall back to Docker with the same commands. The vocabulary lint reads
-`spec/ubiquitous-language.md` and scans only active source roots. Probe commands for deliberate failures:
+`spec/ssot/UL.md` (UL-25) and scans only active source roots. Probe commands for deliberate failures:
 
 ```bash
 pnpm --filter @cosimosi/web lint:boundaries:probe
@@ -107,15 +108,15 @@ cosimosi/
 └── packages/        ← 공유 패키지 경계 (promote-on-reuse; 빈 패키지 선제 생성 금지)
 ```
 
-배치 규칙·의존 방향은 [spec/ARCHITECTURE.md](spec/ARCHITECTURE.md).
+배치 규칙·의존 방향은 [spec/ssot/ARCH.md](spec/ssot/ARCH.md).
 
 ## 개발 방식 (spec-driven)
 
-1. [spec/plan/00.overview.md](spec/plan/00.overview.md)에서 **선행 의존이 끝난 유닛**을 고른다.
-2. 그 `NN.*.md`의 목적·범위·설계·수용 기준을 읽고 job으로 옮겨 구현한다.
+1. **`/start-vibe`** 로 시작한다 — STATE를 읽고 기획(`create-ssot`·`update-ssot`·`create-task`)과 구현(`implement-task`)을 골라 진행한다. 아이디어는 `/ideation`, 화면을 보며 다듬는 일은 `/start-design`.
+2. 기획 변경은 SSOT 개정(rev+1, `## chg` 기록)으로 먼저 남기고, 태스크(`spec/tasks/T###`)로 쪼갠 뒤 구현한다.
 3. 작업을 끝낼 때마다 **Conventional Commits** 변형으로 커밋한다:
-   `type(planNN - scope): English title`. 커밋 제목은 영어로 쓰고, 본문/코멘트는 한국어로 쓴다.
+   `type(scope): English title`. 커밋 제목은 영어로 쓰고, 본문/코멘트는 한국어로 쓴다.
 
 ## 비-목표
 
-공개 소셜 네트워크 ✕ · 감정 분석/조언 도구 ✕ · 차트/통계 대시보드 ✕ · 기억을 박제하는 도구 ✕. cosimosi는 **살아있는 기억의 우주(풍경)** 를 만든다. ([spec/concept.md](spec/concept.md) 비-목표)
+공개 소셜 네트워크 ✕ · 감정 분석/조언 도구 ✕ · 차트/통계 대시보드 ✕ · 기억을 박제하는 도구 ✕. cosimosi는 **살아있는 기억의 우주(풍경)** 를 만든다. ([spec/ssot/PROD.md](spec/ssot/PROD.md) 범위·비-목표)

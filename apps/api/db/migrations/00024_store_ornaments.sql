@@ -3,7 +3,7 @@
 -- [P7][P9][I11][U1] Permanent ownership history: a purchase or an achievement grant, never
 -- expiring, never revoked, never UPDATEd by the system. The insert is ON CONFLICT DO NOTHING,
 -- which is also the idempotency guard for the achievement reward leg. No `kind` column — kind
--- is derivable from the id prefix, so storing it would be a second truth (ARCHITECTURE §2.9 #3).
+-- is derivable from the id prefix, so storing it would be a second truth (ARCH-10).
 -- No FK to users, matching every other product table: a withdrawn user leaves no cascade, and
 -- the one hard delete is that user's own withdrawal sweep ([I1]).
 --

@@ -1,4 +1,4 @@
-// Package pg is the account context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete Store
+// Package pg is the account context's only sqlc/pgx seam (ARCH-11): the concrete Store
 // over the account's tables with the row↔domain mapping at this edge — no dbgen type escapes
 // inward. It declares no repository interface; the port is consumer-owned by the account use-case.
 package pg

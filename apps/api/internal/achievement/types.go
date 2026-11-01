@@ -80,7 +80,7 @@ func (r ProgressRecord) Claimed() bool { return r.ClaimedAt != nil }
 func (r ProgressRecord) Settled() bool { return r.PaidAt != nil }
 
 // Entry is one catalog row answered for one caller: the row, and what is true of it for them —
-// all of it derived at read time except the ProgressRecord facts (ARCHITECTURE §2.9 #3).
+// all of it derived at read time except the ProgressRecord facts (ARCH-10).
 type Entry struct {
 	Achievement
 	// Progress is min(counter, target) — computed at read, never stored.

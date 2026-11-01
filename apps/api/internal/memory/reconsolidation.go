@@ -26,7 +26,7 @@ import (
 // The neighbor ± reuses the Depress/LTD seam (associative/local); it is explicitly NOT Downscale
 // (SHY, homeostatic sleep [I9]), which appears nowhere here.
 
-// PredictionError is the consumer-owned gate ([R6], ARCHITECTURE §2.4): a single LLM semantic-compare
+// PredictionError is the consumer-owned gate ([R6], ARCH-8): a single LLM semantic-compare
 // answering "is the rewrite meaningfully different in CONTENT from the current memory text, ignoring
 // wording, spacing, and word order?". A content change (true) makes the recall a reconsolidation; a
 // mere re-wording (false) is reinforce-only. The boundary is a semantic judgment that lives in the
@@ -48,7 +48,7 @@ const reshapeCollisionNudge int64 = 1
 // Reshape returns the new visual-form seed for a reconsolidated memory ([V5]). A seed is a meaningless
 // value that fixes a unique form; it changes ONLY on reconsolidation, so the form visibly shifts when
 // the content actually changes (reconstruction made visual) — plain recall never calls this
-// ([R4][I8]). The caller (the backend, never the client — ARCHITECTURE §5) supplies fresh entropy as
+// ([R4][I8]). The caller (the backend, never the client — ARCH-14) supplies fresh entropy as
 // newSeed, keeping this pure and deterministic; the returned seed is guaranteed to differ from
 // currentSeed, nudged on the rare collision.
 func Reshape(currentSeed int64, newSeed int64) int64 {

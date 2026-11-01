@@ -7,7 +7,7 @@ import { VALUES } from '@cosimosi/config'
 
 /**
  * The native canvas host drives an R3F root by hand, so it — not R3F — owns when the WebGPU device
- * is built and released (ARCHITECTURE §3.5: the fork owns its test). What this pins is the effect
+ * is built and released (ARCH-30: the fork owns its test). What this pins is the effect
  * split: a re-render or a config change must reach the running root, and only a backend switch or a
  * real unmount may touch the device.
  *

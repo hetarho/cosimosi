@@ -1,4 +1,4 @@
-// Package pg is the achievement context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete
+// Package pg is the achievement context's only sqlc/pgx seam (ARCH-11): the concrete
 // store over achievement_counters + achievement_progress, with the row↔domain mapping at this
 // edge — no dbgen row escapes inward. It declares no repository interface: the ports are
 // consumer-owned by the achievement behavior (construct a Store over a transaction handle with

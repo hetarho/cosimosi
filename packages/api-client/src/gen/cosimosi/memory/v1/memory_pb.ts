@@ -220,7 +220,7 @@ export const ConfirmedMemorySchema: GenMessage<ConfirmedMemory> = /*@__PURE__*/
  */
 export type LaunchStarsResponse = Message<"cosimosi.memory.v1.LaunchStarsResponse"> & {
   /**
-   * Optimistic write: ids only; embeddings/gist fill on the next read (§2.8).
+   * Optimistic write: ids only; embeddings/gist fill on the next read (ARCH-19).
    *
    * @generated from field: repeated string memory_ids = 1;
    */
@@ -571,7 +571,7 @@ export const SynapseDtoSchema: GenMessage<SynapseDto> = /*@__PURE__*/
 /**
  * The memory + what the user wrote back. rewrite_text is the ONLY content field the client
  * sends — no seed, brightness, strength, decay, price, or diary field exists, so the
- * reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
+ * reshape/bump/anchors/price are all server-derived (ARCH-31, [W4a] structural defense).
  *
  * @generated from message cosimosi.memory.v1.RecallRequest
  */
@@ -674,7 +674,7 @@ export const RecallResponseSchema: GenMessage<RecallResponse> = /*@__PURE__*/
 
 /**
  * diary_id is the only target field the client sends — the affected memory ids, price, and
- * anchors are all server-derived (§2.9#8). operation_id/sync_consent carry the same paid-action
+ * anchors are all server-derived (ARCH-31). operation_id/sync_consent carry the same paid-action
  * idempotency + consent contract as RecallRequest (A2/A3); each whole-diary member spends under
  * an operation-derived per-member dedup key, so a replay re-charges no member.
  *
@@ -706,7 +706,7 @@ export const RecallDiaryStarsRequestSchema: GenMessage<RecallDiaryStarsRequest> 
 
 /**
  * The memory and the gist stage the user chose to view [C6] — the only target fields the
- * client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
+ * client sends; whether that stage has risen and what it costs are server-derived (ARCH-31).
  * operation_id carries the paid-action idempotency contract (A2/A3); a view advances no clock,
  * so it needs no sync_consent.
  * The client names the MEMORY, never a depth: the server derives which gist rung the memory has
@@ -1548,7 +1548,7 @@ export const MemoryService: GenService<{
   },
   /**
    * Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
-   * ids only (ARCHITECTURE §2.8).
+   * ids only (ARCH-19).
    *
    * @generated from rpc cosimosi.memory.v1.MemoryService.LaunchStars
    */

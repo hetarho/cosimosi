@@ -4,7 +4,7 @@ import { createActorContext } from '@cosimosi/state-machine/react'
 import { appShellMachine } from '../model/app-shell.machine.ts'
 
 /**
- * App-wide XState actors mount here (ARCHITECTURE §3.2). The shell owns the
+ * App-wide XState actors mount here (ARCH-24). The shell owns the
  * shell-lifecycle actor; later app-wide actors join the same provider so feature
  * slices select from a single, documented boundary instead of spawning their own
  * long-lived actors. `AppShellActor` exposes the typed Provider + hooks.

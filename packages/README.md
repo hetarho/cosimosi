@@ -20,9 +20,9 @@
 ## 이미 승격된 패키지
 
 - **`packages/ui`** (`@cosimosi/ui`) — 공유 디자인 토큰 + 접근성 UI 프리미티브. web·mobile이 day-one에 함께 쓰는
-  Phase 1 예외라(promote-later 아님, [overview](../spec/plan/00.overview.md) §1) 처음부터 패키지로 짓는다. `packages/`의
+  Phase 1 예외라(promote-later 아님, ARCH-27) 처음부터 패키지로 짓는다. `packages/`의
   "DOM/native 미의존" 규칙의 **플랫폼 인지 예외**: DOM(`*.tsx`) + RN(`*.native.tsx`) 형제를 `exports` 조건으로 가른다.
-  규칙은 [spec/tech/design-system.md](../spec/tech/design-system.md).
+  규칙은 [spec/ssot/UI.md](../spec/ssot/UI.md) UI-23–31.
 
 루트 `proto/`는 패키지가 아니라 **모든 클라이언트가 공유하는 transport 계약**이다 — `packages/`로 옮기지 않는다.
-모바일 재사용 전략의 전체 그림은 [spec/tech/architecture.md](../spec/tech/architecture.md) §3.4를 본다.
+모바일 재사용 전략의 전체 그림은 [spec/ssot/ARCH.md](../spec/ssot/ARCH.md) ARCH-27–28을 본다.

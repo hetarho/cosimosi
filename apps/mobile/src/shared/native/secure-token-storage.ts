@@ -1,7 +1,7 @@
 import type { SupabaseAuthStorage } from '@cosimosi/auth'
 
 /**
- * Secure token storage seam (ARCHITECTURE §3.5). The auth facade persists the
+ * Secure token storage seam (ARCH-28). The auth facade persists the
  * Supabase session through this `getItem/setItem/removeItem` contract; feature
  * code never touches it. A production build supplies a Keychain/Keystore-backed
  * implementation at the app boundary when native secure storage is wired.

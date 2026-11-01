@@ -6,7 +6,7 @@ import { and, assign, setup } from 'xstate'
  * Every terminal state accepts `START` again, which is what makes a replay a START rather than a
  * reset ritual — the caller needs no teardown, and nothing survives from the previous pass.
  *
- * Control state only (ARCHITECTURE §3.2): the script, the measured rects and the anchor registry all
+ * Control state only (ARCH-24): the script, the measured rects and the anchor registry all
  * live outside, so the context stays JSON-serializable and a snapshot cannot smuggle in a function,
  * a collection or a DOM handle. `stepCount` is supplied on START precisely so the machine can know
  * the last step WITHOUT holding the script.

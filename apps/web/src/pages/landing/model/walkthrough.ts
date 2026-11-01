@@ -21,7 +21,7 @@ import type { EpisodicMemory } from '@cosimosi/memory'
  * sentence a new user must not get wrong. The `satisfies` clause restates the tuple, so removing a
  * step, reordering one, or dropping the closing `'mirror'` is a `tsc` failure rather than a review
  * catch. This tuple is the [M5] structural guard — the definition's required home on the page
- * (policy/ux/public-copy.md).
+ * (spec/ssot/MKT.md MKT-17).
  */
 export const WALKTHROUGH_STEPS = [
   'split',

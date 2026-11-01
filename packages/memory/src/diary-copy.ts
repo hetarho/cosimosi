@@ -9,7 +9,7 @@ import { DIARY_MEMORY_COUNT_ALL } from './diary.ts'
 // The Korean copy is the poetic register a reader sees (별) while every name around it — the keys, the
 // option table, this function — speaks of memories. That is the layer line rather than a synonym: what
 // is counted is a diary's still-live `EpisodicMemory` rows, and the rendered body they wear a name for
-// belongs to the rendering vocabulary this package deliberately does not hold (UL §4).
+// belongs to the rendering vocabulary this package deliberately does not hold (UL-25).
 export function diaryMemoryCountLabel(option: string, maxMemories: number): string {
   const top = Math.max(1, Math.floor(maxMemories))
   if (option === DIARY_MEMORY_COUNT_ALL) return m.diary_search_memory_count_all()

@@ -108,7 +108,7 @@ describe('observability facade', () => {
       {
         key: 'platform.remoteKillSwitch',
         defaultValue: false,
-        owner: 'plan/10.observability-and-flags',
+        owner: 'OBS-10',
         kind: 'kill-switch',
         description: 'Safety control.',
         review: 'Can be read before analytics consent.',
@@ -117,7 +117,7 @@ describe('observability facade', () => {
       {
         key: 'platform.releaseToggle',
         defaultValue: false,
-        owner: 'plan/10.observability-and-flags',
+        owner: 'OBS-10',
         kind: 'release',
         description: 'Release rollout.',
         review: 'Consent-gated remote lookup.',
@@ -150,7 +150,7 @@ describe('observability types', () => {
       {
         key: 'platform.booleanOnly',
         defaultValue: true,
-        owner: 'plan/10.observability-and-flags',
+        owner: 'OBS-10',
         kind: 'operational',
         description: 'Boolean flags only.',
         review: 'Review before enabling.',
@@ -162,7 +162,7 @@ describe('observability types', () => {
         {
           key: 'platform.a-b',
           defaultValue: false,
-          owner: 'plan/10.observability-and-flags',
+          owner: 'OBS-10',
           kind: 'operational',
           description: 'Collision probe.',
           review: 'Should never compile into one env override.',
@@ -170,7 +170,7 @@ describe('observability types', () => {
         {
           key: 'platform.a_b',
           defaultValue: false,
-          owner: 'plan/10.observability-and-flags',
+          owner: 'OBS-10',
           kind: 'operational',
           description: 'Collision probe.',
           review: 'Should never compile into one env override.',
@@ -183,7 +183,7 @@ describe('observability types', () => {
         key: 'platform.numericTuning',
         // @ts-expect-error numeric product tuning belongs in spec/values.yaml, not feature flags.
         defaultValue: 0.75,
-        owner: 'plan/10.observability-and-flags',
+        owner: 'OBS-10',
         kind: 'operational',
         description: 'Invalid numeric tuning value.',
         review: 'Should never compile.',

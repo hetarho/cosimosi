@@ -1,7 +1,7 @@
 import { Linking } from 'react-native'
 
 /**
- * Inbound-link seam (ARCHITECTURE §3.5). The app root owns link parsing only to
+ * Inbound-link seam (ARCH-28). The app root owns link parsing only to
  * the extent the shell needs (auth callbacks, future typed routes); product deep
  * links are later feature work. The navigation layer turns
  * these prefixes into React Navigation's typed linking config, which owns the

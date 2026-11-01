@@ -20,7 +20,7 @@ export type ButtonProps = ButtonOwnProps &
 // colour at the web recipe's tint density over whatever ground the button sits on, a rim of the same
 // role, and the plain text ink. RN has no backdrop-filter and no glow, so the blur and the halo are
 // the documented divergence — but the *weight* matches, because a full-strength field of an accent
-// reads as a warning in a dark interface (design-language §2.3) and left every native screen louder
+// reads as a warning in a dark interface (UI-34) and left every native screen louder
 // than its web twin. The mixes are resolved from the one OKLCH source via `oklchToRnColor`.
 // The web recipe's densities: a 46% role tint behind a 38% rim of the same role. Neutral is the quiet
 // surface colour, so it carries the web's denser neutral tint — at 46% it would barely register.

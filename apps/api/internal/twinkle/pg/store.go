@@ -1,4 +1,4 @@
-// Package pg is the twinkle context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete
+// Package pg is the twinkle context's only sqlc/pgx seam (ARCH-11): the concrete
 // store over twinkle_balances + twinkle_ledger_entries with the row↔domain mapping at this
 // edge — no dbgen row escapes inward. It declares no repository interface: the port is
 // consumer-owned by the earn/spend use-case, which composes these methods inside

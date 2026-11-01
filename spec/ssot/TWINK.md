@@ -1,0 +1,247 @@
+# TWINK Twinkle economy
+> r1 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
+
+## decisions
+- TWINK-1 [o] every recall act costs Twinkle: `Recall` of an episodic memory (reconsolidation) and `ViewSemantic` of a gist both spend, and there is no free-recall count ← everyday recall is carried by the daily `SMALL` grant, not by free uses →!TWINK-5
+  - free and never priced: the meta info (shape, mood, written date, strength, forgetting state) and the forgotten current text shown when an episodic memory is opened →=RECALL-1
+  - free means the action never calls the spend gate; it is a use-case gating decision, never a zero point on a price curve →~TWINK-4
+  - the other free surfaces →=TWINK-4
+- TWINK-2 [o] Twinkle has two kinds, told apart by what they may buy, not by how they were obtained: `SMALL` (작은 별가루) pays only for recall and refills daily with no carry-over; `GENERAL` (별가루) pays for anything and carries forever →~TWINK-8
+  - `SMALL`: a fixed daily grant `twinkle.small_daily_amount`; unspent remainder is discarded when the day turns; it pays only the recall family (`RECALL`, `GIST_VIEW`, `DIARY_RECALL`) →!TWINK-13
+  - `GENERAL`: every earn credits it →~TWINK-19; it pays every purpose, present and future
+  - spend order for the recall family: `SMALL` first, `GENERAL` covers the overflow; every other purpose draws `GENERAL` alone →=TWINK-14
+  - the refill boundary is the start of the user's own local calendar day in `User.Timezone` (`ResetWindowOf(now, zone)`) →!ACCT-7
+  - that boundary is a real-clock economy window, not a clock of the universe: universe time never paces the refill →!TWINK-10 →~TIME-5
+- TWINK-3 [o] users earn Twinkle only five ways: the daily `SMALL` refill, writing a diary, claiming an achievement, a friend invite (both sides) and a one-time signup bonus; there is no login or attendance bonus and no payment ← the daily refill plays the attendance role
+  - every earn credits `GENERAL`; `SMALL` is never earned →!TWINK-19
+  - write: `twinkle.earn_write` once per launched diary, not per memory, inside the launch transaction; a past-dated save that launches no `EpisodicMemory` earns nothing →~TIME-1
+  - achievement: a `GENERAL` reward credited on the explicit claim, never `SMALL` →=ACH-3; a rare ornament reward is an ownership grant and never touches the ledger; the claim and payout lifecycle →=ACH-21–23
+  - invite: the inviter gets `twinkle.earn_invite_inviter` and the invitee `twinkle.earn_invite_invitee`, only for a valid signup →!TWINK-6
+  - signup bonus: `twinkle.earn_signup_bonus` once per account, settled after a launch that raises a memory (the first pays, later attempts replay as no-ops), never at signup or login, independent of any invite →=ACCT-11
+  - beyond the five, an operator may gift `GENERAL` (`admin_grant`): a discretionary support grant, not a path a user can pursue →=ADMIN
+  - payment is not a v2 earn path →=TWINK-26
+- TWINK-4 [o] four actions spend Twinkle: an episodic recall (dearer the deeper its forgetting), a gist view (cheaper the deeper its gist), an ornament purchase (`GENERAL` only) and the whole-diary recall (the sum of its memories' recall costs)
+  - recall: `RecallCost(accessibilityCost)` = `twinkle.recall_base_cost` + `twinkle.recall_depth_coefficient` × the accessibility weight, rounded, capped at `twinkle.recall_max_cost`; non-decreasing in forgetting depth
+  - the weight is forgetting's (`AccessibilityCostWeight`), derived server-side at the clock the recall syncs to, identically for the quote and the spend; no accessibility formula lives in `internal/twinkle`, no price in `forgetting.*`, and clients never price a recall →!FORGET-4
+  - the cap keeps a silent memory recallable within a plausible balance; a recall restores accessibility, so the next recall of that memory prices lower →~FORGET-5
+  - gist view: `GistViewCost(stage)` = `twinkle.gist_base_cost` minus `twinkle.gist_stage_discount` per stage past 1, floored at `twinkle.gist_min_cost`; non-increasing in stage, cheap and never free; a stage below 1 prices as 1 →~RECALL-8
+  - the gist view is priced at the memory's own viewable stage (its risen stage bounded by the stored stage texts), derived server-side for both quote and spend; no client names the stage it is priced at
+  - purchase: the catalog total of one decoration save, computed by the store context and passed through; one ledger row per save, never one per ornament →~DECOR-8
+  - whole-diary recall: the sum of the per-member `RecallCost`; each member spends its own `recall` row, all priced from one pre-recall snapshot at the post-sync clock, so in-batch reinforcement cannot reprice the batch and the charge equals the quote →~DIARY-3/21
+  - free: reading, searching and filtering the original diary →=DIARY-10/11; release and restore are never priced →=DEL
+  - the curve shapes, clamps and spend order are code; only their coefficients are `twinkle.*` values
+- TWINK-5 [o] the daily `SMALL` grant always covers everyday rumination, so the cost gate bites only excess recall, and decoration spending can never eat today's recall ← this is why two kinds exist →!MOOD-5
+  - pinned as a relation, not a magic number: `small_daily_amount ≥ expected daily ruminations × the cheapest recall`, asserted over the generated constants by `TestCoreLoopProtectionRelationship` (assumption: 5 everyday recalls; cheapest = `RecallCost` at the forgetting cost-weight floor)
+  - an everyday recall affordable from `SMALL` reaches its proceed step without touching the shortfall path →~TWINK-34
+  - the structural half: no purpose outside the recall family can draw `SMALL` →!TWINK-13
+- TWINK-6 [o] an invite pays only for a valid signup: a distinct live inviter, at least one launched `EpisodicMemory` by the invitee, a verified invitee email, and fewer than `twinkle.invite_reward_max_per_inviter` earlier rewarded invites by that inviter ← a launch costs each fake account an LLM round-trip, and the lifetime cap bounds one inviter's farming
+  - the concrete gate (the four conditions, their order, the email-verification source and each failure mode) →=ACCT-20; the settlement path, only the post-commit launch hook and never a wire handler →=ACCT-21; invite binding →~ACCT-8
+  - failing any condition pays neither leg; past the cap a link still binds, but neither leg pays; the signup bonus is independent of all of it →=ACCT-11
+  - twinkle backstops the cap inside the credit's own ledger transaction: an inviter-keyed lock and a count of that inviter's existing `invite` credits hold it under concurrency and the credit-before-stamp crash window; an exact dedup replay of an already-credited invite passes at the cap so its settlement stamp can recover
+  - the credited invitee must be the authenticated user (`ErrInviteBeneficiaryMismatch`) and differ from the inviter; an opaque code or a raw account id carries no value by itself
+- TWINK-7 [o] every economic event is exactly one row of one append-only ledger (`twinkle_ledger_entries`): purchase, claim, earn and spend alike, so the history has one source and nothing happens off the books
+  - the daily `SMALL` refill is not an event: it is derived from the stored anchor, so it writes no row and is shown as a labelled marker instead →=TWINK-38
+  - the balance row and its log row change in one transaction; `GENERAL` is reconstructable by folding the log, whose arithmetic invariants are DB CHECKs →=TWINK-21
+  - no system `UPDATE` or `DELETE` touches a ledger row; the only removal is the withdrawal purge →=TWINK-25
+  - no second ledger, no achievement-specific balance, and no reward or purchase path that bypasses this table
+  - readable newest first in `/me`'s stardust tab →=TWINK-36
+- TWINK-8 [o] Twinkle is cosimosi's only currency: every paid feature, present or future, charges `GENERAL` and never mints a second currency; `SMALL` is a purpose-restricted sub-kind of it, not a second currency
+  - the restriction is the core-loop guard →=TWINK-5
+  - the general kind carries the unmarked user-facing name →=TWINK-31
+- TWINK-9 [o] the balance is one stored row per user plus a derivation: `GENERAL` is a stored carrying counter, `SMALL` is derived at read and never stored →!TWINK-2
+  - `Balance{Small, General}` in whole Twinkle units; `TwinkleKind` (`SMALL`, `GENERAL`) is a way of reading the row, never a persisted column value
+  - `SmallRemaining(now, zone, anchor, spentThisWindow)`: the full grant when the local date of `now` is after the anchor date, else `grant − spent` clamped to `[0, grant]`; at or before the anchor it derives the anchored window, so it never over-grants
+  - a user with no row derives a full `SMALL` and zero `GENERAL` (lazy birth); a read writes nothing
+  - `SMALL` is never earned, credited or refunded: the store refuses a negative `SMALL` spend delta and any delta or amount outside int32 (`ErrDeltaOutOfRange`)
+  - server-authoritative single-writer state: only the server writes it; clients read `GetBalance` and never advance either kind
+- TWINK-10 [o] the `SMALL` refill reads real time and is lazy: no cron, no scheduled job and no grant row; a read derives the fresh grant and the anchor rolls forward on the next write in the new day ← the refill paces a real-world daily habit, and a universe-time refill would never refill a user who only views
+  - this is the engine's one intentional real-time crossing, isolated to `internal/twinkle`, which never reads universe time →~TIME-4
+  - the pure functions take `now` as an argument; the service clock is a seam
+  - real time paces the grant and is never a measured condition: nothing counts days, streaks or elapsed real time →~ACH-7
+- TWINK-11 [o] an unresolvable time zone reads as UTC and never blocks a refill ← a missing zone may never deny a day's recall →!TWINK-5
+  - `LocationOf(name)`: an empty, blank or unknown name, and a user with no profile row, resolve to UTC without an error; only a failing zone read (a DB error) propagates
+  - `"Local"` resolves to UTC: Go's alias for the process zone would tie a user's day to the server's location, and the TS mirror has no such alias
+  - the derivation has no zone-free variant, so no caller can silently read a UTC day
+  - the zone arrives as an IANA name through the consumer-owned `UserZoneReader`; `NewService` refuses a nil reader (`ErrZoneReaderRequired`) and the package exports no permissive UTC adapter
+  - `cmd/api` and `cmd/worker` import `time/tzdata`, so zone loading is hermetic on the distroless image; `cmd/api/timezone_test.go` asserts both the resolution and the import
+- TWINK-12 [o] the stored window anchor never moves backward, so a time-zone change never yields two refills for one local date →~INV-10
+  - the anchor write is `GREATEST(anchor, ResetWindowOf(now, zone))`, never a bare `now`; a rolled window starts its spend from the new delta alone
+  - moving east can bring the next refill forward once, by at most the offset span; moving west keeps the current window
+  - no rate limit on the time-zone control is needed or specified; the `/me` time-zone row says a change does not refill today's `SMALL` (`me_timezone_notice`) →=ACCT-9
+  - an earn resolves the zone of the credited user, not the caller's (an invite credits the inviter too), and takes one clock read for both the entry time and the anchor
+- TWINK-13 [o] `SpendKind` names the purpose a spend is planned against (`RECALL`, `GIST_VIEW`, `DIARY_RECALL`, `PURCHASE`), and `SMALL` eligibility is decided by it alone through the closed switch `SmallEligible`, whose default arm is false ← an unlisted or future purpose can never reach the recall allowance →!INV-11
+  - eligible: `RECALL`, `GIST_VIEW`, `DIARY_RECALL` (the paid-read set; a whole-diary recall is a recall); `PURCHASE` and every unlisted kind are ineligible
+  - ineligibility is not an error: an ineligible purpose draws zero `SMALL`, and the only denial stays insufficiency →=TWINK-17
+  - `SpendKind` stays distinct from the persisted `EntryReason`; `EntryReason.SpendKind()` is the one bridge, so a spend's price and its eligibility come from the same value
+  - the eligible list is code, never a values key: a tunable list would make the purchase guard tunable
+- TWINK-14 [o] `PlanSpend(smallRemaining, general, cost, kind)` plans the draw: the recall family exhausts `SMALL` before touching `GENERAL`, every other kind draws `FromSmall = 0`, and the plan fits only when the `GENERAL` part does →!TWINK-13
+  - inputs are floored at 0, so neither kind can plan negative; it plans and never writes
+  - `ShortfallFor` = the `GENERAL` part minus the `GENERAL` balance when the plan does not fit, else 0; `SMALL` counts only for an eligible kind, so a purchase never reports itself covered by the recall allowance
+- TWINK-15 [o] a `Spend` is a consequence of the paid action, never a separate step: the caller hands `CheckAndSpend` an intent, and the gate prices it, plans the draw and deducts inside the caller's transaction ← no charge without the action, and no action without the charge
+  - a rolled-back action (a refused recall, a failed decoration save) leaves no ledger row and no balance change
+  - an intent is opaque, built only by `RecallSpendIntent(accessibilityCost, key)`, `GistViewSpendIntent(stage, key)` or `PurchaseSpendIntent(amount, key)`
+  - a recall or gist intent has no amount field, so no caller sets its own price; a purchase intent has no depth or stage field and no ornament id, kind or colour, so no curve prices an ornament and no item reaches the ledger →~INV-11
+  - `spendPrice` is the only place a metered action is priced; a purchase amount is the caller's catalog total, refused when not positive (`ErrPurchaseAmountInvalid`); a zero price writes nothing
+  - the transaction is shared, never the queries: the composition root binds the twinkle store onto the caller's pgx transaction (an `EconomyTx` carrier exposing `DB()`); a caller with no transaction gets the gate's own
+  - recall and gist view load their target before spending, so a missing or unrisen target never charges →=RECALL
+- TWINK-16 [o] a spend is idempotent per paid operation: its row carries a dedup key derived from the client operation id and the member memory id (`spendDedupKey`, a hash), so a retried or duplicated action draws the balance once
+  - append-first: the dedup-keyed row is appended before the balance delta, and an append that reports a replay skips the delta (the same pairing as every earn)
+  - a whole-diary recall shares one operation id, so each member gets its own key and a replay re-charges no member
+  - it backstops memory's paid-action receipt, which replays a committed action's response →=RECALL
+  - a purchase carries the store's own purchase key →=DECOR
+- TWINK-17 [o] an unaffordable spend is refused whole: nothing is written, nothing is deleted, and the refusal states how much is missing, counting only the kinds that may pay for that purpose →!TWINK-14
+  - typed `*InsufficientTwinkle{Cost, Eligible, Shortfall}` wrapping `ErrInsufficientTwinkle`; `Eligible` is `GENERAL` for a purchase and `SMALL + GENERAL` for the recall family
+  - the same balance can cover a recall and refuse a purchase: that is the core-loop guard, not a bug →~TWINK-5
+  - the numbers travel as error metadata (`Detail()`), never as a message to parse; transport reason `TWINKLE_INSUFFICIENT` (ResourceExhausted); memory surfaces `MEMORY_INSUFFICIENT_TWINKLE`, the store `STORE_INSUFFICIENT_TWINKLE` naming the item →=DECOR
+  - a `SMALL` draw that races past the daily grant at write time surfaces as the same insufficiency →=TWINK-22
+  - client recovery points at earning, never at buying →=ERR
+- TWINK-18 [o] `QuoteSpend` is the spend's read-only twin: the same pricing and balance derivation, returning `{cost, covered, shortfall}` with no row written, no window rolled and no clock advanced
+  - quotable: `RECALL` and `GIST_VIEW` by `episodic_memory_id`, `DIARY_RECALL` by `diary_id` (the per-member `RecallCost` sum from one batch read of the diary's anchors); the wire enum has no `PURCHASE` and the quote has no purchase arm (`ErrQuoteInputRequired`)
+  - the depth signal is resolved server-side through the consumer-owned `SpendSignalReader` over memory's published reads, at the clock a real recall would sync to: the later of the clock baseline and the user's today →~TIME-15
+  - the gist depth comes from the memory, never from the request; `QuoteSpendRequest` tag 4 (a client-supplied stage) is reserved
+  - a stale quote is refused later by the authoritative spend, which re-derives everything at action time
+  - a purchase is previewed on the client from `GENERAL` and the catalog, never by a server quote, so the price table never rides a second contract →=DECOR
+- TWINK-19 [o] every `Earn` credits `GENERAL` and is idempotent per its dedup key: the row is appended first and a replay skips the credit; each writable earn reason has exactly one named entry point and no generic `Earn(reason, amount)` exists
+  | reason | entry point | amount | dedup key | transaction |
+  |---|---|---|---|---|
+  | `write_diary` | `EarnOnWrite` | `twinkle.earn_write` | `write_diary:<diaryID>` | the launch's (required: `ErrEarnTxRequired`) |
+  | `invite` | `ClaimInvite`, inviter leg | `twinkle.earn_invite_inviter` | `invite:<inviteID>` | own ledger tx, both legs together |
+  | `invite_signup` | `ClaimInvite`, invitee leg | `twinkle.earn_invite_invitee` | `invite_signup:<inviteID>` | the inviter leg's |
+  | `signup_bonus` | `EarnSignupBonus` | `twinkle.earn_signup_bonus` | `signup_bonus:<userID>` | own ledger tx |
+  | `achievement_claim` | `EarnAchievementReward` | the claimed tier's reward →=ACH-3 | `achievement:<claimID>` | own ledger tx →=ACH-21–23 |
+  | `admin_grant` | `EarnAdminGrant` | operator amount, capped at `twinkle.admin_grant_max` by the console →=ADMIN | the console's grant id | own ledger tx |
+  - the credit primitives (`EarnSignupBonus`, `EarnAchievementReward`, `EarnAdminGrant`) decide no eligibility: they check scope and key, and refuse a zero or negative amount (`ErrGrantAmountInvalid`) or an empty claim id (`ErrRewardClaimRequired`); whether a signup, claim or gift is valid belongs to its owner
+  - running outside the causing transaction makes each pairing heal on replay (a claim stamped before its credit, an invite credited before its settlement stamp) instead of making another context the owner of twinkle's tables
+  - an invite's two legs carry different reasons so each side's history names its own moment; a replay that applies one leg but not the other rolls back (`ErrInviteGrantConflict`)
+  - `ClaimInvite` has no wire RPC; its only caller is the account settlement adapter →!TWINK-6
+- TWINK-20 [o] `EntryReason` is a closed set of exactly eleven values, defined once in `internal/twinkle/ledger.go`; a new economic event is a new TWINK decision, never a reason added in passing →!TWINK-7
+  - writable earns: `write_diary`, `invite`, `invite_signup`, `signup_bonus`, `achievement_claim`, `admin_grant`; writable spends: `recall`, `gist_view`, `ornament_purchase`
+  - `daily_grant` is reserved and never written: it has no entry point, the store refuses it (`ErrUnwritableReason`) and the wire has no value for it; it names the economy's one non-event instead of leaving a hole
+  - `payment` is retained for historical rows with no write path →=TWINK-26
+  - guards: `TestEntryReasonsAreAClosedSetWithNoLoginBonus` enumerates the set with each reason's earn/spend direction and fails on a twelfth or a login-shaped reason; `TestDailyGrantAndPaymentAreReachableFromNoEntryPoint` drives every entry point
+  - no PG enum and no membership `CHECK` on `reason`: on an append-only ledger it costs a migration per reason and risks failing historical rows; the domain owns the set, the schema owns the arithmetic
+- TWINK-21 [o] storage is a balance row plus an append-only log, `twinkle_balances` (`user_id` primary key) and `twinkle_ledger_entries`, with their arithmetic invariants enforced in the DB ← the hot-path balance read is one key lookup, while the log keeps audit, idempotency and reconstruction
+  - `twinkle_balances`: `CHECK (additional >= 0)`, `CHECK (basic_spent_this_window >= 0)`; the daily-grant figure never appears in DDL and reaches the write as a query argument
+  - `twinkle_ledger_entries`: `CHECK (amount > 0)`, non-negative `from_basic` and `from_additional`, a spend's amount equal to its two-kind split, `UNIQUE (user_id, dedup_key)` (a NULL key opts out)
+  - `kind` (`earn`, `spend`) carries the sign; `amount` is always positive
+  - `CHECK (reason NOT IN ('ornament_purchase') OR from_basic = 0)` makes a `SMALL`-funded purchase unstorable even for a caller that bypasses the use-case; the one reason-shaped CHECK, because it guards money →=DECOR-9
+  - payment keys are globally single-use (a partial unique index); every other key is user-scoped →=TWINK-26
+- TWINK-22 [o] oversell is impossible at the DB for both kinds: `ApplyBalanceDelta` updates first under the row lock, then births a missing row with a guarded insert, then retries the update when a concurrent birth won
+  - the `GENERAL` CHECK refuses a negative balance; an in-query grant guard refuses a `SMALL` draw past the daily grant even when two spends planned against one stale read; the loser is `ErrBasicGrantExceeded`, which wraps `ErrInsufficientTwinkle`
+  - no plain upsert carries a delta: Postgres checks the proposed insert tuple even when it conflicts into the update arm, so a negative delta would fail; a first write that would overdraw is refused, never masked
+  - the only ledger write is the dedup-guarded append (`ON CONFLICT DO NOTHING`); a conflict that is not a dedup replay is an error (`ErrUnexpectedLedgerConflict`), never a silent no-op
+- TWINK-23 [o] the persisted columns keep the provenance spelling (`basic*`, `additional`), and exactly one file speaks both vocabularies: `internal/twinkle/pg/store.go` ← a rename migration on an append-only ledger buys nothing and puts its CHECKs at risk →~INV-1
+  | domain | column |
+  |---|---|
+  | `Balance.General` | `twinkle_balances.additional` |
+  | `BalanceRecord.SmallSpentThisWindow` | `twinkle_balances.basic_spent_this_window` |
+  | `BalanceRecord.SmallResetWindow` | `twinkle_balances.basic_reset_window` (the user's local date) |
+  | `LedgerEntry.FromSmall`, `LedgerEntry.FromGeneral` | `twinkle_ledger_entries.from_basic`, `from_additional` |
+  - `Balance.Small` has no column: it is derived →=TWINK-9
+  - guard: `pnpm lint:language` rejects the provenance tier identifiers (`BasicBalance`, `AdditionalBalance`, `basicRemaining`, `FromBasic`, `FromAdditional`, "basic Twinkle", "additional Twinkle") outside `apps/api/db/**` and `apps/api/internal/twinkle/pg/**`
+  - the shipped `00007` DDL comment calling the anchor a UTC day is wrong and stays unedited (a shipped migration); the anchor is the user's local date
+- TWINK-24 [o] `GetLedger` is the one history read: the user's ledger newest first, keyset-paged over `(created_at, id)`, never `LIMIT/OFFSET` ← an entry landing mid-scroll must not shift a page boundary and duplicate or skip a row
+  - `page_size` 0 means `twinkle.ledger_page_size`, which is also the hard cap
+  - the page token is opaque (`base64url` of created-at and id); a fabricated token is refused (`TWINKLE_LEDGER_CURSOR_INVALID`), never restarted from the top; an empty `next_page_token` means the history ends there
+  - a row carries `id`, `kind`, `reason` (a proto enum), `amount`, `from_small`, `from_general`, `occurred_on` (`YYYY-MM-DD` already resolved in the user's zone by the same `ResetWindowOf` as the refill) and `occurred_at` (RFC3339)
+  - never on the wire: the dedup key (it embeds diary, invite and claim ids), any per-reason payload (an ornament id would bring store vocabulary into the contract), any memory or diary id →~TWINK-37
+  - `LedgerEntryReason` has no `DAILY_GRANT` value; the kind and reason mappers send an unknown value to `UNSPECIFIED`, and clients render an unspecified or unknown reason as a plain record, so a newer server's row never reads as the wrong thing →~TWINK-37
+- TWINK-25 [o] Twinkle rows are removed only by the withdrawal purge, which deletes the withdrawing user's own balance row and ledger and nothing else →=ACCT-10
+  - an invite credit already paid to the other side belongs to that user and is never reversed; a restore writes no balance compensation
+  - the purge leg is twinkle's own published `WithdrawalPurger`: one transaction, deletes by `user_id` only, replay-safe, run by the account's withdrawal sweep →~ACCT-27
+  - the schema records the rule: migration `00017` comments both tables as append-only against system behaviour, the only DELETE being the user-originated sweep after retention, the one exception to the no-delete invariant →~INV-1
+  - every query is user-scoped: both tables carry `user_id`, every store method refuses an empty scope (`ErrUserScopeRequired`), and no request carries a `user_id`; guard `pnpm lint:persistence` →=ACCT-1
+  - deliberate cross-user exceptions: the global payment-key index, and the admin console's batch balance read `GetBalances`, which applies the same derivation →=ADMIN
+- TWINK-26 [o] there is no payment path: the charge RPC, its use-case, the store-receipt verifier port and the charge pack are removed, not disabled ← a button guaranteed to fail and a recovery flow pointing at it are worse than none →~PROD
+  - kept as historical guards: the `payment` reason, `LEDGER_ENTRY_REASON_PAYMENT`, migration `00010`'s partial global unique index on payment keys with its preflight (aborts on historical duplicates, never repairs by mutation), and the `payment` arm of the dedup check
+  - a pre-existing `payment` row still folds into the balance and still renders in the history
+  - a future payment path credits `GENERAL` and arrives as a new decision →!TWINK-8
+- TWINK-27 [o] `twinkle.v1.TwinkleService` is read-only by design: `GetBalance`, `QuoteSpend` and `GetLedger`, each `NO_SIDE_EFFECTS` ← Twinkle moves only as a consequence of another act, so it needs no mutating contract
+  - each is classified once in `packages/client-cache/src/http-policy.ts` with `userScopedUnaryReadPolicy` (authenticated GET, never shared-CDN cacheable) →=CLIENT
+  - `GetBalanceResponse{small, general, total}`
+  - no wire RPC earns or spends: the write earn rides the launch (`EarnPort`), a spend rides recall, gist view and decoration save (`SpendGate`), and claim, settlement and gift credits are composition-root calls
+  - no `buf breaking` gate runs: wire compatibility is a review duty, and `pnpm gen` with `pnpm check:gen` are the contract gates →~ARCH
+- TWINK-28 [o] `internal/twinkle` is a standalone core context: it imports no other context, no context imports it, and they meet only in composition-root adapters under `apps/api/cmd/api` →=ARCH
+  - `internal/twinkle` holds the domain and use-cases with no proto, sqlc or pgx; `internal/twinkle/pg` is the only sqlc/pgx package; `internal/twinkle/rpc` holds thin handlers
+  - consumers declare the ports twinkle serves: memory's `SpendGate` and `EarnPort` (with an opaque `EconomyTx`), store's `SpendGate`, the achievement reward granter, account's invite and signup-bonus granters, admin's stardust granter
+  - memory requires both of its ports; `AllowAllSpendGate` and `NoEarnOnWrite` exist only for economy-less roots and tests, and `cmd/api` binds the real `twinkleSpendGate` and `twinkleEarnPort`
+  - twinkle declares `LedgerStore`, `UserZoneReader`, `SpendSignalReader` and `InviteResolver`; `NewService` fails when one is unbound, and no permissive default is exported
+  - adapters translate both ways: consumer kinds to reasons, the canonical insufficiency to each consumer's own error, memory read refusals to `ErrQuoteTargetNotFound` or `ErrQuoteTargetUnavailable`
+  - `memorySpendSignals` is the one two-way seam, bound to the memory service right after construction
+- TWINK-29 [o] the pure economy functions (`RecallCost`, `GistViewCost`, `PlanSpend`, `SmallEligible`, `ShortfallFor`, `ResetWindowOf`, `SmallRemaining`) are golden-parity TS↔Go between `internal/twinkle/ledger.go` and `packages/twinkle-logic` →=ARCH
+  - pinned by `apps/api/internal/twinkle/testdata/stardust-ledger-golden.json`, which is Go-generated: `UPDATE_GOLDEN=1 go test ./internal/twinkle/ -run TestWriteStardustLedgerGolden`; both suites assert every case and fail on an unknown one
+  - it carries zone cases by name (extreme positive and negative offsets, empty, unknown, `"Local"`) and per-kind plan cases with an eligible and an ineligible kind at the same balance, including an unlisted kind
+  - TS `resetWindowOf` returns `YYYY-MM-DD` or null (null derives the conservative same window), pins zone-less timestamps to UTC and falls back to UTC when `Intl` cannot resolve the zone
+  - no production client path calls the mirror: clients display the server's balance and quote, never price or derive →!TWINK-9
+- TWINK-30 [o] the universe page always shows the balance reading: the two kinds as two separate figures, `SMALL` then `GENERAL`, each with its own glyph, and no Twinkle surface shows a summed total ← beside the two figures a total only repeats them, and it overstates what a purchase can spend →~DECOR-9
+  - top-right over the canvas, in `widgets/stardust`, on web and mobile
+  - a placeholder until the first `GetBalance` settles, never a false zero; `SMALL` is granted from first login, so a resolved reading is never empty →~TWINK-5
+  - it refreshes when a spend or earn resolves, by invalidating the whole `TwinkleService` query key (balance, open quotes and history together); it never polls
+  - web has two compositions with no surface behind them: wide names both kinds inline; phone stacks glyph and figure with the names visually hidden; mobile stacks glyph and figure and a press toggles the names
+  - `GetBalanceResponse.total` stays on the wire and no Twinkle surface reads it
+- TWINK-31 [o] the user-facing names: `SMALL` is "작은 별가루" and `GENERAL` is the unmarked "별가루" (`twinkle_balance_small_label`, `twinkle_balance_general_label`; `twinkle_balance_title` names the currency) ← the single currency takes the plain name and only the restricted sub-kind is qualified →!TWINK-8
+  - "기본 별가루" and "추가 별가루" name the kinds by provenance and must not appear: `pnpm lint:language` rejects them in source and in `packages/i18n/messages/*.json`
+  - poetic names stay user-facing; code says `Twinkle`, `SMALL`, `GENERAL` →=UL
+- TWINK-32 [o] pressing the balance reading opens the Twinkle panel (`TwinkleDetailSheet`) in the reader's question order: what is held, then the way to get more, then how it gathers ← someone who opens a balance is usually short of it
+  - held: both kinds, named, with no total (`twinkle_detail_held_label`)
+  - the way to get more is present but disabled, its reason beside it (`twinkle_charge_action`, `twinkle_charge_unavailable`): absence would read as "this is all there will ever be"; nothing purchases or charges, and no recovery flow points at it →=TWINK-26
+  - then the earn guide →=TWINK-33
+  - no separate "what is this?" mark beside the figures
+  - mobile has not adopted the panel: a notice-icon action under the figures opens the earn guide dialog (`EarnGuideSheet`), with no held figures and no disabled control; a parity gap, not a waiver →~ARCH
+  - the panel's open flag is local widget state; a shortfall opens the same surface through `useEarnRequestStore` →=TWINK-34
+- TWINK-33 [o] the earn guide explains and never transacts: it lists the four repeatable paths (daily `SMALL` refill, writing, achievements, inviting) with figures from generated config, and its one affordance opens `/me`'s achievements tab →!TWINK-3
+  - figures: `twinkle.small_daily_amount`, `twinkle.earn_write`, `twinkle.earn_invite_invitee`; the client holds no economy constant
+  - the one-time signup bonus is not listed: naming a grant the reader already received, and cannot receive again, reads as an offer
+  - no mutation, no request and so no failure state; no login or attendance bonus anywhere
+  - the affordance lands on `/me?tab=achievements` on web and the `Me` route's achievements tab on mobile →=ACH-4
+  - the route reaches the widget as an intent callback (`onOpenAchievements`) supplied by the app layer, never a route name →=CLIENT
+  - copy keys `twinkle_earn_*`
+- TWINK-34 [o] a paid action shows its server-quoted price before it happens: `features/spend-cost-display` fronts the recall, the gist view and the whole-diary recall, and the client never computes a price →!TWINK-18
+  - it returns a decision only (proceed, cancel or earn) and never spends; the composing flow fires the spend on proceed →=RECALL
+  - covered: the price with proceed and cancel; short: the price, the amount missing (`twinkle_cost_shortfall_label`) and a way to the earn guide (`twinkle_cost_earn`), never a purchase and never a dead end
+  - the shortfall copy states the number and never implies the user did something wrong
+  - the shortfall requests the guide through `useEarnRequestStore`, so the spend flows and `widgets/stardust` never import each other
+  - a spend refused at commit (balance or depth changed after the quote) resets the gate and re-quotes into the same path →=RECALL
+  - a failed quote shows an error line with cancel only; free surfaces never show a cost display →=TWINK-1
+  - labels per purpose: `twinkle_cost_recall_label`, `twinkle_cost_gist_label`, `twinkle_cost_diary_label`
+- TWINK-35 [o] a launch that earned Twinkle shows one restrained notice (`twinkle_write_earn_notice`, figure `twinkle.earn_write`) and refetches the balance; it rides the launched-neurons announcement, so it lands with the star's reveal, after any acceleration →~TIME-19
+  - a past-dated save launches nothing and shows no notice →~TIME-1
+- TWINK-36 [o] `/me`'s stardust tab (`features/twinkle-ledger`) shows the two kind figures with no sum, the refill marker, then the history newest first under day headers →~ACCT-9
+  - day headers come from the server's `occurred_on`; the client does no time-zone arithmetic, so its days agree with the refill boundary the reader watches →!TWINK-24
+  - paging: web loads the next page from an intersection sentinel; mobile shows an explicit more control (`me_stardust_history_more`) because the tab sits inside the page's own scroll view, where end-reached never fires
+  - a failed read shows `me_stardust_history_error`, never the empty line: a broken request is not an empty history
+  - empty: both figures, the refill marker and one restrained line (`me_stardust_history_empty`), never a bare empty list
+  - the list (`TwinkleLedgerList`) is not windowed: rows are cut into day sections and grow by one per event; windowing waits until real ledgers reach the low thousands of rows
+- TWINK-37 [o] a history row says what happened and how much, nothing more: its reason as the caption and its signed amount; a spend adds its kind split in parentheses beside the amount, a step smaller and quieter
+  - the split is `me_stardust_spend_split` (both kind names with their figures) with no introducing label; an earn row shows no split, since every ledgered earn credits `GENERAL`
+  - the reason-to-caption map is a total `Record` over the generated enum (`me_stardust_reason_*`), so a reason without copy fails typecheck; a value outside the enum reads `me_stardust_reason_unknown`
+  - a `payment` row still renders (`me_stardust_reason_payment`): hiding a removed feature's rows would be a quieter deletion →~INV-1
+  - a row is never a link into a memory: the entry carries no memory or diary id (→!TWINK-24), and the jump would bypass the recall price →~INV-11
+  - captions narrate the moment, never the mechanism; no row reads as a transaction receipt
+- TWINK-38 [o] the daily refill appears in the history exactly once, as a marker at its head, never as a row ← the ledger must not claim a transaction that never happened, and a reader looking for it should learn why it is absent →!TWINK-7
+  - its own component (`TwinkleRefillMarker`) taking no reason and no entry id, in distinct chrome, so it cannot be produced from a row or mistaken for one
+  - figure: the grant `twinkle.small_daily_amount`, not the remainder; copy `me_stardust_refill_marker` plus `me_stardust_refill_note`, which says it leaves no record
+  - no date: its place is positional, since the client cannot know the user's today without device-clock arithmetic
+  - no past day gets a marker: past anchors are unrecoverable client-side, and inventing them would fabricate history
+- TWINK-39 [o] FE placement: the shared substance lives in `packages/twinkle` (balance mirror `useTwinkleBalanceStore`, `useEarnRequestStore`, the pending-spend constructors, the pure `ledger-day` grouping, the `@cosimosi/twinkle/react` query hooks), and apps hold only `ui` →=ARCH
+  - `packages/twinkle` holds IO and state only; the pricing formulas stay in `packages/twinkle-logic` and are never duplicated →=TWINK-29
+  - slices on both apps: `features/twinkle-balance-hud`, `features/spend-cost-display`, `features/earn-twinkle`, `features/twinkle-ledger`, `widgets/stardust`; web adds `features/charge-twinkle` (the disabled control) and the panel in `widgets/stardust`
+  - no XState machine for the economy overlay: it issues no request, so its only state is an open flag, which is data →~CLIENT
+  - `resetTwinkleUserState()` clears the balance mirror and the earn request at user-scope reset →=CLIENT
+  - a pending spend names only the action and its target (`recallSpend`, `gistViewSpend`, `diaryRecallSpend`) and carries no figure
+  - no Twinkle slice imports `three` or a visual entity, and no Twinkle surface calls `memory.v1`
+- TWINK-40 [o] no Twinkle surface exposes a meaning-layer or placement control, and none mutates a `Diary`: the economy gates access to a recall, never what a memory is →!INV-11
+  - no mood, position, strength or other meaning-layer word crosses the balance reading, the panel, the cost display or the stardust tab →~INV-2
+  - Twinkle reads and writes no emotion, coordinate, colour or synapse →~INV-3
+
+## flow
+- spend: cost display(`QuoteSpend`; covered: proceed | short: earn guide) → paid action transaction → `CheckAndSpend`(price → derive balance → `PlanSpend`; fits: append dedup-keyed row, apply delta | short: refuse, write nothing) → commit with the action → balance invalidation
+- earn: event(launch | settlement | claim | gift) → append dedup-keyed row(replay: skip the credit) → credit `GENERAL` → client refetch
+
+## constraints
+- all Twinkle copy goes through the i18n seam, plain and unpressured about price: state the cost, offer the path, no sales language, no decorative emoji →=UI
+- the demo reaches no Twinkle package, price, quote, balance or spend gate; its unlimited Twinkle is discharged by absence →=DEMO-8 →~DEMO-2
+- the `twinkle.*` values group holds only coefficients, earn amounts, caps and the page size; formulas, closed sets, the eligible list, dedup-key formats and catalogs (ornament prices →=DECOR, reward tiers →=ACH) are not values
+
+## chg
+- r1 261102 initial

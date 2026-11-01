@@ -12,7 +12,7 @@
 //   node scripts/lint-public-copy.mjs
 //   node scripts/lint-public-copy.mjs --probe    self-test that every class actually fires
 //
-// Rules: spec/policy/ux/public-copy.md
+// Rules: spec/ssot/MKT.md MKT-7 (this guard is MKT-9)
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, sep } from 'node:path'
@@ -188,7 +188,7 @@ if (probe) {
 
   if (violations.length) {
     console.error(violations.map((line) => `- ${line}`).join('\n'))
-    fail('public copy makes a claim the product cannot support (spec/policy/ux/public-copy.md)')
+    fail('public copy makes a claim the product cannot support (spec/ssot/MKT.md MKT-7)')
   }
   ok(`scanned ${files.length} public-copy file(s) across ${classes.length} claim class(es)`)
 }

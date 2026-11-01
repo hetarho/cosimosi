@@ -68,7 +68,7 @@ export default defineConfig(({ command, mode }) => {
       // warning that always fires is the same as no gate. The binding chunk is NOT the entry (930 kB)
       // but the renderer chunk rolldown splits out of it — 1.62 MB of three.js that the landing
       // page's two scenes import statically, so nothing can defer it short of a reduced renderer
-      // entry (the split boundary is documented in spec/tech/web-routing.md).
+      // entry (the split boundary is CLIENT-33).
       //
       // So: just above the renderer chunk. If this fires, something new grew past the largest thing
       // we ship on purpose — measure before raising it. `pnpm build:web` prints every chunk; the

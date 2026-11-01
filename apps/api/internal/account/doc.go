@@ -1,5 +1,5 @@
 // Package account is the supporting context for a user's product profile, authentication-provider
-// linkage, invite capabilities, and presentation preferences (ARCHITECTURE §2.2).
+// linkage, invite capabilities, and presentation preferences (ARCH-6).
 //
 // Supabase Auth remains authoritative for credentials, email, verification, and provider
 // membership. Account owns nickname, timezone, locale, linkage timestamps, and invite bindings.

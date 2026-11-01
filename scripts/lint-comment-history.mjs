@@ -36,12 +36,8 @@ const IGNORED_DIRS = new Set([
 ])
 const ignoredDir = (name) =>
   IGNORED_DIRS.has(name) || name.startsWith('.probe-') || name.startsWith('__boundary_probe_')
-// The guard necessarily contains its own negative fixtures and pattern documentation. The job
-// scaffolder has one narrower line exemption for the public CLI example that contains a source kind.
+// The guard necessarily contains its own negative fixtures and pattern documentation.
 const EXEMPT_FILES = new Set(['scripts/lint-comment-history.mjs'])
-const EXEMPT_LINES = new Map([
-  ['scripts/new-job.mjs', /^\s*\/\/\s+pnpm spec:job (?:plan|change|refactor) \d+\b/],
-])
 // Only lines that carry a comment marker are inspected. SQL uses -- while the other scanned
 // languages use their own markers; keeping them separate avoids treating a JS decrement as SQL.
 // proto uses // and /* */, so COMMENT already covers it.
@@ -138,12 +134,11 @@ const findProblems = (files, root) => {
     const repoRelative = relative(root, file)
     if (EXEMPT_FILES.has(repoRelative)) continue
     lines.forEach((line, index) => {
-      if (EXEMPT_LINES.get(repoRelative)?.test(line)) return
       if (!hasComment(line, repoRelative)) return
       const hit = NARRATION.find((re) => re.test(line)) || scopedHit(line, repoRelative)?.re
       if (hit) {
         problems.push(
-          `${repoRelative}:${index + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
+          `${repoRelative}:${index + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/ssot/ARCH.md ARCH-39).`,
         )
       }
     })

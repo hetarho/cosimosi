@@ -22,7 +22,7 @@ COMMENT ON COLUMN achievement_counters.counter_key IS
 
 -- achievement_progress — the two non-derivable per-achievement facts ([A4][U1]): when the condition
 -- was first met, and when the reward was received. Progress itself is NOT stored — it is derived at
--- read from achievement_counters against the in-code target (ARCHITECTURE §2.9 #3). The PK is the
+-- read from achievement_counters against the in-code target (ARCH-10). The PK is the
 -- double-payout guard; claim_id is the dedup key both reward legs carry. Rows are never deleted
 -- except by the withdrawal sweep, and achieved_at is never cleared ([I1]). Both
 -- timestamps are stamped by SQL now(), which is what lets the Go context own no clock ([A1a]).

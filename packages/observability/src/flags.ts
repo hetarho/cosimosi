@@ -4,8 +4,8 @@ export type FeatureFlagKind = 'release' | 'operational' | 'kill-switch'
 export interface FeatureFlagDefinition<K extends string = string> {
   readonly key: K
   readonly defaultValue: FeatureFlagValue
-  readonly owner:
-    `plan/${number}${string}` | `changes/${number}${string}` | `code-review/${number}${string}`
+  /** The SSOT decision that owns the flag (`OBS-10`), so a flag can never outlive its rule unseen. */
+  readonly owner: `${Uppercase<string>}-${number}`
   readonly kind: FeatureFlagKind
   readonly description: string
   readonly review: string
@@ -81,7 +81,7 @@ export const platformFeatureFlags = defineFeatureFlagRegistry([
   {
     key: 'platform.diagnosticsSurface',
     defaultValue: false,
-    owner: 'plan/10.observability-and-flags',
+    owner: 'OBS-10',
     kind: 'operational',
     description:
       'Allows development diagnostics surfaces to be enabled without changing product behavior.',

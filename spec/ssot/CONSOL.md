@@ -1,0 +1,133 @@
+# CONSOL consolidation
+> r1 | the universe's sleep: what a clock advance does over its interval (gist rise, replay, homeostatic downscale), the gist timer and texts, and how a risen gist is shown
+
+## decisions
+- CONSOL-1 [o] consolidation runs while the clock advances, with no batch: the `Consolidator` is the production binding of the advance hook and runs inside the advance transaction on both launch and recall sync →!TIME-14
+  - no cron, scheduler, sweep or RPC triggers it; consolidation is never a user action →=TIME-4
+  - a held clock crosses no interval and consolidates nothing; `to` not after `from` is a total no-op
+  - the first-ever advance (`from` nil) consolidates nothing ← every row was born inside that transaction at `to`, so no interval was slept and a downscale would only weaken synapses created moments ago
+  - effects: gist rise →~CONSOL-9, decay-stage text fill →=FORGET-11, homeostatic downscale →~CONSOL-4, replay →~CONSOL-2, worker enqueue →~CONSOL-12
+- CONSOL-2 [o] sleep replays related memories together: the replay set is the memories whose gist rose in the interval (visibly or as a pending rise) plus their shared-neuron neighbors, and its synapses are re-activated ← the large companion re-layout is sleep's job, not a single recall's
+  - expansion is bounded by `consolidation.replay_neighbor_hops` shared-neuron hops; the whole universe is never replayed at once
+  - an interval in which no gist rose replays nothing
+  - the marker is activation recency: every synapse with both endpoints in the set gets `last_activated_universe_time` raised to `to` (`GREATEST`), the same trace a recall's reinforcement leaves
+  - the read's effective synapse strength then pulls the set together →=LINK-5; no coordinate is stored →=INV-5
+  - the set's live neurons re-embed on the worker →!CONSOL-12
+- CONSOL-3 [o] no schema concept: the higher structure that recurring shared semantic neurons form across many memories has no type, table or logic; it is reserved, not built
+  - distinct from gist, which compresses one memory
+  - the current expression of that structure is emergent constellation clustering from shared neurons and the layout →=LINK-2
+- CONSOL-4 [o] sleep weakens weak synapses by homeostatic downscaling (SHY): a global, proportional renormalization of every slept synapse, never LTD and never a deletion →=INV-9
+  - slept = both endpoint neurons alive and `last_activated_universe_time` before `to`; an edge linked or replay-refreshed at the advance target did not sleep and is skipped
+  - one `Downscale` per advance, whatever the interval's length, scaled by `consolidation.downscale_factor` ← the universe sleeps on every launch and recall, so a gentle factor compounds across sleeps
+  - weak edges lose proportionally more, sharpened by `consolidation.downscale_weak_bias`; strong edges are spared
+  - the result never drops below `consolidation.downscale_floor`, an edge already at or below the floor is left as-is, and no synapse, neuron or memory is removed →=INV-1
+  - rows update in place; a change invisible on the stored float32 grid is not written
+  - `Downscale` is a pure primitive distinct from `Depress` →=LINK; LTD stays the recall-moment competition →=RECALL-5
+- CONSOL-5 [o] the universe has two stores on z: the `Hippocampus` below and the `Neocortex` above, separated by a gap guaranteed by construction ← complementary learning systems: the neocortex holds consolidated copies of the hippocampal map
+  - `Hippocampus`: a lens band centered on the world origin, z symmetric (`force_sim.hippocampus_z_min` = −`force_sim.hippocampus_z_max`)
+  - `Neocortex`: not a band of its own but the lens copied upward by a per-stage z offset drawn from [`force_sim.gist_z_offset_min`, `force_sim.gist_z_offset_max`]
+  - separation guard: `hippocampus_z_min + gistZOffset(1) > hippocampus_z_max` (`packages/memory-logic` `semanticization.test.ts`)
+  - an `EpisodicMemory` is born in the hippocampus, and latent stars scatter through the lens volume →=VIS-7
+  - both are coordinate conventions, never entities: no table, no type →=UL
+  - shown as one navigable 3D space →=VIS-9
+- CONSOL-6 [o] a memory whose gist timer fills rises into the neocortex: its gist sits at the memory's live hippocampal (x, y, z) plus `GistZOffset(semantic_stage)`, a z-axis copy of its own episodic star →=INV-5
+  - the neocortex runs no force-sim and holds no coordinate authority; the server derives no absolute coordinate, and only the offset ladder is shared math
+  - `GistZOffset` is stage-monotonic: linear over the offset range, stage clamped to 0..4
+  - the risen gist is the memory's `SemanticMemory`: no table and no type, only `semantic_stage` on the `EpisodicMemory` row
+  - a rise deletes nothing and never touches the `Diary`: the episodic star and its `current_text` stay →=INV-1
+  - `semantic_stage` is the gist-depth signal the gist-view price reads →=TWINK-4; no price lives here
+- CONSOL-7 [o] gist-stage texts are pregenerated, and a new text basis regenerates only the stages not yet risen: a risen stage is a thing that happened, so it is never rewritten
+  - the four texts (`semantic_stages`) come from the LLM `Semanticizer` over the memory's `current_text`, name, mood and neurons, in a `semanticize` job enqueued in the launch transaction →=AI; NULL until it lands
+  - no LLM runs inside the advance: a rise reads pregenerated text
+  - forgetting texts are not pregenerated: they are produced by algorithm as stages are reached →=FORGET-11
+  - reconsolidation bumps `representation_revision` and enqueues `semanticize` →=RECALL-6; at completion, visible stages keep their text and every stage above the visible stage (a pending one included) takes the new generation
+  - a pending rise survives a reconsolidation and materializes with text from the new basis
+  - a rise transforms the memory's one gist body; earlier rungs remain as 변천사 entries, not as bodies →!CONSOL-17
+  - gist texts are LLM output with no golden parity
+- CONSOL-8 [o] the "pulled upward" motion into the neocortex and the sequential replay of related stars are reserved, not built: the slot exists so the authored choreography drops in without re-plumbing →=VIS-8
+  - built today: the neutral rise →!CONSOL-19
+  - the booked seam: per-interval rise events (memory id, stage) on `GistStarLayer.onStageRise`, with no consumer yet
+  - timing the rise inside the acceleration sweep belongs to this slot →~TIME-20
+- CONSOL-9 [o] the gist timer: each memory counts down to its next gist stage in universe time, one stage per `semantic.gist_units_per_stage` modulated universe-days; recall resets it to delay the next stage but never lowers a risen one →!TIME-10
+  - `GistUnitsElapsed(now, resetAt, arousal, strength)` = floor(whole universe-days since the anchor ÷ slow ÷ `semantic.gist_units_per_stage`); 0 at the anchor
+  - anchor `semanticize_timer_reset_at`; NULL reads as `created_universe_time`
+  - slow is the forgetting slow factor (arousal and `EffectiveStrength`) →=FORGET-6; arousal only, never valence →=INV-3; no second modulation coefficient
+  - `Semanticize(stage, units)` = min(stage + units, 4): monotone, total; one advance may cross several stages
+  - recall and reconsolidation write the anchor = the post-sync clock →=RECALL-3; nothing lowers `semantic_stage` →=INV-10
+  - a frequently recalled memory gistifies and forgets slower
+  - independent of forgetting: a different anchor →=FORGET-10
+  - a materialized crossing consumes its units from the anchor (`ConsumeGistUnits`): the anchor moves forward by exactly the days those units spanned and residual sub-unit days carry →!CONSOL-10
+- CONSOL-10 [o] consolidation is exactly-once per slept interval: the per-user watermark `universe_state.consolidated_through` clamps every invocation to its unprocessed suffix
+  - read `FOR UPDATE` in the advance transaction; NULL = never consolidated; an interval already covered is a total no-op, an overlapping one processes only (watermark, `to`]
+  - moved to `to` with `GREATEST` as the transaction's last write, after every effect, so a rolled-back attempt stays retryable
+  - the downscale therefore applies exactly once per slept interval →!CONSOL-4
+  - the stage and timer-anchor writes are `GREATEST`-guarded in SQL: a stage never decrements, an anchor never rewinds →=INV-10
+  - convergence: re-reading a consolidated interval implies zero further units
+  - the `universe_state` row always exists when the hook runs (the advance upserted it); a missing row is a wiring error →~TIME-7
+- CONSOL-11 [o] a rise publishes only stages whose text exists: a crossing past the readable prefix becomes a pending rise, never an empty stage or a blank 변천사 row
+  - each published stage appends one `semanticized`/`system` provenance row carrying that stage's text, its stage number and the advance's `to` →=RECALL-10
+  - pending: `pending_semantic_stage` extends with `GREATEST`, `pending_semantic_rise_at` keeps the first crossing's date; the crossed units are still consumed, and later rise math counts from max(visible, pending)
+  - a memory already pending publishes nothing new; the `semanticize` completion materializes the pending stages, dated at the crossing, and clears the pair →!CONSOL-12
+  - repair: every advance re-enqueues `semanticize` for a memory whose reached stage (visible or pending) lacks text, so a dead job never leaves a gist unviewable or a rise deferred forever
+  - DB guards (migration `00013`): the pending pair is both set or both NULL with stage 1..4; a new `semanticized` row needs non-blank text and a stage 1..4; one row per (user, memory, stage)
+- CONSOL-12 [o] heavy work leaves the advance transaction: the replay set's neurons re-embed in one `consolidate` job, and missing gist text re-enqueues `semanticize` →=AI
+  - jobs carry only target identities and the expected `representation_revision`, with empty payloads; the worker re-reads the live source at execution, so a rewrite, seal or release turns stale work into a no-op
+  - the `semanticize` completion is one transaction under the per-user graph lock: re-validate lease and live revision, merge the generated ladder over the kept stages, finalize any pending rise, complete the job
+  - a lost fence applies nothing and a replayed completion is a no-op
+  - a blank generated rung is a retryable provider failure, never persisted
+- CONSOL-13 [o] consolidation writes only representation, through `ConsolidateTx`: no `Diary` write and no delete exist on that surface →=INV-2
+  - writable: `semantic_stage`, the gist-timer anchor, the pending pair, `decay_stages`, synapse strength and activation recency, append-only provenance rows, job rows, the watermark
+  - `ConsolidateTx` is upgraded from the hook's `ProgressionTx`; a transaction that cannot be upgraded fails with `ErrConsolidateTxRequired`, a wiring fault, never a runtime state
+  - the interval reads the universe read's non-deleted memory shape; soft-deleted memories and sealed neurons stay out of every step →=DEL-3
+  - every read and write is user-scoped (guard: `pnpm lint:persistence`) →=ACCT-1
+- CONSOL-14 [o] golden parity: `Semanticize`, `GistUnitsElapsed` and `GistZOffset` in `internal/memory/semanticization.go` are the source of truth, mirrored by `packages/memory-logic/src/semanticization.ts` →=ARCH
+  - fixture `apps/api/internal/memory/testdata/semanticization-golden.json`; regenerate with `UPDATE_GOLDEN=1 go test -run TestWriteSemanticizationGolden`; both suites pin the `semantic.*` and `force_sim.*` constants and the max stage
+  - `ConsumeGistUnits` and the `Consolidator` orchestration are server-only, never mirrored
+  - every function is pure: time arguments are data, with no clock, DB, transport, SDK or randomness
+  - placement: consolidation and semanticization are behavior of the core `internal/memory` context, not a context of their own; the `Consolidator` is bound at `cmd/api`
+- CONSOL-15 [o] the universe read carries the gist stage only: `EpisodicMemoryDto.semantic_stage`, never the gist texts, the timer anchor or a gist coordinate ← a gist text is a paid read →=RECALL-8, and the stage is a server write
+  - clients read the stage; they never derive it from the timer
+- CONSOL-16 [o] the client mirror holds each memory's stage at its high-water mark: a response reporting a lower stage is a stale read and counts as no change →!CONSOL-9
+  - home: `packages/universe/src/episodic-memory-store.ts` (`setAll`), applied before its content comparison
+  - everything derived from the stage (z lift, softness, which rung a surface offers) is consistent by construction
+  - the floor is released with the collection (the user-scope reset); a genuine downward correction arrives on the next full load
+  - a surface writing staged fixtures into that store must release them between scenes →~DEMO
+- CONSOL-17 [o] one gist body per risen memory: a memory at `semantic_stage` N ≥ 1 shows a single body at stage N, which rises rather than stacking rungs ← one gradually consolidated neocortical representation (trace transformation)
+  - `gist-star-channels.ts` (`packages/universe`, shared by web and mobile) emits the instances; `GistStarLayer` (`packages/universe-render`) positions each per frame from the live hippocampal sim slot plus `gistZOffset(stage)`
+  - the position is never stored, server-derived or reverse-projected →=INV-5
+  - colour = the memory's mood through the one palette seam, unchanged by a rise →=MOOD-6
+  - size = `EffectiveStrength` in `rendering.gist_star_size_*`; softness `rendering.gist_star_diffuse` at stage 1, deepening to fully diffuse at the top stage
+  - abstraction is z plus a diffuse look, never the seed shape: the gist body is its own TSL body and stage never touches the episodic seed →=VIS-5
+  - the gist look is one choice for the whole universe, the worn `GIST_SHADER` ornament (default `DEFAULT_GIST_SHAPE`) →=DECOR
+  - web and mobile share channels, body, fog and layer with no native fork
+- CONSOL-18 [o] a rise reads by height alone: the episodic star stays where it was, so one memory shows as two bodies over the same x and y ← a second channel would invent an unnamed visual or make a consolidated memory read as a forgotten one
+  - no tether between the two bodies (a filament is a synapse, which this is not)
+  - the original is never dimmed: brightness belongs to forgetting →=FORGET-15
+  - the layer gap is atmosphere, not a wall: `BandFog` additive discs (`rendering.gist_rise_layer_fog`), visible from above and below, writing no depth and catching no pick →=VIS-9
+  - the haze is a neutral space tone, outside the emotion colour seam
+- CONSOL-19 [o] the neutral rise is one-way and plays when a newly risen stage lands in the read model →!INV-10
+  - a first appearance eases up from the hippocampal position, a deeper stage from the previous stage's lift; only the offset delta eases, so the body keeps shadowing its drifting memory
+  - the first non-empty projection seeds silently (no mass rise on page load), an empty interval plays nothing, and a stale read cannot replay a rise
+  - the rise never blocks the data path; its length is the layer constant `GIST_RISE_DURATION_SECONDS`
+  - a slept synapse thinning is not animated ← many filaments changing at once would stir the screen; the downscale reads afterwards on the strand
+- CONSOL-20 [o] a gist body is read-only: picking it opens the paid gist view for that memory, never recall →=RECALL-8
+  - the pick id is `gist:<memoryId>` (`gistNodeId`), stable across rises; the server decides which rung the view reaches
+  - a pick only selects: no camera glide (a gist is not a sim node), and it routes to the gist-view surface instead of the star-detail panel
+  - no rewrite, un-rise, placement or stage control exists on it →=INV-11
+
+## flow
+- advance: `OnAdvance(from, to]`(from nil or to ≤ from: nothing) → watermark clamp(covered: nothing) → per memory: gist units → `Semanticize`(text present: publish stage + provenance | missing: pending rise) → repair enqueue → decay-stage fill
+- advance, batched: stage and pending writes → `Downscale` slept synapses → replay touch → `consolidate` enqueue → watermark = `to`
+- `Downscale` runs before the replay touch so the slept-edge filter sees pre-replay recency
+- regen: reconsolidation(revision + 1) → `semanticize` job → completion(fence lost: nothing | merge kept stages → finalize pending → job done)
+- read: `semantic_stage` → high-water mirror → one gist body at live (x, y, z) + `gistZOffset(stage)` → pick → gist view
+
+## constraints
+- `values.yaml` keys owned here: `semantic.gist_units_per_stage`, `consolidation.downscale_factor`, `consolidation.downscale_floor`, `consolidation.downscale_weak_bias`, `consolidation.replay_neighbor_hops`, `force_sim.gist_z_offset_min`, `force_sim.gist_z_offset_max`, `rendering.gist_star_size_min`, `rendering.gist_star_size_max`, `rendering.gist_star_diffuse`, `rendering.gist_rise_layer_fog`
+- read but owned elsewhere: `forgetting.arousal_slow_coefficient` and `forgetting.connection_slow_coefficient` →=FORGET, `force_sim.hippocampus_z_*` →=VIS
+- the gist ladder length is 4 (`SEMANTIC_MAX_STAGE`, Go `len(SemanticStages{})`), a derived array length, never a value
+- the demo runs gist timers on its own clock with the shipped functions →=DEMO
+- achievements and decoration never change a stage, a timer or a rise →=INV-11
+
+## chg
+- r1 261102 initial

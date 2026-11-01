@@ -2,7 +2,7 @@
  * @cosimosi/i18n — the platform-pure UI string seam.
  *
  * Both apps/web and apps/mobile consume this package. It stays free of DOM/native
- * deps (ARCHITECTURE §3.1, §3.5): messages compile to tree-shakeable typed
+ * deps (ARCH-21, ARCH-28): messages compile to tree-shakeable typed
  * functions and locale is an owned in-memory store, so the same `m.*` calls run
  * verbatim on web, React Native, and in Node tests.
  *
@@ -18,7 +18,7 @@
  *
  * Message sources are packages/i18n/messages/{en,ko}.json; `pnpm gen:messages`
  * compiles them into ./gen (committed, freshness-checked by check:gen). Canonical
- * domain terms stay in ubiquitous-language.md and never become message keys.
+ * domain terms stay in the UL (spec/ssot/UL.md) and never become message keys.
  */
 export { m } from './gen/messages.js'
 export {

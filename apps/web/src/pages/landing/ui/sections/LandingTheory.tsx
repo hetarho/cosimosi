@@ -12,7 +12,7 @@ export function LandingTheory() {
   return (
     // The top inset is the walkthrough screen's, not a tighter one of its own: the two read as two
     // rooms of one page, and a heading that started 16px from the top landed flush against the
-    // viewport edge when the visitor arrived here from the cue (ui-principles §2 — a gap that differs
+    // viewport edge when the visitor arrived here from the cue (UI-4 — a gap that differs
     // without meaning reports the wrong structure).
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 pb-16 pt-14 sm:pt-20">
       <div className="flex flex-col gap-3">
@@ -34,7 +34,7 @@ export function LandingTheory() {
               {/* A plain anchor with an absolute path, never a router link: `/blog/` is static HTML the
                   Worker serves, and a client navigation would land in the SPA fallback.
                   It is set one step below the body it follows: the accent already makes it the loudest
-                  thing in the card, so at body size it out-shouted the title (ui-principles §1 —
+                  thing in the card, so at body size it out-shouted the title (UI-3 —
                   emphasis is a budget). `py-1.5` keeps the hit area past the 24px floor. */}
               <a
                 href={card.blogAnchor}

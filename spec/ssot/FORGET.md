@@ -1,0 +1,115 @@
+# FORGET forgetting
+> r1 | how an unrecalled memory dims and loses words in universe time, what that costs to recall, and how the loss is shown — access lost, never erased
+
+## decisions
+- FORGET-1 [o] an `EpisodicMemory` left unrecalled dims and loses words together: brightness and decay stage are read-time pure functions of one elapsed universe-day clock and one slow factor, so a dimmer star is never at a shallower stage →!TIME-10
+  - elapsed clock `EffectiveElapsedDays(now, lastRecalled?, created, offsetDays)`: whole UTC universe-days since the last recall, or since creation when never recalled (a never-recalled memory still forgets), plus the signed `forgetting_offset_days`
+  - the elapsed term and the offset sum are each floored at 0, so an offset never makes a memory younger than new
+  - `forgetting_offset_days` is written only by a neighbor's recall →=RECALL-5; forgetting only reads it
+  - brightness `EffectiveBrightness(elapsed, arousal, strength)`: an exponential fade toward `forgetting.brightness_floor` at `forgetting.brightness_decay_per_day`, stretched by the slow factor →!FORGET-6; 1.0 at elapsed 0, monotone non-increasing, clamped to [floor, 1]
+  - stage `DecayStage(elapsed, arousal, strength)`: whole `forgetting.stage_interval_days` steps of the slow-stretched elapsed, clamped to 0..maxStage; stage 0 is vivid
+  - maxStage is the length of `forgetting.stage_word_removal_ratios`, never a separately declared count
+  - nothing stores a tick: brightness and the current stage are derived at every read, never written, and no cron or job advances them →=TIME-4
+  - only coefficients, the floor, the interval and the ratios are values; the curve and step shapes are code
+- FORGET-2 [o] silent engram: brightness and text stop at a floor and never vanish; the trace stays, only access is lost, and recall revives it →=INV-1
+  - brightness never drops below `forgetting.brightness_floor` and never reaches 0
+  - there is no stage past the deepest one, and the deepest stage text is still non-empty, legible fragments →!FORGET-9
+  - a fully decayed star stays rendered at the floor →!FORGET-14
+- FORGET-3 [o] the system deletes no neuron, memory or synapse: forgetting is reduced access, never removal →=INV-1
+  - deletion happens only as the user's explicit act →=DEL
+  - reading never mutates a stored fact; the forgetting model's only write is filling decay-stage text slots →~FORGET-11
+  - the advance write surface that fill runs on exposes no delete and no `Diary` write →=CONSOL
+  - a soft-deleted memory decays for nobody: it leaves the read and every forgetting computation →=DEL-3
+- FORGET-4 [o] the deeper a memory's decay, the more its recall costs: forgetting emits an accessibility weight `AccessibilityCostWeight(DecayDepth(…))`, never a price →=TWINK-4
+  - `DecayDepth` is the continuous stage fraction over the same slow-stretched clock: elapsed / (`stage_interval_days` × maxStage × slow), clamped to [0, 1]; 0 = fresh, 1 = at or past the deepest stage
+  - the weight eases convexly from `forgetting.cost_weight_floor` at depth 0 to `forgetting.cost_weight_cap` at depth 1 with curvature `forgetting.cost_weight_curve`, clamped to [floor, cap], strictly increasing in between
+  - the floor is non-zero, so a fresh recall is never free →~TWINK-1; the cap keeps a silent engram recallable at a bounded price →!FORGET-2
+  - every price constant and the price curve live in the Twinkle economy (`twinkle.recall_*`); no price sits in `forgetting.*` and no accessibility formula in `internal/twinkle`
+  - the server derives the weight from the stored anchors at the clock the recall syncs to, both for the shown quote and at spend time (`recallAccessibilitySignal`) →~TIME-15; clients never price a recall
+  - episodic-recall axis only: the gist-view price follows the gist stage in the opposite direction →=RECALL-8
+  - a whole-diary recall prices each live memory with its own weight from one pre-recall snapshot →=DIARY-3
+- FORGET-5 [o] recall restores a memory wholly: brightness, decay stage and the gist timer recover together, and while it is left alone all three progress together →=RECALL-2
+  - recovery is a re-derivation, not a function: the recall writes its anchors (`last_recalled_universe_time` = the post-sync clock, `semanticize_timer_reset_at`) →=RECALL-3, and the next read derives brightness 1.0, stage 0 (the whole current text) and the floor weight
+  - the gist-timer half →=CONSOL-9
+  - no stored accessibility or brightness field exists to reset
+  - the recalled memory takes no new offset, but its accumulated `forgetting_offset_days` is not cleared: a net positive offset restarts it that many universe-days old, just under full brightness
+  - recovery restores legibility of the representation, never original content: text is rewritten only by reconsolidation →=RECALL-6, and the `Diary` is never touched →=INV-2
+- FORGET-6 [o] high arousal slows forgetting: the slow factor `1 + arousal×forgetting.arousal_slow_coefficient + strength×forgetting.connection_slow_coefficient` stretches the time axis of brightness, stage and depth alike →=INV-3
+  - both inputs are floored at 0, so the factor is ≥ 1 and only ever slows
+  - arousal is the only emotion input; valence and mood never enter forgetting
+  - the gist timer reuses the same slow factor →=CONSOL-9
+- FORGET-7 [o] better-connected memories forget slower: the connection input is the memory's `EffectiveStrength` (its size, from base strength and recall count), passed in as a scalar ← keeps the decay functions pure (no synapse-graph read) and reuses a value every caller already holds
+  - weighted by `forgetting.connection_slow_coefficient` →!FORGET-6
+  - `EffectiveStrength` itself →=RECALL-3
+  - graph connectivity (shared neurons, synapse strength) is never read directly
+- FORGET-8 [o] no cumulative interference: the continuous access loss that similar, recent memories sharing neurons inflict on an old one is reserved, not built
+  - distinct from the recall-moment neighbor ±, which is in force →=RECALL-5 and reaches forgetting only through `forgetting_offset_days`
+- FORGET-9 [o] the word-loss text is an algorithm, never an LLM: `DecayStageText(currentText, stage, seed)` deterministically replaces a per-stage share of words with the redaction token `xxxx` ← client and server erode identically, and one seeded order nests each stage in the next
+  - stage ≤ 0, or a text of ≤ 2 words, returns the text unredacted (whitespace-normalized)
+  - stage s ≥ 1 redacts floor(ratio × removable words) with ratio = `forgetting.stage_word_removal_ratios[s-1]`, strictly increasing; a stage past the last clamps to the last
+  - removable = every word except the first and last of each sentence; a sentence ends at a word whose final character, after closing quotes and brackets, is `.` `!` `?` `。` `！` `？` `…`
+  - order: content words before a small fixed stop-word set (common English and Korean function words), then `seededRank(seed, index)`, then index; each stage redacts a prefix of that one order, so stage k+1 removes a superset of stage k
+  - words are whitespace-split (`strings.Fields` / `split(/\s+/)`)
+  - ratios, stop words and POS handling stay open to refinement: ratios as values, the heuristic in code; a refinement changes the heuristic, never the (text, stage, seed, ratios) contract
+- FORGET-10 [o] forgetting and gist are independent axes: forgetting removes words at random, gist compresses meaning, and a decay-stage text is never a gist-stage text →~CONSOL-6
+  - separate anchors: decay counts from the last recall, the gist timer from `semanticize_timer_reset_at`; a memory can be deeply decayed yet barely gistified, or the reverse →~CONSOL-9
+  - forgetting surfaces render no z-rise and no gist star
+- FORGET-11 [o] decay-stage texts are persisted when an advance crosses a stage: the consolidation hook fills `episodic_memories.decay_stages` (a JSONB array, slot s-1 = stage s) inside the advance transaction →=CONSOL-1
+  - fill condition: the memory's `DecayStage` at the interval end exceeds its stage at the interval start (`from`, `to` of the hook) →!TIME-14; then every empty slot from 1 to the target stage fills
+  - a slot is `DecayStageText` of the memory's `current_text` with its form `seed` (0 when null) at fill time
+  - an existing slot is never overwritten and the array never shrinks; neither recall nor reconsolidation clears it
+  - after a reconsolidation, already-filled slots keep the earlier text's erosion and only later-filled slots erode the new text ← a reached stage is a thing that happened, as with gist stages →~CONSOL-7
+  - a stage reached with no crossing advance (pushed there by a neighbor offset) fills only when a later advance crosses a further stage
+- FORGET-12 [o] the universe read carries stored facts only: `EpisodicMemoryDto` holds `decay_stages`, `forgetting_offset_days`, `current_text` and the anchors, never a pre-rendered brightness or current decay text ← a read-time value frozen into transport would desync from the client's clock
+  - anchors on the read: arousal, base strength, recall count, created and last-recalled universe dates
+  - NULL or malformed `decay_stages` reads as empty
+  - `currentDecayText` (`packages/universe`) resolves the text: stage 0 ⇒ the whole `current_text`; stage s ⇒ `decay_stages[s-1]`, else the whole `current_text`; the client never invents erosion
+  - the memory shape comes from `ListUniverseEpisodicMemories` →=MEM
+- FORGET-13 [o] golden parity: the Go functions in `internal/memory/forgetting.go` are the source of truth, and the TS mirror in `packages/memory-logic` (`forgetting.ts`, `effective-values.ts`) must match them →=ARCH
+  - shared fixture `apps/api/internal/memory/testdata/forgetting-decay-golden.json`: floats within its tolerance, decay texts byte-equal; regenerate from Go with `UPDATE_GOLDEN=1 go test -run TestWriteForgettingGolden`
+  - both test suites pin the generated `forgetting.*` constants, so a tuning change cannot split client render from server pricing
+  - `seededRank` is a splitmix32-style finalizer in uint32 arithmetic (TS `Math.imul` and `>>> 0`), so both runtimes order removals identically
+  - every function is pure: no clock, DB, transport, SDK, DOM or ambient randomness; the word-removal randomness is the `seed` argument
+  - placement: the forgetting model lives in the core `internal/memory` context, not a context of its own; the TS mirror carries no DOM, RPC, native or SDK dependency
+- FORGET-14 [o] forgetting is shown, never hidden: a star body's brightness is its `EffectiveBrightness`, clamped in place into [`rendering.star_brightness_min`, `rendering.star_brightness_max`] →=VIS-2
+  - `forgetting.brightness_floor` equals `rendering.star_brightness_min`; re-lerping a [0, 1] fraction is forbidden because it lifts the floor (guard: `star-channels.test.ts` — an ancient star renders at the min)
+  - the channel recomputes on a read-model or clock change, not per frame →=VIS
+  - during an acceleration the scene samples the sweeping clock, so stars dim as the days pass →=TIME-20
+  - motion follows brightness (`starLife`): a long-unvisited star nearly stills, the seed form keeps its amplitude, and the motion floor is non-zero so a silent engram keeps a whisper →=VIS
+  - web and mobile feed the same shared star body the same value
+  - recovery after a recall shows as a re-render of the recovered values; any recovery animation is optional and never blocks the recall data path
+- FORGET-15 [o] brightness and stillness belong to forgetting alone: nothing else dims, stills or revives a star through them ← a channel with two owners says nothing
+  - no desaturation: chroma is the emotion's →=MOOD-3
+  - a gist rise never dims its episodic star →=CONSOL-6
+  - a spotlight lift is draw-only and reads or writes no stored fact →=VIS
+  - decoration and achievements cannot lift a faded star (bloom stays a scene default) →=INV-11
+- FORGET-16 [o] the forgotten text is read one way, in 2D, by opening the star: the star-detail panel shows the eroded current text and the canvas renders no word loss ← a canvas glimpse could exist on one platform only, and words are read up close
+  - viewing it is free →=TWINK-1
+  - the recall sheet shows the same eroded text as its starting point →=RECALL
+  - beside it, a read-only forgetting-degree meta, one word per stage →=DIARY-1
+  - meta keys: label `star_meta_forgetting_state`, hint `star_meta_hint_forgetting_state`, stages 0–4 `star_meta_forgetting_vivid` / `_softening` / `_blurring` / `_faint` / `_distant`; a stage past the last label shows the last
+  - the eroded text is memory content, never an i18n message
+- FORGET-17 [o] a lost word is a smear, never a mark: the stored token records that a word stood there, and the renderer blurs the run it stands for
+  - `currentDecaySpans` (`packages/universe`) cuts the text into legible and lost runs; consecutive lost words and the whitespace between them coalesce into one run; nothing is reconstructed from `current_text`
+  - web `ObscuredText` (`packages/ui`): a blur scaled in `em`, the run unselectable; forced colours draw a solid bar of system ink
+  - mobile `obscured-text.native.tsx`: transparent ink behind a wide zero-offset text shadow ← React Native has no CSS `filter`; a primitive difference, not a forked feature
+  - at stage 0 the text renders verbatim, even a token the writer typed
+  - the loss is not announced: no warning, label or count of what went →=RECALL-10
+  - lost runs stay in the accessibility tree carrying the marker, so the loss is heard where it is seen
+- FORGET-18 [o] word loss erodes only the current-memory text, never the `Diary`, and no surface restores removed words for free →=INV-2
+  - archive search and previews read only the `Diary` body →=DIARY-10
+
+## flow
+- read: `GetUniverse` stored facts → `EffectiveElapsedDays`(now = clock) → `EffectiveBrightness` → star brightness | `DecayStage` → text(stage 0: whole | slot filled: slot | slot empty: whole) → `currentDecaySpans` → panel
+- advance: `OnAdvance(from, to]` → per memory `DecayStage` at `from` vs `to`(no rise: nothing | rise: fill empty slots up to the target)
+- recall: quote and spend at `AccessibilityCostWeight(DecayDepth)` on the post-sync clock → anchors reset → next read: brightness 1.0, stage 0
+
+## constraints
+- `values.yaml` keys owned here: `forgetting.brightness_decay_per_day`, `forgetting.brightness_floor`, `forgetting.stage_interval_days`, `forgetting.stage_word_removal_ratios`, `forgetting.arousal_slow_coefficient`, `forgetting.connection_slow_coefficient`, `forgetting.cost_weight_floor`, `forgetting.cost_weight_cap`, `forgetting.cost_weight_curve`
+- read but owned elsewhere: `rendering.star_brightness_*` →=VIS, `reconsolidation.neighbor_*` →=RECALL, `twinkle.recall_*` →=TWINK
+- a script written without spaces between words (Chinese, Japanese) tokenizes as one word and never erodes; a per-language segmenter is a deferred refinement →~FORGET-9
+- every consumer judges forgetting with these functions and the same anchors, never a copy: recall pricing →=TWINK, the recovery achievement counter at the pre-recall stage →=ACH, the demo →=DEMO, the landing walkthrough →=MKT
+- universe dates are zone-free: forgetting math never reads a time zone →=TIME-7
+
+## chg
+- r1 261102 initial

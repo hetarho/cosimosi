@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Persistence-isolation gate ([U1], ARCHITECTURE §4): every product table owns a real
+// Persistence-isolation gate ([U1], ARCH-13): every product table owns a real
 // user_id column, and every product statement is genuinely scoped by user_id on the
 // tables it touches. The query check is alias-aware: it collects the statement's
 // relations and its user_id equality predicates, then requires every product relation

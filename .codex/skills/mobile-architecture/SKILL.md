@@ -6,16 +6,16 @@ description: >-
   whether code should be shared vs forked for native. Use when the user says "add the mobile screen", "make this work
   on RN", "add a native module", "wire navigation", or during /implement-job for any mobile surface. It carries the
   shared-vs-forked rule, the *.native sibling discipline, the RN renderer setup, and a self-audit checklist. Pair it
-  with fe-architecture (mobile mirrors the web's FSD). Authoritative rules live in spec/ARCHITECTURE.md §3.5 — this
-  skill is the actionable procedure + audit. Read §3.5 first when a case is ambiguous.
+  with fe-architecture (mobile mirrors the web's FSD). Authoritative rules live in spec/ssot/ARCH.md ARCH-27–30 —
+  this skill is the actionable procedure + audit. Read those decisions first when a case is ambiguous.
 ---
 
-# Mobile architecture gate (React Native, §3.5)
+# Mobile architecture gate (React Native, ARCH-27–30)
 
-**SSOT = [spec/ARCHITECTURE.md](../../../spec/ARCHITECTURE.md) §3.5** (mobile mirrors web FSD; shared via `packages/`;
+**SSOT = [spec/ssot/ARCH.md](../../../spec/ssot/ARCH.md) ARCH-27–30** (mobile mirrors web FSD; shared via `packages/`;
 `*.native` only where the platform forks). Mobile is **not** a second codebase — it is the web's FSD applied to RN.
 **Invoke [fe-architecture](../fe-architecture/SKILL.md) too** — the layer/slice/segment procedure is identical; this
-skill adds only the native-specific discipline. If ambiguous, **open §3.5 and read it**.
+skill adds only the native-specific discipline. If ambiguous, **open ARCH-27–30 and read them**.
 
 ## When this fires
 Before you create/move/rename a file under `apps/mobile/src`, add a `*.native.tsx` sibling, touch
@@ -36,7 +36,7 @@ mobile jobs (alongside `fe-architecture`).
 - **Is it native plumbing** (navigation root, metro/babel config, native modules, `ios/`/`android/`)? → it lives in
   `apps/mobile` only (the `app` layer's `navigation/` segment for the router; config at the app root).
 
-## The renderer (§3.3 / §3.5)
+## The renderer (ARCH-25 / ARCH-28)
 The 3D scene is the **same `@cosimosi/3d-renderer` package** on both platforms — one TSL shader source. Native hosts it
 via `react-native-webgpu` (+ reanimated + worklets); metro maps `three`→`three/webgpu` and `@react-three/fiber`→its web
 build; `pod install`; New Architecture, RN ≥ 0.81, custom dev client (no Expo Go). Never import `three`/R3F in a

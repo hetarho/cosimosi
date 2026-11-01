@@ -38,7 +38,7 @@ DB/Auth: Supabase 프로젝트 behdksjirevqcqbfajqc (서울 ap-northeast-2)
 **`pnpm build:site`** 하나다: 블로그 빌드 → 웹 빌드 → `scripts/stage-blog.mjs`가 `apps/blog/dist`를
 `apps/web/dist/blog/`로 옮긴다. **순서가 중요하다** — Vite가 `outDir`를 비우므로 웹 빌드보다 먼저
 스테이징하면 조용히 지워진다. 스테이징 스크립트가 그 실수와 산출물 누락을 둘 다 빌드 에러로 만든다
-(`spec/tech/blog-site.md` §1). `main` → `npx wrangler deploy`(프로덕션 승격), 그 외 브랜치 →
+(`spec/ssot/MKT.md` MKT-27). `main` → `npx wrangler deploy`(프로덕션 승격), 그 외 브랜치 →
 `npx wrangler versions upload`(프리뷰 버전만). 빌드 변수는 **공용 1세트**라 develop 프리뷰도 prod 값으로 빌드된다(분기는 spec 32).
 수동 재빌드: Worker → Deployments → 해당 빌드 → **Retry build**.
 
@@ -209,7 +209,7 @@ docker compose -f /srv/edge/docker-compose.yml exec caddy \
 Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 
 > **origin 루트 파일**: `apps/web/public/robots.txt`·`sitemap.xml`은 앱 소유다(랜딩이 오너 —
-> `spec/tech/landing-page.md` §7). 블로그는 그 아래 `/blog/` 서브패스로 올라가므로, 블로그 산출물을
+> `spec/ssot/MKT.md` MKT-24). 블로그는 그 아래 `/blog/` 서브패스로 올라가므로, 블로그 산출물을
 > 스테이징에 복사할 때 **루트의 두 파일을 덮어쓰지 않도록** 한다. 블로그는 자기 `/blog/sitemap.xml`만 낸다.
 
 1. **Lightsail**: 서울 → Ubuntu 24.04 LTS → $7 Dual-stack 플랜 → Static IP 부착 →

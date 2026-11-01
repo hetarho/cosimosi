@@ -1,5 +1,5 @@
 // Package rpc is the achievement context's transport adapter: a thin Connect handler that maps
-// domain entries to proto DTOs and calls the read (ARCHITECTURE §2.7/§2.9#7). No catalog logic
+// domain entries to proto DTOs and calls the read (ARCH-18). No catalog logic
 // lives here — evaluation, ordering and reward resolution all belong to the context behavior.
 package rpc
 

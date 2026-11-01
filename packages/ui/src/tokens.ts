@@ -7,7 +7,7 @@
  *   turning these tokens into utility classes and `:root` CSS variables.
  * - TS code imports this map directly for raw values where utilities can't reach:
  *   contrast checks, React Native style props, and tests. This module stays
- *   DOM-free so it runs verbatim on web, React Native, and in Node (ARCHITECTURE §3.5).
+ *   DOM-free so it runs verbatim on web, React Native, and in Node (ARCH-27).
  *
  * These are theme-agnostic *foundation* tokens. The theme/background seam
  * (`theme-store`) may override a subset of `color.*` at the app boundary at

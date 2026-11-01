@@ -8,7 +8,7 @@
 -- user_id ([U1], §4). The effect tables cascade off the group so retiring a release (Restore) or
 -- sweeping it clears its effects in one delete.
 CREATE TABLE release_groups (
-    id         TEXT PRIMARY KEY,                 -- nanoid, backend-minted (ARCHITECTURE §5)
+    id         TEXT PRIMARY KEY,                 -- nanoid, backend-minted (ARCH-14)
     user_id    TEXT NOT NULL,                    -- per-user isolation [U1]
     diary_id   TEXT NOT NULL,                    -- the released Diary; one live release per (user, diary)
     deleted_at TIMESTAMPTZ NOT NULL,             -- real-clock UTC — the restore-window clock [X2]

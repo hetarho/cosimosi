@@ -19,7 +19,7 @@ type OrnamentID string
 // gist) is expressible as a kind at all ([P4][V10][I11]).
 //
 // Every name here is the SURFACE, never the renderer's own noun for what fills it: the looks are
-// registry rows on the other side of the projection, and their words stay there (ARCHITECTURE §3.4).
+// registry rows on the other side of the projection, and their words stay there (ARCH-26).
 //
 // A feeling's color is deliberately NOT a kind: mood_colors owns the per-mood override, and an
 // emotion color is not something to be sold ([P10] as amended).

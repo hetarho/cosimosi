@@ -1,6 +1,6 @@
 // Package rpc is the twinkle context's transport adapter: thin Connect handlers
-// that map proto DTOs to domain inputs and call the use-cases (ARCHITECTURE
-// §2.7/§2.9#7). No policy lives here — pricing, spend order, earn reasons,
+// that map proto DTOs to domain inputs and call the use-cases (ARCH-18). No
+// policy lives here — pricing, spend order, earn reasons,
 // idempotency, and trusted-claim validation all live in the use-case/domain.
 package rpc
 

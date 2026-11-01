@@ -1,0 +1,310 @@
+# VIS visual expression
+> r1 | how the memory universe is drawn and moved through: the 3D scene, what each visual channel means, the emergent layout, the sky and backdrop, and the rendering substrate web and mobile share
+
+## decisions
+- VIS-0 [o] the universe page is a rendered 3D space: memories float in it as shader-built 3D bodies, the viewer moves through it with standard 3D navigation (zoom, rotate, pan), and the two z-layers read as its depth →~VIS-9
+  - web `pages/universe` and mobile `UniversePage` render the same full-bleed shared scene →!VIS-27
+  - one scene and one camera rig: no second camera for the gist layer, no view that flattens the universe; the two ways of holding it →=VIS-46
+  - shader technique, gestures and camera feel are code constants (`UNIVERSE_CAMERA_RIG`), not product rules
+  - native waiver: the drag, zoom and pan control families are DOM-pointer driven and take no input on native; pinned framing and machine-driven focus and fly glides run on both platforms; native gesture input is a reserved input sibling behind the rig seam
+  - a renderer or read failure stays inside the canvas area: an error boundary shows a fallback with retry (`common_retry`; native adds `universe_renderer_unavailable`), and retry refetches `GetUniverse` →=ERR
+- VIS-1 [o] position means relational structure: the centre is the self (never time), radius is connectivity and self-relevance (better connected sits nearer), angle and cluster are shared neurons ← autobiographical memory is organized around the self (Conway & Pleydell-Pearce 2000) →!INV-7
+  - time is a link signal, never a position axis: memories of one period cluster through shared temporal context →=LINK-4
+  - position is the force-sim's output: emergent, never stored, never authored →!INV-5
+  - constellations are emergent clusters: no type, no table, no stored membership
+  - position never encodes date, emotion, palette, diary wording or decoration →!INV-3
+  - copy that explains proximity names shared meaning or shared neurons, never similar feelings or chronological order
+  - the forces that realize it →=VIS-13
+- VIS-2 [o] brightness = recall recency: a star's brightness channel is its read-time `EffectiveBrightness` →!FORGET-1, which fades more slowly at high arousal →~FORGET-6
+  - the value already spans [`rendering.star_brightness_min`, `rendering.star_brightness_max`] (`forgetting.brightness_floor` equals the min): `starChannels` clamps it in place and never re-lerps a [0,1] fraction, which would lift the silent-engram floor (guard: `star-channels.test.ts`, an ancient star renders at the min)
+  - a fully faded star stays drawn at `rendering.star_brightness_min`: dimmed in place, never 0, never removed →!FORGET-2
+  - motion follows brightness (`starLife`, shared by every star body's turn, swell and travelling wave): a long-unvisited star nearly stills, its seed form keeps full amplitude, and the motion floor is nonzero so a silent engram keeps a whisper →~FORGET-14
+  - brightness and stillness are forgetting's alone: nothing else dims, stills or revives a star, and forgetting never shrinks one (size is strength) or desaturates it (chroma is the emotion's) →=FORGET-15
+  - the canvas renders no word loss: lost words are read up close in the 2D panel →=FORGET-16
+  - during an acceleration the scene projects at the sweep's sampled clock, so stars dim as the days pass →~TIME-20
+- VIS-3 [o] size = strength: a star's read-time `EffectiveStrength` (arousal-set initial strength →=ENC-13 plus recall accumulation →=RECALL-3), mapped into `rendering.star_size_min`…`rendering.star_size_max`
+  - size grows slowly with recall and almost never shrinks
+  - the same `EffectiveStrength` weights the memory's share of the universe colour, in the nebula bleed and in the sky shares alike →=MOOD-4
+  - size means strength only by comparison: a body drawn alone takes a fixed preview size →=VIS-33
+- VIS-4 [o] colour = emotion: a star wears its primary mood's colour, the universe's colour is those emotions blended in the nebula and the sky, and colour carries nothing else →!INV-3
+  - every emotion-coloured body (star, nebula kernel, gist star, sky ramp) takes its colour from `moodColor(mood)` through the one palette seam →=MOOD-6
+  - emotion reaches no geometry, coordinate, size, edge or neuron →=MOOD-7
+  - meaning-free space tones (the bare night, band fog, latent dust, backdrop motes, cell-star and filament tints) are code content outside the emotion seam →~MOOD-3
+  - the per-memory blend →=VIS-35; the sky →=VIS-38
+- VIS-5 [o] a big star's shape is its own stored `seed`: every star shares one visual grammar in a slightly different form, and abstraction shows as the gist rise (z plus gist text), never as shape →~VIS-9
+  - the seed changes only on reconsolidation, when the content really changed →=RECALL-6; a recall without prediction error leaves the shape as it was →=RECALL-4
+  - the renderer reads the seed as immutable input: time moves only the presentation phase; no seed-change transition is animated
+  - a memory with no stored seed takes a stable hash of its id (`normalizeSeed`)
+  - a neuron (`cell-star`) is a seedless point: constant `rendering.cell_star_point_size`, one colour for all, no emotion colour, motionless; degree-driven sizing is reserved, not built
+  - which forms a seed varies →=VIS-32
+- VIS-6 [o] a filament's width and brightness = the synapse's read-time `EffectiveSynapseStrength` →=LINK-5, and no line ever joins two stars →!INV-4
+  - half-width in `rendering.filament_width_min`…`max`, glow in `rendering.filament_brightness_min`…`max`
+  - endpoints are neuron coordinate slots only, so a star-to-star line cannot be drawn →!INV-6
+  - a synapse has no direction: the shimmer travels inward from both ends together and nothing flows one way
+  - body: one batched camera-billboarded ribbon (4 vertices, 2 triangles per edge), additive; never three's `Line2`, whose transparent path samples a viewport texture the post pipeline never exposes and WebGPU rejects
+- VIS-7 [o] a field of gray latent-neuron points fills the hippocampus lens from the first login, and a genuinely new neuron awakens one of them →~ENC-12
+  - rendering-only: no DB row, no RPC, no Go, proto, sqlc or FE-mirror type; a `neurons` row exists only for an activated neuron, written by Encode
+  - meaningless: one gray tint, one size (`rendering.latent_star_size`, below the cell-star size), no brightness dynamics, no emotion, no identity; drift is ambient only →~FORGET-2
+  - deterministic: a Park-Miller generator seeded by `force_sim.seed` places `rendering.latent_star_count` (mobile `latent_star_count_mobile`) points in a disc of `rendering.latent_field_radius` whose z allowance tapers to nothing at the rim, so the field fills the lens
+  - background: additive, so a clump pools into haze, with no depth test or write, drawn behind every real body; not a force-sim node, attracting and repelling nothing
+  - copy calls the field dormant, not-yet-lit memory, never empty or deleted
+  - the awaken →=VIS-34
+- VIS-8 [o] the consolidation replay choreography is a reserved slot inside the advance interval: the visual model fixes that related stars replay and reorganize while time is accelerated, and the concrete choreography lands later without redesign →~CONSOL-2
+  - built inside the interval: risen gists ease up →=CONSOL-19, the stars quiet as the sampled clock walks forward →~TIME-20, and the sky's time runs fast →=VIS-40
+  - the booked seam is `GistStarLayer.onStageRise`, the per-interval rise events; it has no consumer yet
+  - reserved, not built: sequential replay flashes of related stars and the pulled-upward rise into the neocortex →~CONSOL-8
+  - a slept synapse's thinning is not animated during the sweep →~CONSOL-19
+- VIS-9 [o] the two z-stores are shown as one navigable 3D depth: the hippocampus lens below holds the episodic stars and the latent field, the neocortex layer above holds the gist bodies, and the camera crosses between them with no mode switch →!CONSOL-5
+  - a gist sits straight above its own star's live (x, y, z), so as memories rise the upper layer fills in as a partial copy of the lens →~CONSOL-6
+  - the neocortex layer runs no force-sim and holds no coordinate of its own, so it is stable by construction →!INV-5
+  - the gap reads as atmosphere, not a wall: `BandFog` fills it from `force_sim.hippocampus_z_max` up to the lowest gist reach (`hippocampus_z_min + gistZOffset(1)`) at intensity `rendering.gist_rise_layer_fog`
+  - the fog is double-sided additive discs, peaking at the gap centre and zero at both edges, raycast-invisible and never depth-written, so never a click shield; one instanced draw and one material with the strength per instance, since each distinct node graph costs a pipeline compile a WebGPU frame hitches on
+  - the band and its lens →=VIS-15; the gist body, its rise and its read-only pick →=CONSOL-17/19/20
+- VIS-10 [o] decoration sits on top of the meaning layer: backdrop, star shader, gist shader and motes are render parameters only and never override position, brightness, size, the meaning of emotion colour, or seed →!INV-11
+  - a palette swap replaces only the single `mood → color` entry point; rendering code is palette-agnostic →=MOOD-6
+  - per-mood colour is a free preference, not decoration →=DECOR-10
+  - the renderer side of each selection →=VIS-44; the never-for-sale scene defaults →=VIS-41
+  - catalog, pricing and the panel →=DECOR
+- VIS-11 [o] `@cosimosi/force-sim` is the only code that computes universe layout: one pure package that web and mobile consume through the same entry point →=ARCH
+  - no DOM, React, native, `three`, proto, database or server dependency (guard: `packages/force-sim/src/purity.test.ts`)
+  - a pure function over the graph is what lets a client compute a layout the server never holds
+  - formulas, integrator, connectivity mapping and buffer packing are code; only coefficients are values keys (`force_sim.*`)
+  - a simulation refuses values that break its contract: a non-finite value, a non-ascending or non-symmetric band, a non-positive `link_distance` or `z_center_gain`, or a `tick_alpha_decay` outside [0, 1) throws at creation
+- VIS-12 [o] layout reads graph structure only: neurons with connectivity, undirected neuron-to-neuron synapses with strength, episodic memories, and activation weights from memories to neurons →!INV-3
+  - no emotion axis, colour, text, universe time or decoration enters; the graph types (`ForceSimGraph`) have no field for one (guard: `packages/universe/src/build-graph.test.ts`)
+  - synapses are the graph's only edges, so a memory is never an edge endpoint →!INV-4
+  - only live rows enter: a deleted memory or sealed neuron is absent from the read, so it neither shows nor pulls →=DEL-3
+  - the graph builder coerces out-of-range and non-finite stored magnitudes into the sim's finite domain, so a corrupt row cannot kill the scene
+- VIS-13 [o] neurons own the forces and memories follow them: a connectivity-scaled centre pull toward the world origin (0, 0, 0), synapse springs, and Barnes-Hut repulsion between neurons; each tick a memory sits at the activation-weighted centroid of its neurons →~ENC-8
+  - placement: `placeEpisodicMemoriesAtCentroids` (`packages/force-sim/src/seed.ts`); a zero activation weight pulls nothing; a memory has no spring, charge or force of its own, and no force joins two memories →!INV-4
+  - a memory with no weighted activation sits at its seed hint, else at a seeded point of its own
+  - repulsion is the baseline pattern separation; actively splitting similar constellations is reserved →~ENC-11
+  - the layout never freezes: `force_sim.min_alpha` keeps a little residual motion after it settles
+  - coefficients: `force_sim.charge`, `link_distance`, `center_strength`, `repulsion`, `tick_alpha_decay`, `velocity_damping`; `link_distance` is the universe's scale knob, so rendered body sizes must stay well under the spacing it produces
+- VIS-14 [o] a node starts from a seed, never a stored coordinate, and its final place emerges from the forces: `seedInitialPositions` takes the carried previous position, else a seed hint, else a point near the seeded cluster centre of the first memory that activated it →~ENC-7
+  - neurons born together in one memory therefore start clustered, and a reused neuron starts where it already is
+  - cluster centres and seed points come from the seeded PRNG keyed by memory and neuron id
+  - an awaken anchor is at most one more seed hint →~VIS-34
+  - a refetch carries surviving coordinates by stable id (`kind:id`), never by array slot, because the backend orders rows by random id and a launch can reorder them (guard: `packages/force-sim/src/carry.test.ts`)
+- VIS-15 [o] the sim's z lives in the hippocampus band, symmetric about the world origin (`force_sim.hippocampus_z_min` = −`force_sim.hippocampus_z_max`), and every z output is clamped to it; the settled cloud is an oblate lens inside the band →!VIS-9
+  - the band's mid-plane is the origin the centre pull targets, so radius from the centre reads in all three axes
+  - the centre pull's z term carries `force_sim.z_center_gain`, so the cloud tapers instead of piling on the clamp faces; seeds span the band's half-thickness
+  - the latent field samples the same lens volume →~VIS-7
+  - the neocortex lift (`gistZOffset` over `force_sim.gist_z_offset_*`) is added by the renderer on top of the live coordinates and never read by the sim →=CONSOL-6
+  - the layer-separation guard →~CONSOL-5
+- VIS-16 [o] layout is deterministic on every client: the same graph, `force_sim.seed` and tick sequence give byte-identical coordinates ← web and mobile must draw the same universe from the same data
+  - every stochastic choice comes from the seeded PRNG, with seed streams derived per node id, so an unrelated new node does not move existing seed placement
+  - no `Math.random`, trigonometric placement or logarithmic connectivity formula in the deterministic path
+  - guard: the golden fixture `packages/force-sim/src/fixtures/canonical.json`, regenerated only with `UPDATE_GOLDEN=1`; a re-implementation is compatible only once it reproduces it
+  - client determinism, not a server position authority →!INV-5
+- VIS-17 [o] coordinates travel as one interleaved `Float32Array` of stride 3 and never become state: not React state, not a store field, not the Query cache, not persisted, not sent to the server, not a proto field →!INV-5
+  - node index: neurons first in input order, then episodic memories in input order; offset = index × `FORCE_SIM_COORDINATE_STRIDE`
+  - `tick(dt)` returns the module-owned snapshot; `tick(dt, out)` writes a caller-owned buffer, so a worker can transfer it without detaching the snapshot
+  - layers read the latest buffer inside the frame loop; glide targets and the stars' centre of mass are measured from it each frame, never stored
+  - the Query cache refuses buffer-backed data →=CLIENT-7
+- VIS-18 [o] the simulation runs off the render thread behind `UniverseSimBridge`: a module Web Worker on web with two transferable buffers ping-ponging, inline on the JS thread on native (no standard Worker), pumped once per frame by `FrameTick`
+  - the bridge publishes a monotonic version that moves only on start, remap, or a tick that moved past `rendering.coordinate_publication_epsilon` against the last presented buffer: an unchanged version means an unchanged picture
+  - a refetch of the same graph (`sameForceSimGraph`: every force and placement input, in order) keeps the running worker; any other graph remaps and reseeds
+  - a worker or sim error terminates the bridge and the universe reads as empty, never zero-stacked at the origin; the next refetch rebuilds it
+  - a future native worker primitive slots in behind the per-app spawner seam
+- VIS-19 [o] the scene reads one per-user `GetUniverse` snapshot of stored facts, held in three Zustand stores (episodic memory, neuron, synapse) in `@cosimosi/universe` over `@cosimosi/memory`'s proto→domain mappers and shared verbatim by both apps →=MEM-15
+  - the wire carries no coordinate and no read-time value: the channels derive `EffectiveStrength`, `EffectiveBrightness` and `EffectiveSynapseStrength` client-side through `@cosimosi/memory-logic` →!INV-5
+  - the read is `NO_SIDE_EFFECTS`, GET-eligible and never cached by a shared CDN →=CLIENT-5; reading never advances the clock →=TIME-3
+  - mapping is strict at the boundary: an unknown mood or neuron type or a non-canonical synapse fails loud
+  - invalidation is by content at three seams: the query's `structuralSharing` comparator keeps a content-identical response's identity; `setAll` keeps its references when rows match in order and content (slots follow order); the sim bridge keeps its worker on the same graph →~VIS-18
+  - the episodic store holds each memory's stage at its high-water mark →=CONSOL-16
+  - an optimistic launch tail joins the episodic store before the server read includes it →=WRITE-3
+  - the account-scope reset clears the stores, the latent consumed marks, the awaken registry, the fly slot, the spotlight and the sky rate →~CLIENT-12
+- VIS-20 [o] `@cosimosi/3d-renderer` is the one 3D library both apps consume: it owns `three` and R3F, and no app slice imports `three`, `three/*` or `@react-three/fiber` directly →=ARCH
+  - guard: web lint `no-restricted-imports`; mobile has no equivalent lint rule
+  - its native entry re-exports the web entry: scene, shaders and skins are shared verbatim and only the native build setup forks
+  - a generic core (shader-art toolkit, layers, canvas host, asset-source port, skin seam) sits under concrete looks (`assets/`: bodies, sky, backdrop, skins) that depend on it, never the reverse
+  - `@cosimosi/universe` holds the platform-agnostic scene core (graph builder, sim bridge, navigation machine, camera-rig scalars, read-model stores, pure channel projections); `@cosimosi/universe-render` holds the R3F bindings; neither has a `*.native` fork
+  - rendering vocabulary is native in these three packages and forbidden in `@cosimosi/memory`, `apps/api` and proto (guard: `pnpm lint:language`) →=UL
+- VIS-21 [o] shaders are authored in TSL only, one source compiling to WGSL and GLSL, on three's `WebGPURenderer` with its automatic WebGL2 fallback; raw GLSL and `onBeforeCompile` are forbidden ← a per-backend shader breaks the single web/native source
+  - the shader-art toolkit (noise, field, pattern, finish, sdf, geometry) is pure node-in/node-out builders: no material, uniform, React or DOM
+  - native runs `react-native-webgpu` (exact-pinned, pre-1.0) with metro mapping `three` to `three/webgpu` and R3F to its web build; R3F is patched through `pnpm.patchedDependencies`; New Architecture only, no Expo Go
+- VIS-22 [o] visual bodies arrive through the `VisualBodySource` port (`shader`, `gltf` or `primitive`); no domain-mirror or projection module imports a concrete renderer →=ARCH
+  - star, gist and filament bodies resolve as `shader`, the cell-star as `primitive`; a new look adds a source, never a new kind
+- VIS-23 [o] each canvas host owns its GPU device, not R3F: it disposes its own `WebGPURenderer`, only a backend switch (`forceWebGL`) may cost a device, and every other prop hot-applies to the live renderer ← R3F's teardown calls WebGL-only methods that silently no-op on WebGPU
+  - web defers disposal one macrotask and cancels it on remount (StrictMode); native splits device, children and live-config effects
+  - both hosts build the renderer with `antialias: false`: the post chain owns anti-aliasing
+  - the far plane is set explicitly (`UNIVERSE_CANVAS_FAR`): R3F's default would clip the enclosing sky →~VIS-42
+  - guard: lifecycle tests beside both hosts pin which effect re-runs on what; the native host's test lives in the package's vitest arm, since the mobile Jest arm stubs the renderer and never loads `three`
+- VIS-24 [o] the frame loop runs continuously while the scene is visible ← the ambient sky and twinkle are the product, so an on-demand loop would render a still image
+  - native sets the loop to `never` while the app is backgrounded or inactive (an unresolved null state counts as running); web inherits the hidden-tab pause
+  - pixel ratio adapts to sustained fps in steps of `rendering.adaptive_dpr_step` between 1 and `rendering.max_pixel_ratio`, over windows of `rendering.adaptive_dpr_window_seconds`: down below `adaptive_dpr_down_fps`, up above `adaptive_dpr_up_fps`
+  - after `rendering.adaptive_dpr_max_flipflops` direction reversals the walk settles on the lower ratio for the scene's life, since the fps dead band alone cannot stop oscillation
+  - the step reaches the renderer through the host's `dpr` prop via a required `onPixelRatio`; only a closed-window step reaches React
+  - the dev-only perf HUD sits behind `import.meta.env.DEV` and is absent from production bundles
+- VIS-25 [o] light lands through one bloom pass and one tone curve: `PostFX` (TSL bloom with the skin's parameters) renders last, the curve is `rendering.tone_mapping` at `rendering.tone_mapping_exposure`, and a scene-wide dim goes only through `SceneExposure`
+  - `SceneExposure` scales the exposure before the curve, so sky, field, filaments, bodies and bloom descend together with hues held; never a material tweak, never a sheet over the composite
+  - it restores the host's exposure on unmount and writes nothing while its level has not moved
+  - the bloom threshold sits above the nebula's peak amplitude and below a star's lit crown, so bodies glow and the colour haze does not
+- VIS-26 [o] presentation units mount the package and never re-bootstrap it: `UniverseCanvas`, `SkinProvider` and `PostFX` come from `@cosimosi/3d-renderer`, and no unit adds its own renderer lifecycle, skin system or post pipeline →=ARCH
+  - React context does not cross the R3F reconciler: app-context hooks (query, skin, machine, stores) run outside the canvas and reach canvas children as props
+  - per-frame code never drives React state: inside `useFrame` a layer reads buffers and refs, and reads a machine through `actor.getSnapshot()` on a stable ref →~CLIENT-19
+- VIS-27 [o] one shared universe host: `useUniverseScene()` (all app-context work) and `<UniverseSceneLayers>` (the layer composition) in `@cosimosi/universe-render`, with each app's `widgets/universe-canvas` a thin shell ← no gate compares two platform-marked files, so a forked host drifts unseen
+  - a shell holds only what genuinely forks: its canvas host (web: a positioned DOM wrapper; native: the surface), its sim spawner (web Worker, native null) and its fidelity budget
+  - logic that is not platform-specific belongs in the shared pair, never in a shell
+- VIS-28 [o] web renders at open-beta fidelity and mobile at MVP fidelity from the same source: mobile may lower instance counts, tessellation and post cost, never fork a body or a projection →=ARCH
+  - budgets are values keys taken as platform bundles: `UNIVERSE_BACKDROP.web` / `.mobile` (star-field count and radius with the latent tessellation), the latent count, `nebula.field_resolution_mobile`
+  - `UniverseSceneLayers` requires the bundle with no default, so a host cannot wear the web budget on a phone; standalone mobile benches pass the mobile bundle too
+- VIS-29 [o] the scene's layer order is load-bearing and the same on every universe surface: enclosing sky, star backdrop, nebula colour field, latent field, bodies, band fog, gist bodies, awaken flares, then `PostFX` last
+  - the sky draws at renderOrder −3, testing depth without writing it, so it fails behind already-drawn stars
+  - the nebula (−2) and the latent field (−1) neither test nor write depth, so every real body draws over them
+  - `PostFX` takes over the render loop, so it mounts last
+- VIS-30 [o] instanced layers size to the live count and never draw empty: one `InstancedMesh` or one batched ribbon per body kind, kept `visible = false` until it has an instance ← a 0-count geometry inside the post pass builds an invalid bind group and wedges the WebGPU device
+  - no fixed-capacity buckets
+  - a clean frame recomposes nothing: `InstancedNodeLayer` rewrites matrices only when the coordinate version, channels, slot window, scale or animation revision moved (`instance-frame-gate.ts`); fail-open: a buffer with no version always recomposes, and a layer with its own position mapper opts out
+  - a just-launched memory keeps its slots at zero scale until the next `GetUniverse` positions it, so no false geometry flashes at the origin
+  - a pick resolves through the entity stores' id lists (server rows plus the optimistic tail), never the graph, so the newest star stays openable
+- VIS-31 [o] the domain-to-visual projection is one-way and every channel has exactly one owner: a visual difference no stored fact explains must not exist →=VIS-1–6
+  | channel | carries | pace |
+  |---|---|---|
+  | position | relational structure | slow, emergent |
+  | brightness | recall recency | fast |
+  | size | strength | slow, accumulating |
+  | colour | primary emotion | near-fixed, palette-dependent |
+  | shape | seed | slow, reconsolidation only |
+  | filament | synapse strength | moves with recall and consolidation |
+  - projections are pure functions over domain facts in `@cosimosi/universe` (`starChannels`, `cellStarChannels`, `filamentChannels`, `gistStarInstances`, `buildContributors`) and export nothing back into domain types or mappers
+  - brightness and size are separate dimensions: an old untouched but strong memory is a large dark star, a just-recalled trivial one a small bright star
+  - emotion may not spend brightness: rendered luminance is the colour's lightness times the brightness channel, so palette lightness sits on a fixed ladder →=MOOD
+  - channels recompute only when the read model or the scene clock changes; coordinates are read per frame
+  - a non-finite value floors to its range minimum, so a skewed row never writes a NaN scale or vertex
+- VIS-32 [o] a star's body is one entry of the `STAR_SHAPES` registry, every entry reading the same four per-instance channels; `facet` is what an undecorated universe wears (`DEFAULT_STAR_SHAPE`) →!VIS-5
+  - a shape owns form, relief, noise and surface motion only: no writable handle to tint, brightness, seed or layer scale, and emissive gain is not a shape field, so no bought shape lifts a faded star back over the bloom threshold →!VIS-10
+  - every entry builds under `rendering.star_shape_triangle_budget` per instance (guard: `star-shapes.test.ts` over the whole registry); displaced looks carve an indexed icosphere
+  - fixed polyhedra turn in place from a seed-derived pose; irregular bodies hold still and evolve their surface instead
+  - an animated feature stays within 80–100% of its authored form
+  - reduced motion freezes a body at its seed-derived pose
+  - an unknown or retired key falls back to the default by name, never to the registry's first row
+- VIS-33 [o] a star shown away from the universe (`StarPreview`) is the same body, projection, skin and post chain, differing only by a fixed preview size and a slow spin →~RECALL-21
+  - size means strength only by comparison and one star alone has nothing to compare with; the panel states strength as a number
+  - `SpinGroup` turns the body about the vertical axis per frame, never through React state; reduced motion stops it
+  - the preview reads no stored fact it is not handed and writes none
+- VIS-34 [o] each genuinely new neuron awakens one latent point as an entry flare that hands off to the real cell-star; which neurons are new and which point is chosen →!ENC-12
+  - the client heuristic (`packages/universe/src/pick-awaken-seed.ts`): `recentlyActiveNeuronIds` over the episodic mirror and `pickAwakenSeeds` (distinct, nearest still-available point to an anchor read from the live buffer, else random) over the visible graph
+  - the launch hands `new_neuron_ids` to the awaken seam →~WRITE-3
+  - the pick and the flare's start point are presentation only: never stored, never sent; the real neuron's final position stays emergent →!INV-5
+  - flare: an emotion-free white-gold point on a `sin(πp)` envelope over `rendering.awaken_duration_s` to `rendering.awaken_peak_size`, a resumed frame clamped to `rendering.awaken_max_step_s`; the awakened point then collapses to scale 0
+  - a fixed pool of `rendering.awaken_capacity` flares advanced by `FrameTick` (no machine, no per-frame React state); a burst past the pool flares on a later pass
+  - idempotent across remounts through the module-level `awaken-registry`; when the field runs out of points the shortfall stops instead of retrying
+  - a launch's reveal waits for the time acceleration →=TIME-19
+- VIS-35 [o] the nebula is one additive world-space glow kernel per memory: colour `moodColor(mood)`, bleed radius `max(nebula.min_bleed_radius, nebula.bleed_radius_coefficient × EffectiveStrength)`, so each region reads its own emotion densely and stronger memories bleed wider
+  - the weighting and the emergent global tone (no stored, modelled or displayed universe colour) →=MOOD-4
+  - kernels sum in the framebuffer (additive, no depth, renderOrder −2), so many colours coexist and bleed instead of averaging
+  - over `nebula.max_contributors` the strongest memories are kept
+  - each kernel is a camera-facing disc centred on its contributor's coordinate, so the peak stays on its star; falloff `nebula.falloff_exponent`, amplitude `nebula.base_intensity`, tessellation `nebula.field_resolution_web` / `field_resolution_mobile`
+  - the amplitude stays under the bloom threshold: the field is bled colour, never a bloom source burying star surfaces
+  - the layer imports no emotion, palette or domain module (colours in, pixels out) and feeds nothing into layout, clustering or strength →~MOOD-7
+  - the universe screen shows no notice explaining the colour →=MOOD-5
+- VIS-36 [o] the backdrop lives inside the 3D scene: an enclosing `SkySphere` painted on its inner face plus the star backdrop; DOM or CSS background layers behind a transparent canvas are retired and must not return ← a screen-space wash moves with the head and reads as a photograph
+  - the canvas clears to the skin's opaque bare night, which equals the emotion ramp's own base, so an empty ramp paints exactly the clear colour and sphere and canvas read as one sky
+  - every surface that shows a universe sky (universe, demo, landing, sign-in, design benches) mounts the same `SkySphere`; the public empty sky and its raster poster →=MKT-20
+  - `three` stays inside the renderer package →!VIS-20
+- VIS-37 [o] sky effects read the 3D surface direction (`skyDir`, the normalized local position), never the flat `uv()` and never a chart that flattens the sphere ← a chart gathers somewhere, and on an enclosing sphere the gather shows as a seam or a pole pinch
+  - domains (`assets/sky/sky-domain.ts`) are functions of the direction alone: bands, angle to an anchor, cells, clouds
+  - a recipe needing local 2D coordinates uses a tangent patch around its own anchor (`skyLocal2D`), whose one degenerate point is the antipode, a hemisphere away from the feature
+  - no automated guard: the rule lives in `sky-node.ts` and `sky-domain.ts` and is held in review
+- VIS-38 [o] the sky's colour comes only from emotion: a recipe owns structure and motion but no colour, and samples every hue from the emotion ramp through `sky-emotion.ts` →!INV-3
+  - the ramp's shares are `universeEmotionSlices`, each mood's summed `EffectiveStrength` and never a memory count →=MOOD-4
+  - an empty or all-zero-strength universe yields no stops and the sky is the bare night; the first launched memory puts colour in it
+  - weight buys area, never depth or opacity: a cap of angular radius acos(1 − 2w) covers exactly share w of the sphere, so a faint feeling is a smaller territory in its own full colour
+  - features sit on a Fibonacci lattice and take their size from their own weight, never from the count or the gap to a neighbour
+  - no recipe caps how many feelings it takes: thirteen feelings make thirteen smaller territories
+  - the ramp texture is repainted in place when the stops change; the sky never resolves a mood or a palette itself
+- VIS-39 [o] backdrops are recipes over four composable axes (domain, field, emotion, finish), twelve of them in `SKY_EFFECTS`; a new look adds a primitive to an axis instead of inlining a trick into one recipe; `grainient` is what an undecorated universe opens on (`DEFAULT_SKY_EFFECT`)
+  - an unknown or retired key falls back to the default by name inside `resolveSkyEffect`
+  - each recipe holds itself under its own ceiling `rendering.emotion_sky_headroom.*` (a soft roll-off), so the stars, nebula and bloom added over it stay coloured instead of summing to white; the headroom is the sky's alone and the shared compositing path is untouched
+  - per-recipe alpha `rendering.emotion_sky_opacity.*` and palette exposure `rendering.emotion_sky_exposure` keep the night and the stars visible even when one emotion fills the ramp
+  - a sky is a place with things in it, not a filled surface: every recipe gates its coverage so the night shows through
+  - the sphere's material rebuilds only when the effect, the emotion count or the shares change; a colour-only change repaints the ramp, and a content-identical refetch recompiles nothing
+- VIS-40 [o] the sky runs on its own host-timed seconds, which only move forward; during a time advance they run faster on the sweep's 0→1→0 envelope, then rest →!TIME-19
+  - rate: `advanceSkyRateFor(envelope)`, from 1 at rest to `ADVANCE_SKY_PEAK_RATE` at the sweep's peak: a beat, not a time-lapse, so the backdrop stays the same sky
+  - `advanceSkyRate` is a plain mutable ref the acceleration hosts (product and demo) write every frame and `SkySphere` reads in its own `useFrame`; never React state
+  - a non-finite or non-positive rate is coerced to 1, so the sky never stalls or rewinds; the rate returns to 1 when a sweep ends and on the account-scope reset
+  - reduced motion freezes the sky at `REDUCED_MOTION_FROZEN_TIME`, one developed nonzero frame shared by every frozen ambient layer
+  - no sheet or veil covers the canvas while time passes; both platforms drive the same channels (sampled clock, sky rate) and render nothing over the scene →~TIME-20
+- VIS-41 [o] a skin is the non-domain scene default: `UniverseSkin` holds the default sky effect, the opaque bare night, bloom and camera fov; the active skin is `rendering.active_skin` and only the `emotion` skin is authored
+  - bloom, camera and the bare night are never for sale; the sky effect a universe wears is a per-user selection over the skin's default →~VIS-44
+  - a skin reads no memory meaning and writes nothing to the domain →!INV-11
+  - read with `useSkin()` at the app boundary and passed into the canvas as props (night to `UniverseCanvas`, bloom to `PostFX`), never through context across the reconciler
+  - the seam stays typed so a future ambiance variant needs no consumer change
+- VIS-42 [o] the backdrop nests in one order: camera zoom-out limit < star-backdrop radius < sky-sphere radius < canvas far plane ← a camera outside the star shell sees a ball, outside the sky sees no background, and a sky past the far plane is clipped into a hole
+  - the four numbers: `UNIVERSE_CAMERA_ENVELOPE.maxDistance`, `rendering.star_field_radius` (mobile `star_field_radius_mobile`), `SKY_SPHERE_RADIUS`, `UNIVERSE_CANVAS_FAR`
+  - guard: `packages/universe-render/src/backdrop-scale.test.ts` walks the order for both platform profiles; the mobile radius key exists so a mobile-only camera change has somewhere to break it
+- VIS-43 [o] the star backdrop is two independent choices poured together: a mote (`BACKDROP_MOTES`: form and colour, default `pinprick`) into a field (`BACKDROP_FIELDS`: scatter, density, life mode, twinkle rate and depth, spin; default `even`)
+  - the possible backdrops are their product; there is no catalogue of named pairs, and anything neither offers goes into an axis
+  - mote size is not a choice: `dealBackdropMoteSizes` deals every field the steps of `BACKDROP_MOTE_SIZE_MIX` (1, 2, 3 and 4 times the geometry) at fixed shares of 50, 30, 15 and 5%, shuffled on their own seed
+  - count and radius come from the platform profile (`rendering.star_field_count`, `star_field_radius`, mobile variants), never from a selection: a field's density can empty the sky but no selection raises the instance ceiling
+  - cost = placed motes × the mote's topology; `BACKDROP_TRIANGLE_CEILING` is checked against the undecorated pair, and the design bench reports any pair over it
+  - scatter: seeded Park-Miller, volume-uniform radius, independent per-instance twinkle hashes so the field never pulses as one wave; reduced motion freezes twinkle and spin
+  - the plain mote is an icosahedron at `rendering.star_field_mote_detail`; a camera-facing impostor quad is rejected: it changes the sky's grain and turns an opaque depth-writing draw into a sorted transparent one
+- VIS-44 [o] each decoration kind reaches the renderer through one seam: `BACKGROUND` to the `SkySphere` effect, `STAR_SHADER` to the `StarLayer` shape, `GIST_SHADER` to the `GistStarLayer` shape, `MOTE` and `MOTE_FIELD` to `StarField` →!VIS-10
+  - the key arrives as a plain string; resolution and the retired-key fallback to the registry's declared default (never its first row) live inside the registry that owns the look
+  - each builder receives the meaning channels as pass-through inputs with no writable handle
+  - `useWornOrnaments` (preview over the confirmed selection) is the one translation point, inside the scene hook; the decoration panel never imports the renderer
+  - a sky change rebuilds the sphere's material in place; a star or gist shape change remounts only that layer through its key; the renderer never remounts
+  - absent a selection each kind shows its registry's `DEFAULT_*`, the picture an undecorated universe shows
+  - the five registries and their defaults are checked against the catalog's id fixture (`assets/ornament-ids.test.ts`), including that the default background equals the `emotion` skin's sky effect →=DECOR-13
+  - the emotion-coloured layers (star, gist, nebula) remount on the palette version, so a live palette change recolours without a refetch →~MOOD-6
+- VIS-45 [o] camera travel and selection are one XState machine, `universeNavigationMachine`, with ids-only context (`selectedNodeId`, `travelNodeId`) →=ARCH
+  | state | meaning | exits |
+  |---|---|---|
+  | `idle` | free navigation | `FOCUS` → `focusing`; `FLY` → `flying` |
+  | `focusing` | framing a node | `ARRIVED` or `CANCEL` → `idle`; `FOCUS` re-enters; `FLY` → `flying` |
+  | `flying` | gliding to a node | `ARRIVED` or `CANCEL` → `idle`; `FLY` re-enters; `FOCUS` → `focusing` |
+  - `SELECT` and `CLEAR_SELECTION` apply in every state; in either hold, a click on a body selects and focuses it and a double click flies to it
+  - glides disable the controls and drive the camera; arrival is a pure latch (`navigation-latch.ts`) that fires once inside `arriveEpsilon`, re-arms when the camera drifts out or the target changes, and force-arrives after `arriveTimeoutSeconds`
+  - a gist pick sends `SELECT` with `gist:<memoryId>` (`gistNodeId`) and no glide, since a gist body is not a sim node; the star-detail resolver recognizes it only through the injected `parseGistNodeId` →=CONSOL-20
+  - the rig polls the machine with `getSnapshot()` each frame; the page lifts the actor so the star-detail panel shares the one selection →~RECALL-21
+  - rig feel (`UNIVERSE_CAMERA_RIG`) is code constants; no `rendering.camera.*` values group exists until a scalar needs cross-surface tuning
+- VIS-46 [o] the universe can be held two ways and a viewer arrives pinned: pinned holds it flat around the middle of the stars, free tumbles it in any direction ← the band depth reads as height only while the horizon holds still →~VIS-9
+  - pinned: `OrbitControls` orbiting the world's +z (set before construction), no pan, tilt clamped to `pinnedTiltUp` above the flat (the larger allowance) and `pinnedTiltDown` below; azimuth and zoom remain
+  - pinned opens at `pinnedOpeningElevation`, a modest rise inside the allowance, never level: a level eye sits in the lens's mid-plane, where its depth collapses to a line
+  - free: `TrackballControls`, unbounded rotation past the poles, no fixed up
+  - the pinned centre is whatever holds the frame (travel target, then selection, then spotlight), else the stars' centre of mass measured from the live buffer each frame
+  - while a star holds the frame the pinned home pose is remembered and letting it go glides back; a camera outside the envelope eases position and slerps orientation, never snaps
+  - neither mode changes what is true: holding the universe frames it and never re-lays it out, stores a coordinate or reorders anything →!INV-5
+  - the mode is a device preference in `useUniverseViewStore` (Zustand, not the machine): it survives route changes, sign-out and account switches, and a reload or app restart starts pinned again
+- VIS-47 [o] one control in the universe's top-left corner (`features/pin-universe-view`, both apps) shows and switches the hold, naming the mode it is in rather than the one a press brings
+  - copy keys: state `universe_view_pinned` / `universe_view_free`, action `universe_view_free_action` / `universe_view_pin_action`, consequence `universe_view_free_hint` / `universe_view_pin_hint`
+  - web: glyph and word inside one button; the accessible name adds the action to the visible word instead of replacing it; `aria-pressed` carries the state; the tooltip states what the other mode would allow, never the name again
+  - native: the word sits beside the icon button, whose accessible name is the visible state word plus the action, with the state also in `selected`
+  - it writes only the view store, which the camera reads inside the canvas
+- VIS-48 [o] universe surfaces enter on an elevated camera (`UNIVERSE_ARRIVAL_CAMERA_POSITION`), never on the z axis, where a straight-down view projects the lens's depth away; benches and staged scenes keep the canvas's straight-down default
+  - every camera in the universe, the product rig and the inspection `CameraControls` alike, wears one zoom envelope (`UNIVERSE_CAMERA_ENVELOPE`, required props on the inspection controls)
+  - `CameraControls` (trackball, no pan) is the inspection rig of design and test benches; the product universe wears `NavigationRig`
+- VIS-49 [o] a cross-route jump to a star parks its target in the one-slot `usePendingFlyTargetStore`, and the canvas consumes it only once the graph carries the node →~DIARY-22
+  - consuming sends `FLY` and clears the slot; an unresolved target stays parked for the read already in flight, since the slot holds one request and nothing re-sends it
+  - an episodic star's node id is its memory id, so the jump parks the first recalled `episodic_memory_id` untranslated
+  - the reader never imports `three` or the rig; the fly is a discrete navigation event
+- VIS-50 [o] arriving from a jump is lit, not only flown to: while `useSpotlightStore` names memories, the scene's light eases down to `rendering.spotlight_scene_dim` and the named stars' brightness channel is multiplied by `rendering.spotlight_star_lift` →~DIARY-22
+  - the store holds ids only: which stars matter is the app's to say, how they show is the renderer's
+  - the dim is taken at exposure through `SceneExposure` →~VIS-25; the lift is drawn brightness only, reads and writes no stored fact, and `starLife` clamps at 1, so a lifted star keeps its own motion
+  - the hold runs on its own clock (`rendering.spotlight_hold_s`, eased at `rendering.spotlight_fade_lambda`), never on camera arrival, so a force-arrive cannot strand the universe in the dark
+  - reduced motion gets the same darkness with no ramp; unmounting gives the light back
+  - store cleanup is deferred one macrotask and compares the id list before clearing, so StrictMode cannot erase a diary-armed spotlight and an old cleanup cannot erase a newer one
+- VIS-51 [o] the 3D sign-off surface is the `Universe` group on `/design` in both apps, never `/test` ← the test harness is removed after development and a sign-off surface must outlast it →=UI
+  - it shows every body type and designed state: star forms, emotion skies, ambient bodies, the colour field, forgetting ages, the gist pair, the awaken flare
+  - a specimen is a real projection through the production channel path over one shared fixture module (`packages/universe/src/showcase-scene.ts`), so a web/mobile difference is a parity finding
+  - a bench magnifies only through named constants, never a quietly closer camera
+  - a bench spends no live state: the latent binding takes its consumed set explicitly and the awaken specimen restores what it found
+  - the emotion count on a bench is a review convenience, not a property of any sky
+
+## flow
+- read: `GetUniverse` → stores(content unchanged: keep refs | changed: replace) → graph → sim bridge(worker | inline) → coordinate buffer(version moved | not) → layers read per frame
+- launch: `new_neuron_ids` → awaken pick(near recent neuron | random) → flare → optimistic star at zero scale → refetch → emergent position
+- advance: interval(empty: nothing | moving: scene clock walks `previous → current`, sky rate rises and rests, gist rises ease) → committed clock
+- jump: park fly target → navigate to the universe → node in graph(no: stay parked | yes: `FLY`) → spotlight hold → fade
+
+## constraints
+- values keys owned here: every `rendering.*` key except `rendering.gist_*` (→=CONSOL), every `nebula.*` key, and the layout keys of `force_sim.*` (`charge`, `link_distance`, `center_strength`, `repulsion`, `tick_alpha_decay`, `velocity_damping`, `min_alpha`, `hippocampus_z_min`, `hippocampus_z_max`, `z_center_gain`, `seed`)
+- read but owned elsewhere: `force_sim.gist_z_offset_*` →=CONSOL, `forgetting.brightness_floor` →=FORGET, `synapse.temporal_window_days` →=LINK
+- formulas, shader graphs, envelopes, palette content, camera-rig scalars and the sky rate stay code
+- the demo draws the same layers and projections over its own fixtures →~DEMO-30
+
+## chg
+- r1 261102 initial

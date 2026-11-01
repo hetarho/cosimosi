@@ -1,5 +1,5 @@
 // Package rpc is the store context's transport adapter: thin Connect handlers that map domain rows
-// to proto DTOs and call the reads (ARCHITECTURE §2.7/§2.9#7). No policy lives here — pricing,
+// to proto DTOs and call the reads (ARCH-18). No policy lives here — pricing,
 // ownership and default resolution all belong to the context behavior.
 package rpc
 

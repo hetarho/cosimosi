@@ -3,7 +3,7 @@ package memory
 // The achievement counter facts this context reports. Their spelling and their accumulate/reach mode
 // belong to the achievement catalog; this context only emits them, through a port whose payload is a
 // key and a delta. The keys are canonical UL nouns and carry NO rendering word — the launch counter
-// is `episodic_memory_launched`, never `star_launched` (UL §4).
+// is `episodic_memory_launched`, never `star_launched` (UL-5).
 //
 // They are constants rather than literals at the call sites, and AchievementCounterKeys publishes
 // the set, because the composition root reconciles this set against the keys the catalog reads and

@@ -26,7 +26,7 @@ export type IconProps = IconOwnProps & { className?: string }
  *
  * Every icon renders at `ICON_SIZE` in `currentColor` (Phosphor's default) so it takes the ink of
  * the control around it, and carries `aria-hidden` — an icon is never the accessible name, which is
- * why `IconButton` requires a `label` (design-language §8).
+ * why `IconButton` requires a `label` (UI-57).
  */
 export const ICON_SIZE = 16
 

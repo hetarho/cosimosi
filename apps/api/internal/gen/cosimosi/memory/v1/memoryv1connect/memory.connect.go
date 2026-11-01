@@ -88,7 +88,7 @@ type MemoryServiceClient interface {
 	// without a conversion.
 	ReviseSplit(context.Context, *connect.Request[v1.ReviseSplitRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
 	// Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
-	// ids only (ARCHITECTURE §2.8).
+	// ids only (ARCH-19).
 	LaunchStars(context.Context, *connect.Request[v1.LaunchStarsRequest]) (*connect.Response[v1.LaunchStarsResponse], error)
 	// Per-user universe read carrying stored facts only — no positions or derived
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
@@ -358,7 +358,7 @@ type MemoryServiceHandler interface {
 	// without a conversion.
 	ReviseSplit(context.Context, *connect.Request[v1.ReviseSplitRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
 	// Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
-	// ids only (ARCHITECTURE §2.8).
+	// ids only (ARCH-19).
 	LaunchStars(context.Context, *connect.Request[v1.LaunchStarsRequest]) (*connect.Response[v1.LaunchStarsResponse], error)
 	// Per-user universe read carrying stored facts only — no positions or derived
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect

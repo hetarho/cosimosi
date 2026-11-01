@@ -1,5 +1,5 @@
 // Package rpc is the admin context's transport adapter: the admin-authorization interceptor plus a
-// thin Connect handler mapping proto↔domain (ARCHITECTURE §2.7/§2.9#7). All policy lives in the
+// thin Connect handler mapping proto↔domain (ARCH-18). All policy lives in the
 // admin use-case; this layer only maps and gates.
 package rpc
 

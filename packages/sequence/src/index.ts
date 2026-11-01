@@ -16,7 +16,7 @@
  * with a fresh run id.
  *
  * Placement: control state in the machine, the registry in Zustand, the script and rects outside both
- * (ARCHITECTURE §3.2). Each app hand-writes its own chrome `ui`; every `model`-level artifact is here.
+ * (ARCH-24). Each app hand-writes its own chrome `ui`; every `model`-level artifact is here.
  */
 export {
   defineScript,

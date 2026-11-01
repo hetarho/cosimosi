@@ -1,5 +1,5 @@
 // Package rpc is the account context's transport adapter: a thin Connect handler mapping proto
-// DTOs to domain calls (ARCHITECTURE §2.7/§2.9#7). No policy lives here — id validation, the
+// DTOs to domain calls (ARCH-18). No policy lives here — id validation, the
 // unset/unknown default, and per-user scoping all live in the use-case and the auth interceptor.
 package rpc
 

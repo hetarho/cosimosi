@@ -6,28 +6,28 @@ description: >-
   place. Use when the user says "add a page/feature/component", "where does this file go", "wire up a provider", "build
   the X screen", or during /implement-job for any FE surface. It carries the Feature-Sliced Design decision procedure
   (layer → slice → segment), the app-layer segment rule, the web↔mobile parity rule, and a self-audit checklist. The
-  authoritative rules live in spec/ARCHITECTURE.md §3 — this skill is the actionable procedure + audit, not a second
-  copy of the rules. Read §3 first when a case is ambiguous.
+  authoritative rules live in spec/ssot/ARCH.md ARCH-21–30 — this skill is the actionable procedure + audit, not a
+  second copy of the rules. Read those decisions first when a case is ambiguous.
 ---
 
 # Frontend architecture gate (FSD)
 
-**SSOT = [spec/ARCHITECTURE.md](../../../spec/ARCHITECTURE.md) §3** (layers/segments/placement), **§3.4** (domain→visual
-projection), **§3.5** (mobile/packages). This skill does **not** restate the rules to own them — it gives the
+**SSOT = [spec/ssot/ARCH.md](../../../spec/ssot/ARCH.md) ARCH-21–23** (layers/segments/placement), **ARCH-26**
+(domain→visual projection), **ARCH-27–30** (packages, mobile parity, waivers). This skill does **not** restate the rules to own them — it gives the
 *procedure* to apply them and the *audit* to catch drift. If a placement is ambiguous or you're unsure a rule still
-holds, **open §3 and read it** — don't guess from memory. That is the whole point: the last time this step was skipped,
+holds, **open ARCH-21–30 and read them** — don't guess from memory. That is the whole point: the last time this step was skipped,
 `apps/web/src/app` drifted flat.
 
 ## When this fires
 Before you create/move/rename **any** file under `apps/web/src`, `apps/mobile/src`, or a frontend `packages/*`, and
 whenever you review FE structure. `/implement-job` invokes this for every FE job.
 
-## The decision procedure — where does this file go? (§3.1)
+## The decision procedure — where does this file go? (ARCH-21–23)
 
 Ask in order:
 
 1. **Domain noun or its rendering?** → `entities/<domain-noun>` (pure model/api, no `three`) vs
-   `entities/<visual-noun>` (renderer projection). The projection is one-way (§3.4).
+   `entities/<visual-noun>` (renderer projection). The projection is one-way (ARCH-26).
 2. **A user-facing action (a verb)?** → `features/<verb>`.
 3. **A big self-contained block reused across pages?** → `widgets/<block>`.
 4. **A whole route/screen?** → `pages/<screen>` (composes lower layers; holds no domain logic).
@@ -51,7 +51,7 @@ machine, app-level pure logic), **`styles/`** (global CSS). Only the true entryp
 `index.css`) may sit at the `app/` root. A provider or config file dropped directly in `app/` is a **placement bug** —
 put it in `app/providers/`. (This is FSD-canonical and matches `apps/mobile/src/app`.)
 
-## Web ↔ mobile parity (§3.5)
+## Web ↔ mobile parity (ARCH-28–30)
 
 `apps/web` and `apps/mobile` are peer apps with the **same layers and same slice names**. `model`/`api` and everything
 in `packages/` are **shared verbatim** (no `three`/DOM/native by rule) — never copy them sideways between apps; promote

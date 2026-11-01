@@ -1,6 +1,6 @@
 /**
  * Session model — the platform-pure shape both web and mobile auth providers expose
- * to feature slices. ARCHITECTURE §3.2: control state lives in XState, data/tokens
+ * to feature slices. ARCH-24: control state lives in XState, data/tokens
  * stay in the auth adapter. The XState machine context carries only these status /
  * id fields; access tokens and Supabase session objects never appear here.
  */

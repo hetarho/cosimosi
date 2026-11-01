@@ -215,7 +215,7 @@ export function UniversePage({
             icon-only controls: the account home, 꾸미기 ([P5], a panel over the canvas rather than a
             route) and the archive ([D2]) — a quiet column against the screen edge instead of a row
             of labelled buttons competing with the universe. There is no hover on touch, so each
-            one's `label` is the whole of its name (design-language §8). */}
+            one's `label` is the whole of its name (UI-57). */}
         <View style={styles.topRight}>
           <StardustOverlay onOpenAchievements={onOpenAchievements} />
           <IconButton

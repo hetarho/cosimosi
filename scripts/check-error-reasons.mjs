@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Reason-registry parity: every stable reason the backend can put on the wire is registered on both
-// sides of the seam — the FE `ERROR_REASONS` union and the policy §2 table.
+// sides of the seam — the FE `ERROR_REASONS` union and the ERR-12 registry table.
 //
 // An UNMAPPED reason deliberately falls back to the coarse Connect-code copy. That is the right
 // default, but it also means a reason nobody registered is invisible: no test fails, no lint fails,
 // and the surface quietly shows a sentence written for a different failure. So the rule here is
 // membership only — bespoke FE copy stays optional by design, and a gate demanding it would fight
-// that. The registry contract lives in spec/policy/platform/errors.md §2.
+// that. The registry contract is ERR-12 in spec/ssot/ERR.md; this guard is ERR-13.
 //
 //   node scripts/check-error-reasons.mjs
 //   node scripts/check-error-reasons.mjs --probe   self-test that the parser and the rule fire
@@ -22,7 +22,8 @@ import { fail, note, ok, repoRoot, section } from './lib.mjs'
 
 const RPC_DIR = 'apps/api/internal'
 const FE_REGISTRY = 'packages/errors/src/core.ts'
-const POLICY_TABLE = 'spec/policy/platform/errors.md'
+const POLICY_TABLE = 'spec/ssot/ERR.md'
+const REGISTRY_DECISION = 'ERR-12'
 
 // Reasons the FE registry owns without any `reasons.go` emitting them: `apperr`'s platform
 // fallbacks. `PLATFORM_<CONNECT_CODE>` is built at runtime from the code name, so the registry
@@ -64,12 +65,21 @@ export function registeredReasons(source) {
   return found
 }
 
-/** Reasons named in the §2 registry table. One cell may list several, comma-separated. */
-export function documentedReasons(markdown) {
+/**
+ * Reasons named in the registry decision's table — its indented rows only, so a table under any
+ * other decision of the same SSOT can never register a reason. One cell may list several,
+ * comma-separated. The block runs from the decision line to the next top-level bullet or heading.
+ */
+export function documentedReasons(markdown, decision = REGISTRY_DECISION) {
   const found = []
+  let inBlock = false
   for (const line of markdown.split('\n')) {
-    if (!line.startsWith('|')) continue
-    const cell = line.split('|')[1]
+    if (/^(- |## )/.test(line)) {
+      inBlock = line.startsWith(`- ${decision} `)
+      continue
+    }
+    if (!inBlock || !line.trimStart().startsWith('|')) continue
+    const cell = line.trimStart().split('|')[1]
     if (!cell) continue
     for (const match of cell.matchAll(/`([A-Z][A-Z0-9_]*)`/g)) found.push(match[1])
   }
@@ -86,7 +96,9 @@ export function parityProblems({ emitted, registered, documented }) {
       problems.push(`${reason} (${origin}) is not in ERROR_REASONS (${FE_REGISTRY})`)
     }
     if (!inPolicy.has(reason)) {
-      problems.push(`${reason} (${origin}) is not in the §2 reason registry (${POLICY_TABLE})`)
+      problems.push(
+        `${reason} (${origin}) is not in the ${REGISTRY_DECISION} reason registry (${POLICY_TABLE})`,
+      )
     }
   }
   return problems
@@ -113,7 +125,7 @@ function runCheck() {
     for (const problem of problems) console.error(`  \x1b[31m✗\x1b[0m ${problem}`)
     fail(
       `${problems.length} reason(s) are not registered on both sides. Add the key to ERROR_REASONS ` +
-        `and the row to ${POLICY_TABLE} §2. Bespoke FE copy stays optional by design.`,
+        `and the row to ${REGISTRY_DECISION} in ${POLICY_TABLE}. Bespoke FE copy stays optional by design.`,
     )
   }
 
@@ -125,7 +137,7 @@ function runCheck() {
       `registry entries no reasons.go emits (stale, or newly platform-owned): ${unmatched.join(', ')}`,
     )
   }
-  ok(`${emitted.length} emitted reason(s) are registered in ERROR_REASONS and the §2 table`)
+  ok(`${emitted.length} emitted reason(s) are registered in ERROR_REASONS and ${REGISTRY_DECISION}`)
 }
 
 function collectEmitted() {
@@ -168,9 +180,15 @@ function codeName(code: Code): string {
   }
 }
 `
-  const mdFixture = `| Reason(s) | Domain | Connect code | FE |
-| --- | --- | --- | --- |
-| \`CTX_REGISTERED\` | ctx | Internal | fallback |
+  // A decoy table under a neighbouring decision must not register its reason.
+  const mdFixture = `## decisions
+- ERR-11 [o] a neighbouring decision
+  | \`CTX_UNREGISTERED\` | ctx | Internal | fallback |
+- ${REGISTRY_DECISION} [o] reason registry
+  | Reason(s) | Domain | Connect code | FE |
+  |---|---|---|---|
+  | \`CTX_REGISTERED\` | ctx | Internal | fallback |
+- ERR-13 [o] the next decision
 `
 
   const emittedNames = emittedReasons(goFixture)
@@ -188,7 +206,9 @@ function codeName(code: Code): string {
   }
 
   if (documentedReasons(mdFixture).join(',') !== 'CTX_REGISTERED') {
-    fail('the §2 table parser did not read the reason cell')
+    fail(
+      `the ${REGISTRY_DECISION} table parser must read its own block's reason cell and nothing else`,
+    )
   }
 
   const emitted = emittedNames.map((name) => [name, 'ctx/rpc/reasons.go'])

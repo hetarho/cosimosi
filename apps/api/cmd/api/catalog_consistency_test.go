@@ -9,7 +9,7 @@ import (
 )
 
 // The cross-catalog guards live here because the composition root is the one package that
-// legitimately sees both catalogs (ARCHITECTURE §2.4): achievement never imports store or memory,
+// legitimately sees both catalogs (ARCH-8): achievement never imports store or memory,
 // so its ornament ids and family members are opaque strings there and 1:1 facts here.
 
 // Every achievement-only ornament is paid by exactly one achievement, and every achievement

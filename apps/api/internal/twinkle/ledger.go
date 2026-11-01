@@ -95,7 +95,7 @@ const (
 	// wire value, so no client can mistake the refill for a transaction. It exists here only so the
 	// closed set names the economy's one non-event instead of leaving a silent hole.
 	ReasonDailyGrant EntryReason = "daily_grant"
-	// ReasonPayment is RETAINED WITH NO WRITE PATH (PRD §8.3 defers 스토어/PG to v3): historical rows
+	// ReasonPayment is RETAINED WITH NO WRITE PATH (PROD-16 defers 스토어/PG to v3): historical rows
 	// must stay readable and foldable into the balance ([I1] — nothing is deleted, including history
 	// whose feature left).
 	ReasonPayment EntryReason = "payment"

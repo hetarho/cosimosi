@@ -1,7 +1,7 @@
 // Package achievement is the supporting context for 업적 — the in-code catalog of achievements
 // (one condition + one reward each), the counter store every condition is evaluated against, and
 // the two non-derivable per-achievement facts: when a condition was first met and when its reward
-// was received (ARCHITECTURE §2.2).
+// was received (ARCH-6).
 //
 // Two structural guards shape every type here:
 //

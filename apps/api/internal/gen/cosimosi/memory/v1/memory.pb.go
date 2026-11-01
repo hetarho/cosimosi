@@ -546,7 +546,7 @@ func (x *ConfirmedMemory) GetSourceText() string {
 
 type LaunchStarsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Optimistic write: ids only; embeddings/gist fill on the next read (§2.8).
+	// Optimistic write: ids only; embeddings/gist fill on the next read (ARCH-19).
 	MemoryIds []string `protobuf:"bytes,1,rep,name=memory_ids,json=memoryIds,proto3" json:"memory_ids,omitempty"`
 	// Neurons genuinely created by this launch (not deduped onto existing ones) —
 	// newness is a server-only decision, surfaced for the awaken animation ([E7a]).
@@ -1195,7 +1195,7 @@ func (x *SynapseDto) GetLastActivatedUniverseTime() string {
 
 // The memory + what the user wrote back. rewrite_text is the ONLY content field the client
 // sends — no seed, brightness, strength, decay, price, or diary field exists, so the
-// reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
+// reshape/bump/anchors/price are all server-derived (ARCH-31, [W4a] structural defense).
 type RecallRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	MemoryId    string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
@@ -1370,7 +1370,7 @@ func (x *RecallResponse) GetUniverseTime() string {
 }
 
 // diary_id is the only target field the client sends — the affected memory ids, price, and
-// anchors are all server-derived (§2.9#8). operation_id/sync_consent carry the same paid-action
+// anchors are all server-derived (ARCH-31). operation_id/sync_consent carry the same paid-action
 // idempotency + consent contract as RecallRequest (A2/A3); each whole-diary member spends under
 // an operation-derived per-member dedup key, so a replay re-charges no member.
 type RecallDiaryStarsRequest struct {
@@ -1434,7 +1434,7 @@ func (x *RecallDiaryStarsRequest) GetSyncConsent() bool {
 }
 
 // The memory and the gist stage the user chose to view [C6] — the only target fields the
-// client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
+// client sends; whether that stage has risen and what it costs are server-derived (ARCH-31).
 // operation_id carries the paid-action idempotency contract (A2/A3); a view advances no clock,
 // so it needs no sync_consent.
 // The client names the MEMORY, never a depth: the server derives which gist rung the memory has

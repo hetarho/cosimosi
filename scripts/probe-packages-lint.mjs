@@ -2,7 +2,7 @@
 // Packages-lint probe: proves `eslint.config.packages.mjs` actually bites, the way the demo-isolation
 // and boundary probes prove theirs. A lint rule nobody has seen fail is a rule nobody knows is wired —
 // and this gate exists because `packages/**` went unlinted by any JS/TS linter while `lint:web` and
-// `lint:mobile` both reported green (ARCHITECTURE §4: "a gate's scope is part of the rule").
+// `lint:mobile` both reported green (ARCH-42: "a gate's scope is part of the rule").
 //
 // The fixtures live in a hermetic `.probe-ws-*` workspace (see probe-workspace.mjs), mirrored at the
 // real package paths so the config's path-scoped React blocks apply, and are linted with the repo's

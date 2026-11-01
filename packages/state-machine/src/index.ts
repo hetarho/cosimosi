@@ -13,7 +13,7 @@
  * - panelMachine — overlay / test-harness panel lifecycle
  *   (closed → open → loading → ready | error).
  *
- * Placement rules (ARCHITECTURE §3.2; details in spec/tech/state-machine.md):
+ * Placement rules (ARCH-24; details in CLIENT-14–21):
  * - app-wide lifecycle machines: apps/{web,mobile}/src/app/model
  * - feature action machines:    features/{verb}/model
  * - entity control machines:    entities/{noun}/model

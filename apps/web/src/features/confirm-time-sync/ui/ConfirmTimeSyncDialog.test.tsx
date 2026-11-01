@@ -10,7 +10,7 @@ import { ConfirmTimeSyncDialog } from './ConfirmTimeSyncDialog.tsx'
 // The web half of the [R1a] consent contract. The dialog body mounts through a DOM portal, which
 // the SSR-string harness cannot host — the mobile ConfirmTimeSyncDialog.test.tsx renders it live
 // and presses both decisions; this side pins what is testable without a DOM: the closed state, the
-// consent copy the component resolves (the consequence stated verbatim, PRD §3.1 voice), and that
+// consent copy the component resolves (the consequence stated verbatim, UL-2 voice), and that
 // a full request → settle round trip performs no transport call.
 describe('ConfirmTimeSyncDialog (web)', () => {
   beforeEach(() => {

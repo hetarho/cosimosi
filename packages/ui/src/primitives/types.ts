@@ -41,7 +41,7 @@ export interface ButtonOwnProps {
  * explicit token colour on native, where RN has no inherited colour to read.
  */
 export interface IconOwnProps {
-  /** Edge length in px. Defaults to `ICON_SIZE`, the size design-language §8 pairs with body text. */
+  /** Edge length in px. Defaults to `ICON_SIZE`, the size UI-57 pairs with body text. */
   size?: number
 }
 

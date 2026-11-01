@@ -1,4 +1,4 @@
-// Package pg is the admin context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete
+// Package pg is the admin context's only sqlc/pgx seam (ARCH-11): the concrete
 // admin.Store over admin_users, admin_stardust_grants, admin_audit_log, and ai_provider_config,
 // with row↔domain mapping at this edge — no dbgen type escapes inward. Every mutating method runs
 // the mutation and its admin_audit_log append in ONE transaction, so a sensitive admin action is

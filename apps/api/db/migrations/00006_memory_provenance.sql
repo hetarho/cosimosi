@@ -8,7 +8,7 @@
 -- reconsolidations still yields a one-entry 변천사. Reconsolidation appends kind='reconsolidated'/
 -- source='user'; semanticization appends kind='semanticized'/source='system'.
 CREATE TABLE memory_provenance (
-    id                 TEXT PRIMARY KEY,                 -- nanoid, backend-minted (ARCHITECTURE §5)
+    id                 TEXT PRIMARY KEY,                 -- nanoid, backend-minted (ARCH-14)
     user_id            TEXT NOT NULL,                    -- per-user isolation [U1]
     episodic_memory_id TEXT NOT NULL REFERENCES episodic_memories(id) ON DELETE CASCADE,
     kind               TEXT NOT NULL,                    -- 'created' | 'semanticized' | 'reconsolidated'

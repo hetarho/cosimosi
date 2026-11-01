@@ -6,21 +6,21 @@ description: >-
   when the user says "add an endpoint/RPC", "add a table/query", "where does this Go code go", "add a use-case", or
   during /implement-job for any BE surface. It carries the domain-first-Go decision procedure (composition root →
   context behavior → domain), the dependency rule, the proto/sql anti-corruption boundary, and a self-audit checklist.
-  The authoritative rules live in spec/ARCHITECTURE.md §2 — this skill is the actionable procedure + audit, not a
-  second copy. Read §2 first when a case is ambiguous.
+  The authoritative rules live in spec/ssot/ARCH.md ARCH-5–20 — this skill is the actionable procedure + audit, not a
+  second copy. Read those decisions first when a case is ambiguous.
 ---
 
 # Backend architecture gate (domain-first Go)
 
-**SSOT = [spec/ARCHITECTURE.md](../../../spec/ARCHITECTURE.md) §2** (§2.3 context layout, §2.4 dependency rule, §2.5
-aggregate boundaries) + **§1** (the ubiquitous-language boundary). This skill gives the *procedure* + *audit*, not the
-authoritative rules. If a placement is ambiguous, **open §2 and read it** — don't guess.
+**SSOT = [spec/ssot/ARCH.md](../../../spec/ssot/ARCH.md) ARCH-5–20** (ARCH-7 context layout, ARCH-8 dependency rule,
+ARCH-10 aggregate boundaries) + **ARCH-4** (the ubiquitous-language boundary). This skill gives the *procedure* +
+*audit*, not the authoritative rules. If a placement is ambiguous, **open those decisions and read them** — don't guess.
 
 ## When this fires
 Before you create/move/rename **any** file under `apps/api` (context package, `rpc/`, `pg/`, migration, sqlc query,
 `cmd/`, `platform/`), and whenever you review BE structure. `/implement-job` invokes this for every BE job.
 
-## The decision procedure — where does this Go code go? (§2.3)
+## The decision procedure — where does this Go code go? (ARCH-7)
 
 1. **Is it wiring** (build the server, inject concrete adapters, config)? → `cmd/api` or `cmd/worker` — the composition
    root, the only place that sees everything.
@@ -38,14 +38,14 @@ Before you create/move/rename **any** file under `apps/api` (context package, `r
 **Start as one package per context; split (`domain/`·`app/`·`pg/`·`rpc/`) only when it earns it** — not as a starting
 tax. Don't create empty packages to satisfy a diagram.
 
-## The dependency rule (§2.4) — inward only
+## The dependency rule (ARCH-8) — inward only
 `rpc`/`pg`/SDK adapters → context behavior (or `app/`) → domain model (pure). The domain model knows **nothing** of
 proto, sqlc rows, pgx, JSON/DB tags, or transport. Two anti-corruption mappers keep the language pure: the handler
-(`proto↔domain`) and the pg adapter (`row↔domain`) — no proto/sql type ever leaks inward (§1). No ORM, no DI
+(`proto↔domain`) and the pg adapter (`row↔domain`) — no proto/sql type ever leaks inward (ARCH-4). No ORM, no DI
 framework, no generic repository over sqlc. Each context owns its tables; cross-context reads go through the owning
 context's published behavior, never its tables.
 
-## Aggregate boundaries (§2.5)
+## Aggregate boundaries (ARCH-10)
 An entity with its own lifecycle is its own aggregate root; a shared entity is referenced **by id through a
 membership/join**, never owned. Emergent relationships (computable from stored data) are **not** promoted to domain
 types — materialize as an infra projection only if performance needs it, and only if rebuildable. Domain services are
@@ -57,6 +57,6 @@ types — materialize as an infra projection only if performance needs it, and o
 - [ ] proto↔domain (handler) and row↔domain (pg) mappers exist at the edges; no foreign type leaks inward.
 - [ ] Ports are consumer-declared and actually consumed (no mock-only interfaces).
 - [ ] No new empty package just for shape; the split shape used only where it removes real noise.
-- [ ] Canonical domain names match the ubiquitous language (§1) — no second product word for an existing concept
+- [ ] Canonical domain names match the ubiquitous language (ARCH-4, spec/ssot/UL.md) — no second product word for an existing concept
       (`pnpm lint:language`).
 - [ ] Gates green: `docker run --rm -v ${PWD}/apps/api:/app -w /app golang:1.26 sh -c "go vet ./... && go build ./..."`.

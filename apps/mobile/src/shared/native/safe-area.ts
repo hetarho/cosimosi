@@ -8,7 +8,7 @@ import {
 } from 'react-native-safe-area-context'
 
 /**
- * Safe-area seam (ARCHITECTURE §3.5). The shell handles device chrome so feature
+ * Safe-area seam (ARCH-28). The shell handles device chrome so feature
  * slices never deal with the library directly. `initialWindowMetrics` is null before the
  * native view measures (and always null in host tests) — `fallbackSafeAreaMetrics`
  * lets `SafeAreaProvider` render its children synchronously in that case.

@@ -299,7 +299,7 @@ export const LedgerEntryKindSchema: GenEnum<LedgerEntryKind> = /*@__PURE__*/
  *   - NO DAILY_GRANT — the daily SMALL refill is a DERIVATION from the stored window anchor, not an
  *     event, so it has no row and no wire value. A client cannot mistake the refill for a
  *     transaction; the history renders it as a labelled day marker from the same derivation.
- *   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PRD §8.3) and nothing
+ *   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PROD-16) and nothing
  *     writes this reason, but the ledger is append-only, so rows written before it left must stay
  *     readable ([I1]).
  *
@@ -379,7 +379,7 @@ export const LedgerEntryReasonSchema: GenEnum<LedgerEntryReason> = /*@__PURE__*/
  * claim. The invite credit and the signup bonus are settled server-side from the launch path, so they
  * need no RPC either. The economy is never a separate user step, so it needs no mutating contract.
  *
- * Payment (스토어/PG) is deferred to v3 (PRD §8.3) — removed here rather than disabled, so no client
+ * Payment (스토어/PG) is deferred to v3 (PROD-16) — removed here rather than disabled, so no client
  * can render a button that is guaranteed to fail.
  *
  * @generated from service cosimosi.twinkle.v1.TwinkleService

@@ -19,6 +19,10 @@ __boundary_probe_*/
 # Package-manager lockfiles are owned by the package manager.
 pnpm-lock.yaml
 apps/mobile/ios/Podfile.lock
+.haeram-spec-creator-lock.json
+
+# spec/ docs follow spec/FORMAT.md, and the haeram-spec-creator CLI rewrites STATE.md itself.
+spec/**/*.md
 
 # Generated outputs are owned by their generators.
 apps/api/db/gen/

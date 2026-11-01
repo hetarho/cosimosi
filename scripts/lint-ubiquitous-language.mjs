@@ -3,20 +3,29 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative, sep } from 'node:path'
 import { fail, ok, repoRoot, section } from './lib.mjs'
 
-const glossaryPath = join(repoRoot, 'spec', 'ubiquitous-language.md')
+// The glossary is spec/ssot/UL.md; the rendering vocabulary is one decision block, UL-25, whose
+// indented table carries one row per term.
+const glossaryPath = join(repoRoot, 'spec', 'ssot', 'UL.md')
+const RENDERING_DECISION = 'UL-25'
 const glossary = readFileSync(glossaryPath, 'utf8')
 const probe = process.argv.find((arg) => arg.startsWith('--probe='))?.slice('--probe='.length)
 
-const renderingSection = glossary.split('## 4. 렌더링 어휘')[1]?.split('## 5.')[0]
-if (!renderingSection)
-  fail('could not find the rendering vocabulary section in spec/ubiquitous-language.md')
+const renderingSection = glossary.split('\n').reduce(
+  (block, line) => {
+    if (/^(- |## )/.test(line)) block.inside = line.startsWith(`- ${RENDERING_DECISION} `)
+    else if (block.inside) block.lines.push(line)
+    return block
+  },
+  { inside: false, lines: [] },
+).lines
+if (!renderingSection.length)
+  fail(`could not find the rendering vocabulary decision ${RENDERING_DECISION} in spec/ssot/UL.md`)
 
 const renderingTerms = renderingSection
-  .split('\n')
-  .map((line) => line.match(/^\|\s*`([^`]+)`/)?.[1])
+  .map((line) => line.match(/^\s*\|\s*`([^`]+)`/)?.[1])
   .filter(Boolean)
 if (!renderingTerms.length)
-  fail('could not extract rendering terms from spec/ubiquitous-language.md')
+  fail(`could not extract rendering terms from ${RENDERING_DECISION} in spec/ssot/UL.md`)
 
 const roots = ['apps/api', 'apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages', 'proto']
 const extensions = new Set(['.go', '.sql', '.proto', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
@@ -78,7 +87,7 @@ const DOMAIN_SOURCE_ROOTS = [
   'proto',
 ]
 // The two places the PERSISTED `basic*`/`additional` column spelling is correct: the schema itself
-// and the one bilingual row↔domain mapper (ARCHITECTURE §2.4). Everywhere else the retired tier
+// and the one bilingual row↔domain mapper (ARCH-8). Everywhere else the retired tier
 // vocabulary is drift.
 const PERSISTED_TIER_SPELLING = ['apps/api/db', 'apps/api/internal/twinkle/pg']
 const APP_AND_PACKAGE_SOURCE = ['apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages']
@@ -205,7 +214,7 @@ const renderingTermSet = new Set(renderingTerms)
 const isIgnoredPath = (path) => path.split(sep).some((segment) => ignoredSegments.has(segment))
 const isVisualPath = (path) => path.split(sep).some((segment) => visualSegments.has(segment))
 // A rendering entity slice — `entities/<visual-noun>` where the slice IS a rendering term
-// (star/cell-star/filament/…) — is the FE rendering layer (ARCHITECTURE §3.4): visual
+// (star/cell-star/filament/…) — is the FE rendering layer (ARCH-26): visual
 // vocabulary is native there, including its `model`/`index` segments. The lint's job is to
 // keep those words OUT of the domain-mirror slices (episodic-memory/neuron/synapse) and their
 // api mappers, which never carry a rendering-term slice name.

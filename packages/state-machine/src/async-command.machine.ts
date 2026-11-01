@@ -5,7 +5,7 @@ import { assign, setup } from 'xstate'
  * cancelled. Feature code instantiates this for a one-shot command (e.g. a
  * write, a use-case invocation) and resolves/rejects it from the caller. It
  * owns only control metadata — the command payload and any data result live in
- * the caller / cache, referenced by id. ARCHITECTURE §3.2: control state only.
+ * the caller / cache, referenced by id. ARCH-24: control state only.
  */
 export type AsyncCommandStatus = 'idle' | 'submitting' | 'succeeded' | 'failed' | 'cancelled'
 

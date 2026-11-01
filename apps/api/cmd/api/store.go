@@ -17,7 +17,7 @@ import (
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
-// Store wiring (ARCHITECTURE §2.4). The context imports nothing and nothing imports it: its two
+// Store wiring (ARCH-8). The context imports nothing and nothing imports it: its two
 // cross-context edges — account's withdrawal sweep calling the purge leg, and a save's debit reaching
 // the Twinkle ledger — are closed here, where both concretes are visible.
 

@@ -1,6 +1,6 @@
 import type { Object3D } from 'three'
 
-// Visual bodies reach the renderer through this port (ARCHITECTURE §3.4) so the
+// Visual bodies reach the renderer through this port (ARCH-26) so the
 // domain/mirror layer never imports three. Concrete sources (shader | glTF | primitive)
 // are injected at the composition boundary; the domain asks for a body by id+kind and
 // gets an Object3D back, never a renderer type.

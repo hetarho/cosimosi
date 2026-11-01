@@ -288,7 +288,7 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 	}
 }
 
-// A13: payment left the product (PRD §8.3 defers it to v3), but the ledger is append-only, so the
+// A13: payment left the product (PROD-16 defers it to v3), but the ledger is append-only, so the
 // GLOBAL partial uniqueness index on payment dedup keys (migration 00010) is RETAINED as a historical
 // guard and is asserted through the append itself rather than the removed Charge use-case. A provider
 // transaction cannot be replayed across accounts, and a historical payment row still folds into the

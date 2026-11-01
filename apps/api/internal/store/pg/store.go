@@ -1,4 +1,4 @@
-// Package pg is the store context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete store over
+// Package pg is the store context's only sqlc/pgx seam (ARCH-11): the concrete store over
 // ornament_ownerships + ornament_selections, with the row↔domain mapping at this edge — no dbgen row
 // escapes inward. It declares no repository interface: the ports are consumer-owned by the store
 // reads (construct a Store over a transaction handle with NewStore to compose a write into one).

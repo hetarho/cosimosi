@@ -130,7 +130,7 @@ export function DetailPanel({
                   shape={worn.STAR_SHADER}
                   previewAction={
                     selection.kind === 'episodic' ? (
-                      // No tooltip: the control carries its name in `label`, and design-language §8
+                      // No tooltip: the control carries its name in `label`, and UI-57
                       // makes a tip mandatory for an icon in a DENSE TOOLBAR — this is one control on
                       // a picture, and the list it opens says each thing in words the moment it does.
                       <Menu

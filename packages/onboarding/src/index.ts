@@ -18,7 +18,7 @@
  * signup" is a property of the trigger, not of a flag that could be wrong (`start.ts`).
  *
  * Placement: everything here is pure and shared verbatim by both apps; each app hand-writes the `ui`
- * that wraps the anchors and mounts the chrome (ARCHITECTURE §3.1, §3.5).
+ * that wraps the anchors and mounts the chrome (ARCH-21, ARCH-28).
  */
 export { type OnboardingAnchor, type OnboardingSignal } from './anchors.ts'
 export { ONBOARDING_SCRIPT } from './script.ts'

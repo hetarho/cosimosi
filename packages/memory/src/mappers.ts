@@ -11,7 +11,7 @@ import type { EpisodicMemory } from './episodic-memory.ts'
 import { isNeuronType, type Neuron } from './neuron.ts'
 import type { Synapse } from './synapse.ts'
 
-// proto → FE domain — the FE anti-corruption boundary (ARCHITECTURE §3.4), mirroring the
+// proto → FE domain — the FE anti-corruption boundary (ARCH-26), mirroring the
 // backend's rpc mapper. Strict on invariants the server enforces at write time ([M1] moods,
 // [E3] neuron types, canonical synapse order): a violation here means corrupt data, so the
 // mappers fail loud instead of inventing domain facts. Stored values are carried verbatim —

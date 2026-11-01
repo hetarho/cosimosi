@@ -231,7 +231,7 @@ function EntryScreen({
         <EmptySky />
       </div>
       {/* The hero's soft local floor, under the column only. The sky's brightest frame is what glass
-          has to survive (ui-principles §5), and this is what the panel's tint is added to rather than
+          has to survive (UI-7), and this is what the panel's tint is added to rather than
           a hope about which night the visitor gets. */}
       <div
         aria-hidden

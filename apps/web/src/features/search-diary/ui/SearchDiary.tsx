@@ -128,7 +128,7 @@ export function SearchDiary({
             The list hangs from the trigger's RIGHT edge: this control sits at the end of the
             conditions row, and a panel wider than its trigger growing rightward runs off the screen
             — `Menu` states its placement rather than measuring for it, so the side with room is the
-            composition site's to name (design-system §4). */}
+            composition site's to name (UI-28). */}
         <Menu
           ariaLabel={m.diary_search_memory_count_label()}
           side="bottom"

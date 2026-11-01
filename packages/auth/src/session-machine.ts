@@ -5,7 +5,7 @@ import { initialSessionSnapshot, type SessionSnapshot } from './session.ts'
 /**
  * Session machine events. Inputs are id/status-only — token refresh happens inside
  * the auth adapter; the machine only records that a refresh started or finished.
- * ARCHITECTURE §3.2: machine context stays serializable control state.
+ * ARCH-24: machine context stays serializable control state.
  */
 export type SessionEvent =
   | { type: 'AUTHENTICATED'; userId: string; expiresAt: number }

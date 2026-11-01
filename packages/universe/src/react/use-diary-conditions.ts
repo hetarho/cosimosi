@@ -51,7 +51,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 // features/search-diary model ([D8][D9]): the archive's conditions — the keyword, the moods, the
 // live-memory count and the order — held as drafts and committed only when they are usable. Free of
 // platform primitives, so web and mobile share it verbatim rather than each re-deriving the debounce,
-// the minimum-length rule and the count-choice table (ARCHITECTURE §3.5).
+// the minimum-length rule and the count-choice table (ARCH-28).
 //
 // Every commit is an UPDATE FUNCTION, which is what makes two controls touched in the same breath
 // safe: the host merges onto its live conditions, so a mood chip cannot erase a keyword that is still
