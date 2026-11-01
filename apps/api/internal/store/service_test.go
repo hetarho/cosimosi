@@ -443,3 +443,11 @@ func TestWithdrawalPurgerNamesTheContextAndDelegates(t *testing.T) {
 		t.Error("a scopeless sweep leg silently succeeded")
 	}
 }
+
+func (*fakeOrnamentRepo) RecordProgress(context.Context, platform.UserScope, string, int) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeOrnamentRepo) SpendPurchase(context.Context, platform.UserScope, store.PurchaseSpend) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}

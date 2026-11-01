@@ -10,6 +10,7 @@ import {
 } from '@cosimosi/api-client'
 import { requestLetGo, requestSuggestLetGo } from '../deletion.ts'
 import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
+import { useCompletionScope } from './use-completion-scope.ts'
 
 // features/let-go api step 1 ([X6]): SuggestLetGo over the generated client — the LLM-latency call
 // that returns the this-memory-only semantic candidates + the heavy-state hint. It seals nothing.
@@ -37,9 +38,12 @@ export function useLetGo(): (
   const transport = useTransport()
   const queryClient = useQueryClient()
   const invalidateCalendar = useInvalidateDiaryCalendar()
+  const capture = useCompletionScope()
   return useCallback(
     async (episodicMemoryId: string, approvedNeuronIds: readonly string[]) => {
+      const isCurrent = capture()
       const response = await requestLetGo(transport, { episodicMemoryId, approvedNeuronIds })
+      if (!isCurrent()) return response
       queryClient
         .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
         .catch(() => undefined)
@@ -48,6 +52,6 @@ export function useLetGo(): (
       invalidateCalendar()
       return response
     },
-    [transport, queryClient, invalidateCalendar],
+    [transport, queryClient, invalidateCalendar, capture],
   )
 }

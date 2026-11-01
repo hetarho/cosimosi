@@ -1,5 +1,6 @@
 # ACH achievements
-> r1 | the achievement catalog, how progress is counted from other contexts' facts, and how a met condition becomes a claimed reward and a quiet notice
+
+> r2 | the achievement catalog, how progress is counted from other contexts' facts, and how a met condition becomes a claimed reward and a quiet notice
 
 ## decisions
 - ACH-1 [o] an achievement condition is a point reached by using the product normally: every target counts something a diarist does anyway (write, launch, recall, view a gist, release a diary, decorate, invite)
@@ -9,7 +10,7 @@
   - unachieved rows stay listed with their progress, so the user sees where normal use is taking them →~ACH-32
 - ACH-2 [o] the catalog spans nine closed axes: one row per first experience, then tiers over one counter per axis (three for decoration); the rows are content in `catalog.go` →!ACH-8
   | axis (`AchievementAxis`) | counter | targets | reward per target |
-  |---|---|---|---|
+  | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------- |
   | `FIRST_EXPERIENCE` | one row each: `diary_written`, `episodic_memory_launched`, `recall_performed`, `gist_viewed`, `neuron_shared`, `episodic_memory_released`, `decoration_saved`, `invite_settled` | 1 | tier 1 |
   | `DIARY_TOTAL` | `diary_written` | 5, 20, 50, 200 | tier 1, 2, 2, 3 |
   | `STAR_TOTAL` | `episodic_memory_launched` | 10, 50, 200, 500 | tier 1, 2, 3, ornament |
@@ -75,7 +76,7 @@
   - `achievement_progress` stores only what cannot be derived: when the condition was first met, when the user claimed, when the reward landed →=ACH-27
 - ACH-10 [o] counters form a closed vocabulary: 12 reported keys, 2 reported key families and 2 derived variety counters; each key's mode lives in its definition (`counters.go`), never at the call site →!ACH-15
   | key | mode | counted fact | reported by | value per report |
-  |---|---|---|---|---|
+  | -------------------------------- | -------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
   | `diary_written` | accumulate | a diary that launched ≥1 `EpisodicMemory` | `memory.PersistEncoded` | +1 per launched diary, never per memory |
   | `episodic_memory_launched` | accumulate | `EpisodicMemory` rows launched | `memory.PersistEncoded` | +launched count |
   | `neuron_shared` | accumulate | a neuron crossing to ≥2 memories | `memory.PersistEncoded` | +neurons whose membership crossed 2 in this launch |
@@ -147,7 +148,7 @@
   - this is the one transaction-less report; a transactional producer's handle-less tx is refused →=ACH-30
 - ACH-21 [o] `ClaimAchievement` stamps the claim in the achievement context's own transaction, commits, then pays: an idempotent pairing, never one cross-context transaction ← a joint transaction would make `achievement` the owner of the ledger's and the ornament catalog's tables →!ACH-4
   | step | what happens |
-  |---|---|
+  | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
   | 1 | resolve the catalog row; an unknown id ⇒ `ACHIEVEMENT_NOT_FOUND` |
   | 2 | `MarkClaimed` sets `claimed_at` and `claim_id` only `WHERE claimed_at IS NULL`; the row is the lock, so concurrent claims serialize and one wins |
   | 3 | zero rows changed: already claimed ⇒ replay (re-arm the drain if unsettled); no row and counter ≥ target ⇒ promote (mark achieved, then claim); no row and counter short ⇒ `ACHIEVEMENT_NOT_ACHIEVED`, nothing written |
@@ -165,7 +166,7 @@
 - ACH-23 [o] a claimed reward is paid at least once: claimed-but-unpaid is a recoverable state the read reports and a worker drains, so recovery never depends on the user noticing the gap →!ACH-21
   - `paid_at` is stamped only after a leg returns; `CHECK (paid_at IS NULL OR claimed_at IS NOT NULL)` keeps the lifecycle one-way
   - the read reports it as `reward_settled = false` and the tab keeps a retry button →=ACH-33
-  - the drain is a `memory` user job of kind `achievement_settle`, enqueued inside the claim transaction and deduped per claim (`achievement_settle:<user>:<achievement>`): a per-user key would let one finished drain swallow the next claim's
+  - the drain is an achievement-owned user job of kind `achievement_settle`, enqueued inside the claim transaction and deduped per claim (`achievement_settle:<user>:<achievement>`): a per-user key would let one finished drain swallow the next claim's
   - `SettleClaims` replays the pay leg for every claimed, unsettled row of that user, attempting all before reporting the first failure
   - no attempt cap, no claim ceiling and no dead-letter except the unregistered-kind stop: the kind retries indefinitely →=AI-36; boot checks make every claimable row payable, so each failure is transient →!ACH-30
   - a claimed, unsettled row whose achievement left the catalog is skipped: the read answers no entry for it, so no affordance points at it (`TestSettleSkipsAnAchievementThatLeftTheCatalog`)
@@ -173,7 +174,7 @@
   - both worker roots register the handler (`cmd/worker`, `cmd/api`'s dev worker)
 - ACH-24 [o] the achievement RPCs refuse with five reasons, and a repeat claim is never one of them: it is a replay that returns the same reward ← refusing a repeat would strand the reward in the window between the stamp and the credit →=ERR
   | reason | code | when | client |
-  |---|---|---|---|
+  | -------------------------------- | ------------------ | ------------------------------- | ------------------------------------------------------------------ |
   | `ACHIEVEMENT_SCOPE_REQUIRED` | Unauthenticated | no user scope | reason copy |
   | `ACHIEVEMENT_INPUT_REQUIRED` | InvalidArgument | blank `achievement_id` | reason copy |
   | `ACHIEVEMENT_NOT_FOUND` | NotFound | id not in the catalog | toast and refetch the list |
@@ -197,7 +198,7 @@
   - `AchievementAxis` is achievement-owned with `ACHIEVEMENT_AXIS_UNSPECIFIED = 0`; a test drives axis totality from `Catalog()`, so a new axis without a proto arm fails CI
 - ACH-27 [o] achievement state is two tables, both keyed by user, with no FK to `users`
   | table | key | constraints |
-  |---|---|---|
+  | ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
   | `achievement_counters` | `PRIMARY KEY (user_id, counter_key)` | `value BIGINT`, `CHECK (value >= 0)`; one aggregate per key |
   | `achievement_progress` | `PRIMARY KEY (user_id, achievement_id)` | `UNIQUE (user_id, claim_id)`; `claimed_at` and `claim_id` both null or both set; `claim_id` non-blank; `paid_at` only on a claimed row |
   - load-bearing absences: no per-event row or event timestamp →!ACH-7, no `progress` column →!ACH-9, no meaning-bearing column →!ACH-6
@@ -210,10 +211,10 @@
   - during the restore window a withdrawn scope reaches no achievement RPC and the rows stay intact, `claimed_at` included; a restore writes no achievement compensation, so a restored account cannot be paid twice
 - ACH-29 [o] `internal/achievement` is a supporting context: one package plus `pg` (its only sqlc/pgx package) and `rpc` (thin handlers); it imports no other `internal/` context and none imports it →=ARCH
   - plain product English: the neuroscience vocabulary rule does not apply, one concept one name does →=UL
-  - consumer-owned ports live in the context: `Store`, `Repo`, `UserPurgeRepo`, `TwinkleGranter`, `OrnamentGranter`, `SettlementScheduler` (over an opaque `ClaimTx`); recorder ports live in each producer
+  - consumer-owned ports live in the context: `Store`, `Repo`, `UserPurgeRepo`, `TwinkleGranter`, `OrnamentGranter`, `SettlementScheduler` (over a typed `ClaimTx` capability); recorder ports live in each producer
   - every cross-context edge is an adapter in `cmd/api/achievement.go`, the one place that sees every context
-  - three recorder adapters bind `achievementpg.NewStore` onto the producer's tx through `interface{ DB() dbgen.DBTX }`: the two contexts share the transaction, never the queries
-  - two granter adapters wrap `twinkle.Service.EarnAchievementReward` (narrowed to the `GENERAL` total) and `store.Service.GrantOwnership`; one scheduler adapter binds `memory`'s user-job store onto the claim tx
+  - typed recorder capabilities bind `achievementpg.NewReadStore` onto the producer's open transaction in the composition-root factory: the two contexts share the transaction, never the queries
+  - two granter adapters wrap `twinkle.Service.EarnAchievementReward` (narrowed to the `GENERAL` total) and `store.Service.GrantOwnership`; one typed scheduler capability binds the infrastructure queue store onto the claim transaction; achievement owns the per-claim identity and handler
   - the recorder binding is late (`achievementRecorderBinding`): producers are built before the service, and an unbound recorder refuses rather than drops the fact
   - `cmd/worker` builds its own settler over the same twinkle and store behavior, and binds an account recorder and a settlement scheduler that refuse
 - ACH-30 [o] the composition root refuses to start on achievement wiring drift →!ACH-10
@@ -235,7 +236,7 @@
   - the stardust earn guide's achievement entry links here →=TWINK
 - ACH-33 [o] a row is exactly one of four states, derived by `claimState` from the server's `achieved`, `claimed` and `reward_settled`
   | state | condition | affordance |
-  |---|---|---|
+  | ----------- | --------------------- | ------------------------------------------------------------------------------------------------- |
   | `locked` | not achieved | meter, no button |
   | `claimable` | achieved, not claimed | claim button `achievement_claim` |
   | `unpaid` | claimed, not settled | retry button `achievement_claim_retry` with `achievement_reward_pending`; never the received line |
@@ -275,4 +276,6 @@
 - the demo carries no achievement data and no achievement surface →=DEMO-8
 
 ## chg
+
+- r2 261102 ACH-23✎ memory-owned settlement job→achievement-owned identity and handler over infrastructure; ACH-29✎ opaque DB assertions→typed transaction-bound capabilities, with unchanged atomicity and dedup
 - r1 261102 initial

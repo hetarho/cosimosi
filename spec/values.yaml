@@ -692,6 +692,10 @@ force_sim:
   velocity_damping: 0.62
   # Alpha floor so the layout keeps a little residual motion instead of freezing hard.
   min_alpha: 0.02
+  # Sleep only after a full quiet window stays within this numerical layout tolerance.
+  # A graph change creates a fresh, reheated solver; active layouts retain the alpha floor.
+  settle_epsilon: 0.0001
+  settle_ticks: 30
   # Hippocampus band, centered on the world origin so radius-from-(0,0,0) = connectivity reads in
   # all three axes ([I7][V1], change 13). Must stay symmetric (min = -max): the lens's mid-plane IS
   # the origin the center force pulls toward.
@@ -712,6 +716,8 @@ force_sim:
   seed: 190019
 
 diary_reader:
+  # Retained export rows held by the adapter at once; delivery remains the existing unary file.
+  export_page_size: 128
   # [D2] GetDiaries pagination page size: diary entries fetched per page, keeping a long
   # reader-app archive lazy. The FE fetch reads this; the BE read may reuse the Go constant as
   # its default/clamp so a client cannot request an unbounded page.
@@ -829,3 +835,7 @@ landing:
   # tilt is visible in one screenshot; few enough that the memory does not swamp the sky it is one
   # voice in.
   walkthrough_mirror_recalls: 5
+
+persistence:
+  # Parameter arrays per graph-write round trip; each batch joins the caller's open transaction.
+  graph_write_batch_size: 256

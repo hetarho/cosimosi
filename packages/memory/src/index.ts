@@ -11,6 +11,7 @@ export {
   neuronFromDto,
   synapseFromDto,
   universeFromResponse,
+  createUniverseMapper,
   type UniverseSnapshot,
 } from './mappers.ts'
 export {

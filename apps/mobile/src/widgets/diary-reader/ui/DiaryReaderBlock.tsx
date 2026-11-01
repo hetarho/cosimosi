@@ -1,37 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { useTransport } from '@connectrpc/connect-query'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-
-import {
-  createSyncStatusQueryKey,
-  createSyncStatusQueryOptions,
-  type GetDiariesInput,
-} from '@cosimosi/api-client'
-import { classifyErrorRecovery } from '@cosimosi/errors'
+import type { GetDiariesInput } from '@cosimosi/api-client'
 import type { Diary } from '@cosimosi/memory'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { Button, DeleteIcon, Dialog, IconButton, SegmentedControl, tokens } from '@cosimosi/ui'
 import {
-  classifyPaidActionError,
-  createPaidActionSession,
-  diaryReaderMachine,
-  diaryRecallAdvanceAnnouncement,
-  requestRecallDiaryStars,
   resolveCalendarMonth,
   useDeletionTargetStore,
   useOpenDiaryTargetStore,
-  usePendingFlyTargetStore,
-  useSpotlightStore,
-  type DiaryReaderPhase,
-  type PaidActionAttempt,
-  type PaidActionSession,
 } from '@cosimosi/universe'
 
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
-import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
 import { DiaryEntry, DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
@@ -41,8 +22,8 @@ import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost
 import { DiaryCalendar, useDiaryCalendar } from '../../../features/diary-calendar/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
-import { useMachine } from '@cosimosi/state-machine/react'
-import { useInvalidateUniverse, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
+import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
+import { useDiaryJump } from '@cosimosi/universe/react/flows'
 
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read
 // (read-diary-list) with the one paid action (recall-diary-stars) and owns the jump machine + the
@@ -76,11 +57,6 @@ export function DiaryReaderBlock({
   const showError = useErrorToast()
   const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive(query)
   const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
-  const [jumpDiaryId, setJumpDiaryId] = useState<string | null>(null)
-  const sessionRef = useRef<PaidActionSession | null>(null)
-  if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
-  const paidSession = sessionRef.current
-  const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
 
   // Any condition change starts a fresh keyset page, so the opened entry may not be in the new result
   // set and the reader should be looking at the top of it ([D7]).
@@ -139,35 +115,26 @@ export function DiaryReaderBlock({
   )
   const selectDay = useCallback((date: string) => setDayModalDate(date), [])
 
-  const [snapshot, send] = useMachine(diaryReaderMachine)
-  const phase = snapshot.value as DiaryReaderPhase
-
-  const transport = useTransport()
-  const queryClient = useQueryClient()
-  const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
-  const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
-  const spotlight = useSpotlightStore((state) => state.spotlight)
+  const invalidateBalance = useInvalidateTwinkleBalance()
+  const invalidateAchievements = useInvalidateAchievements()
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
-  const invalidateBalance = useInvalidateTwinkleBalance()
-  // Every action that can record progress refreshes the achievement read on resolution, which is
-  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
-  const invalidateAchievements = useInvalidateAchievements()
-  const invalidateUniverse = useInvalidateUniverse()
-
-  const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
-
-  useEffect(() => {
-    if (syncStatusQuery.error) showError(syncStatusQuery.error)
-  }, [syncStatusQuery.error, showError])
-
-  useEffect(() => () => paidSession.invalidate(), [paidSession])
-
-  const invalidateSyncStatus = useCallback(() => {
-    queryClient
-      .invalidateQueries({ queryKey: createSyncStatusQueryKey(transport) })
-      .catch(() => undefined)
-  }, [queryClient, transport])
+  const {
+    phase,
+    jumpDiaryId,
+    proceedQuote,
+    acceptSync,
+    rejectSync,
+    cancelQuote,
+    exit,
+    initiateJump,
+  } = useDiaryJump({
+    onExit,
+    onError: showError,
+    invalidateBalance,
+    invalidateAchievements,
+    requestEarnGuide,
+  })
 
   const deepLinkMemoryId = useOpenDiaryTargetStore((state) => state.memoryId)
   const clearDeepLink = useOpenDiaryTargetStore((state) => state.clear)
@@ -209,147 +176,9 @@ export function DiaryReaderBlock({
     openedDiaryId,
   ])
 
-  const runRecall = useCallback(
-    async (diaryId: string, consent: boolean) => {
-      if (!attempt || attempt.targetKey !== diaryId || !paidSession.start(attempt)) return
-      const activeAttempt = attempt
-      const issue = () =>
-        requestRecallDiaryStars(transport, {
-          diaryId,
-          operationId: activeAttempt.operationId,
-          syncConsent: consent,
-        })
-      try {
-        let response
-        try {
-          response = await issue()
-        } catch (firstError) {
-          if (!paidSession.isActive(activeAttempt)) return
-          if (classifyPaidActionError(firstError) !== 'ambiguous') throw firstError
-          // Ambiguous — re-issue ONCE with the SAME operation id: a committed-but-lost jump replays
-          // its receipt (no second spend, no re-quote of a depleted balance, A2/A5); otherwise it
-          // does the work. A second ambiguous failure falls through to the outer catch.
-          response = await issue()
-        }
-        if (!paidSession.isActive(activeAttempt)) return
-        const advance = diaryRecallAdvanceAnnouncement(response)
-        if (advance) announceAdvance(advance)
-        const [firstStar] = response.episodicMemoryIds
-        if (firstStar) requestFlyTarget(firstStar)
-        // The camera goes to one star; the spotlight is what makes ARRIVING legible. The universe is
-        // re-laying itself out behind the glide, so a jump that only moved the camera read as a
-        // screen load — the sky holding back while these stars lift is the answer to "which ones".
-        spotlight(response.episodicMemoryIds)
-        invalidateUniverse()
-        invalidateBalance()
-        // The balance is refreshed on BOTH paths because a refused paid action can still have moved
-        // it; achievements are refreshed only here. A failed action recorded no progress, and
-        // refetching after one could surface an unlock notice that reads as though it had earned
-        // something.
-        invalidateAchievements()
-        invalidateSyncStatus()
-        send({ type: 'DONE' })
-        setJumpDiaryId(null)
-        onExit()
-      } catch (error) {
-        if (!paidSession.isActive(activeAttempt)) return
-        invalidateBalance()
-        if (classifyPaidActionError(error) === 'ambiguous') {
-          invalidateUniverse()
-          showError(error)
-          send({ type: 'ERROR' })
-          return
-        }
-        const recovery = classifyErrorRecovery(error, consent)
-        if (recovery === 'sync-consent') {
-          paidSession.finish(activeAttempt)
-          setAttempt(paidSession.begin(diaryId))
-          send({ type: 'CONSENT_REQUIRED' })
-          return
-        }
-        showError(error)
-        if (recovery === 'earn') requestEarnGuide()
-        paidSession.finish(activeAttempt)
-        setAttempt(paidSession.begin(diaryId))
-        send({ type: 'ERROR' })
-      } finally {
-        paidSession.finish(activeAttempt)
-      }
-    },
-    [
-      attempt,
-      paidSession,
-      transport,
-      announceAdvance,
-      requestFlyTarget,
-      spotlight,
-      invalidateUniverse,
-      invalidateBalance,
-      invalidateAchievements,
-      invalidateSyncStatus,
-      requestEarnGuide,
-      showError,
-      onExit,
-      send,
-    ],
-  )
-
-  const proceedQuote = useCallback(async () => {
-    if (!jumpDiaryId || !attempt || attempt.targetKey !== jumpDiaryId) return
-    const activeAttempt = attempt
-    const status = await syncStatusQuery.refetch()
-    if (!paidSession.isActive(activeAttempt)) return
-    if (status.data?.needsSync) {
-      send({ type: 'JUMP', needsSync: true })
-    } else {
-      send({ type: 'JUMP', needsSync: false })
-      runRecall(jumpDiaryId, false).catch(() => undefined)
-    }
-  }, [attempt, jumpDiaryId, paidSession, syncStatusQuery, send, runRecall])
-
-  const acceptSync = useCallback(() => {
-    if (!jumpDiaryId) return
-    send({ type: 'ACCEPT' })
-    runRecall(jumpDiaryId, true).catch(() => undefined)
-  }, [jumpDiaryId, send, runRecall])
-
-  const rejectSync = useCallback(() => {
-    if (attempt) paidSession.invalidate(attempt)
-    setAttempt(null)
-    send({ type: 'REJECT' })
-    setJumpDiaryId(null)
-  }, [attempt, paidSession, send])
-
-  const cancelQuote = useCallback(() => {
-    if (phase === 'recalling') return
-    if (attempt) paidSession.invalidate(attempt)
-    setAttempt(null)
-    setJumpDiaryId(null)
-  }, [attempt, paidSession, phase])
-
-  const exit = useCallback(() => {
-    if (phase === 'recalling') return
-    if (attempt) paidSession.invalidate(attempt)
-    setAttempt(null)
-    onExit()
-  }, [attempt, paidSession, phase, onExit])
-
-  const initiateJump = useCallback(
-    (diaryId: string) => {
-      setJumpDiaryId(diaryId)
-      setAttempt(paidSession.begin(diaryId))
-    },
-    [paidSession],
-  )
-
-  // Lifted out of DiaryList's listHeader so BOTH views show it: the restore section, the search controls
-  // and the view toggle survive the switch to the calendar ([D12]) rather than being duplicated per branch.
   const archiveHeader = (
     <View style={styles.listHeader}>
       <RestoreSection />
-      {/* Every condition of the archive in one gathered block — keyword, order, feelings, star count
-          and the way back out. The ORDER steers the list, so it is withheld while the calendar shows:
-          a control that moves nothing visible is noise ([D12]). */}
       <SearchDiary
         value={query}
         onChange={changeQuery}
@@ -360,12 +189,6 @@ export function DiaryReaderBlock({
     </View>
   )
 
-  // One opened entry, wherever it was opened from — the archive's own modal and the calendar's day
-  // modal show the same thing, so they compose the same body and the same two controls.
-  //
-  // `dismiss` closes the surface holding it FIRST: both controls open a dialog of their own, and a
-  // second scrim over the first is the one thing this reader never does. The destructive one sits in
-  // the entry's top-right corner rather than beside the paid one.
   const openedEntry = useCallback(
     (diary: Diary, dismiss: () => void) => (
       <View style={styles.entry}>

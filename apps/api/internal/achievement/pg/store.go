@@ -25,29 +25,30 @@ var (
 )
 
 type Store struct {
-	queries *dbgen.Queries
-	db      dbgen.DBTX
-	txer    txStarter
+	capabilities     achievement.ClaimTx
+	bindCapabilities func(dbgen.DBTX) achievement.ClaimTx
+	queries          *dbgen.Queries
+	db               dbgen.DBTX
+	txer             txStarter
 }
 
 type txStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-func NewStore(db dbgen.DBTX) Store {
-	built := Store{queries: dbgen.New(db), db: db}
-	if txer, ok := db.(txStarter); ok {
-		built.txer = txer
-	}
-	return built
+// TransactionDB declares the pool capability required by transaction-owning operations.
+type TransactionDB interface {
+	dbgen.DBTX
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-// DB exposes the query handle this store is bound to — the pool, or the open transaction inside
-// InAchievementTx. It exists for the composition root's recorder seam: the root binds an
-// achievement store onto the very same transaction a launch/recall/decorate runs in, so the counter
-// write commits or rolls back with the fact that caused it. Context behavior never calls it.
-func (s Store) DB() dbgen.DBTX {
-	return s.db
+func NewStore(db TransactionDB) Store {
+	return Store{queries: dbgen.New(db), txer: db}
+}
+
+// NewReadStore binds queries to an existing handle without opening independent transactions.
+func NewReadStore(db dbgen.DBTX) Store {
+	return Store{queries: dbgen.New(db)}
 }
 
 // InAchievementTx runs fn inside one transaction, over a store bound to it.
@@ -65,7 +66,7 @@ func (s Store) InAchievementTx(ctx context.Context, fn func(tx achievement.Store
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
+	if err := fn(s.boundTransaction(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

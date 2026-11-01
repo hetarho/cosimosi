@@ -4,7 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
-import { universeFromResponse, type UniverseSnapshot } from '@cosimosi/memory'
+import { createUniverseMapper, type UniverseSnapshot } from '@cosimosi/memory'
 
 import { useDeletionTargetStore } from '../deletion-target-store.ts'
 import { useEpisodicMemoryStore } from '../episodic-memory-store.ts'
@@ -29,17 +29,28 @@ export function useUniverse(): UniverseReadState {
   const transport = useTransport()
   const queryOptions = useMemo(() => createGetUniverseQueryOptions(transport), [transport])
   const query = useQuery({ ...queryOptions, throwOnError: true })
-  const universe = useMemo(
-    () => (query.data ? universeFromResponse(query.data) : null),
-    [query.data],
+  const mapUniverse = useMemo(() => createUniverseMapper(), [])
+  const serverUniverse = useMemo(
+    () => (query.data ? mapUniverse(query.data) : null),
+    [query.data, mapUniverse],
   )
-  const setMemories = useEpisodicMemoryStore((state) => state.setAll)
+  const setMemories = useEpisodicMemoryStore((state) => state.reconcile)
+  const memoriesById = useEpisodicMemoryStore((state) => state.byId)
+  const memoryIds = useEpisodicMemoryStore((state) => state.ids)
+  const universe = useMemo(
+    () =>
+      serverUniverse
+        ? { ...serverUniverse, memories: memoryIds.map((id) => memoriesById[id]!) }
+        : null,
+    [serverUniverse, memoriesById, memoryIds],
+  )
   const setNeurons = useNeuronStore((state) => state.setAll)
   const setSynapses = useSynapseStore((state) => state.setAll)
 
   useEffect(() => {
+    const universe = serverUniverse
     if (!universe) {
-      setMemories([])
+      useEpisodicMemoryStore.getState().clear()
       setNeurons([])
       setSynapses([])
       syncUniverseClock(null)
@@ -49,20 +60,12 @@ export function useUniverse(): UniverseReadState {
       useDeletionTargetStore.getState().clear()
       return
     }
-    // Merge server truth with any optimistically-launched memory not yet visible
-    // server-side (an eager refetch — or a stale GET cache — right after a launch must
-    // not drop the just-launched memory). Server rows win on id; optimistic-only rows
-    // survive until the read includes them. Only when a universe is present, so a signed-out
-    // empty read still clears a prior user's data.
-    const serverIds = new Set(universe.memories.map((memory) => memory.id))
-    const optimisticOnly = Object.values(useEpisodicMemoryStore.getState().byId).filter(
-      (memory) => !serverIds.has(memory.id),
-    )
-    setMemories([...universe.memories, ...optimisticOnly])
+    // Only explicitly pending launches survive an authoritative snapshot omission.
+    setMemories(universe.memories)
     setNeurons(universe.neurons)
     setSynapses(universe.synapses)
     syncUniverseClock(universe.universeTime)
-  }, [universe, setMemories, setNeurons, setSynapses])
+  }, [serverUniverse, setMemories, setNeurons, setSynapses])
 
   return { universe }
 }

@@ -34,6 +34,7 @@ type SelectionStore interface {
 // It carries no ledger method either: the debit reaches the same transaction through SpendGate, so
 // `store` never learns what a balance is.
 type DecorateTx interface {
+	EconomyTx
 	OwnershipStore
 	SelectionStore
 	UpsertOrnamentSelection(ctx context.Context, scope platform.UserScope, selection OrnamentSelection) error
@@ -46,9 +47,11 @@ type DecorateRepo interface {
 	InDecorateTx(ctx context.Context, fn func(tx DecorateTx) error) error
 }
 
-// EconomyTx is the open transaction handed to the spend gate, opaque on purpose: only the composition
-// root knows the concrete, so `store` cannot reach into the ledger and `twinkle` is not imported here.
-type EconomyTx any
+// EconomyTx declares the save's cross-context effects, bound to its open transaction.
+type EconomyTx interface {
+	SpendPurchase(context.Context, platform.UserScope, PurchaseSpend) error
+	RecordProgress(context.Context, platform.UserScope, string, int) error
+}
 
 // PurchaseSpend is what a save asks the economy for. It has **no kind, no tier and no reason field**:
 // `store` cannot ask for a SMALL draw and cannot claim to be a recall, so [P9] holds at the type level

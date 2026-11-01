@@ -1,19 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { type FormEvent } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 
 import { signUp } from '@cosimosi/api-client'
-import {
-  pendingInvite,
-  readErrorMessage,
-  recordSignupCompletion,
-  validateNickname,
-} from '@cosimosi/auth'
+import { useSignupProfileController } from '@cosimosi/auth/react/signup'
 import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/index.ts'
-import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { Button, Card, TextField } from '@cosimosi/ui'
 
-import { useMachine } from '@cosimosi/state-machine/react'
 import { InviteAcknowledgment } from './InviteAcknowledgment.tsx'
 
 export interface NicknameStepProps {
@@ -22,41 +15,15 @@ export interface NicknameStepProps {
 
 export function NicknameStep({ onCompleted }: NicknameStepProps) {
   const transport = useTransport()
-  const [value, setValue] = useState('')
-  const [snapshot, send, actorRef] = useMachine(asyncCommandMachine)
-  const pending = snapshot.context.status === 'submitting'
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const { value, setValue, pending, status, error, submitProfile } = useSignupProfileController({
+    submit: (request) => signUp(transport, request),
+    locale: getActiveLocale,
+    timeZone: resolveDeviceTimeZone,
+    onCompleted,
+  })
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (actorRef.getSnapshot().context.status === 'submitting') return
-    const validation = validateNickname(value)
-    if (!validation.valid) {
-      send({ type: 'SUBMIT', commandId: 'signup-profile' })
-      const attempt = actorRef.getSnapshot().context.attempt
-      send({ type: 'REJECT', error: 'invalid-nickname', attempt })
-      return
-    }
-
-    send({ type: 'SUBMIT', commandId: 'signup-profile' })
-    const attempt = actorRef.getSnapshot().context.attempt
-    const inviteToken = pendingInvite.consume() ?? ''
-    try {
-      const response = await signUp(transport, {
-        nickname: validation.nickname,
-        timezone: resolveDeviceTimeZone() ?? 'UTC',
-        locale: getActiveLocale(),
-        inviteToken,
-      })
-      recordSignupCompletion()
-      send({ type: 'RESOLVE', resultId: response.nickname, attempt })
-      await onCompleted()
-    } catch (error) {
-      send({
-        type: 'REJECT',
-        error: readErrorMessage(error, 'signup failed'),
-        attempt,
-      })
-    }
+    void submitProfile()
   }
 
   return (
@@ -73,9 +40,9 @@ export function NicknameStep({ onCompleted }: NicknameStepProps) {
             autoComplete="nickname"
             required
           />
-          {snapshot.context.status === 'failed' ? (
+          {status === 'failed' ? (
             <p role="alert" className="text-sm text-danger">
-              {snapshot.context.error === 'invalid-nickname'
+              {error === 'invalid-nickname'
                 ? m.signup_nickname_invalid()
                 : m.signup_nickname_failed()}
             </p>

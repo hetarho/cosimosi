@@ -31,6 +31,12 @@ const i18nRestrictedImport = {
     'Import i18n through src/shared/i18n/index.ts; only the seam, locale-storage adapter, and tests import the package directly.',
 }
 
+const rendererRestrictedImport = {
+  group: ['three', 'three/*', '@react-three/fiber', '@react-three/fiber/*'],
+  message:
+    'Import rendering through @cosimosi/3d-renderer; product slices remain renderer-independent.',
+}
+
 const sequenceRestrictedImport = {
   group: [
     '@cosimosi/sequence',
@@ -99,7 +105,10 @@ module.exports = {
         'src/**/*.test.*',
       ],
       rules: {
-        'no-restricted-imports': ['error', { patterns: [i18nRestrictedImport] }],
+        'no-restricted-imports': [
+          'error',
+          { patterns: [i18nRestrictedImport, rendererRestrictedImport] },
+        ],
       },
     },
     {
@@ -114,7 +123,7 @@ module.exports = {
         'no-restricted-imports': [
           'error',
           {
-            patterns: [sequenceRestrictedImport, i18nRestrictedImport],
+            patterns: [sequenceRestrictedImport, i18nRestrictedImport, rendererRestrictedImport],
           },
         ],
       },
@@ -125,7 +134,10 @@ module.exports = {
       files: ['src/features/**/*.test.*', 'src/entities/**/*.test.*'],
       excludedFiles: sequenceSurfaceFiles,
       rules: {
-        'no-restricted-imports': ['error', { patterns: [sequenceRestrictedImport] }],
+        'no-restricted-imports': [
+          'error',
+          { patterns: [sequenceRestrictedImport, rendererRestrictedImport] },
+        ],
       },
     },
   ],

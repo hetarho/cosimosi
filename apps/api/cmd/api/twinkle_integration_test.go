@@ -35,8 +35,8 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	cleanupEconomyTestRows(t, pool, userID)
 	scope := economyScope(t, userID)
 
-	memoryStore := memorypg.NewStore(pool.PgxPool())
 	twinkleService := economyTwinkleService(t, pool)
+	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService)
 	gate := twinkleSpendGate{service: twinkleService}
 	intent := memory.RecallSpendIntent("op-1", "memory-1", 1.0)
 	wantCost := twinkle.RecallCost(1.0)
@@ -84,8 +84,8 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	cleanupEconomyTestRows(t, pool, userID)
 	scope := economyScope(t, userID)
 
-	memoryStore := memorypg.NewStore(pool.PgxPool())
 	twinkleService := economyTwinkleService(t, pool)
+	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService)
 	earn := twinkleEarnPort{service: twinkleService}
 
 	// Roll back: a failed launch leaves no grant.

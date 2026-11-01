@@ -272,6 +272,7 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		{memory.ErrReleaseMemoryNotFound, connect.CodeNotFound, reasonReleaseMemoryNotFound},
 		{memory.ErrReleaseNoLiveMemories, connect.CodeNotFound, reasonReleaseNoLiveMemories},
 		{memory.ErrRestoreNotReleased, connect.CodeNotFound, reasonRestoreNotReleased},
+		{memory.ErrRecallSourceChanged, connect.CodeFailedPrecondition, reasonRecallSourceChanged},
 		{memory.ErrRecallMemoryUnavailable, connect.CodeFailedPrecondition, reasonRecallMemoryUnavailable},
 		{memory.ErrViewSemanticStageNotRisen, connect.CodeFailedPrecondition, reasonViewSemanticStageNotRisen},
 		{memory.ErrReleaseMemoryUnavailable, connect.CodeFailedPrecondition, reasonReleaseMemoryUnavailable},
@@ -284,7 +285,6 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		// The one real allowance refusal on an AI path.
 		{memory.ErrAiCallCapReached, connect.CodeResourceExhausted, reasonAiCallCapReached},
 		{memory.ErrEncodeInvalidSplit, connect.CodeInternal, apperr.ReasonInternal},
-		{memory.ErrConsolidateTxRequired, connect.CodeInternal, apperr.ReasonInternal},
 		{memory.ErrScopeRequired, connect.CodeUnauthenticated, reasonScopeRequired},
 	}
 	for _, c := range cases {

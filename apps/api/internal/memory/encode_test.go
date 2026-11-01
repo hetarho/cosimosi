@@ -247,9 +247,27 @@ func TestNewServiceRejectsUnboundSignupSettlement(t *testing.T) {
 	}
 }
 
+type encodingFixture struct {
+	extractor  *fakeExtractor
+	embedder   *fakeEmbedder
+	candidates *fakeCandidateRepo
+	service    *EncodingService
+}
+
+func newEncodingFixture(t *testing.T) *encodingFixture {
+	t.Helper()
+	fixture := &encodingFixture{extractor: &fakeExtractor{splitResult: validSplit()}, embedder: &fakeEmbedder{}, candidates: &fakeCandidateRepo{}}
+	var err error
+	fixture.service, err = NewEncodingService(EncodingDeps{Extractor: fixture.extractor, Embedder: fixture.embedder, Candidates: fixture.candidates})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fixture
+}
+
 func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	fixture.candidates.inBody = []ExistingNeuron{{ID: "n-1", Name: "market", Type: NeuronTypeSpatial}}
 	fixture.candidates.nearest = []ExistingNeuron{
 		{ID: "n-1", Name: "market", Type: NeuronTypeSpatial},
@@ -275,9 +293,6 @@ func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 		t.Fatalf("top-k = %d, want %d", fixture.candidates.gotLimit, values.EncodeDedupTopK)
 	}
 	// A9: previews persist nothing — no transaction ran, no rows, no jobs.
-	if fixture.launches.txCount != 0 {
-		t.Fatalf("launch tx ran %d times during preview, want 0", fixture.launches.txCount)
-	}
 	// An ordinary diary reaches the extractor exactly once and its split is returned untouched: the
 	// body budget is a ceiling on unfittable entries, never a cost on the common path.
 	if fixture.extractor.splitCalls != 1 {
@@ -290,7 +305,7 @@ func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 
 func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	tooMany := ExtractResult{}
 	for i := 0; i < values.EncodeMaxMemories+1; i++ {
 		tooMany.Memories = append(tooMany.Memories, ExtractedMemory{
@@ -321,7 +336,7 @@ func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
 
 func TestEncodeMissingSemanticNeuronIsRepairedNeverPlaceholder(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	missing := validSplit()
 	missing.Memories[1].Neurons = []ExtractedNeuron{{Name: "Mina", Type: NeuronTypeEntity}}
 	fixture.extractor.splitResult = missing
@@ -350,7 +365,7 @@ func TestEncodeMissingSemanticNeuronIsRepairedNeverPlaceholder(t *testing.T) {
 // be encoded at all.
 func TestEncodeAcceptsASingleSceneSplitAfterOneNudge(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	single := ExtractResult{Memories: []ExtractedMemory{{
 		Name:       "only one",
 		Mood:       MoodJoy,
@@ -411,7 +426,7 @@ func TestEncodeStillEnforcesTheOtherInvariantsOnAnAcceptedCount(t *testing.T) {
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			fixture := newFixture(t)
+			fixture := newEncodingFixture(t)
 			fixture.extractor.splitResult = testCase.result
 
 			_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
@@ -431,7 +446,7 @@ func TestEncodeStillEnforcesTheOtherInvariantsOnAnAcceptedCount(t *testing.T) {
 
 func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	// A passage the writer never wrote is the unrepairable case that survives every re-prompt.
 	invented := validSplit()
 	invented.Memories[1].SourceText = "Lunch with Mina, catching up. Then I flew to the moon."
@@ -453,16 +468,13 @@ func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 	if len(fixture.extractor.instructions) != values.EncodeMaxReviseRetries {
 		t.Fatalf("repair attempts = %d, want %d", len(fixture.extractor.instructions), values.EncodeMaxReviseRetries)
 	}
-	if fixture.launches.txCount != 0 {
-		t.Fatal("a failed preview must persist nothing")
-	}
 }
 
 // The count give-up carries the count, so an operator reading one report can tell a lazy split from
 // a model that kept over-splitting — the shipped single string could not.
 func TestEncodeCountGiveUpCarriesTheObservedCount(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	tooMany := ExtractResult{}
 	for i := 0; i < values.EncodeMaxMemories+2; i++ {
 		tooMany.Memories = append(tooMany.Memories, ExtractedMemory{
@@ -505,7 +517,7 @@ func TestEncodeCountGiveUpCarriesTheObservedCount(t *testing.T) {
 // discovering that would bill the writer three LLM calls to be told their entry is too long.
 func TestEncodeRefusesADiaryTooLongToQuoteBeforeCallingTheExtractor(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	// Korean runes count one token each in the estimate, so the budget is reached in runes.
 	tooLong := strings.Repeat("오늘은 아주 긴 하루였다. ", values.EncodeMaxOutputTokens)
 
@@ -598,7 +610,7 @@ func TestBodyBudgetLeavesRoomForEveryAdmissibleSplit(t *testing.T) {
 // extractor is billed — not EncodeRetryExhausted after three re-prompts that cannot help.
 func TestEncodeRefusesABodyNoLegalSplitCouldFit(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	// Inside the band by construction: the passages alone fit, the cheapest legal split does not.
 	body := ""
 	for runes := values.EncodeMaxOutputTokens; runes > 0; runes-- {
@@ -634,7 +646,7 @@ func TestEncodeRefusesABodyNoLegalSplitCouldFit(t *testing.T) {
 
 func TestEncodeRejectsInvalidNeuronTypeWithoutRetry(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	invalid := validSplit()
 	invalid.Memories[0].Neurons[0].Type = NeuronType("temporal")
 	fixture.extractor.splitResult = invalid
@@ -650,7 +662,7 @@ func TestEncodeRejectsInvalidNeuronTypeWithoutRetry(t *testing.T) {
 
 func TestEncodeRejectsUnknownMood(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	invalid := validSplit()
 	invalid.Memories[0].Mood = Mood("EUPHORIA")
 	fixture.extractor.splitResult = invalid
@@ -663,7 +675,7 @@ func TestEncodeRejectsUnknownMood(t *testing.T) {
 
 func TestEncodeOversizedResultIsRepairable(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	oversized := validSplit()
 	oversized.Memories[0].Name = strings.Repeat("경험", values.EncodeMaxOutputTokens)
 	fixture.extractor.splitResult = oversized
@@ -679,7 +691,7 @@ func TestEncodeOversizedResultIsRepairable(t *testing.T) {
 
 func TestEncodeRequiresInputAndScope(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	if _, err := fixture.service.Encode(context.Background(), testScope(t), "  ", testDiaryDate()); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("empty body err = %v, want ErrEncodeInputRequired", err)
 	}
@@ -699,30 +711,10 @@ func (failingEmbedder) Embed(_ context.Context, _ []string) ([][]float32, error)
 
 func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	fixture.candidates.inBody = []ExistingNeuron{{ID: "n-1", Name: "market", Type: NeuronTypeSpatial}}
-	service, err := NewService(ServiceDeps{
-		Extractor:        fixture.extractor,
-		Embedder:         failingEmbedder{},
-		Candidates:       fixture.candidates,
-		Launches:         fixture.launches,
-		Universe:         fixture.universe,
-		Linker:           fixture.linker,
-		Progression:      fixture.progression,
-		Recalls:          fixture.launches,
-		SpendGate:        fixture.spendGate,
-		Earn:             fixture.earn,
-		Achievements:     NoAchievementRecorder{},
-		SignupSettlement: NoSignupSettlement{},
-		PredictionError:  fixture.predictionError,
-		Gists:            fixture.gists,
-		ViewSemantics:    fixture.launches,
-		Signals:          fixture.launches,
-		Provenance:       fixture.provenance,
-		Exports:          fixture.exports,
-		Diaries:          fixture.diaries,
-		Releases:         fixture.releases,
-		SealSuggester:    fixture.sealSuggester,
+	service, err := NewEncodingService(EncodingDeps{
+		Extractor: fixture.extractor, Embedder: failingEmbedder{}, Candidates: fixture.candidates,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -742,14 +734,14 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 
 func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	fixture := newEncodingFixture(t)
 	invalidPrevious := validSplit()
 	invalidPrevious.Memories[0].Neurons[0].Type = NeuronType("time")
 	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, invalidPrevious, "merge them"); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("invalid previous err = %v, want ErrEncodeInputRequired", err)
 	}
 
-	fixture = newFixture(t)
+	fixture = newEncodingFixture(t)
 	fixture.extractor.reviseQueue = []ExtractResult{validSplit()}
 	result, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "merge the meeting and lunch")
 	if err != nil {

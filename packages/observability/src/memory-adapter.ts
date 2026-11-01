@@ -38,31 +38,42 @@ export interface InMemoryTelemetryAdapter extends TelemetryAdapter {
   clear(): void
 }
 
-export function createInMemoryTelemetryAdapter(): InMemoryTelemetryAdapter {
+export const DEFAULT_TELEMETRY_HISTORY_LIMIT = 256
+
+export function createInMemoryTelemetryAdapter({
+  capacity = DEFAULT_TELEMETRY_HISTORY_LIMIT,
+}: { capacity?: number } = {}): InMemoryTelemetryAdapter {
+  if (!Number.isSafeInteger(capacity) || capacity < 0)
+    throw new RangeError('Invalid telemetry history capacity')
   const events: InMemoryTelemetryEvent[] = []
   const featureFlags = new Map<string, boolean>()
+  const record = (event: InMemoryTelemetryEvent) => {
+    if (capacity === 0) return
+    if (events.length === capacity) events.shift()
+    events.push(event)
+  }
 
   return {
     get events() {
       return events
     },
     captureException(error, context) {
-      events.push({ kind: 'exception', error, context })
+      record({ kind: 'exception', error, context })
     },
     captureMessage(message, level, context) {
-      events.push({ kind: 'message', message, level, context })
+      record({ kind: 'message', message, level, context })
     },
     track(eventName, properties) {
-      events.push({ kind: 'track', eventName, properties })
+      record({ kind: 'track', eventName, properties })
     },
     identify(userId, traits) {
-      events.push({ kind: 'identify', userId, traits })
+      record({ kind: 'identify', userId, traits })
     },
     resetIdentity() {
-      events.push({ kind: 'resetIdentity' })
+      record({ kind: 'resetIdentity' })
     },
     setAnalyticsConsent(consent) {
-      events.push({ kind: 'consent', consent })
+      record({ kind: 'consent', consent })
     },
     getFeatureFlag(definition: FeatureFlagDefinition) {
       return (

@@ -813,3 +813,7 @@ func TestConcurrentRestoreAndBoundarySweepConverge(t *testing.T) {
 		})
 	}
 }
+
+func (b *graphBarrierSpendGate) CheckCanSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
+	return b.next.CheckCanSpend(ctx, scope, tx, spend)
+}

@@ -15,6 +15,8 @@ import (
 // state that only becomes visible (committed) when fn returns nil — mirroring the
 // all-or-nothing transaction contract the tests assert.
 type fakeLaunchStore struct {
+	inRecallTx     bool
+	ConsolidateTx  // Unused when tests bind their explicit fakeProgression.
 	clock          *time.Time
 	latestLaunched *time.Time
 	existing       []ExistingNeuron
@@ -302,6 +304,15 @@ func (f *fakeLaunchStore) SynapseStrengths(_ context.Context, scope platform.Use
 		strengths = append(strengths, NeuronPairStrength{NeuronAID: aID, NeuronBID: bID, Strength: strength})
 	}
 	return strengths, nil
+}
+
+func (f *fakeLaunchStore) UpsertSynapses(ctx context.Context, scope platform.UserScope, synapses []Synapse) error {
+	for _, synapse := range synapses {
+		if _, err := f.UpsertSynapse(ctx, scope, synapse); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (f *fakeLaunchStore) UpsertSynapse(_ context.Context, scope platform.UserScope, synapse Synapse) (Synapse, error) {
@@ -932,4 +943,20 @@ func TestPersistEncodedDuplicateNeuronInOneMemoryActivatesOnce(t *testing.T) {
 		}
 		seen[key] = struct{}{}
 	}
+}
+
+func (*fakeLaunchStore) RecordProgress(context.Context, platform.UserScope, string, int) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeLaunchStore) SpendMemory(context.Context, platform.UserScope, SpendIntent) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeLaunchStore) EarnDiary(context.Context, platform.UserScope, string) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeLaunchStore) CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error {
+	panic("unexpected affordability capability call")
 }

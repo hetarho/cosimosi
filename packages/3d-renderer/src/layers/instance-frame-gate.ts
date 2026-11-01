@@ -80,3 +80,25 @@ export function resetInstanceFrame(last: InstanceFrameKey): void {
 }
 
 const EMPTY_KEY = createInstanceFrameKey()
+
+export function createCameraRevision() {
+  return { x: Number.NaN, y: Number.NaN, z: Number.NaN, w: Number.NaN, revision: 0 }
+}
+
+/** Camera-facing geometry must recompose when its view basis changes. */
+export function updateCameraRevision(
+  frame: ReturnType<typeof createCameraRevision>,
+  x: number,
+  y: number,
+  z: number,
+  w = 0,
+): number {
+  if (frame.x !== x || frame.y !== y || frame.z !== z || frame.w !== w) {
+    frame.x = x
+    frame.y = y
+    frame.z = z
+    frame.w = w
+    frame.revision += 1
+  }
+  return frame.revision
+}

@@ -22,21 +22,17 @@ describe('user state reset registry', () => {
       },
     }
 
-    resetUserState('new-user', localeLeg)
+    const productScopes: string[] = []
+    resetUserState('new-user', localeLeg, [
+      { name: 'product', reset: (scope) => productScopes.push(scope) },
+    ])
+    expect(productScopes).toEqual(['new-user'])
 
     expect(takeSignupCompletion()).toBe(false)
     expect(pendingInvite.consume()).toBe('opaque')
     expect(platformScopes).toEqual(['new-user'])
     expect(signupCompletionAtPlatformLeg).toEqual([false])
-    expect(USER_STATE_RESET_INVENTORY).toEqual([
-      'universe',
-      'twinkle',
-      'palette',
-      'store',
-      'sequence',
-      'onboarding',
-      'signup-completion',
-    ])
+    expect(USER_STATE_RESET_INVENTORY).toEqual(['signup-completion'])
     expect(extendUserStateResetInventory(localeLeg)).toEqual([
       ...USER_STATE_RESET_INVENTORY,
       'locale',

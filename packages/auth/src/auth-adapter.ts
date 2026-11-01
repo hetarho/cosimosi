@@ -71,6 +71,8 @@ export interface AuthAdapter {
   getAccessToken(): Promise<string | null>
   /** Subscribe to adapter-driven changes (token expiry, cross-tab sign-out, …). */
   onChange(listener: (snapshot: SessionSnapshot, change: AuthAdapterChange) => void): () => void
+  /** Releases an adapter-owned SDK client without signing the account out. */
+  dispose?(): void
 }
 
 /**

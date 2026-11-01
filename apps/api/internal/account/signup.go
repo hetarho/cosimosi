@@ -158,7 +158,7 @@ func (s *Service) acceptInvite(
 // ResolveInviteSettlement is the trusted [G6] conjunction consumed by Twinkle. The launched-
 // engram condition is structural: this behavior is reachable in production only from the
 // post-commit launch hook, never from a wire handler.
-func (s *Service) ResolveInviteSettlement(
+func (s *ReadService) ResolveInviteSettlement(
 	ctx context.Context,
 	request InviteSettlementRequest,
 ) (SettledInvite, error) {

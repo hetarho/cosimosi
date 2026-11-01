@@ -53,7 +53,7 @@ func TestRealClockDayBoundariesUseTheUsersZoneAtAllFourSites(t *testing.T) {
 	signalFixture := newFixture(t)
 	signalFixture.service.now = func() time.Time { return now }
 	signalFixture.service.userZone = fixedUserZone{location: seoul}
-	signalToday, err := signalFixture.service.signalUniverseTime(context.Background(), testScope(t))
+	signalToday, err := signalFixture.service.spendSignals().signalUniverseTime(context.Background(), testScope(t))
 	if err != nil || !signalToday.Equal(seoulToday) {
 		t.Fatalf("signalUniverseTime = %v, %v; want Seoul today %v", signalToday, err, seoulToday)
 	}

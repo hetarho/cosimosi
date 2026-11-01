@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -9,21 +9,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // this host's lifecycle depends on: it asks for a renderer once, and it unmounts.
 const glFactoryCalls = vi.hoisted(() => ({ count: 0 }))
 
-vi.mock('@react-three/fiber', () => ({
-  extend: () => undefined,
-  Canvas: ({
-    gl,
-  }: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gl: (props: Record<string, unknown>) => any
-  }) => {
-    glFactoryCalls.count += 1
-    gl({})
-    // Scene children are deliberately dropped: R3F renders them through its own reconciler into
-    // the three scene graph, never into the DOM.
-    return <div data-testid="r3f-canvas" />
-  },
-}))
+vi.mock('@react-three/fiber', async () => {
+  const { useRef } = await import('react')
+  return {
+    extend: () => undefined,
+    Canvas: ({
+      gl,
+    }: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      gl: (props: Record<string, unknown>) => any
+    }) => {
+      const renderer = useRef<unknown>(null)
+      if (!renderer.current) {
+        glFactoryCalls.count += 1
+        renderer.current = gl({})
+      }
+      // Scene children are deliberately dropped: R3F renders them through its own reconciler into
+      // the three scene graph, never into the DOM.
+      return <div data-testid="r3f-canvas" />
+    },
+  }
+})
 
 const disposeSpy = vi.hoisted(() => vi.fn())
 
@@ -60,7 +66,7 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     vi.useRealTimers()
   })
 
-  it('disposes the WebGPURenderer exactly once on unmount', () => {
+  it('disposes the WebGPURenderer exactly once on unmount', async () => {
     const view = render(
       <UniverseCanvas>
         <group />
@@ -69,6 +75,7 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     expect(glFactoryCalls.count).toBe(1)
     expect(disposeSpy).not.toHaveBeenCalled()
 
+    await act(async () => {})
     view.unmount()
     // The dispose is deferred one macrotask so StrictMode's simulated unmount can cancel it.
     vi.runAllTimers()
@@ -79,12 +86,13 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     expect(disposeSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('does not dispose across a re-render', () => {
+  it('does not dispose across a re-render', async () => {
     const view = render(
       <UniverseCanvas>
         <group />
       </UniverseCanvas>,
     )
+    await act(async () => {})
     view.rerender(
       <UniverseCanvas>
         <mesh />
@@ -94,7 +102,7 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     expect(disposeSpy).not.toHaveBeenCalled()
   })
 
-  it('survives StrictMode double-invoke without disposing the live device', () => {
+  it('survives StrictMode double-invoke without disposing the live device', async () => {
     // StrictMode runs the mount effect, its cleanup, then the body again — one commit, one instance,
     // so the cleanup's scheduled dispose must be cancelled by the re-mount. It has to be: R3F keeps
     // its root's `state.gl` across the double-invoke, and re-`configure` skips the `gl` factory
@@ -109,6 +117,7 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     vi.runAllTimers()
     expect(disposeSpy).not.toHaveBeenCalled()
 
+    await act(async () => {})
     view.unmount()
     vi.runAllTimers()
     expect(disposeSpy).toHaveBeenCalledTimes(1)

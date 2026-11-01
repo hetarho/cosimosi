@@ -14,6 +14,23 @@ const testValues: ForceSimValues = {
 }
 
 describe('force-sim layout rules', () => {
+  it('sleeps after a quiet interval and explicitly reheats without changing its output contract', () => {
+    const sim = createForceSimulation({
+      neurons: [{ id: 'center', connectivity: 1, seedHint: { x: 0, y: 0, z: 0 } }],
+      synapses: [],
+      episodicMemories: [],
+      activations: [],
+    })
+    for (let i = 0; i < 2000 && !sim.settled; i++) sim.tick(1 / 60)
+    expect(sim.settled).toBe(true)
+    const before = Float32Array.from(sim.coordinates)
+    const output = new Float32Array(before.length)
+    for (let i = 0; i < 100; i++) expect(sim.tick(1 / 60, output)).toBe(output)
+    expect(output).toEqual(before)
+    sim.reheat()
+    expect(sim.settled).toBe(false)
+  })
+
   it('settles highly connected neurons nearer the self center', () => {
     const graph: ForceSimGraph = {
       neurons: [

@@ -185,3 +185,7 @@ func (f *fakeStore) achievedIDs() []string {
 	}
 	return ids
 }
+
+func (*fakeStore) EnqueueSettlement(context.Context, platform.UserScope, string) error {
+	panic("unexpected direct settlement call")
+}

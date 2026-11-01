@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { DiaryDto } from '@cosimosi/api-client'
 import type { Diary } from '@cosimosi/memory'
 
 import { useDiaryStore } from '../diary-store.ts'
-import { syncDiaryArchiveMirror } from './use-diary-archive.ts'
+import { createDiaryPageMapper, syncDiaryArchiveMirror } from './use-diary-archive.ts'
 
 const diary = (id: string, memberIds: readonly string[] = []): Diary => ({
   id,
@@ -47,4 +48,28 @@ describe('useDiaryArchive mirror synchronization', () => {
     expect(useDiaryStore.getState().ids).toEqual(['owner'])
     expect(useDiaryStore.getState().byId['picked-day']).toBeUndefined()
   })
+
+  it('releases a closed day read while preserving the owning archive', () => {
+    syncDiaryArchiveMirror(true, true, [diary('owner')])
+    syncDiaryArchiveMirror(true, false, [diary('closed-day')])
+    syncDiaryArchiveMirror(false, false, [diary('closed-day')])
+    expect(useDiaryStore.getState().ids).toEqual(['owner'])
+  })
+})
+
+it('reuses unchanged page projections while appending and replaces refreshed entries', () => {
+  const map = createDiaryPageMapper()
+  const dto = (id: string): DiaryDto => ({
+    ...diary(id),
+    $typeName: 'cosimosi.memory.v1.DiaryDto',
+    memories: [],
+  })
+  const first = { diaries: [dto('first')] }
+  const second = { diaries: [dto('second')] }
+  const initial = map([first])
+  const appended = map([first, second])
+  expect(appended[0]).toBe(initial[0])
+  const refreshed = map([{ diaries: [{ ...dto('first'), body: 'updated' }] }, second])
+  expect(refreshed[0]?.body).toBe('updated')
+  expect(refreshed[1]).toBe(appended[1])
 })

@@ -19,6 +19,7 @@ import { useSpotlightStore } from './spotlight-store.ts'
 import { useSynapseStore } from './synapse-store.ts'
 import { cancelPendingTimeSyncConsent } from './time-sync-consent-store.ts'
 import { useUniverseClockStore } from './universe-clock-store.ts'
+import { invalidateUserScope } from '@cosimosi/auth/scope'
 
 /**
  * Clears account-owned mirrors, drafts, and cross-route channels while the auth scope boundary
@@ -27,6 +28,7 @@ import { useUniverseClockStore } from './universe-clock-store.ts'
  * `useUniverseViewStore` documents the view-mode choice it preserves across account switches.
  */
 export function resetUniverseUserState(): void {
+  invalidateUserScope()
   useEpisodicMemoryStore.getState().clear()
   useNeuronStore.getState().clear()
   useSynapseStore.getState().clear()

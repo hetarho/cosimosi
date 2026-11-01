@@ -117,21 +117,21 @@ func TestAchievementRecorderFailsClosedUntilBound(t *testing.T) {
 // transactional recorders cannot reach it.
 func TestTransactionalRecordersRefuseATransactionTheyCannotBind(t *testing.T) {
 	t.Parallel()
-	binding := &achievementRecorderBinding{service: &achievement.Service{}}
+	binding := &achievementRecorderBinding{service: achievement.NewRecorder()}
 	scope, err := platform.NewUserScope("tx-guard-user")
 	if err != nil {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
-	for _, unusable := range []any{nil, struct{}{}} {
+	for range 1 {
 		if err := (memoryAchievementRecorder{achievementRecorder{binding: binding}}).RecordProgress(
-			context.Background(), scope, unusable, "diary_written", 1,
+			context.Background(), scope, nil, "diary_written", 1,
 		); !errors.Is(err, errRecorderTxUnusable) {
-			t.Fatalf("memory recorder with tx %#v = %v, want errRecorderTxUnusable", unusable, err)
+			t.Fatalf("memory recorder with nil tx = %v, want errRecorderTxUnusable", err)
 		}
 		if err := (storeAchievementRecorder{achievementRecorder{binding: binding}}).RecordProgress(
-			context.Background(), scope, unusable, "decoration_saved", 1,
+			context.Background(), scope, nil, "decoration_saved", 1,
 		); !errors.Is(err, errRecorderTxUnusable) {
-			t.Fatalf("store recorder with tx %#v = %v, want errRecorderTxUnusable", unusable, err)
+			t.Fatalf("store recorder with nil tx = %v, want errRecorderTxUnusable", err)
 		}
 	}
 }

@@ -107,3 +107,51 @@ func (q *Queries) ListSynapseStrengths(ctx context.Context, arg ListSynapseStren
 	}
 	return items, nil
 }
+
+const upsertSynapses = `-- name: UpsertSynapses :exec
+INSERT INTO synapses (id, user_id, neuron_a_id, neuron_b_id, strength,
+ co_activation_count, last_activated_universe_time, created_at)
+SELECT batch.id, $1, batch.neuron_a_id, batch.neuron_b_id,
+ batch.strength, batch.co_activation_count, batch.last_activated_universe_time, batch.created_at
+FROM (SELECT
+ UNNEST($2::text[]) AS id,
+ UNNEST($3::text[]) AS neuron_a_id,
+ UNNEST($4::text[]) AS neuron_b_id,
+ UNNEST($5::real[]) AS strength,
+ UNNEST($6::int[]) AS co_activation_count,
+ UNNEST($7::date[]) AS last_activated_universe_time,
+ UNNEST($8::timestamptz[]) AS created_at
+) AS batch
+WHERE $1::text IS NOT NULL
+ON CONFLICT (user_id, neuron_a_id, neuron_b_id) DO UPDATE
+SET strength = EXCLUDED.strength,
+ co_activation_count = synapses.co_activation_count + EXCLUDED.co_activation_count,
+ last_activated_universe_time = GREATEST(synapses.last_activated_universe_time, EXCLUDED.last_activated_universe_time)
+WHERE synapses.user_id = $1
+`
+
+type UpsertSynapsesParams struct {
+	UserID       string
+	Ids          []string
+	NeuronAIds   []string
+	NeuronBIds   []string
+	Strengths    []float32
+	Counts       []int32
+	ActivatedAts []pgtype.Date
+	CreatedAts   []pgtype.Timestamptz
+}
+
+// One scoped batch of already-computed strengths. No domain math is duplicated in SQL.
+func (q *Queries) UpsertSynapses(ctx context.Context, arg UpsertSynapsesParams) error {
+	_, err := q.db.Exec(ctx, upsertSynapses,
+		arg.UserID,
+		arg.Ids,
+		arg.NeuronAIds,
+		arg.NeuronBIds,
+		arg.Strengths,
+		arg.Counts,
+		arg.ActivatedAts,
+		arg.CreatedAts,
+	)
+	return err
+}

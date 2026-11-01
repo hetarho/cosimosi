@@ -68,7 +68,7 @@ export type SimWorkerRequest =
   | { readonly type: 'tick'; readonly dt: number; readonly buffer: ArrayBuffer }
 
 export type SimWorkerResponse =
-  | { readonly type: 'coords'; readonly buffer: ArrayBuffer }
+  | { readonly type: 'coords'; readonly buffer: ArrayBuffer; readonly settled?: boolean }
   | { readonly type: 'error'; readonly message: string; readonly buffer?: ArrayBuffer }
 
 export function createUniverseSimBridge(spawner: SimWorkerSpawner | null): UniverseSimBridge {
@@ -81,6 +81,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   let spareBuffers: ArrayBuffer[] = []
   let inFlight = false
   let pendingDt = 0
+  let settled = false
   // The node index that laid out the currently displayed buffer, so a refetch can carry existing
   // coordinates across a reorder/resize by stable node id rather than by slot.
   let displayedIndex: ForceSimNodeIndex | null = null
@@ -94,6 +95,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
     spareBuffers = []
     inFlight = false
     pendingDt = 0
+    settled = false
     runningGraph = null
     if (clearCoordinates) {
       coordinates.current = null
@@ -141,6 +143,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
           return
         }
         if (message.type !== 'coords') return
+        settled = message.settled === true
         const presented = coordinates.current
         const candidate = new Float32Array(message.buffer)
         if (coordinatesMovedBeyond(presented, candidate, PUBLICATION_EPSILON)) {
@@ -166,6 +169,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
       worker.postMessage({ type: 'init', graph: seededGraph } satisfies SimWorkerRequest)
     },
     pump(dt) {
+      if (settled) return
       pendingDt += dt
       if (!worker || inFlight) return
       const buffer = spareBuffers.pop()
@@ -215,7 +219,7 @@ function createInlineSimBridge(): UniverseSimBridge {
     },
     pump(dt) {
       const presented = coordinates.current
-      if (!sim || !spare || !presented) return
+      if (!sim || !spare || !presented || sim.settled) return
       const candidate = sim.tick(dt, spare)
       if (!coordinatesMovedBeyond(presented, candidate, PUBLICATION_EPSILON)) return
       coordinates.current = candidate

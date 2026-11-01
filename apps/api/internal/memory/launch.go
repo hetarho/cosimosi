@@ -38,7 +38,7 @@ type LaunchResult struct {
 // PersistEncoded atomically commits the user-confirmed split at launch: Diary +
 // EpisodicMemory + Neuron (deduped) + NeuronActivation in one transaction, then
 // the Link seam and the async embed/semanticize enqueue. Invoked by LaunchStars.
-func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time, confirmed []ExtractedMemory) (LaunchResult, error) {
+func (s *CommandService) PersistEncoded(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time, confirmed []ExtractedMemory) (LaunchResult, error) {
 	if scope.UserID() == "" {
 		return LaunchResult{}, ErrScopeRequired
 	}
@@ -239,7 +239,7 @@ func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (Unive
 // neuron whose (name, type) canonicalized onto an existing neuron references that
 // id; a genuinely new (name, type) is created once and shared across this
 // launch's memories. Neurons are never deleted [I1].
-func (s *Service) resolveNeurons(ctx context.Context, scope platform.UserScope, tx LaunchTx, confirmed []ExtractedMemory) (map[string]string, []Neuron, error) {
+func (s *CommandService) resolveNeurons(ctx context.Context, scope platform.UserScope, tx LaunchTx, confirmed []ExtractedMemory) (map[string]string, []Neuron, error) {
 	keys := make([]string, 0)
 	names := make([]string, 0)
 	byKey := make(map[string]ExtractedNeuron)
@@ -288,7 +288,7 @@ func (s *Service) resolveNeurons(ctx context.Context, scope platform.UserScope, 
 
 // enqueueAsyncJobs hands the slow work to the worker (§2.8): one embed job for
 // the genuinely new neurons and one semanticize job per launched memory.
-func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
+func (s *CommandService) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
 	if len(newNeurons) > 0 {
 		targets := make([]JobTarget, 0, len(newNeurons))
 		for _, neuron := range newNeurons {
@@ -308,7 +308,7 @@ func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope
 	return nil
 }
 
-func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any, targets ...JobTarget) error {
+func (s *CommandService) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any, targets ...JobTarget) error {
 	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload, targets...)
 }
 
@@ -361,7 +361,7 @@ func dateInLocation(value time.Time, location *time.Location) time.Time {
 	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-func (s *Service) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
+func (s *CommandService) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
 	location, err := s.userZone.ZoneFor(ctx, scope)
 	if err != nil {
 		return time.Time{}, err

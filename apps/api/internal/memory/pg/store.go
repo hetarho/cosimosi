@@ -13,7 +13,7 @@ import (
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
-	"github.com/cosimosi/api/internal/platform/jobqueue"
+	queuepg "github.com/cosimosi/api/internal/platform/jobqueue/pg"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,32 +24,31 @@ var (
 	ErrQueriesRequired   = errors.New("memory store requires database queries")
 )
 
+type queueStore = queuepg.Store
+
 type Store struct {
-	queries *dbgen.Queries
-	db      dbgen.DBTX
-	txer    txStarter
+	queueStore
+	capabilities     memory.EconomyTx
+	bindCapabilities func(dbgen.DBTX) memory.EconomyTx
+	queries          *dbgen.Queries
+	db               dbgen.DBTX
+	txer             txStarter
 }
 
 type txStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-func NewStore(db dbgen.DBTX) Store {
-	store := Store{queries: dbgen.New(db), db: db}
-	if txer, ok := db.(txStarter); ok {
-		store.txer = txer
-	}
-	return store
+type TransactionDB interface {
+	dbgen.DBTX
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-// DB exposes the query handle this store is bound to — the pool, or the open
-// transaction inside In*Tx. It exists for the composition root's cross-context
-// economy seam ([CC2]): the root binds the twinkle ledger store onto the very same
-// transaction a recall/launch runs in, so a spend/earn and its memory work commit or
-// roll back together. Context behavior never calls it (the handle stays opaque
-// through memory.EconomyTx).
-func (s Store) DB() dbgen.DBTX {
-	return s.db
+func NewStore(db TransactionDB) Store {
+	return Store{queueStore: queuepg.NewStore(db), queries: dbgen.New(db), db: db, txer: db}
+}
+func NewReadStore(db dbgen.DBTX) Store {
+	return Store{queueStore: queuepg.NewStore(db), queries: dbgen.New(db), db: db}
 }
 
 func (s Store) InsertDiary(ctx context.Context, scope platform.UserScope, diary memory.Diary) (memory.Diary, error) {
@@ -164,151 +163,6 @@ func (s Store) InsertEmbedding(ctx context.Context, scope platform.UserScope, em
 		return memory.Embedding{}, err
 	}
 	return mapEmbedding(row)
-}
-
-func (s Store) EnqueueJob(ctx context.Context, scope platform.UserScope, job memory.Job) (memory.Job, error) {
-	if err := s.ready(scope); err != nil {
-		return memory.Job{}, err
-	}
-	var payload map[string]json.RawMessage
-	if err := json.Unmarshal(job.Payload, &payload); err != nil || payload == nil || len(payload) != 0 {
-		return memory.Job{}, errors.New("memory job payload must be an empty object")
-	}
-	if len(job.Targets) == 0 {
-		return memory.Job{}, errors.New("memory job requires at least one target")
-	}
-	targetKinds := make([]string, 0, len(job.Targets))
-	targetIDs := make([]string, 0, len(job.Targets))
-	expectedRevisions := make([]int64, 0, len(job.Targets))
-	for _, target := range job.Targets {
-		if target.Kind == "" || target.ID == "" {
-			return memory.Job{}, errors.New("memory job target requires kind and id")
-		}
-		targetKinds = append(targetKinds, string(target.Kind))
-		targetIDs = append(targetIDs, target.ID)
-		expectedRevisions = append(expectedRevisions, target.ExpectedRevision)
-	}
-	row, err := s.queries.EnqueueJob(ctx, dbgen.EnqueueJobParams{
-		ID:                job.ID,
-		UserID:            scope.UserID(),
-		Kind:              string(job.Kind),
-		Payload:           job.Payload,
-		Status:            string(job.Status),
-		Attempts:          job.Attempts,
-		NextRunAt:         pgTime(timeOrNow(job.NextRunAt)),
-		CreatedAt:         pgTime(timeOrNow(job.CreatedAt)),
-		DedupKey:          pgText(job.DedupKey),
-		TargetKinds:       targetKinds,
-		TargetIds:         targetIDs,
-		ExpectedRevisions: expectedRevisions,
-	})
-	if err != nil {
-		return memory.Job{}, err
-	}
-	mapped := mapEnqueuedJob(row)
-	mapped.Targets = append([]memory.JobTarget(nil), job.Targets...)
-	return mapped, nil
-}
-
-func (s Store) ClaimDue(ctx context.Context, now time.Time) (memory.Job, error) {
-	if s.queries == nil {
-		return memory.Job{}, ErrQueriesRequired
-	}
-	claimAt := timeOrNow(now)
-	row, err := s.queries.ClaimDueJob(ctx, dbgen.ClaimDueJobParams{
-		LeaseUntil: pgTime(jobLeaseUntil(claimAt)),
-		NowAt:      pgTime(claimAt),
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return memory.Job{}, jobqueue.ErrNoJob
-	}
-	if err != nil {
-		return memory.Job{}, err
-	}
-	job := mapJob(row)
-	targetRows, err := s.queries.ListJobTargets(ctx, dbgen.ListJobTargetsParams{
-		UserID: job.UserID,
-		JobID:  job.ID,
-	})
-	if err != nil {
-		return memory.Job{}, err
-	}
-	job.Targets = mapJobTargets(targetRows)
-	return job, nil
-}
-
-func (s Store) Complete(ctx context.Context, job memory.Job) error {
-	if err := s.readyJob(job); err != nil {
-		return err
-	}
-	_, err := s.queries.CompleteJob(ctx, dbgen.CompleteJobParams{
-		UserID:          job.UserID,
-		ID:              job.ID,
-		LeaseGeneration: job.LeaseGeneration,
-	})
-	return ignoreLostLease(err)
-}
-
-func (s Store) CancelUserJob(
-	ctx context.Context,
-	scope platform.UserScope,
-	kind memory.JobKind,
-	dedupKey string,
-) error {
-	if err := s.ready(scope); err != nil {
-		return err
-	}
-	_, err := s.queries.CancelUserJob(ctx, dbgen.CancelUserJobParams{
-		UserID:   scope.UserID(),
-		Kind:     string(kind),
-		DedupKey: pgtype.Text{String: dedupKey, Valid: true},
-	})
-	return err
-}
-
-func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, nextRunAt time.Time) error {
-	if err := s.readyJob(job); err != nil {
-		return err
-	}
-	_, err := s.queries.RetryJob(ctx, dbgen.RetryJobParams{
-		UserID:          job.UserID,
-		ID:              job.ID,
-		Attempts:        nextAttempts,
-		NextRunAt:       pgTime(nextRunAt),
-		LeaseGeneration: job.LeaseGeneration,
-	})
-	return ignoreLostLease(err)
-}
-
-// DeadLetter ends a job the runner refuses to run again. It is the same terminal write as Fail —
-// the row survives, so nothing is deleted and an operator can still see and requeue it — kept as a
-// separate method so a queue wrapper that overrides the retry policy cannot also disable the
-// runner's kill-loop breaker.
-func (s Store) DeadLetter(ctx context.Context, job memory.Job, _ jobqueue.DeadLetterCause) error {
-	return s.Fail(ctx, job, job.Attempts)
-}
-
-func (s Store) Fail(ctx context.Context, job memory.Job, nextAttempts int32) error {
-	if err := s.readyJob(job); err != nil {
-		return err
-	}
-	_, err := s.queries.FailJob(ctx, dbgen.FailJobParams{
-		UserID:          job.UserID,
-		ID:              job.ID,
-		Attempts:        nextAttempts,
-		LeaseGeneration: job.LeaseGeneration,
-	})
-	return ignoreLostLease(err)
-}
-
-// ignoreLostLease swallows the no-rows result of a fenced terminal transition: the
-// job's lease was superseded by another worker's re-claim, so this worker no longer
-// owns it and must not treat the missed update as an error.
-func ignoreLostLease(err error) error {
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	return err
 }
 
 // EmbedJobSources resolves the authoritative current names only while the job's
@@ -512,20 +366,6 @@ func (s Store) completeSemanticizeJob(ctx context.Context, queries *dbgen.Querie
 	return err
 }
 
-func (s Store) PurgeTerminalJobs(ctx context.Context, cutoff time.Time, batchSize int32) (int, error) {
-	if s.queries == nil {
-		return 0, ErrQueriesRequired
-	}
-	if batchSize <= 0 {
-		return 0, errors.New("terminal job purge requires a positive batch size")
-	}
-	ids, err := s.queries.PurgeTerminalJobs(ctx, dbgen.PurgeTerminalJobsParams{
-		Cutoff:    pgTime(cutoff),
-		BatchSize: batchSize,
-	})
-	return len(ids), err
-}
-
 func (s Store) GetUniverse(ctx context.Context, scope platform.UserScope) (memory.UniverseFacts, error) {
 	if err := s.ready(scope); err != nil {
 		return memory.UniverseFacts{}, err
@@ -613,17 +453,6 @@ func (s Store) readyJob(job memory.Job) error {
 		return errors.New("memory job requires an id")
 	}
 	return s.readyUserID(job.UserID)
-}
-
-func jobLeaseUntil(now time.Time) time.Time {
-	return now.Add(jobLeaseDuration())
-}
-
-// The lease only has to outlast one handler run — long enough that a healthy worker
-// finishes before another can re-claim, short enough that a dead worker's job frees up
-// promptly. It is its own knob, not coupled to the (exponential) retry backoff.
-func jobLeaseDuration() time.Duration {
-	return time.Duration(values.AiJobLeaseMs) * time.Millisecond
 }
 
 func synapseParams(scope platform.UserScope, synapse memory.Synapse) (dbgen.UpsertSynapseParams, error) {
@@ -797,52 +626,6 @@ func mapEmbedding(row dbgen.InsertEmbeddingRow) (memory.Embedding, error) {
 		NeuronID: row.NeuronID,
 		Vector:   vector,
 	}, nil
-}
-
-func mapJob(row dbgen.Job) memory.Job {
-	return memory.Job{
-		ID:                  row.ID,
-		UserID:              row.UserID,
-		Kind:                memory.JobKind(row.Kind),
-		Payload:             row.Payload,
-		Status:              memory.JobStatus(row.Status),
-		Attempts:            row.Attempts,
-		NextRunAt:           timeValue(row.NextRunAt),
-		CreatedAt:           timeValue(row.CreatedAt),
-		DedupKey:            textPtr(row.DedupKey),
-		TerminalAt:          timePtr(row.TerminalAt),
-		CanceledByReleaseID: textPtr(row.CancelledByReleaseID),
-		LeaseGeneration:     row.LeaseGeneration,
-	}
-}
-
-func mapEnqueuedJob(row dbgen.EnqueueJobRow) memory.Job {
-	return memory.Job{
-		ID:                  row.ID,
-		UserID:              row.UserID,
-		Kind:                memory.JobKind(row.Kind),
-		Payload:             row.Payload,
-		Status:              memory.JobStatus(row.Status),
-		Attempts:            row.Attempts,
-		NextRunAt:           timeValue(row.NextRunAt),
-		CreatedAt:           timeValue(row.CreatedAt),
-		DedupKey:            textPtr(row.DedupKey),
-		TerminalAt:          timePtr(row.TerminalAt),
-		CanceledByReleaseID: textPtr(row.CancelledByReleaseID),
-		LeaseGeneration:     row.LeaseGeneration,
-	}
-}
-
-func mapJobTargets(rows []dbgen.ListJobTargetsRow) []memory.JobTarget {
-	targets := make([]memory.JobTarget, 0, len(rows))
-	for _, row := range rows {
-		targets = append(targets, memory.JobTarget{
-			Kind:             memory.JobTargetKind(row.TargetKind),
-			ID:               row.TargetID,
-			ExpectedRevision: row.ExpectedRevision.Int64,
-		})
-	}
-	return targets
 }
 
 func mapEpisodicMemories(rows []dbgen.ListUniverseEpisodicMemoriesRow) []memory.EpisodicMemory {

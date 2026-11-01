@@ -81,7 +81,7 @@ export default defineConfig([
       'src/pages/demo/ui/DemoPage.tsx',
       'src/pages/demo/ui/DemoTimePassing.tsx',
       'src/pages/landing/ui/LandingReveal.tsx',
-      'src/pages/test/lib/platform-panel-components.tsx',
+      'src/pages/test/ui/platform-panel-components.tsx',
       'src/widgets/deletion-flow/ui/DeletionFlowSheet.tsx',
       'src/widgets/diary-reader/ui/DiaryReaderBlock.tsx',
       'src/widgets/recall-flow/ui/RecallFlowSheet.tsx',

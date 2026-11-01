@@ -334,6 +334,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
       epoch += 1
       adapterUnsubscribe()
       actor.stop()
+      adapter.dispose?.()
     },
   }
 }

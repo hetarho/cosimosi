@@ -9,6 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/account"
+	accountpg "github.com/cosimosi/api/internal/account/pg"
+	"github.com/cosimosi/api/internal/achievement"
 	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	"github.com/cosimosi/api/internal/ai"
 	memoryv1connect "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1/memoryv1connect"
@@ -53,95 +55,77 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger, aiHTTPClients,
 	)
 	directory := newAccountDirectory(apiDirectoryHTTPClient())
-	inviteGranter := &accountInviteRewardGranter{}
-	signupBonusGranter := &accountSignupBonusGranter{}
-	// The achievement recorder is bound at the end: a claim pays through twinkle and store, so the
-	// achievement service cannot exist until after the producers that report to it. The holder is
-	// handed out now and filled once, the same late-bind the invite granter above uses.
-	achievementRecorders := &achievementRecorderBinding{pool: pool}
+	accountReads, err := account.NewReadService(accountpg.NewStore(pool.PgxPool()), accountDirectoryAdapter{source: directory})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	signalReads, err := memory.NewSpendSignalService(store, store, accountUserZone{service: accountReads}, nil)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	signals := &memorySpendSignals{service: signalReads}
+	twinkleService, err := newTwinkleService(pool, signals, accountInviteResolver{service: accountReads}, accountTwinkleZone{service: accountReads})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	store = bindMemoryTransactions(store, twinkleService)
+	achievementRecorders := &achievementRecorderBinding{pool: pool, service: achievement.NewRecorder()}
 	accountOptions, accountService, err := accountServiceOption(
-		pool,
-		accountDirectoryAdapter{source: directory},
-		inviteGranter,
-		signupBonusGranter,
+		pool, accountDirectoryAdapter{source: directory},
+		&accountInviteRewardGranter{service: twinkleService},
+		&accountSignupBonusGranter{service: twinkleService},
 		accountAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
-		storeWithdrawalPurgerFor(pool),
-		achievementWithdrawalPurgerFor(pool),
+		storeWithdrawalPurgerFor(pool), achievementWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
-	// The twinkle service is built first (memory's gate and earn port wrap it); its
-	// spend-signal reader binds back to the memory service just below — the one
-	// two-way seam, closed here where every concrete is visible.
-	signals := &memorySpendSignals{}
-	twinkleService, err := newTwinkleService(
-		pool,
-		signals,
-		accountInviteResolver{service: accountService},
-		accountTwinkleZone{service: accountService},
-	)
+	encoding, err := memory.NewEncodingService(memory.EncodingDeps{Extractor: adapters.Extractor, Embedder: adapters.Embedder, Candidates: store})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
-	inviteGranter.service = twinkleService
-	signupBonusGranter.service = twinkleService
-	service, err := memory.NewService(memory.ServiceDeps{
-		Extractor:  adapters.Extractor,
-		Embedder:   adapters.Embedder,
-		Candidates: store,
-		Launches:   store,
-		Universe:   store,
-		// Link runs as the last step of PersistEncoded's transaction,
-		// wiring synapses over the launch's own store handle.
-		Linker: memory.NewLinkService(memory.LinkDeps{}),
-		// The real advance-triggered handler ([T4]): consolidation (우주의 잠)
-		// runs inside every launch/sync advance transaction — no cron anywhere.
-		Progression: memory.NewConsolidator(nil),
-		// The recall transaction runs over the same store. SpendGate is the REAL
-		// twinkle balance-check + deduct ([CC2] — the Epic-C allow-all no-op is
-		// replaced here); Earn is the write grant fired inside the launch
-		// transaction ([G3]); PredictionError is the LLM semantic-compare (keyless
-		// mock when no key). All bound here, the only place that sees the concretes.
-		Recalls:   store,
-		SpendGate: twinkleSpendGate{service: twinkleService},
-		Earn:      twinkleEarnPort{service: twinkleService},
-		// Counter reports ride the launch/recall/view/release transactions ([A6]); the concrete
-		// binds a counter store onto the producer's own handle, so a rollback advances nothing.
+	commands, err := memory.NewCommandService(memory.CommandDeps{
+		Launches:         store,
+		Linker:           memory.NewLinkService(memory.LinkDeps{}),
+		Progression:      memory.NewConsolidator(nil),
+		Recalls:          store,
+		SpendGate:        twinkleSpendGate{service: twinkleService},
+		Earn:             twinkleEarnPort{service: twinkleService},
 		Achievements:     memoryAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
 		SignupSettlement: accountSignupSettlement{service: accountService, logger: logger},
 		PredictionError:  adapters.PredictionError,
-		// The gist-view read shares the same store and the same SpendGate
-		// instance as recall — one spend-and-check seam for both metered actions.
-		Gists: store,
-		// The paid gist-view transaction (target read + receipt + spend + receipt insert atomic,
-		// A3) runs over the same store.
-		ViewSemantics: store,
-		// The published spend-signal reads run over the same store (standalone,
-		// no transaction).
-		Signals: store,
-		// The read-only provenance + export reads run over the same store; both are
-		// pure reads (no clock, no economy seam).
-		Provenance: store,
-		Exports:    store,
-		// The diary-reader archive read runs over the same store (free, per-user scoped).
-		Diaries: store,
-		// The release/restore/letting-go/sweep transaction + letting-go candidate reads run over
-		// the same store; SealSuggester is the AI seal-candidate suggester (keyless mock when no
-		// key). The sweep is triggered opportunistically at the start of every Release (no cron) —
-		// no worker registration is needed.
-		Releases:      store,
-		SealSuggester: adapters.SealSuggester,
-		UserZone:      accountUserZone{service: accountService},
+		ViewSemantics:    store,
+		Releases:         store,
+		SealSuggester:    adapters.SealSuggester,
+		UserZone:         accountUserZone{service: accountService},
 	})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
-	signals.bind(service)
-	server, err := memoryrpc.NewServer(service)
+	service, err := memory.NewServiceWithCapabilities(encoding, commands, memory.ReadServiceDeps{
+		Universe:   store,
+		Gists:      store,
+		Signals:    store,
+		Provenance: store,
+		Exports:    store,
+		Diaries:    store,
+	})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	exports, err := memory.NewExportService(store)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	server, err := memoryrpc.NewServer(service, exports)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
@@ -168,8 +152,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	// Built last, because it pays through both of the services above; binding it closes the cycle
-	// the producers were handed a holder for.
+	// Settlement is built after its payout services; progress recording was independently ready first.
 	achievementService, err := newAchievementService(pool, achievementDeps{
 		twinkle: twinkleService,
 		store:   storeService,
@@ -178,7 +161,6 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	achievementRecorders.bind(achievementService)
 	achievementOption, err := achievementServiceOption(achievementService)
 	if err != nil {
 		pool.Close()
@@ -227,7 +209,9 @@ func (s accountSignupSettlement) OnEngramsLaunched(ctx context.Context, scope pl
 }
 
 type accountUserZone struct {
-	service *account.Service
+	service interface {
+		ZoneFor(context.Context, platform.UserScope) (string, error)
+	}
 }
 
 func (a accountUserZone) ZoneFor(ctx context.Context, scope platform.UserScope) (*time.Location, error) {

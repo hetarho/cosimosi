@@ -126,6 +126,7 @@ type ReleaseRepo interface {
 // implicitly. It exposes NO Diary UPDATE — the only Diary mutation is the sweep's whole-row
 // delete ([I2]).
 type ReleaseTx interface {
+	EconomyTx
 	GraphMutationLocker
 	// The shared sealing/soft-delete/classification concretes (reused).
 	SoftDeleteDiaryMemories(ctx context.Context, scope platform.UserScope, diaryID string, deletedAt time.Time) ([]string, error)

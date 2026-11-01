@@ -23,7 +23,9 @@ scope.onmessage = (event) => {
     }
     const output = new Float32Array(message.buffer)
     if (sim) sim.tick(message.dt, output)
-    scope.postMessage({ type: 'coords', buffer: message.buffer }, [message.buffer])
+    scope.postMessage({ type: 'coords', buffer: message.buffer, settled: sim?.settled ?? true }, [
+      message.buffer,
+    ])
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
     if (message.type === 'tick') {

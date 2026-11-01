@@ -11,6 +11,7 @@ import {
 } from '@cosimosi/api-client'
 import { applyReleaseResult, requestRelease } from '../deletion.ts'
 import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
+import { useCompletionScope } from './use-completion-scope.ts'
 
 // features/delete-memory api ([X1][X2]): the single Release call over the generated client. On
 // success the returned ids are optimistically removed from the episodic-memory mirror and the
@@ -21,9 +22,12 @@ export function useReleaseMemory(): (diaryId: string) => Promise<ReleaseResponse
   const transport = useTransport()
   const queryClient = useQueryClient()
   const invalidateCalendar = useInvalidateDiaryCalendar()
+  const capture = useCompletionScope()
   return useCallback(
     async (diaryId: string) => {
+      const isCurrent = capture()
       const response = await requestRelease(transport, { diaryId })
+      if (!isCurrent()) return response
       applyReleaseResult(response)
       queryClient
         .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
@@ -43,6 +47,6 @@ export function useReleaseMemory(): (diaryId: string) => Promise<ReleaseResponse
       invalidateCalendar()
       return response
     },
-    [transport, queryClient, invalidateCalendar],
+    [transport, queryClient, invalidateCalendar, capture],
   )
 }

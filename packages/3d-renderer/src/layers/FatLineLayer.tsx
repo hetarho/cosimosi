@@ -9,6 +9,14 @@ import {
   buildFilamentFrame,
 } from '../assets/bodies/filament-body.ts'
 import type { CoordinateBufferRef } from './InstancedNodeLayer.tsx'
+import {
+  createInstanceFrameKey,
+  recordInstanceFrame,
+  resetInstanceFrame,
+  sameInstanceFrame,
+  createCameraRevision,
+  updateCameraRevision,
+} from './instance-frame-gate.ts'
 
 // Fallback axes for the billboard perpendicular when the edge is seen end-on (view ∥ edge).
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
@@ -83,27 +91,33 @@ export function FatLineLayer({
     return ribbon
   }, [capacity])
 
+  const [sourceError, setSourceError] = useState<unknown>(null)
   useEffect(() => {
     let cancelled = false
-    Promise.resolve(source.resolve({ kind, id: bodyId })).then((object) => {
-      const mesh = object instanceof THREE.Mesh ? object : null
-      // The layer owns the ribbon geometry; adopt only the material and release the body's
-      // placeholder geometry (and the whole object — geometry and material — if a source yielded
-      // a non-Mesh or resolved after unmount).
-      if (cancelled || !mesh) {
-        object.traverse((child) => {
-          const asMesh = child as THREE.Mesh
-          if (!asMesh.isMesh) return
-          asMesh.geometry.dispose()
-          const bodyMaterial = asMesh.material
-          if (Array.isArray(bodyMaterial)) bodyMaterial.forEach((entry) => entry.dispose())
-          else bodyMaterial.dispose()
-        })
-        return
-      }
-      mesh.geometry.dispose()
-      setMaterial(mesh.material as THREE.Material)
-    })
+    Promise.resolve()
+      .then(() => source.resolve({ kind, id: bodyId }))
+      .then((object) => {
+        const mesh = object instanceof THREE.Mesh ? object : null
+        // The layer owns the ribbon geometry; adopt only the material and release the body's
+        // placeholder geometry (and the whole object — geometry and material — if a source yielded
+        // a non-Mesh or resolved after unmount).
+        if (cancelled || !mesh) {
+          object.traverse((child) => {
+            const asMesh = child as THREE.Mesh
+            if (!asMesh.isMesh) return
+            asMesh.geometry.dispose()
+            const bodyMaterial = asMesh.material
+            if (Array.isArray(bodyMaterial)) bodyMaterial.forEach((entry) => entry.dispose())
+            else bodyMaterial.dispose()
+          })
+          return
+        }
+        mesh.geometry.dispose()
+        setMaterial(mesh.material as THREE.Material)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setSourceError(error)
+      })
     return () => {
       cancelled = true
       setMaterial(null)
@@ -157,6 +171,13 @@ export function FatLineLayer({
     [],
   )
 
+  const lastFrame = useMemo(() => createInstanceFrameKey(), [])
+  const nextFrame = useMemo(() => createInstanceFrameKey(), [])
+  const cameraFrame = useMemo(() => createCameraRevision(), [])
+  const frameChannels = useMemo(
+    () => ({ mesh, endpointPairs, widths }),
+    [mesh, endpointPairs, widths],
+  )
   useFrame((state) => {
     if (!mesh) return
     const buffer = positions.current
@@ -164,11 +185,25 @@ export function FatLineLayer({
     if (edges <= 0) {
       // Hide rather than draw a 0-vertex range — a 0-count geometry trips the WebGPU backend.
       mesh.visible = false
+      resetInstanceFrame(lastFrame)
       return
     }
     const attribute = geometry.getAttribute('position') as THREE.BufferAttribute
     const target = attribute.array as Float32Array
     state.camera.getWorldPosition(scratch.cam)
+    nextFrame.buffer = buffer
+    nextFrame.bufferVersion = positions.version ?? Number.NaN
+    nextFrame.channels = frameChannels
+    nextFrame.count = edges
+    nextFrame.firstNodeIndex = 0
+    nextFrame.scale = 1
+    nextFrame.animationRevision = updateCameraRevision(
+      cameraFrame,
+      scratch.cam.x,
+      scratch.cam.y,
+      scratch.cam.z,
+    )
+    if (sameInstanceFrame(lastFrame, nextFrame)) return
     for (let edge = 0; edge < edges; edge++) {
       const aOffset = (endpointPairs[edge * 2] ?? 0) * 3
       const bOffset = (endpointPairs[edge * 2 + 1] ?? 0) * 3
@@ -199,8 +234,10 @@ export function FatLineLayer({
     attribute.needsUpdate = true
     geometry.setDrawRange(0, edges * 6)
     mesh.visible = true
+    recordInstanceFrame(lastFrame, nextFrame)
   })
 
+  if (sourceError) throw sourceError
   if (!mesh) return null
   return <primitive object={mesh} />
 }

@@ -34,8 +34,8 @@ const platformTables = new Set([
 // unique across ALL users (an OR arm widens the row scan), so its user_id equality is not a
 // conjunctive scope and the OR-taint rule below rightly refuses it.
 const globalQueries = new Set([
-  'memory/jobs.sql#ClaimDueJob',
-  'memory/jobs.sql#PurgeTerminalJobs',
+  'platform/jobqueue.sql#ClaimDueJob',
+  'platform/jobqueue.sql#PurgeTerminalJobs',
   'twinkle/ledger.sql#TwinkleLedgerDedupExists',
   // One authenticated invitee can own at most one bound invite. The statement returns only
   // settlement identity, but the gate recognizes user_id rather than invitee_user_id as scope.
@@ -65,8 +65,8 @@ const hardDeleteQueries = new Set([
   'memory/release.sql#DeleteReleaseMemories',
   'memory/release.sql#DeleteReleaseDiary',
   'memory/release.sql#DeleteReleaseGroup',
-  'memory/jobs.sql#PurgeTerminalJobs',
-  'memory/jobs.sql#CancelUserJob',
+  'platform/jobqueue.sql#PurgeTerminalJobs',
+  'platform/jobqueue.sql#CancelUserJob',
   'memory/purge_user.sql#PurgeUserJobTargets',
   'memory/purge_user.sql#PurgeUserJobs',
   'memory/purge_user.sql#PurgeUserPaidActionReceipts',

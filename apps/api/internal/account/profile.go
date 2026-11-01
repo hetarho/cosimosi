@@ -77,7 +77,7 @@ func (s *Service) requireSignup(ctx context.Context, scope platform.UserScope) e
 
 // ZoneFor publishes the IANA name only. Runtime resolution belongs to each consumer's
 // composition-root adapter.
-func (s *Service) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+func (s *ReadService) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
 	if scope.UserID() == "" {
 		return "", ErrScopeRequired
 	}
@@ -96,7 +96,7 @@ func (s *Service) ZoneFor(ctx context.Context, scope platform.UserScope) (string
 // capability probed at runtime, so a store that cannot answer in one read fails to compile instead
 // of degrading to a scalar read per user. Every requested ID is present in the result, with missing
 // or invalid profile values mapped to the same UTC default as ZoneFor.
-func (s *Service) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
+func (s *ReadService) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
 	stored, err := s.store.UserTimezones(ctx, userIDs)
 	if err != nil {
 		return nil, err

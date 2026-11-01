@@ -20,7 +20,7 @@ type SyncResult struct {
 // caller. Idempotent within a day (the GREATEST upsert holds today), it
 // mutates no Diary ([I2]) and fires the progression hook over the crossed
 // interval inside the same transaction, exactly like the launch advance ([T4]).
-func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (SyncResult, error) {
+func (s *CommandService) SyncToToday(ctx context.Context, scope platform.UserScope) (SyncResult, error) {
 	if scope.UserID() == "" {
 		return SyncResult{}, ErrScopeRequired
 	}
@@ -88,15 +88,28 @@ func syncNeedsConsent(guard *time.Time, today time.Time) bool {
 // its own transaction). The surface is ProgressionTx: sync touches only the clock
 // and the progression hook, never a launch write. LaunchTx and RecallTx both
 // satisfy it.
-func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, consent bool) (SyncResult, error) {
+func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, consent bool) (SyncResult, error) {
+	guard, target, err := s.syncTarget(ctx, scope, tx, consent)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	var current *time.Time
+	if err := s.advanceAndProgress(ctx, scope, tx, guard, target, &current); err != nil {
+		return SyncResult{}, err
+	}
+	return SyncResult{Previous: guard, Current: *current}, nil
+}
+
+// syncTarget validates consent and reads the exact advance target without mutating the clock.
+func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, consent bool) (*time.Time, time.Time, error) {
 	// Serialize against concurrent launches for the whole transaction,
 	// birth window included, exactly as the launch path does ([I10]).
 	if err := tx.LockGraphMutation(ctx, scope); err != nil {
-		return SyncResult{}, err
+		return nil, time.Time{}, err
 	}
 	clock, err := tx.UniverseClockForUpdate(ctx, scope)
 	if err != nil {
-		return SyncResult{}, err
+		return nil, time.Time{}, err
 	}
 	// Mirror the launch guard's unborn-clock fallback: a pre-clock universe
 	// shows the latest launched memory as its universe time, so a sync must
@@ -106,7 +119,7 @@ func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx 
 	if guard == nil {
 		guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
 		if err != nil {
-			return SyncResult{}, err
+			return nil, time.Time{}, err
 		}
 	}
 	// Server-enforced consent gate ([R1a], A1/A5): if advancing to today would move the clock
@@ -115,23 +128,19 @@ func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx 
 	// re-consent (the recall's operation id stays reusable — no receipt was written).
 	today, err := s.userToday(ctx, scope)
 	if err != nil {
-		return SyncResult{}, err
+		return nil, time.Time{}, err
 	}
 	if !consent && syncNeedsConsent(guard, today) {
-		return SyncResult{}, ErrSyncConsentRequired
+		return nil, time.Time{}, ErrSyncConsentRequired
 	}
-	var current *time.Time
-	if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), today), &current); err != nil {
-		return SyncResult{}, err
-	}
-	return SyncResult{Previous: guard, Current: *current}, nil
+	return guard, AdvanceClock(timeOrZero(guard), today), nil
 }
 
 // advanceAndProgress moves the clock to target and fires the progression hook
 // only when the clock actually moved: a held clock (same-day sync, equal-date
 // launch) crosses no interval, so no advance-triggered work may be implied —
 // otherwise every idempotent re-sync would re-fire the interval's handlers.
-func (s *Service) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
+func (s *CommandService) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
 	advanced, err := tx.AdvanceUniverseClock(ctx, scope, target)
 	if err != nil {
 		return err

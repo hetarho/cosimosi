@@ -56,14 +56,14 @@ func RecallSpendIntent(operationID string, memoryID string, accessibilityCost fl
 	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID, OperationID: operationID, AccessibilityCost: accessibilityCost}
 }
 
-// EconomyTx is the opaque handle to the caller's open repository transaction that an
-// economy write (spend or earn) must join ([CC2]): recall/launch pass their tx surface
-// through it so the composition-root economy binding can run its ledger write on the
-// same database transaction — no charge without the action, no action without the
-// charge. Opaque on purpose: the ledger write belongs to another context whose writes
-// this context cannot express, and only the composition root understands the concrete.
-// nil = the caller holds no transaction (the binding runs its own).
-type EconomyTx any
+// EconomyTx exposes only the cross-context effects bound to this open transaction.
+// The composition root supplies these behaviors; persistence handles never cross inward.
+type EconomyTx interface {
+	CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error
+	SpendMemory(context.Context, platform.UserScope, SpendIntent) error
+	EarnDiary(context.Context, platform.UserScope, string) error
+	RecordProgress(context.Context, platform.UserScope, string, int) error
+}
 
 // SpendGate is the consumer-owned check-and-spend port ([G1], §2.4). Declared ONCE
 // here and shared with the gist-view use-case — the two are the only spend actions in
@@ -73,6 +73,7 @@ type EconomyTx any
 // resets nothing (§CC2). The gate never sees a price — only the SpendIntent's
 // kind/target/depth signals.
 type SpendGate interface {
+	CheckCanSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error
 	CheckAndSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error
 }
 
@@ -107,6 +108,7 @@ type RecallRepo interface {
 // and NO delete, so the recall path cannot express an [I1]/[I2] violation. Method names
 // match the memory/pg concrete, which implements this implicitly.
 type RecallTx interface {
+	EconomyTx
 	ProgressionTx
 	MemoryProvenanceStore
 	ForgettingOffsetStore
@@ -149,7 +151,7 @@ type RecallTx interface {
 // one-method view of the launch-side SynapseStore's UpsertSynapse so RecallTx pulls in
 // only the write it needs, not the launch-time reads. The pg concrete satisfies both.
 type SynapseWriter interface {
-	UpsertSynapse(ctx context.Context, scope platform.UserScope, synapse Synapse) (Synapse, error)
+	UpsertSynapses(ctx context.Context, scope platform.UserScope, synapses []Synapse) error
 }
 
 // NeighborSharedSemanticCount is one neighbor memory and the number of SEMANTIC

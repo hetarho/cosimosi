@@ -1,40 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-
-import { useTransport } from '@connectrpc/connect-query'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-
-import { createMemoryServiceQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
-import { classifyErrorRecovery } from '@cosimosi/errors'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog } from '@cosimosi/ui'
-import {
-  applyRecallResult,
-  classifyPaidActionError,
-  createPaidActionSession,
-  currentDecaySpans,
-  recallAdvanceAnnouncement,
-  recallFlowMachine,
-  recallOutcome,
-  requestRecall,
-  useEpisodicMemoryStore,
-  useRecallTargetStore,
-  useUniverseClockStore,
-  type PaidActionAttempt,
-  type PaidActionSession,
-  type RecallFlowPhase,
-} from '@cosimosi/universe'
+import { useRecallFlowController } from '@cosimosi/universe/react/flows'
 
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
-import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
-import { CurrentMemoryText } from '../../../features/current-memory-text/index.ts'
+import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
 import { RecallResult, RecallRewrite } from '../../../features/recall-star/index.ts'
 import { SpendCostDisplay, recallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
-import { useMachine } from '@cosimosi/state-machine/react'
-import { useRecallDraftStore } from '@cosimosi/universe'
 
 // widgets/recall-flow ([R1]): the summon-and-rewrite flow as a modal over the running canvas (no
 // renderer remount, A1). It composes features/recall-star + the confirm-time-sync affordance,
@@ -44,213 +19,25 @@ import { useRecallDraftStore } from '@cosimosi/universe'
 // a response-loss retry replays the committed result without re-spending (A2), and the in-flight
 // state is non-dismissible + fenced so a late completion cannot mutate a closed/reopened flow (A4).
 export function RecallFlowSheet() {
-  const showError = useErrorToast()
-  const memoryId = useRecallTargetStore((state) => state.memoryId)
-  const clearTarget = useRecallTargetStore((state) => state.clear)
-  const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
-  const memory = useEpisodicMemoryStore((state) => (memoryId ? state.byId[memoryId] : undefined))
-
-  const [snapshot, send] = useMachine(recallFlowMachine)
-  const phase = snapshot.value as RecallFlowPhase
-
-  // The cost gate ([G4], A5): 회고하기 is priced before it happens. The display shows the
-  // recall quote first; only on its proceed does the rewrite reveal. A basic-affordable recall
-  // proceeds straight through (A9); a shortfall opens the charge sheet (A4).
-  const [costPassed, setCostPassed] = useState(false)
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
-  const invalidateBalance = useInvalidateTwinkleBalance()
-  // Every action that can record progress refreshes the achievement read on resolution, which is
-  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
-  const invalidateAchievements = useInvalidateAchievements()
-
-  const rewrite = useRecallDraftStore((state) => state.rewrite)
-  const result = useRecallDraftStore((state) => state.result)
-  const setRewrite = useRecallDraftStore((state) => state.setRewrite)
-  const setResult = useRecallDraftStore((state) => state.setResult)
-  const resetDraft = useRecallDraftStore((state) => state.reset)
-
-  const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
-  const transport = useTransport()
-  const queryClient = useQueryClient()
-
-  // Server-authoritative consent gate ([R1a], A1): needsSync comes from the sync-status read, so a
-  // client just past/before UTC midnight — or with a skewed clock — never bypasses or spuriously
-  // requires consent. The mutation re-checks it server-side and refuses an unconsented sync.
-  const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
-  const needsSync = syncStatusQuery.data?.needsSync ?? false
-
-  useEffect(() => {
-    if (syncStatusQuery.error) showError(syncStatusQuery.error)
-  }, [syncStatusQuery.error, showError])
-
-  // One controller fences the mounted widget session as well as its current target. The attempt is
-  // retained across an ambiguous retry and replaced only for a new intent or known refusal.
-  const sessionRef = useRef<PaidActionSession | null>(null)
-  if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
-  const paidSession = sessionRef.current
-  const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
-  const [consented, setConsented] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-
-  const invalidateMemory = useCallback(() => {
-    // GetUniverse (restored brightness/reshape), the target provenance (a reconsolidation appended
-    // a row), and the sync-status (the clock moved) all belong to the memory service — invalidate
-    // the whole service so each re-reads (A7). No polling (§2.7).
-    queryClient
-      .invalidateQueries({ queryKey: createMemoryServiceQueryKey() })
-      .catch(() => undefined)
-  }, [queryClient])
-
-  useEffect(() => () => paidSession.invalidate(), [paidSession])
-
-  useEffect(() => {
-    // A route/store retarget (including sign-out clearing the target) ends this session even while
-    // the dialog is non-dismissible. The captured request may finish, but it can no longer apply.
-    if (attempt && attempt.targetKey !== memoryId) {
-      paidSession.invalidate(attempt)
-      setAttempt(null)
-      setSubmitting(false)
-      resetDraft()
-      setCostPassed(false)
-      setConsented(false)
-      send({ type: 'SESSION_INVALIDATED' })
-      return
-    }
-    // Wait for the authoritative status before opening, so the consent decision is made from the
-    // server clock at open time rather than a racing default (A1). The server still backstops any
-    // subsequent race (ErrSyncConsentRequired → CONSENT_REQUIRED), so a stale open never spends
-    // without consent.
-    if (memoryId && phase === 'idle' && !syncStatusQuery.isLoading) {
-      resetDraft()
-      setCostPassed(false)
-      setConsented(false)
-      setAttempt(paidSession.begin(memoryId))
-      send({ type: 'OPEN', needsSync })
-    }
-  }, [
-    attempt,
-    memoryId,
+  const {
     phase,
-    needsSync,
-    paidSession,
-    send,
-    resetDraft,
-    syncStatusQuery.isLoading,
-  ])
-
-  // Close/reject are inert while a paid recall is in flight (A4) — the close button, backdrop, and
-  // Escape cannot dismiss `reconsolidating`; the machine also drops CLOSE there.
-  const close = useCallback(() => {
-    if (phase === 'reconsolidating') return
-    if (attempt) paidSession.invalidate(attempt)
-    setAttempt(null)
-    setSubmitting(false)
-    send({ type: 'CLOSE' })
-    clearTarget()
-    resetDraft()
-    setCostPassed(false)
-    setConsented(false)
-  }, [attempt, paidSession, phase, send, clearTarget, resetDraft])
-
-  const reject = useCallback(() => {
-    if (attempt) paidSession.invalidate(attempt)
-    setAttempt(null)
-    setSubmitting(false)
-    send({ type: 'REJECT' })
-    clearTarget()
-    resetDraft()
-    setCostPassed(false)
-    setConsented(false)
-  }, [attempt, paidSession, send, clearTarget, resetDraft])
-
-  const acceptSync = useCallback(() => {
-    setConsented(true)
-    send({ type: 'ACCEPT' })
-  }, [send])
-
-  const confirmRecall = useCallback(async () => {
-    // Repeat-submit suppression (A4): ignore a re-submit while one request is in flight.
-    if (!memoryId || !attempt || attempt.targetKey !== memoryId || submitting) return
-    const activeAttempt = attempt
-    if (!paidSession.start(activeAttempt)) return
-    const activeMemoryId = memoryId
-    setSubmitting(true)
-    send({ type: 'RECALL' })
-    try {
-      const response = await requestRecall(transport, {
-        episodicMemoryId: activeMemoryId,
-        rewriteText: rewrite,
-        operationId: activeAttempt.operationId,
-        syncConsent: consented,
-      })
-      // Fence: a completion whose operation id is no longer active (the flow was closed/reopened)
-      // must not mutate the current flow (A4).
-      if (!paidSession.isActive(activeAttempt)) return
-      // Server-authoritative: apply the returned representation (incl. current_text, A7), play the
-      // sync interval, and refetch the memory service + balance so the panel/HUD reflect the result.
-      applyRecallResult(activeMemoryId, response)
-      const advance = recallAdvanceAnnouncement(response)
-      if (advance) announceAdvance(advance)
-      setResult({
-        outcome: recallOutcome(response.reconsolidated),
-        currentText: response.currentText,
-      })
-      invalidateMemory()
-      invalidateBalance()
-      // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
-      // achievements are refreshed only on success. A failed action recorded no progress, and refetching
-      // after it could surface an unlock notice that reads as though the failure had earned something.
-      invalidateAchievements()
-      send({ type: 'DONE' })
-    } catch (error) {
-      if (!paidSession.isActive(activeAttempt)) return
-      invalidateBalance()
-      if (classifyPaidActionError(error) === 'ambiguous') {
-        // The recall MAY have committed; keep the operation id AND the passed cost gate (do not
-        // reset costPassed) so the diarist's re-confirm replays the committed receipt directly —
-        // never re-quoting, so a now-depleted balance cannot block recovery of what was paid for
-        // (A2/A5). The rewrite text stays in the draft store.
-        showError(error)
-        send({ type: 'ERROR' })
-        return
-      }
-      // Known refusal — nothing committed; the next attempt is a fresh spend, so mint a new id.
-      // Only an un-consented sync race returns to the consent modal; once consent was given, a
-      // balance/target/conflict refusal re-quotes (charge path) instead of looping consent (A5).
-      const recovery = classifyErrorRecovery(error, consented)
-      if (recovery === 'sync-consent') {
-        if (paidSession.finish(activeAttempt)) setSubmitting(false)
-        setAttempt(paidSession.begin(activeMemoryId))
-        send({ type: 'CONSENT_REQUIRED' })
-        return
-      }
-      showError(error)
-      if (recovery === 'earn') requestEarnGuide()
-      if (paidSession.finish(activeAttempt)) setSubmitting(false)
-      setAttempt(paidSession.begin(activeMemoryId))
-      setCostPassed(false)
-      send({ type: 'ERROR' })
-    } finally {
-      if (paidSession.finish(activeAttempt)) setSubmitting(false)
-    }
-  }, [
     memoryId,
-    attempt,
-    submitting,
+    result,
     rewrite,
-    consented,
-    transport,
-    announceAdvance,
-    setResult,
-    invalidateMemory,
-    invalidateBalance,
-    invalidateAchievements,
-    paidSession,
+    setRewrite,
+    close,
+    reject,
+    acceptSync,
+    confirmRecall,
+    acceptQuote,
+    spans,
+  } = useRecallFlowController({
+    onError: useErrorToast(),
+    invalidateBalance: useInvalidateTwinkleBalance(),
+    invalidateAchievements: useInvalidateAchievements(),
     requestEarnGuide,
-    showError,
-    send,
-  ])
-
+  })
   if (phase === 'idle') return null
 
   if (phase === 'confirmingSync') {
@@ -260,11 +47,11 @@ export function RecallFlowSheet() {
   return (
     <Dialog open onClose={close} title={m.recall_flow_title()} closeLabel={m.common_dismiss()}>
       <div className="flex flex-col gap-4">
-        {(phase === 'rewriting' || phase === 'reconsolidating') &&
+        {(phase === 'quoting' || phase === 'rewriting' || phase === 'reconsolidating') &&
           memoryId &&
-          (costPassed ? (
+          (phase !== 'quoting' ? (
             <>
-              <CurrentMemoryText spans={memory ? currentDecaySpans(memory, universeTime) : null} />
+              <CurrentMemoryText spans={spans} />
               <RecallRewrite
                 value={rewrite}
                 onChange={setRewrite}
@@ -275,7 +62,7 @@ export function RecallFlowSheet() {
           ) : (
             <SpendCostDisplay
               pending={recallSpend(memoryId)}
-              onProceed={() => setCostPassed(true)}
+              onProceed={acceptQuote}
               onCancel={close}
               onEarn={requestEarnGuide}
             />

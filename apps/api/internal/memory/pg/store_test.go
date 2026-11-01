@@ -156,19 +156,6 @@ func TestRowDomainMapping(t *testing.T) {
 		t.Fatalf("mapSynapse = %s", diagnosticValue(synapse))
 	}
 
-	job := mapJob(dbgen.Job{
-		ID:        "job-1",
-		UserID:    "user-1",
-		Kind:      string(memory.JobKindEmbed),
-		Payload:   []byte(`{"neuron_id":"neuron-1"}`),
-		Status:    string(memory.JobStatusPending),
-		Attempts:  1,
-		NextRunAt: pgTime(instant),
-		CreatedAt: pgTime(instant),
-	})
-	if job.UserID != "user-1" || job.Kind != memory.JobKindEmbed || job.Status != memory.JobStatusPending || job.Attempts != 1 {
-		t.Fatalf("mapJob = %s", diagnosticValue(job))
-	}
 }
 
 func TestEmbeddingVectorLiteralUsesGeneratedDimension(t *testing.T) {

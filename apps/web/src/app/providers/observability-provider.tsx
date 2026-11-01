@@ -6,12 +6,13 @@ import posthog from 'posthog-js'
 import {
   captureContext,
   createObservabilityRuntime,
+  createTelemetryBindingManager,
+  type TelemetryBinding,
   platformFeatureFlags,
   readFeatureFlagOverrides,
   type FeatureFlagDefinition,
   type ObservabilityFacade,
   type ObservabilityRuntime,
-  type TelemetryAdapter,
   toSentryLevel,
 } from '@cosimosi/observability'
 import {
@@ -31,11 +32,10 @@ export function WebObservabilityProvider({ children, facade }: WebObservabilityP
   const [runtime] = useState<ObservabilityRuntime | null>(() =>
     facade ? null : createDefaultWebObservabilityRuntime(),
   )
-  const vendorStarted = useRef(false)
-
+  const manager = useRef(runtime ? createTelemetryBindingManager(runtime) : null)
   useEffect(() => {
-    if (facade || !runtime || vendorStarted.current) return
-    runtime.setVendorAdapter(
+    if (facade || !runtime) return
+    return manager.current!.replace(() =>
       createWebVendorTelemetryAdapter({
         sentryDsn: import.meta.env.VITE_SENTRY_DSN,
         release: import.meta.env.VITE_APP_VERSION,
@@ -43,7 +43,6 @@ export function WebObservabilityProvider({ children, facade }: WebObservabilityP
         posthogHost: import.meta.env.VITE_POSTHOG_HOST,
       }),
     )
-    vendorStarted.current = true
   }, [facade, runtime])
 
   return (
@@ -85,9 +84,7 @@ interface WebVendorTelemetryOptions {
   posthogHost?: string
 }
 
-function createWebVendorTelemetryAdapter(
-  options: WebVendorTelemetryOptions,
-): TelemetryAdapter | null {
+function createWebVendorTelemetryAdapter(options: WebVendorTelemetryOptions): TelemetryBinding {
   const sentryEnabled = Boolean(options.sentryDsn)
   const posthogEnabled = Boolean(options.posthogKey)
 
@@ -110,38 +107,47 @@ function createWebVendorTelemetryAdapter(
     })
   }
 
-  if (!sentryEnabled && !posthogEnabled) return null
+  if (!sentryEnabled && !posthogEnabled) return { adapter: null, async dispose() {} }
 
   return {
-    captureException(error, context) {
-      if (!sentryEnabled) return
-      Sentry.captureException(error, captureContext('web', context))
+    adapter: {
+      captureException(error, context) {
+        if (!sentryEnabled) return
+        Sentry.captureException(error, captureContext('web', context))
+      },
+      captureMessage(message, level, context) {
+        if (!sentryEnabled) return
+        Sentry.captureMessage(message, {
+          ...captureContext('web', context),
+          level: toSentryLevel(level),
+        })
+      },
+      track(eventName, properties) {
+        if (posthogEnabled) posthog.capture(eventName, properties)
+      },
+      identify(userId, traits) {
+        if (posthogEnabled) posthog.identify(userId, traits)
+      },
+      resetIdentity() {
+        if (posthogEnabled) posthog.reset()
+      },
+      setAnalyticsConsent(consent) {
+        if (!posthogEnabled) return
+        if (consent === 'granted') posthog.opt_in_capturing()
+        else posthog.opt_out_capturing()
+      },
+      getFeatureFlag(definition: FeatureFlagDefinition) {
+        if (!posthogEnabled || !definition.remoteKey) return undefined
+        const value = posthog.getFeatureFlag(definition.remoteKey)
+        return typeof value === 'boolean' ? value : undefined
+      },
     },
-    captureMessage(message, level, context) {
-      if (!sentryEnabled) return
-      Sentry.captureMessage(message, {
-        ...captureContext('web', context),
-        level: toSentryLevel(level),
-      })
-    },
-    track(eventName, properties) {
-      if (posthogEnabled) posthog.capture(eventName, properties)
-    },
-    identify(userId, traits) {
-      if (posthogEnabled) posthog.identify(userId, traits)
-    },
-    resetIdentity() {
-      if (posthogEnabled) posthog.reset()
-    },
-    setAnalyticsConsent(consent) {
-      if (!posthogEnabled) return
-      if (consent === 'granted') posthog.opt_in_capturing()
-      else posthog.opt_out_capturing()
-    },
-    getFeatureFlag(definition: FeatureFlagDefinition) {
-      if (!posthogEnabled || !definition.remoteKey) return undefined
-      const value = posthog.getFeatureFlag(definition.remoteKey)
-      return typeof value === 'boolean' ? value : undefined
+    async dispose() {
+      if (sentryEnabled) await Sentry.close()
+      if (posthogEnabled) {
+        posthog.opt_out_capturing()
+        posthog.reset()
+      }
     },
   }
 }

@@ -81,7 +81,9 @@ const runHost = (name) => {
 
 section(`api ${mode}`)
 
-if (plan.includes('test') && hasDbMigrations()) {
+// An explicit base URL belongs to the caller. TestMain creates and migrates isolated databases;
+// do not migrate the caller's base database or start a second compose stack in that mode.
+if (plan.includes('test') && hasDbMigrations() && !process.env.COSIMOSI_TEST_DATABASE_URL) {
   pnpm(['db:migrate'])
 }
 

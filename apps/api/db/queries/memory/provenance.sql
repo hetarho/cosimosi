@@ -66,3 +66,13 @@ FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
   AND deleted_at IS NULL
 ORDER BY diary_id, created_universe_time, id;
+
+-- The export walks retained diaries in bounded keyset batches, including released diaries.
+-- name: ListDiariesForExportPage :many
+SELECT id, body, diary_date
+FROM diaries
+WHERE user_id = sqlc.arg(user_id)
+  AND (sqlc.narg(cursor_date)::date IS NULL
+    OR (diary_date, id) > (sqlc.narg(cursor_date)::date, sqlc.narg(cursor_id)::text))
+ORDER BY diary_date, id
+LIMIT sqlc.arg(page_limit);

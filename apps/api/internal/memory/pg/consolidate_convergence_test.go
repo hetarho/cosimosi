@@ -360,7 +360,7 @@ func TestConsolidationWatermarkIsScopedMonotoneAndRollbackRetryable(t *testing.T
 	if err != nil {
 		t.Fatalf("BeginTx failed: %v", err)
 	}
-	txStore := NewStore(tx)
+	txStore := NewReadStore(tx)
 	if err := txStore.SetConsolidationWatermark(ctx, scope, day.AddDate(0, 0, 30)); err != nil {
 		t.Fatalf("tx SetConsolidationWatermark failed: %v", err)
 	}

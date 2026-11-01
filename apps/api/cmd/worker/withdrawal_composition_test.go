@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
@@ -112,7 +113,7 @@ func TestWorkerWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
-	identity, err := memory.WithdrawalSweepJobIdentity(scope)
+	identity, err := account.WithdrawalSweepJobIdentity(scope)
 	if err != nil {
 		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
 	}

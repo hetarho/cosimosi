@@ -93,9 +93,9 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		adapters.Semanticizer,
 		jobqueue.DefaultPollInterval,
 		logger,
-		map[memory.JobKind]jobqueue.Handler[memory.Job]{
-			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),
-			memory.JobKindAchievementSettle: memory.NewAchievementSettleJobHandler(settler),
+		map[memory.JobKind]jobqueue.Registration[memory.Job]{
+			account.WithdrawalJobKind:     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
+			achievement.SettlementJobKind: {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
 		},
 	)
 	if err != nil {
@@ -136,10 +136,8 @@ func newDevWorkerAchievementSettler(
 	if err != nil {
 		return nil, err
 	}
-	// store and achievement need each other here too: an ornament grant reports its ownership counter
-	// through the achievement service, which pays through the store service. Same late binding the API
-	// root uses, because the drain drives both halves.
-	recorders := &achievementRecorderBinding{pool: pool}
+	// Progress recording is independent of payout settlement and is ready before the store.
+	recorders := &achievementRecorderBinding{pool: pool, service: achievement.NewRecorder()}
 	storeService, err := newStoreService(
 		pool,
 		twinkleService,
@@ -159,7 +157,6 @@ func newDevWorkerAchievementSettler(
 	if err != nil {
 		return nil, err
 	}
-	recorders.bind(settler)
 	return settler, nil
 }
 

@@ -58,24 +58,32 @@ type retryAtError interface {
 	RetryAt() time.Time
 }
 
+// Registration makes retry policy explicit beside the handler's composition-root binding.
+type Registration[J Job] struct {
+	Handler      Handler[J]
+	RetryForever bool
+}
+
 type Config struct {
-	MaxAttempts  int32
-	MaxClaims    int32
-	BackoffBase  time.Duration
-	PollInterval time.Duration
-	Now          func() time.Time
-	Logger       *log.Logger
+	RetryForeverKinds map[string]bool
+	MaxAttempts       int32
+	MaxClaims         int32
+	BackoffBase       time.Duration
+	PollInterval      time.Duration
+	Now               func() time.Time
+	Logger            *log.Logger
 }
 
 type Runner[J Job] struct {
-	queue        Queue[J]
-	handlers     map[string]Handler[J]
-	maxAttempts  int32
-	maxClaims    int32
-	backoffBase  time.Duration
-	pollInterval time.Duration
-	now          func() time.Time
-	logger       *log.Logger
+	retryForeverKinds map[string]bool
+	queue             Queue[J]
+	handlers          map[string]Handler[J]
+	maxAttempts       int32
+	maxClaims         int32
+	backoffBase       time.Duration
+	pollInterval      time.Duration
+	now               func() time.Time
+	logger            *log.Logger
 }
 
 func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config) (Runner[J], error) {
@@ -102,15 +110,20 @@ func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config
 			copiedHandlers[kind] = handler
 		}
 	}
+	retryForever := make(map[string]bool, len(cfg.RetryForeverKinds))
+	for kind, forever := range cfg.RetryForeverKinds {
+		retryForever[kind] = forever
+	}
 	return Runner[J]{
-		queue:        queue,
-		handlers:     copiedHandlers,
-		maxAttempts:  cfg.MaxAttempts,
-		maxClaims:    cfg.MaxClaims,
-		backoffBase:  cfg.BackoffBase,
-		pollInterval: pollInterval,
-		now:          now,
-		logger:       cfg.Logger,
+		retryForeverKinds: retryForever,
+		queue:             queue,
+		handlers:          copiedHandlers,
+		maxAttempts:       cfg.MaxAttempts,
+		maxClaims:         cfg.MaxClaims,
+		backoffBase:       cfg.BackoffBase,
+		pollInterval:      pollInterval,
+		now:               now,
+		logger:            cfg.Logger,
 	}, nil
 }
 
@@ -150,7 +163,7 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	// finishing — the signature of a handler that kills its worker (panic that escapes,
 	// OOM, SIGKILL) every run, which would otherwise loop forever since a killed worker
 	// never records a failure.
-	if r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
+	if !r.retryForeverKinds[job.JobKind()] && r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
 		if err := r.queue.DeadLetter(ctx, job, DeadLetterClaimCeiling); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err

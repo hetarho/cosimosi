@@ -11,3 +11,11 @@ export { useLetGo, useSuggestLetGo } from './react/use-let-go.ts'
 export { useReleaseMemory } from './react/use-release.ts'
 export { useRestoreMemory } from './react/use-restore.ts'
 export { useUniverse, type UniverseReadState } from './react/use-universe.ts'
+export { useCompletionScope } from './react/use-completion-scope.ts'
+
+export { useDeletionFlowController } from './react/use-deletion-flow.ts'
+export { renderDeletionFlow } from './react/deletion-flow-view.ts'
+
+export { useWritingFlowController } from './react/use-writing-flow.ts'
+
+export { useRecallFlowController } from './react/use-recall-flow.ts'

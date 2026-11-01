@@ -11,6 +11,7 @@ import {
 } from '@cosimosi/api-client'
 import { applyRestoreResult, requestRestore } from '../deletion.ts'
 import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
+import { useCompletionScope } from './use-completion-scope.ts'
 
 // features/restore-memory api ([X2]): the single Restore call over the generated client. On success
 // the group's captured snapshots are re-inserted into the episodic-memory mirror and the group is
@@ -20,9 +21,12 @@ export function useRestoreMemory(): (diaryId: string) => Promise<RestoreResponse
   const transport = useTransport()
   const queryClient = useQueryClient()
   const invalidateCalendar = useInvalidateDiaryCalendar()
+  const capture = useCompletionScope()
   return useCallback(
     async (diaryId: string) => {
+      const isCurrent = capture()
       const response = await requestRestore(transport, { diaryId })
+      if (!isCurrent()) return response
       applyRestoreResult(diaryId)
       queryClient
         .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
@@ -42,6 +46,6 @@ export function useRestoreMemory(): (diaryId: string) => Promise<RestoreResponse
       invalidateCalendar()
       return response
     },
-    [transport, queryClient, invalidateCalendar],
+    [transport, queryClient, invalidateCalendar, capture],
   )
 }

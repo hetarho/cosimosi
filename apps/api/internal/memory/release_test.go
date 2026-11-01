@@ -1537,3 +1537,19 @@ func TestReleasePathsRejectEmptyScope(t *testing.T) {
 // values import guard: the retention window is the generated constant, referenced here so the test
 // file fails to compile if the constant is renamed away.
 var _ = values.ReleaseSoftDeleteRetentionDays
+
+func (*fakeReleaseRepo) RecordProgress(context.Context, platform.UserScope, string, int) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeReleaseRepo) SpendMemory(context.Context, platform.UserScope, SpendIntent) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeReleaseRepo) EarnDiary(context.Context, platform.UserScope, string) error {
+	panic("unexpected transaction capability call; bind the tested collaborator")
+}
+
+func (*fakeReleaseRepo) CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error {
+	panic("unexpected affordability capability call")
+}

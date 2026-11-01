@@ -312,10 +312,28 @@ func (s *Service) CheckAndSpend(ctx context.Context, scope platform.UserScope, l
 	})
 }
 
-func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+type preparedSpend struct {
+	cost int
+	plan SpendPlan
+	now  time.Time
+	zone *time.Location
+}
+
+// CheckCanSpend performs the same authoritative planning without appending or applying a debit.
+func (s *Service) CheckCanSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+	if scope.UserID() == "" {
+		return ErrScopeRequired
+	}
+	if ledger == nil {
+		return ErrLedgerRequired
+	}
+	_, err := s.prepareSpend(ctx, scope, ledger, intent)
+	return err
+}
+func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) (preparedSpend, error) {
 	cost, err := spendPrice(intent)
 	if err != nil {
-		return err
+		return preparedSpend{}, err
 	}
 	// The purpose comes from the reason, so the row that gets written and the tier that pays for it
 	// are decided by the same value ([P9]).
@@ -323,22 +341,34 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 	if cost == 0 {
 		// A zero-priced action spends nothing; the ledger stays clean (the log
 		// CHECKs amount > 0, and a zero row would record a non-event).
-		return nil
+		return preparedSpend{}, nil
 	}
 	zone, err := s.zone(ctx, scope)
 	if err != nil {
-		return err
+		return preparedSpend{}, err
 	}
 	record, err := ledger.GetBalanceRecord(ctx, scope)
 	if err != nil {
-		return err
+		return preparedSpend{}, err
 	}
 	now := s.now()
 	balance := DeriveBalance(now, zone, recordOrLazyBirth(record))
 	plan := PlanSpend(balance.Small, balance.General, cost, kind)
 	if !plan.OK {
-		return newInsufficientTwinkle(balance, cost, kind)
+		return preparedSpend{}, newInsufficientTwinkle(balance, cost, kind)
 	}
+	return preparedSpend{cost: cost, plan: plan, now: now, zone: zone}, nil
+}
+
+func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+	prepared, err := s.prepareSpend(ctx, scope, ledger, intent)
+	if err != nil {
+		return err
+	}
+	if prepared.cost == 0 {
+		return nil
+	}
+	cost, plan, now, zone := prepared.cost, prepared.plan, prepared.now, prepared.zone
 	// Append the dedup-keyed spend row FIRST — exactly like earn: a false means this
 	// operation's spend already landed (a duplicate/replay), so skip the balance delta and the
 	// draw is applied once end to end (A3). This is the spend-side idempotency the recall/view

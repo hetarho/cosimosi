@@ -14,6 +14,8 @@ import (
 
 func (f *fakeLaunchStore) InRecallTx(_ context.Context, fn func(tx RecallTx) error) error {
 	f.recallTxCount++
+	f.inRecallTx = true
+	defer func() { f.inRecallTx = false }()
 	// The recall shares the launch staging (clock advance, synapse upserts, job enqueue)
 	// and adds a recall-specific recorder; both commit only when fn returns nil.
 	f.staging = &launchState{}
@@ -209,15 +211,19 @@ func (f *fakeSpendGate) CheckAndSpend(_ context.Context, scope platform.UserScop
 }
 
 type fakePredictionError struct {
-	differs    bool
-	err        error
-	calls      int
-	gotCurrent string
-	gotRewrite string
+	beforeCompare func()
+	differs       bool
+	err           error
+	calls         int
+	gotCurrent    string
+	gotRewrite    string
 }
 
 func (f *fakePredictionError) Differs(_ context.Context, currentText string, rewrite string) (bool, error) {
 	f.calls++
+	if f.beforeCompare != nil {
+		f.beforeCompare()
+	}
 	f.gotCurrent = currentText
 	f.gotRewrite = rewrite
 	return f.differs, f.err
@@ -549,5 +555,42 @@ func assertNeighborOffsets(t *testing.T, offsets []recordedOffset, want map[stri
 		if got[id] != delta {
 			t.Fatalf("neighbor %q offset = %v, want %v", id, got[id], delta)
 		}
+	}
+}
+
+func (f *fakeSpendGate) CheckCanSpend(_ context.Context, _ platform.UserScope, _ EconomyTx, _ SpendIntent) error {
+	return f.denyErr
+}
+
+func TestRecallComparesOutsideTransactionAndRejectsChangedSourceWithoutSpending(t *testing.T) {
+	fixture := newFixture(t)
+	fixture.seedRecallable("m1", EpisodicMemory{ID: "m1", CurrentText: "before", BaseStrength: .5, CreatedUniverseTime: testDiaryDate()}, nil, nil)
+	fixture.predictionError.beforeCompare = func() {
+		if fixture.launches.inRecallTx {
+			t.Fatal("provider still runs inside the graph transaction")
+		}
+		current := fixture.launches.recallStars["m1"]
+		current.CurrentText = "a concurrent rewrite"
+		current.RepresentationRevision++
+		fixture.launches.recallStars["m1"] = current
+	}
+	_, err := fixture.service.Recall(context.Background(), testScope(t), "intent", "m1", "my rewrite", true)
+	if !errors.Is(err, ErrRecallSourceChanged) {
+		t.Fatalf("stale source: %v", err)
+	}
+	if len(fixture.spendGate.intents) != 0 || len(fixture.launches.receipts) != 0 {
+		t.Fatal("stale comparison spent or wrote a receipt")
+	}
+}
+
+func TestRecallCancellationAfterComparisonAppliesNoEffects(t *testing.T) {
+	fixture := newFixture(t)
+	fixture.seedRecallable("m1", EpisodicMemory{ID: "m1", CurrentText: "before", BaseStrength: .5, CreatedUniverseTime: testDiaryDate()}, nil, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fixture.predictionError.beforeCompare = cancel
+	_, err := fixture.service.Recall(ctx, testScope(t), "intent", "m1", "my rewrite", true)
+	if !errors.Is(err, context.Canceled) || len(fixture.spendGate.intents) != 0 || len(fixture.launches.receipts) != 0 {
+		t.Fatalf("cancellation: %v", err)
 	}
 }

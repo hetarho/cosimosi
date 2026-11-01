@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, test } from 'node:test'
 
-import { findFsdLayoutProblems } from './lint-fsd-layout.mjs'
+import { findFsdLayoutProblems, findWorkspacePackageCycles } from './lint-fsd-layout.mjs'
 
 const roots = []
 
@@ -22,6 +22,60 @@ function put(root, path, source = 'export const value = 1\n') {
   const target = join(root, path)
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, source)
+}
+
+test('rejects a product package cycle and accepts a consumer composition DAG', () => {
+  const root = fixture()
+  const manifest = (name, dependencies) =>
+    put(
+      root,
+      `packages/${name}/package.json`,
+      JSON.stringify({
+        name: `@cosimosi/${name}`,
+        dependencies: Object.fromEntries(
+          dependencies.map((d) => [`@cosimosi/${d}`, 'workspace:*']),
+        ),
+      }),
+    )
+  manifest('auth', ['store'])
+  manifest('store', ['auth'])
+  assert.ok(
+    findWorkspacePackageCycles(root).some((p) =>
+      p.includes('auth → @cosimosi/store → @cosimosi/auth'),
+    ),
+  )
+  manifest('auth', [])
+  assert.deepEqual(findWorkspacePackageCycles(root), [])
+})
+
+for (const platform of ['web', 'mobile']) {
+  test(`${platform} enforces slice public APIs, renderer ownership and UI segments`, () => {
+    const root = fixture()
+    const base = `apps/${platform}/src`
+    put(root, `${base}/entities/item/model/private.ts`)
+    put(root, `${base}/entities/item/index.ts`, 'export const item = 1')
+    put(
+      root,
+      `${base}/features/edit/model/private.ts`,
+      "import { value } from '../../../entities/item/model/private.ts'; export { value }",
+    )
+    put(
+      root,
+      `${base}/features/edit/ui/Public.ts`,
+      "import { item } from '../../../entities/item/index.ts'; export { item }",
+    )
+    put(
+      root,
+      `${base}/features/edit/ui/Renderer.ts`,
+      "import { Vector3 } from 'three'; export const vector = new Vector3()",
+    )
+    put(root, `${base}/pages/design/lib/Panel.tsx`, 'export const Panel = () => <div />')
+    const problems = findFsdLayoutProblems(root)
+    assert.ok(problems.some((p) => p.includes('private slice import')))
+    assert.ok(problems.some((p) => p.includes('renderer imports')))
+    assert.ok(problems.some((p) => p.includes('platform JSX')))
+    assert.ok(!problems.some((p) => p.includes('Public.ts')))
+  })
 }
 
 test('rejects a mobile product screen under app/navigation/screens', () => {
@@ -191,4 +245,20 @@ test('rejects normalized-equivalent modules whose exported identifier was rename
   const problems = findFsdLayoutProblems(root)
 
   assert.ok(problems.some((problem) => problem.includes('normalized-equivalent pure module')))
+})
+
+test('prevents both platforms from bypassing shared flow controllers through aliased imports', () => {
+  const root = fixture()
+  for (const app of ['web', 'mobile']) {
+    put(
+      root,
+      `apps/${app}/src/widgets/recall-flow/ui/Sheet.tsx`,
+      "import { requestRecall as send } from '@cosimosi/universe'; export const submit = send;",
+    )
+  }
+  const problems = findFsdLayoutProblems(root)
+  assert.equal(
+    problems.filter((problem) => problem.includes('shared controller capability')).length,
+    2,
+  )
 })

@@ -29,6 +29,7 @@ export interface ApiTransportOptions {
   useHttpGet?: boolean
   auth?: ApiAuthTokenProvider
   interceptors?: Interceptor[]
+  defaultTimeoutMs?: number
 }
 
 export function createApiTransport({
@@ -36,10 +37,12 @@ export function createApiTransport({
   useHttpGet = true,
   auth,
   interceptors = [],
+  defaultTimeoutMs = 4 * 60 * 1000,
 }: ApiTransportOptions): Transport {
   return createConnectTransport({
     baseUrl,
     useHttpGet,
+    defaultTimeoutMs,
     interceptors: auth ? [createApiAuthInterceptor(auth), ...interceptors] : interceptors,
   })
 }

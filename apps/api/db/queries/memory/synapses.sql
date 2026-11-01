@@ -30,3 +30,25 @@ JOIN episodic_memories AS em
  AND em.deleted_at IS NULL
 WHERE na.user_id = $1
   AND na.neuron_id = ANY($2::text[]);
+
+-- One scoped batch of already-computed strengths. No domain math is duplicated in SQL.
+-- name: UpsertSynapses :exec
+INSERT INTO synapses (id, user_id, neuron_a_id, neuron_b_id, strength,
+ co_activation_count, last_activated_universe_time, created_at)
+SELECT batch.id, sqlc.arg(user_id), batch.neuron_a_id, batch.neuron_b_id,
+ batch.strength, batch.co_activation_count, batch.last_activated_universe_time, batch.created_at
+FROM (SELECT
+ UNNEST(sqlc.arg(ids)::text[]) AS id,
+ UNNEST(sqlc.arg(neuron_a_ids)::text[]) AS neuron_a_id,
+ UNNEST(sqlc.arg(neuron_b_ids)::text[]) AS neuron_b_id,
+ UNNEST(sqlc.arg(strengths)::real[]) AS strength,
+ UNNEST(sqlc.arg(counts)::int[]) AS co_activation_count,
+ UNNEST(sqlc.arg(activated_ats)::date[]) AS last_activated_universe_time,
+ UNNEST(sqlc.arg(created_ats)::timestamptz[]) AS created_at
+) AS batch
+WHERE sqlc.arg(user_id)::text IS NOT NULL
+ON CONFLICT (user_id, neuron_a_id, neuron_b_id) DO UPDATE
+SET strength = EXCLUDED.strength,
+ co_activation_count = synapses.co_activation_count + EXCLUDED.co_activation_count,
+ last_activated_universe_time = GREATEST(synapses.last_activated_universe_time, EXCLUDED.last_activated_universe_time)
+WHERE synapses.user_id = sqlc.arg(user_id);

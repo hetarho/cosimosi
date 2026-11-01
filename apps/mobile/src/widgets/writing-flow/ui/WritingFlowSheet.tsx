@@ -1,39 +1,18 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { useTransport } from '@connectrpc/connect-query'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-
-import { createGetUniverseQueryKey, createGetUniverseQueryOptions } from '@cosimosi/api-client'
 import { reportSequenceSignal, type OnboardingAnchor } from '@cosimosi/onboarding'
 import { Alert, Button, Dialog, Skeleton, tokens } from '@cosimosi/ui'
-import {
-  advanceAnnouncementFromLaunch,
-  insertLaunchedMemories,
-  isPastDated,
-  requestLaunchStars,
-  writingFlowMachine,
-  type WritingFlowStatus,
-} from '@cosimosi/universe'
+import type { WritingFlowStatus } from '@cosimosi/universe'
+import { useWritingFlowController } from '@cosimosi/universe/react/flows'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
-import { ProposedMemoryList, requestSplitDiary } from '../../../features/split-diary/index.ts'
-import { ReviseControls, requestReviseSplit } from '../../../features/revise-split/index.ts'
-import { LaunchButton, useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
-import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
-import { WriteDiaryFields, useDiaryDraftStore } from '../../../features/write-diary/index.ts'
+import { ProposedMemoryList } from '../../../features/split-diary/index.ts'
+import { ReviseControls } from '../../../features/revise-split/index.ts'
+import { LaunchButton } from '../../../features/launch-stars/index.ts'
+import { WriteDiaryFields } from '../../../features/write-diary/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
-import { useMachine } from '@cosimosi/state-machine/react'
-import { useProposalStore } from '@cosimosi/universe'
-
-// The diary date defaults to *today in the user's own timezone* ([W5]). `toISOString()` would emit
-// the UTC date, which is a day behind for KST users in the local 00:00–09:00 window — build the ISO
-// date from local calendar components instead.
-const todayIso = () => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
 
 function errorMessage(kind: string | null): string | null {
   if (kind === 'split') return m.writing_flow_error_split()
@@ -70,129 +49,27 @@ function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders
 // composition site, not a product slice, so `features/write-diary`, `features/split-diary` and
 // `features/launch-stars` stay untouched beneath the wrappers ([I13]).
 export function WritingFlowSheet() {
-  const showError = useErrorToast()
-  const [snapshot, send] = useMachine(writingFlowMachine)
-  const status = snapshot.value as WritingFlowStatus
-  const error = errorMessage(snapshot.context.error)
-
-  const transport = useTransport()
-  const queryClient = useQueryClient()
-  // Only universe time is read, to *predict* a past-dated launch and warn before the button is
-  // pressed. This is a pre-launch prediction, not the authority — the server returns the real
-  // outcome on `pastDated`. A loading/errored read leaves it null → treated as not-past.
-  const universeQuery = useQuery(createGetUniverseQueryOptions(transport))
-  const universeTime =
-    universeQuery.data && universeQuery.data.universeTime !== ''
-      ? universeQuery.data.universeTime
-      : null
-
-  const body = useDiaryDraftStore((state) => state.body)
-  const diaryDate = useDiaryDraftStore((state) => state.diaryDate)
-  const resetDraft = useDiaryDraftStore((state) => state.reset)
-
-  const proposal = useProposalStore((state) => state.memories)
-  const setFromResponse = useProposalStore((state) => state.setFromResponse)
-  const rename = useProposalStore((state) => state.rename)
-  const setMood = useProposalStore((state) => state.setMood)
-  const setSourceText = useProposalStore((state) => state.setSourceText)
-  const merge = useProposalStore((state) => state.merge)
-  const splitMemory = useProposalStore((state) => state.split)
-  const resetProposal = useProposalStore((state) => state.reset)
-
-  const announce = useLaunchedNeuronsStore((state) => state.announce)
-  const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
-
-  const open = useCallback(() => {
-    resetDraft(todayIso())
-    resetProposal()
-    send({ type: 'OPEN' })
-  }, [resetDraft, resetProposal, send])
-
-  const close = useCallback(() => {
-    send({ type: 'CLOSE' })
-    resetProposal()
-  }, [resetProposal, send])
-
-  const runSplit = useCallback(() => {
-    send({ type: 'SPLIT' })
-    requestSplitDiary(transport, { body, diaryDate })
-      .then((response) => {
-        setFromResponse(response)
-        send({ type: 'SPLIT_OK' })
-      })
-      .catch((caught) => {
-        showError(caught)
-        send({ type: 'SPLIT_ERR', error: 'split' })
-      })
-  }, [transport, body, diaryDate, setFromResponse, showError, send])
-
-  const runRevise = useCallback(
-    (instruction: string) => {
-      send({ type: 'REVISE' })
-      requestReviseSplit(transport, { body, diaryDate, previous: proposal, instruction })
-        .then((response) => {
-          setFromResponse(response)
-          send({ type: 'REVISE_OK' })
-        })
-        .catch((caught) => {
-          showError(caught)
-          send({ type: 'REVISE_ERR', error: 'revise' })
-        })
-    },
-    [transport, body, diaryDate, proposal, setFromResponse, showError, send],
-  )
-
-  const runLaunch = useCallback(() => {
-    send({ type: 'LAUNCH' })
-    const memories = proposal
-    requestLaunchStars(transport, { body, diaryDate, memories })
-      .then((response) => {
-        // The server's monotonic guard is authoritative: a past-dated launch saves the diary
-        // but creates no memory, so no star appears ([T1][I10]). Gate the optimistic insert on
-        // its `pastDated` flag rather than inferring it from an empty id list.
-        if (!response.pastDated) {
-          insertLaunchedMemories(memories, response.memoryIds, diaryDate, response.diaryId)
-          // The reveal rides the clock ([T2] case 1: accelerate → then the star appears): a
-          // clock-advancing launch hands the interval + awaken ids to the acceleration seam and
-          // the overlay releases them when the transition completes. Presentation only — the
-          // insert above and the invalidate below stay immediate. No advance (same-day launch)
-          // keeps the immediate awaken.
-          const advance = advanceAnnouncementFromLaunch(response)
-          if (advance) {
-            announceAdvance(advance)
-          } else {
-            announce(response.newNeuronIds)
-          }
-        }
-        queryClient
-          .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
-          .catch(() => undefined)
-        send({ type: 'LAUNCH_OK' })
-      })
-      .catch((caught) => {
-        showError(caught)
-        send({ type: 'LAUNCH_ERR', error: 'launch' })
-      })
-  }, [
-    transport,
+  const {
+    status,
+    errorKind,
     body,
-    diaryDate,
     proposal,
-    announce,
-    announceAdvance,
-    queryClient,
-    showError,
-    send,
-  ])
-
-  const editThen = useCallback(
-    (apply: () => void) => {
-      apply()
-      send({ type: 'EDIT' })
-    },
-    [send],
-  )
-
+    open,
+    close,
+    runSplit,
+    runRevise,
+    runLaunch,
+    editThen,
+    rename,
+    setMood,
+    setSourceText,
+    merge,
+    splitMemory,
+    busy,
+    back,
+    pastDated,
+  } = useWritingFlowController({ onError: useErrorToast() })
+  const error = errorMessage(errorKind)
   // What an onboarding tour hears: the sheet's real phase changes, never its intentions. Reporting from
   // the promise arms would have advanced a run on a split whose RPC resolved after the sheet was closed
   // — the machine ignores `SPLIT_OK` in `idle`, so the flow would have stayed put while the tour walked
@@ -209,15 +86,6 @@ export function WritingFlowSheet() {
       reportSequenceSignal('split-succeeded')
     else if (previous === 'launching' && status === 'done') reportSequenceSignal('launch-succeeded')
   }, [status])
-
-  useEffect(() => {
-    if (status !== 'done') return
-    resetProposal()
-    resetDraft(todayIso())
-    send({ type: 'RESET' })
-  }, [status, resetProposal, resetDraft, send])
-
-  const busy = status === 'splitting' || status === 'revising' || status === 'launching'
 
   return (
     <>
@@ -282,20 +150,11 @@ export function WritingFlowSheet() {
               {/* Decreasing emphasis left to right, the committing action last and the way out
                   beside it as text (§4); a hairline separates the group from the edits above. */}
               <View style={styles.footer}>
-                <Button
-                  variant="text"
-                  color="neutral"
-                  disabled={busy}
-                  onPress={() => send({ type: 'BACK' })}
-                >
+                <Button variant="text" color="neutral" disabled={busy} onPress={back}>
                   {m.writing_flow_back_action()}
                 </Button>
                 <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
-                  <LaunchButton
-                    pastDated={isPastDated(diaryDate, universeTime)}
-                    busy={busy}
-                    onLaunch={runLaunch}
-                  />
+                  <LaunchButton pastDated={pastDated} busy={busy} onLaunch={runLaunch} />
                 </SequenceAnchor>
               </View>
             </>

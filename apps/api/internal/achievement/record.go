@@ -17,10 +17,10 @@ import (
 //
 // Evaluation is `counter >= target` over two integers with **no time input**, and the service holds
 // no clock — so a streak has nothing to read even if someone wrote the row.
-func (s *Service) RecordProgress(
+func (s *Recorder) RecordProgress(
 	ctx context.Context,
 	scope platform.UserScope,
-	store Store,
+	store ProgressStore,
 	counterKey CounterKey,
 	delta int,
 ) error {
@@ -78,10 +78,10 @@ func reportable(mode CounterMode, amount int64) bool {
 
 // bumpVariety raises the family's variety counter by one on the first touch of a member. It runs in
 // the caller's transaction, so the member row and the variety it implies commit together.
-func (s *Service) bumpVariety(
+func (s *Recorder) bumpVariety(
 	ctx context.Context,
 	scope platform.UserScope,
-	store Store,
+	store ProgressStore,
 	counterKey CounterKey,
 ) error {
 	variety, isFamilyMember := VarietyCounterFor(counterKey)
@@ -100,10 +100,10 @@ func (s *Service) bumpVariety(
 
 // writeCounter dispatches on the key's DECLARED mode, never on anything the caller said: accumulate
 // sums, reach keeps the high-water mark. A producer has no argument in which to choose.
-func (s *Service) writeCounter(
+func (s *Recorder) writeCounter(
 	ctx context.Context,
 	scope platform.UserScope,
-	store Store,
+	store ProgressStore,
 	counterKey CounterKey,
 	mode CounterMode,
 	delta int64,
@@ -133,10 +133,10 @@ func (s *Service) writeCounter(
 // A per-candidate loop rather than a batch: the candidates are one axis's tiers, a handful, and every
 // statement stays plain sqlc inside the isolation gate's supported grammar with user_id as a
 // parameter ([U1]).
-func (s *Service) markReached(
+func (s *Recorder) markReached(
 	ctx context.Context,
 	scope platform.UserScope,
-	store Store,
+	store ProgressStore,
 	counterKey CounterKey,
 	value int64,
 ) error {

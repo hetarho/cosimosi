@@ -1,5 +1,6 @@
 # MEM memory aggregate & persistence
-> r1 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
+
+> r2 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
 
 ## decisions
 - MEM-1 [o] `internal/memory` is the core context that owns the memory aggregate: its tables, its queries under `db/queries/memory/` and its only persistence adapter `internal/memory/pg` →=ARCH
@@ -28,7 +29,7 @@
   - the universe clock is stored state, not an emergent value →=TIME-7
 - MEM-5 [o] each `episodic_memories` field has one owning rule: the aggregate stores it, the owner defines it
   | field | content | owner |
-  |---|---|---|
+  | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------- |
   | `diary_id` | the `Diary` the memory was encoded from | →~MEM-3 |
   | `name` | LLM-recommended, user-edited before launch | →=WRITE-7 |
   | `source_text` | the memory's own diary passage, immutable | →!MEM-6 |
@@ -100,7 +101,7 @@
   - visible: no soft-deleted memory, no sealed neuron; an activation edge joins a visible memory and a visible neuron; a synapse joins two visible neurons; connectivity counts visible-memory activations only
   - `semantic_stages` stays NULL until the worker fills it and appears on the next read; no polling or streaming →=AI
   - derived values are computed on read by shared pure functions, never stored →!MEM-4
-- MEM-16 [o] the `jobs` queue is memory-owned and carries identity, never content: payload is always the empty JSON object ← a queued copy of a diary, memory text, neuron name or stage text would outlive the user's deletion
+- MEM-16 [o] the `jobs` queue is shared infrastructure (`platform/jobqueue`) and carries identity, never content: payload is always the empty JSON object ← a queued copy of a diary, memory text, neuron name or stage text would outlive the user's deletion
   - enforced twice: `CHECK (payload = '{}')` and the pg adapter
   - targets live in `job_targets`, cascading with the job: `episodic_memory` or `neuron` with `expected_revision > 0`; `release_group` or `user` with no revision; the target id is non-empty
   - kinds (closed, `JobKind`): `embed`, `semanticize`, `consolidate`, `retention_sweep`, `withdrawal_sweep`, `achievement_settle`; `link` and `extract` are reserved and never enqueued
@@ -108,14 +109,13 @@
   - status `pending`, `running`, `done`, `failed`, `cancelled` (CHECK); `terminal_at` is set iff the status is terminal (CHECK)
   - dedup: `UNIQUE (user_id, kind, dedup_key)` where a key is set (non-empty CHECK); a colliding enqueue returns the existing job
   - claim, lease fence (`lease_generation`), backoff, dead-letter and terminal retention →=AI
-- MEM-17 [o] user-scoped durable work enters the queue only through `UserJobService`, which accepts no kind, payload or target from a caller: each producer has its own identity constructor →!MEM-16
-  - `Schedule` builds the withdrawal identity `withdrawal:<user>` (`WithdrawalSweepJobIdentity`), due at the account's deadline, and `Cancel` derives the same identity, so enqueue and cancel cannot drift →=ACCT-22
-  - `ScheduleAchievementSettlement` builds `achievement_settle:<user>:<achievement>` (`AchievementSettleJobIdentity`), due now; keyed per claim because an enqueue dedups against terminal rows too →=ACH-23
-  - the seam's kinds are closed to `withdrawal_sweep` and `achievement_settle` (`userJobKind`); their one target is the `user`, with no revision
-  - `NewAchievementSettleJobHandler` refuses a target that does not name the job's user, then drains that user's unpaid claims →=ACH-23
-  - `retention_sweep`, `withdrawal_sweep` and `achievement_settle` are each the sole durable trigger for something the user cannot re-request, so a spent retry budget retries them instead of failing →=AI
-  - they also pass the claim ceiling: `Job.JobLeaseGeneration` reports 0 for them, so only an unhandled kind can dead-letter one; the real `lease_generation` still fences their writes
-  - worker composition: `NewJobRunner` registers memory's own handlers (`embed`, `semanticize`, `consolidate`, `retention_sweep`) plus handler maps from other legs; an empty kind or nil handler (`ErrInvalidJobHandler`) or a duplicate kind (`ErrDuplicateJobHandler`) fails at boot
+- MEM-17 [o] each producer owns its durable identity and handler; callers receive only the producer's narrow scheduling port →!MEM-16
+  - account owns `WithdrawalJobScheduler` and `WithdrawalSweepJobIdentity`: `withdrawal:<user>`, due at the account deadline; enqueue and cancel derive the same identity →=ACCT-22
+  - achievement owns `SettlementJobScheduler` and `SettlementJobIdentity`: `achievement_settle:<user>:<achievement>`, due now, deduped per claim even against terminal rows →=ACH-23
+  - the infrastructure scheduler always writes an empty object and a single user identity target, never source content; the producer handler validates that target before dispatch
+  - composition roots register other contexts' handlers and their retry policy explicitly; memory registers only `embed`, `semanticize`, `consolidate` and `retention_sweep`
+  - retention, withdrawal and settlement retain indefinite retries and skip the claim ceiling. The record exposes the real persisted lease generation; registry policy controls retries, while writes remain fenced by the real generation. An unregistered kind still dead-letters →=AI
+  - empty kinds, nil handlers and duplicate registrations fail at boot; generic envelopes, storage and lease transitions require no memory policy edit when another context adds a job →=ARCH-9
 - MEM-18 [o] `representation_revision` (positive, starting at 1) on `episodic_memories` and `neurons` advances whenever the source a job processes changes, so work claimed for an older representation publishes nothing
   - bumps: the reconsolidated text and seed write; a neuron name or type change on upsert
   - fenced writes (embedding, gist ladder) match user, id, liveness and expected revision; a mismatch is a successful no-op →=AI
@@ -133,8 +133,11 @@
   - the target foreign keys cascade: a receipt lives exactly as long as its target, with no retention timer of its own
 
 ## constraints
+- `persistence.graph_write_batch_size` bounds graph-write parameter arrays; each chunk joins the caller's transaction
 - the only `values.yaml` key MEM owns is `ai.embedding_dim`; queue, lease and retention numbers belong to their owners →=AI
 - `universe_state` is the clock's table →=TIME; its `consolidated_through` watermark →=CONSOL
 
 ## chg
+
+- r2 261102 MEM-16✎ memory-owned queue→shared infrastructure; MEM-17✎ memory-owned foreign producer policy and lease-token masking→owner schedulers/handlers and explicit registry retry policy, with unchanged persisted identities and fencing
 - r1 261102 initial

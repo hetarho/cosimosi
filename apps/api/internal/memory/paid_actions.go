@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -112,21 +111,10 @@ func actionFingerprint(parts ...string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// encodeReceiptResponse / decodeReceiptResponse serialize a use-case's typed result for the
-// receipt's response column and back. Domain JSON — the receipt persists a domain value, never a
-// proto message (§2.4). Kept next to the receipt so all receipt encoding lives in one place.
-func encodeReceiptResponse(result any) ([]byte, error) {
-	return json.Marshal(result)
-}
-
-func decodeReceiptResponse(data []byte, out any) error {
-	return json.Unmarshal(data, out)
-}
-
 // writeReceipt encodes a use-case's committed result and inserts its receipt in the same
 // transaction as the effects (A3). Called once, last, so a receipt is written iff the whole paid
 // action commits.
-func (s *Service) writeReceipt(ctx context.Context, scope platform.UserScope, store PaidActionReceiptStore, receipt PaidActionReceipt, result any) error {
+func (s *CommandService) writeReceipt(ctx context.Context, scope platform.UserScope, store PaidActionReceiptStore, receipt PaidActionReceipt, result any) error {
 	response, err := encodeReceiptResponse(result)
 	if err != nil {
 		return err

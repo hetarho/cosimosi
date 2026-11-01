@@ -30,7 +30,7 @@ func (s Store) InRecallTx(ctx context.Context, fn func(tx memory.RecallTx) error
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
+	if err := fn(s.boundTransaction(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

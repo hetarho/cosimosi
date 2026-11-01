@@ -17,7 +17,7 @@ import {
   useTimeSyncConsentStore,
 } from '../../../features/confirm-time-sync/index.ts'
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
-import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
+import { UniverseTimeHud } from '../../../entities/universe-clock/index.ts'
 import { useMachine } from '@cosimosi/state-machine/react'
 import { releaseAdvance } from '@cosimosi/universe'
 import type { OnboardingAnchor } from '@cosimosi/onboarding'

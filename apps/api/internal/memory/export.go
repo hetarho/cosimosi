@@ -70,116 +70,100 @@ type ExportResult struct {
 // still-live memories, per-user scoped, read-only. The concrete is memory/pg, which implements it
 // implicitly.
 type ExportReader interface {
-	// DiariesForExport lists the user's retained diaries (the immutable objective record), diary-date
-	// ordered. diaries is never soft-deleted, so a past-dated diary with no live memory is still returned ([I2], A8).
-	DiariesForExport(ctx context.Context, scope platform.UserScope) ([]ExportDiary, error)
-	// LiveMemoriesForExport lists the user's still-live memories (deleted_at IS NULL) — the letting-go
-	// exclusion honored in what is handed out ([I1][X3]).
-	LiveMemoriesForExport(ctx context.Context, scope platform.UserScope) ([]ExportMemory, error)
+	// WalkExport yields ordered, retained diaries and their live memories from one read snapshot.
+	// The adapter holds only one bounded batch; a callback error stops further reads.
+	WalkExport(ctx context.Context, scope platform.UserScope, visit func(ExportDiary, []ExportMemory) error) error
+}
+
+type ExportService struct{ exports ExportReader }
+
+func NewExportService(reader ExportReader) (*ExportService, error) {
+	if reader == nil {
+		return nil, ErrExportsRequired
+	}
+	return &ExportService{exports: reader}, nil
+}
+
+// Export preserves the command facade while callers migrate to the independent read capability.
+func (s *Service) Export(ctx context.Context, scope platform.UserScope, format ExportFormat) (ExportResult, error) {
+	return (&ExportService{exports: s.exports}).Export(ctx, scope, format)
 }
 
 // Export reads the retained diaries + still-live memories (per-user scoped), groups the memories under
 // their diary, and serializes the chosen format. The grouping and serialization are pure domain; the
 // reader is the only IO. No write, no clock, no spend (A6).
-func (s *Service) Export(ctx context.Context, scope platform.UserScope, format ExportFormat) (ExportResult, error) {
+func (s *ExportService) Export(ctx context.Context, scope platform.UserScope, format ExportFormat) (ExportResult, error) {
 	if scope.UserID() == "" {
 		return ExportResult{}, ErrScopeRequired
 	}
 	if !format.Valid() {
 		return ExportResult{}, ErrExportFormatRequired
 	}
-	diaries, err := s.exports.DiariesForExport(ctx, scope)
+	var buf bytes.Buffer
+	var csvWriter *csv.Writer
+	result := ExportResult{ContentType: "text/markdown; charset=utf-8", Filename: "cosimosi-export.md"}
+	if format == ExportFormatCSV {
+		result.ContentType, result.Filename = "text/csv; charset=utf-8", "cosimosi-export.csv"
+		csvWriter = csv.NewWriter(&buf)
+		if err := csvWriter.Write([]string{"diary_date", "diary_body", "memory_name", "mood", "created_universe_time"}); err != nil {
+			return ExportResult{}, err
+		}
+	} else {
+		buf.WriteString("# cosimosi\n")
+	}
+	err := s.exports.WalkExport(ctx, scope, func(diary ExportDiary, memories []ExportMemory) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if csvWriter != nil {
+			return writeExportCSV(csvWriter, diary, memories)
+		}
+		writeExportMarkdown(&buf, diary, memories)
+		return nil
+	})
 	if err != nil {
 		return ExportResult{}, err
 	}
-	memories, err := s.exports.LiveMemoriesForExport(ctx, scope)
-	if err != nil {
-		return ExportResult{}, err
+	if csvWriter != nil {
+		csvWriter.Flush()
+		if err := csvWriter.Error(); err != nil {
+			return ExportResult{}, err
+		}
 	}
-	byDiary := make(map[string][]ExportMemory, len(diaries))
+	result.Content = buf.Bytes()
+	return result, nil
+}
+
+// Bodies remain byte-verbatim, including commas, line breaks and spreadsheet prefixes.
+func writeExportCSV(writer *csv.Writer, diary ExportDiary, memories []ExportMemory) error {
+	date := diary.DiaryDate.Format(time.DateOnly)
+	if len(memories) == 0 {
+		return writer.Write([]string{date, diary.Body, "", "", ""})
+	}
 	for _, mem := range memories {
-		byDiary[mem.DiaryID] = append(byDiary[mem.DiaryID], mem)
+		if err := writer.Write([]string{date, diary.Body, mem.Name, string(mem.Mood), mem.CreatedUniverseTime.Format(time.DateOnly)}); err != nil {
+			return err
+		}
 	}
-	switch format {
-	case ExportFormatMD:
-		return exportMarkdown(diaries, byDiary), nil
-	default:
-		return exportCSV(diaries, byDiary)
-	}
+	return nil
 }
 
-// exportCSV writes one row per diary×memory (a diary with no live memory still emits one row so a
-// memory-less retained diary is not lost, A8). encoding/csv quotes the verbatim body so commas, quotes,
-// and newlines round-trip byte-for-byte (A4). The body is written verbatim by design ([D4][W6]) — no
-// spreadsheet formula-injection guard (a leading =/+/-/@ is left as written): this is the user's own
-// record handed back to them, and A4 forbids mutating it.
-func exportCSV(diaries []ExportDiary, byDiary map[string][]ExportMemory) (ExportResult, error) {
-	var buf bytes.Buffer
-	writer := csv.NewWriter(&buf)
-	if err := writer.Write([]string{"diary_date", "diary_body", "memory_name", "mood", "created_universe_time"}); err != nil {
-		return ExportResult{}, err
-	}
-	for _, diary := range diaries {
-		date := diary.DiaryDate.Format(time.DateOnly)
-		memories := byDiary[diary.ID]
-		if len(memories) == 0 {
-			if err := writer.Write([]string{date, diary.Body, "", "", ""}); err != nil {
-				return ExportResult{}, err
-			}
-			continue
-		}
-		for _, mem := range memories {
-			if err := writer.Write([]string{
-				date,
-				diary.Body,
-				mem.Name,
-				string(mem.Mood),
-				mem.CreatedUniverseTime.Format(time.DateOnly),
-			}); err != nil {
-				return ExportResult{}, err
-			}
-		}
-	}
-	writer.Flush()
-	if err := writer.Error(); err != nil {
-		return ExportResult{}, err
-	}
-	return ExportResult{
-		Content:     buf.Bytes(),
-		ContentType: "text/csv; charset=utf-8",
-		Filename:    "cosimosi-export.csv",
-	}, nil
-}
-
-// exportMarkdown writes a dated section per diary with its verbatim body, then its memories as a short
-// list. The body is written un-mutated ([D4]); the memory line is only the legible identity.
-func exportMarkdown(diaries []ExportDiary, byDiary map[string][]ExportMemory) ExportResult {
-	var buf bytes.Buffer
-	buf.WriteString("# cosimosi\n")
-	for _, diary := range diaries {
-		buf.WriteString("\n## ")
-		buf.WriteString(diary.DiaryDate.Format(time.DateOnly))
-		buf.WriteString("\n\n")
-		buf.WriteString(diary.Body)
+func writeExportMarkdown(buf *bytes.Buffer, diary ExportDiary, memories []ExportMemory) {
+	buf.WriteString("\n## ")
+	buf.WriteString(diary.DiaryDate.Format(time.DateOnly))
+	buf.WriteString("\n\n")
+	buf.WriteString(diary.Body)
+	buf.WriteString("\n")
+	if len(memories) > 0 {
 		buf.WriteString("\n")
-		memories := byDiary[diary.ID]
-		if len(memories) == 0 {
-			continue
-		}
-		buf.WriteString("\n")
-		for _, mem := range memories {
-			buf.WriteString("- ")
-			buf.WriteString(mem.Name)
-			buf.WriteString(" (")
-			buf.WriteString(string(mem.Mood))
-			buf.WriteString(", ")
-			buf.WriteString(mem.CreatedUniverseTime.Format(time.DateOnly))
-			buf.WriteString(")\n")
-		}
 	}
-	return ExportResult{
-		Content:     buf.Bytes(),
-		ContentType: "text/markdown; charset=utf-8",
-		Filename:    "cosimosi-export.md",
+	for _, mem := range memories {
+		buf.WriteString("- ")
+		buf.WriteString(mem.Name)
+		buf.WriteString(" (")
+		buf.WriteString(string(mem.Mood))
+		buf.WriteString(", ")
+		buf.WriteString(mem.CreatedUniverseTime.Format(time.DateOnly))
+		buf.WriteString(")\n")
 	}
 }

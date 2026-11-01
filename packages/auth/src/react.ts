@@ -3,12 +3,14 @@ import {
   createElement,
   useCallback,
   useEffect,
+  useMemo,
   useContext,
-  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
+
+import { createCompletionScope } from './completion-scope.ts'
 
 import type { AuthFacade } from './auth-adapter.ts'
 import type { SessionSnapshot } from './session.ts'
@@ -22,15 +24,25 @@ export interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, facade, createFacade }: AuthProviderProps) {
-  // Own the facade in a ref, created once. Creating it in a useState initializer would
-  // run twice under React StrictMode (dev) and orphan a second live actor + adapter
-  // subscription + refresh timer with no dispose handle; a ref-guarded create runs
-  // exactly once. The facade is an app-lifetime singleton at the provider root.
-  const ownedFacade = useRef<AuthFacade | null>(null)
-  if (!facade && !ownedFacade.current) ownedFacade.current = createFacade?.() ?? null
-  const value = facade ?? ownedFacade.current
-  if (!value) throw new Error('AuthProvider requires either facade or createFacade')
-  return createElement(AuthContext.Provider, { value }, children)
+  const [ownedFacade, setOwnedFacade] = useState<{
+    factory: () => AuthFacade
+    value: AuthFacade
+  } | null>(null)
+  useEffect(() => {
+    if (facade || !createFacade) return
+    // Create subscriptions only after commit, so abandoned renders own no resources.
+    const owned = createFacade()
+    setOwnedFacade({ factory: createFacade, value: owned })
+    return () => {
+      owned.dispose()
+      setOwnedFacade(null)
+    }
+  }, [facade, createFacade])
+  if (!facade && !createFacade)
+    throw new Error('AuthProvider requires either facade or createFacade')
+  const value =
+    facade ?? (ownedFacade && ownedFacade.factory === createFacade ? ownedFacade.value : null)
+  return value ? createElement(AuthContext.Provider, { value }, children) : null
 }
 
 export function useAuthFacade(providerName = 'AuthProvider'): AuthFacade {
@@ -102,4 +114,13 @@ export function SessionScopeBoundary({
   }, [committedScopeKey, observedScopeKey, onScopeChange])
 
   return committedScopeKey === observedScopeKey ? children : fallback
+}
+
+export function useCompletionScope(): () => () => boolean {
+  const scope = useMemo(() => createCompletionScope(), [])
+  useEffect(() => {
+    scope.activate()
+    return () => scope.invalidate()
+  }, [scope])
+  return scope.capture
 }

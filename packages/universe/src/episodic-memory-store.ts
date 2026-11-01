@@ -7,6 +7,9 @@ import { sameStoredCollection } from './entity-collection.ts'
 export interface EpisodicMemoryState {
   byId: Readonly<Record<string, EpisodicMemory>>
   ids: readonly string[]
+  pendingIds: ReadonlySet<string>
+  markPending: (ids: readonly string[]) => void
+  reconcile: (memories: readonly EpisodicMemory[]) => void
   setAll: (memories: readonly EpisodicMemory[]) => void
   clear: () => void
 }
@@ -17,6 +20,18 @@ export interface EpisodicMemoryState {
 export const useEpisodicMemoryStore = create<EpisodicMemoryState>()((set, get) => ({
   byId: {},
   ids: [],
+  pendingIds: new Set(),
+  markPending: (ids) => set({ pendingIds: new Set([...get().pendingIds, ...ids]) }),
+  reconcile: (memories) => {
+    const state = get()
+    const serverIds = new Set(memories.map((memory) => memory.id))
+    const pendingIds = new Set(
+      [...state.pendingIds].filter((id) => !serverIds.has(id) && state.byId[id]),
+    )
+    const pending = [...pendingIds].map((id) => state.byId[id]!)
+    state.setAll([...memories, ...pending])
+    if (pendingIds.size !== state.pendingIds.size) set({ pendingIds })
+  },
   // A content-identical write keeps the previous `byId`/`ids` references — see
   // `sameStoredCollection` for why that matters more than the write it saves.
   setAll: (memories) => {
@@ -28,7 +43,7 @@ export const useEpisodicMemoryStore = create<EpisodicMemoryState>()((set, get) =
       ids: incoming.map((memory) => memory.id),
     })
   },
-  clear: () => set({ byId: {}, ids: [] }),
+  clear: () => set({ byId: {}, ids: [], pendingIds: new Set() }),
 }))
 
 // A semantic stage is one-way ([C6a]): a memory rises to its gist and never walks back down. So a

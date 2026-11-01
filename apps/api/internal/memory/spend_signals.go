@@ -18,10 +18,54 @@ import (
 // ErrSpendSignalInputRequired rejects an empty target id on a spend-signal read.
 var ErrSpendSignalInputRequired = errors.New("spend signal requires a target id")
 
+type SpendSignalService struct {
+	signals  SpendSignalRepo
+	gists    GistReader
+	userZone UserZone
+	now      func() time.Time
+}
+
+func NewSpendSignalService(signals SpendSignalRepo, gists GistReader, zone UserZone, now func() time.Time) (*SpendSignalService, error) {
+	if signals == nil {
+		return nil, ErrSignalsRequired
+	}
+	if gists == nil {
+		return nil, ErrGistsRequired
+	}
+	if zone == nil {
+		zone = UTCUserZone{}
+	}
+	if now == nil {
+		now = time.Now
+	}
+	return &SpendSignalService{signals: signals, gists: gists, userZone: zone, now: now}, nil
+}
+
+func (s *SpendSignalService) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
+	zone, err := s.userZone.ZoneFor(ctx, scope)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return dateInLocation(s.now(), zone), nil
+}
+
+func (s *Service) RecallAccessibility(ctx context.Context, scope platform.UserScope, id string) (float64, error) {
+	return s.spendSignals().RecallAccessibility(ctx, scope, id)
+}
+func (s *Service) DiaryRecallAccessibilities(ctx context.Context, scope platform.UserScope, id string) ([]float64, error) {
+	return s.spendSignals().DiaryRecallAccessibilities(ctx, scope, id)
+}
+func (s *Service) ViewableGistStage(ctx context.Context, scope platform.UserScope, id string) (int, error) {
+	return s.spendSignals().ViewableGistStage(ctx, scope, id)
+}
+func (s *Service) spendSignals() *SpendSignalService {
+	return &SpendSignalService{signals: s.signals, gists: s.gists, userZone: s.userZone, now: s.now}
+}
+
 // RecallAccessibility returns one memory's spend-time accessibility cost weight
 // ([F4]) — the recall quote's depth signal. A soft-deleted target is unavailable,
 // exactly as Recall would refuse it.
-func (s *Service) RecallAccessibility(ctx context.Context, scope platform.UserScope, memoryID string) (float64, error) {
+func (s *SpendSignalService) RecallAccessibility(ctx context.Context, scope platform.UserScope, memoryID string) (float64, error) {
 	if scope.UserID() == "" {
 		return 0, ErrScopeRequired
 	}
@@ -46,7 +90,7 @@ func (s *Service) RecallAccessibility(ctx context.Context, scope platform.UserSc
 // still-live memories — the whole-diary recall quote's signals ([D3]; the diary's
 // cost is the sum of its per-memory recalls). An empty result mirrors
 // RecallDiaryStars over the same diary: nothing to recall, nothing to price.
-func (s *Service) DiaryRecallAccessibilities(ctx context.Context, scope platform.UserScope, diaryID string) ([]float64, error) {
+func (s *SpendSignalService) DiaryRecallAccessibilities(ctx context.Context, scope platform.UserScope, diaryID string) ([]float64, error) {
 	if scope.UserID() == "" {
 		return nil, ErrScopeRequired
 	}
@@ -72,7 +116,7 @@ func (s *Service) DiaryRecallAccessibilities(ctx context.Context, scope platform
 // risen semantic_stage bounded by the pregenerated ladder, the gist-view quote's
 // depth signal ([R8][G4]). A memory whose gist has not risen is not quotable, the
 // same canonical refusal ViewSemantic gives it.
-func (s *Service) ViewableGistStage(ctx context.Context, scope platform.UserScope, memoryID string) (int, error) {
+func (s *SpendSignalService) ViewableGistStage(ctx context.Context, scope platform.UserScope, memoryID string) (int, error) {
 	if scope.UserID() == "" {
 		return 0, ErrScopeRequired
 	}
@@ -91,7 +135,7 @@ func (s *Service) ViewableGistStage(ctx context.Context, scope platform.UserScop
 // quote prices the post-sync decay state without writing the advance. The unborn
 // clock falls back to the latest launched memory — the same guard baseline the sync
 // uses — so a pre-clock universe quotes against its observable present, not a reset.
-func (s *Service) signalUniverseTime(ctx context.Context, scope platform.UserScope) (time.Time, error) {
+func (s *SpendSignalService) signalUniverseTime(ctx context.Context, scope platform.UserScope) (time.Time, error) {
 	baseline, err := s.signals.UniverseClock(ctx, scope)
 	if err != nil {
 		return time.Time{}, err

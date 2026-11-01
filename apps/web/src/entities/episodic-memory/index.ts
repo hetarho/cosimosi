@@ -1,3 +1,5 @@
 export { MoodChip } from './ui/MoodChip.tsx'
 export { MoodDot } from './ui/MoodDot.tsx'
 export { NeuronChips } from './ui/NeuronChips.tsx'
+export { CurrentMemoryText } from './ui/CurrentMemoryText.tsx'
+export { MetaBlock } from './ui/MetaBlock.tsx'

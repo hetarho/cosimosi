@@ -101,3 +101,27 @@ export function universeFromResponse(response: GetUniverseResponse): UniverseSna
     universeTime: response.universeTime === '' ? null : response.universeTime,
   }
 }
+
+// Query retains immutable DTO references for unchanged entities. Preserve their domain projections
+// across refetches without keeping evicted DTOs in a strong, account-lifetime mapping cache.
+export function createUniverseMapper(): (response: GetUniverseResponse) => UniverseSnapshot {
+  function cached<Dto extends object, Domain>(project: (dto: Dto) => Domain) {
+    const values = new WeakMap<Dto, Domain>()
+    return (dto: Dto): Domain => {
+      const existing = values.get(dto)
+      if (existing !== undefined) return existing
+      const value = project(dto)
+      values.set(dto, value)
+      return value
+    }
+  }
+  const memory = cached(episodicMemoryFromDto)
+  const neuron = cached(neuronFromDto)
+  const synapse = cached(synapseFromDto)
+  return (response) => ({
+    memories: response.memories.map(memory),
+    neurons: response.neurons.map(neuron),
+    synapses: response.synapses.map(synapse),
+    universeTime: response.universeTime === '' ? null : response.universeTime,
+  })
+}

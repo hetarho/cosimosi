@@ -9,8 +9,6 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	dbgen "github.com/cosimosi/api/db/gen"
-	"github.com/cosimosi/api/internal/account"
 	twinklev1connect "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1/twinklev1connect"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
@@ -51,7 +49,10 @@ func newTwinkleService(
 // twinkle owns the name→location step and the UTC fallback, so no permissive adapter can bind the
 // boundary away. account.ZoneFor already answers DefaultTimezone for a user with no profile row.
 type accountTwinkleZone struct {
-	service *account.Service
+	service interface {
+		ZoneFor(context.Context, platform.UserScope) (string, error)
+		ZonesFor(context.Context, []string) (map[string]string, error)
+	}
 }
 
 func (a accountTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
@@ -82,10 +83,13 @@ type twinkleSpendGate struct {
 }
 
 func (g twinkleSpendGate) CheckAndSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
-	ledger, err := economyLedger(tx)
-	if err != nil {
-		return err
+	if tx == nil {
+		return errEconomyTxUnusable
 	}
+	return tx.SpendMemory(ctx, scope, spend)
+}
+
+func (g twinkleSpendGate) spendBound(ctx context.Context, scope platform.UserScope, ledger twinkle.LedgerStore, spend memory.SpendIntent) error {
 	intent, err := twinkleIntent(spend)
 	if err != nil {
 		return err
@@ -107,31 +111,9 @@ type twinkleEarnPort struct {
 
 func (p twinkleEarnPort) OnDiaryLaunched(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, diaryID string) error {
 	if tx == nil {
-		// The grant must join the launch transaction; a nil handle is a wiring
-		// fault, not a grantless launch.
 		return errEconomyTxUnusable
 	}
-	ledger, err := economyLedger(tx)
-	if err != nil {
-		return err
-	}
-	return p.service.EarnOnWrite(ctx, scope, ledger, diaryID)
-}
-
-// economyLedger binds a twinkle ledger store onto the caller's open transaction.
-// The memory/pg store (the EconomyTx concrete) exposes its handle via DB(); the
-// two contexts still touch only their own tables — they share the transaction,
-// never the queries. nil in, nil out: no transaction means the use-case runs its
-// own.
-func economyLedger(tx memory.EconomyTx) (twinkle.LedgerStore, error) {
-	if tx == nil {
-		return nil, nil
-	}
-	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
-	if !ok || carrier.DB() == nil {
-		return nil, errEconomyTxUnusable
-	}
-	return twinklepg.NewStore(carrier.DB()), nil
+	return tx.EarnDiary(ctx, scope, diaryID)
 }
 
 // twinkleIntent maps memory's spend vocabulary onto twinkle's: kind → entry reason,
@@ -162,16 +144,13 @@ func spendDedupKey(spend memory.SpendIntent) string {
 	return "spend:" + hex.EncodeToString(digest[:])
 }
 
-// memorySpendSignals implements twinkle.SpendSignalReader over memory's published
-// reads, translating memory's canonical refusals into twinkle's quote-target
-// vocabulary. The memory service is bound after construction (the two services
-// need each other: memory takes the gate, twinkle's quote takes these signals).
+// memorySpendSignals translates independent read capabilities into economy quote signals.
 type memorySpendSignals struct {
-	service *memory.Service
-}
-
-func (r *memorySpendSignals) bind(service *memory.Service) {
-	r.service = service
+	service interface {
+		RecallAccessibility(context.Context, platform.UserScope, string) (float64, error)
+		DiaryRecallAccessibilities(context.Context, platform.UserScope, string) ([]float64, error)
+		ViewableGistStage(context.Context, platform.UserScope, string) (int, error)
+	}
 }
 
 func (r *memorySpendSignals) RecallAccessibility(ctx context.Context, scope platform.UserScope, memoryID string) (float64, error) {
@@ -204,4 +183,11 @@ func quoteTargetError(err error) error {
 	default:
 		return err
 	}
+}
+
+func (g twinkleSpendGate) CheckCanSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
+	if tx == nil {
+		return errEconomyTxUnusable
+	}
+	return tx.CheckMemorySpend(ctx, scope, spend)
 }

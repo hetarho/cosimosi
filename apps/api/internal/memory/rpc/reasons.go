@@ -26,6 +26,7 @@ const (
 	reasonReleaseMemoryNotFound      = "MEMORY_RELEASE_MEMORY_NOT_FOUND"
 	reasonReleaseNoLiveMemories      = "MEMORY_RELEASE_NO_LIVE_MEMORIES"
 	reasonRestoreNotReleased         = "MEMORY_RESTORE_NOT_RELEASED"
+	reasonRecallSourceChanged        = "MEMORY_RECALL_SOURCE_CHANGED"
 	reasonRecallMemoryUnavailable    = "MEMORY_RECALL_MEMORY_UNAVAILABLE"
 	reasonViewSemanticStageNotRisen  = "MEMORY_VIEW_SEMANTIC_STAGE_NOT_RISEN"
 	reasonReleaseMemoryUnavailable   = "MEMORY_RELEASE_MEMORY_UNAVAILABLE"

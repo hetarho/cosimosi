@@ -1,5 +1,6 @@
 # VIS visual expression
-> r1 | how the memory universe is drawn and moved through: the 3D scene, what each visual channel means, the emergent layout, the sky and backdrop, and the rendering substrate web and mobile share
+
+> r2 | how the memory universe is drawn and moved through: the 3D scene, what each visual channel means, the emergent layout, the sky and backdrop, and the rendering substrate web and mobile share
 
 ## decisions
 - VIS-0 [o] the universe page is a rendered 3D space: memories float in it as shader-built 3D bodies, the viewer moves through it with standard 3D navigation (zoom, rotate, pan), and the two z-layers read as its depth →~VIS-9
@@ -79,7 +80,7 @@
   - placement: `placeEpisodicMemoriesAtCentroids` (`packages/force-sim/src/seed.ts`); a zero activation weight pulls nothing; a memory has no spring, charge or force of its own, and no force joins two memories →!INV-4
   - a memory with no weighted activation sits at its seed hint, else at a seeded point of its own
   - repulsion is the baseline pattern separation; actively splitting similar constellations is reserved →~ENC-11
-  - the layout never freezes: `force_sim.min_alpha` keeps a little residual motion after it settles
+  - `force_sim.min_alpha` keeps residual motion while the solver is active. The solver sleeps only after every coordinate remains within `force_sim.settle_epsilon` for `force_sim.settle_ticks` at the alpha floor; an updated graph or explicit reheat resumes it. Body and ambient animation keep their independent frame lifecycles
   - coefficients: `force_sim.charge`, `link_distance`, `center_strength`, `repulsion`, `tick_alpha_decay`, `velocity_damping`; `link_distance` is the universe's scale knob, so rendered body sizes must stay well under the spacing it produces
 - VIS-14 [o] a node starts from a seed, never a stored coordinate, and its final place emerges from the forces: `seedInitialPositions` takes the carried previous position, else a seed hint, else a point near the seeded cluster centre of the first memory that activated it →~ENC-7
   - neurons born together in one memory therefore start clustered, and a reused neuron starts where it already is
@@ -161,7 +162,7 @@
   - a pick resolves through the entity stores' id lists (server rows plus the optimistic tail), never the graph, so the newest star stays openable
 - VIS-31 [o] the domain-to-visual projection is one-way and every channel has exactly one owner: a visual difference no stored fact explains must not exist →=VIS-1–6
   | channel | carries | pace |
-  |---|---|---|
+  | ---------- | -------------------- | ----------------------------------- |
   | position | relational structure | slow, emergent |
   | brightness | recall recency | fast |
   | size | strength | slow, accumulating |
@@ -252,7 +253,7 @@
   - the emotion-coloured layers (star, gist, nebula) remount on the palette version, so a live palette change recolours without a refetch →~MOOD-6
 - VIS-45 [o] camera travel and selection are one XState machine, `universeNavigationMachine`, with ids-only context (`selectedNodeId`, `travelNodeId`) →=ARCH
   | state | meaning | exits |
-  |---|---|---|
+  | ---------- | ----------------- | --------------------------------------------------------------------- |
   | `idle` | free navigation | `FOCUS` → `focusing`; `FLY` → `flying` |
   | `focusing` | framing a node | `ARRIVED` or `CANCEL` → `idle`; `FOCUS` re-enters; `FLY` → `flying` |
   | `flying` | gliding to a node | `ARRIVED` or `CANCEL` → `idle`; `FLY` re-enters; `FOCUS` → `focusing` |
@@ -307,4 +308,6 @@
 - the demo draws the same layers and projections over its own fixtures →~DEMO-30
 
 ## chg
+
+- r2 261102 VIS-13✎ continuous residual solver work→deterministic quiet-interval sleep with graph/reheat wakeup; active motion and rendering animations preserved
 - r1 261102 initial

@@ -37,6 +37,8 @@ export {
   captureContext,
   createDelegatedTelemetryAdapter,
   createObservabilityRuntime,
+  createTelemetryBindingManager,
+  type TelemetryBinding,
   stringTelemetryProperty,
   toSentryLevel,
   type CreateObservabilityRuntimeOptions,

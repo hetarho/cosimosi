@@ -5,6 +5,7 @@ import * as THREE from 'three/webgpu'
 import { VALUES } from '@cosimosi/config'
 
 import { UNIVERSE_CANVAS_FAR } from '../backdrop-scale.ts'
+import { createAsyncResourceLifetime } from '../resource-lifetime.ts'
 import {
   DEFAULT_CANVAS_CAMERA_POSITION,
   DEFAULT_CANVAS_DPR,
@@ -90,8 +91,11 @@ export function UniverseCanvas({
   toneMapping = VALUES.rendering.toneMapping,
   exposure = VALUES.rendering.toneMappingExposure,
 }: UniverseCanvasProps) {
+  const [initError, setInitError] = useState<unknown>(null)
+  const active = useRef(true)
   const [frameloop, setFrameloop] = useState<'never' | 'always'>('never')
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null)
+  const releaseRenderer = useRef<(() => void) | null>(null)
   const pendingDispose = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Applied here rather than only in the `gl` factory (which R3F runs once) so the curve can change
@@ -113,20 +117,24 @@ export function UniverseCanvas({
   // the `gl` factory whenever a renderer already exists. Disposing inline would therefore hand the
   // dev build a disposed device on remount. A real unmount has no remount to cancel the timer.
   useEffect(() => {
+    active.current = true
     if (pendingDispose.current !== null) {
       clearTimeout(pendingDispose.current)
       pendingDispose.current = null
     }
     return () => {
+      active.current = false
       pendingDispose.current = setTimeout(() => {
         pendingDispose.current = null
         const renderer = rendererRef.current
         rendererRef.current = null
-        renderer?.dispose()
+        if (renderer) releaseRenderer.current?.()
+        releaseRenderer.current = null
       }, 0)
     }
   }, [])
 
+  if (initError) throw initError
   return (
     <Canvas
       frameloop={frameloop}
@@ -150,8 +158,25 @@ export function UniverseCanvas({
         renderer.toneMapping = resolveToneMapping(toneMapping)
         renderer.toneMappingExposure = exposure
         rendererRef.current = renderer
+        const lifetime = createAsyncResourceLifetime(() => renderer.dispose())
+        releaseRenderer.current = lifetime.release
         // Start the render loop only once WebGPU is ready (see the frameloop note above).
-        void renderer.init().then(() => setFrameloop('always'))
+        void Promise.resolve()
+          .then(() => renderer.init())
+          .then(() => {
+            if (!lifetime.finish()) return
+            if (!active.current || rendererRef.current !== renderer) {
+              lifetime.release()
+              if (rendererRef.current === renderer) rendererRef.current = null
+              return
+            }
+            setFrameloop('always')
+          })
+          .catch((error: unknown) => {
+            lifetime.release()
+            lifetime.finish()
+            if (active.current && rendererRef.current === renderer) setInitError(error)
+          })
         return renderer
       }}
     >

@@ -47,6 +47,8 @@ export interface ForceSimValues {
   readonly tickAlphaDecay: number
   readonly velocityDamping: number
   readonly minAlpha: number
+  readonly settleEpsilon?: number
+  readonly settleTicks?: number
   readonly hippocampusZMin: number
   readonly hippocampusZMax: number
   readonly zCenterGain: number

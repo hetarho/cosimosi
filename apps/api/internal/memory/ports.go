@@ -75,6 +75,8 @@ type LaunchRepo interface {
 // UniverseClockStore so the clock read + advance land atomically with the
 // launch rows ([T2] case 1).
 type LaunchTx interface {
+	EconomyTx
+	ProgressionTx
 	InsertDiary(ctx context.Context, scope platform.UserScope, diary Diary) (Diary, error)
 	InsertEpisodicMemory(ctx context.Context, scope platform.UserScope, episodicMemory EpisodicMemory) (EpisodicMemory, error)
 	FindNeuronsByNames(ctx context.Context, scope platform.UserScope, names []string) ([]ExistingNeuron, error)
@@ -177,15 +179,9 @@ type UniverseClockStore interface {
 	AdvanceUniverseClock(ctx context.Context, scope platform.UserScope, target time.Time) (time.Time, error)
 }
 
-// ProgressionTx is the narrow write surface an AdvanceProgression binding may
-// touch: the job queue (advance-implied work is enqueued, not run inline) and
-// the clock. Deliberately NOT the full LaunchTx — a progression handler must
-// never be able to insert launch rows, keeping the sync path's "mutates no
-// Diary" guarantee structural ([I2]). LaunchTx satisfies this by embedding.
-type ProgressionTx interface {
-	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
-	UniverseClockStore
-}
+// ProgressionTx declares all writes the configured consolidation handler uses.
+// It exposes no diary creation or deletion capability.
+type ProgressionTx = ConsolidateTx
 
 // AdvanceProgression is the read-time progression hook ([T4]): fired inside
 // the advance transaction whenever the clock actually moves (launch and sync),
@@ -218,7 +214,7 @@ type SynapseStore interface {
 	// UpsertSynapse is the atomic weighted upsert (§2.6): it inserts a first edge
 	// or advances the existing row's stored base strength, co_activation_count, and
 	// last_activated_universe_time. It only inserts or strengthens — never deletes.
-	UpsertSynapse(ctx context.Context, scope platform.UserScope, synapse Synapse) (Synapse, error)
+	UpsertSynapses(ctx context.Context, scope platform.UserScope, synapses []Synapse) error
 }
 
 // NeuronMemoryActivation is one (neuron, episodic memory, memory date) membership

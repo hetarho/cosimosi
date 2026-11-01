@@ -146,6 +146,31 @@ func TestRunnerReturnsIdleWhenNoJobIsDue(t *testing.T) {
 	}
 }
 
+func TestRegistryOwnsDurableClaimPolicyAndStillRejectsUnhandledKinds(t *testing.T) {
+	for _, handled := range []bool{true, false} {
+		queue := &fakeQueue{claim: testJob{id: "durable", userID: "owner", kind: "external", leaseGeneration: 99}}
+		handlers := map[string]Handler[testJob]{}
+		if handled {
+			handlers["external"] = func(context.Context, testJob) error { return nil }
+		}
+		policy := map[string]bool{"external": true}
+		runner, err := NewRunner[testJob](queue, handlers, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Second, RetryForeverKinds: policy})
+		if err != nil {
+			t.Fatal(err)
+		}
+		policy["external"] = false
+		if _, err := runner.RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if handled && queue.completed.id != "durable" {
+			t.Fatal("durable registration lost its retry policy")
+		}
+		if !handled && queue.deadCause != DeadLetterUnhandledKind {
+			t.Fatalf("unregistered durable kind: %q", queue.deadCause)
+		}
+	}
+}
+
 func TestRunnerKeepsPollingAfterQueueTransitionErrors(t *testing.T) {
 	now := fixedRunnerNow()
 	dbErr := errors.New("temporary db")

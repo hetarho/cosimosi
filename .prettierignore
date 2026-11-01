@@ -10,6 +10,8 @@ data/
 .claude/
 .codex/
 project.inlang/cache/
+packages/i18n/project.inlang/.meta.json
+packages/i18n/project.inlang/README.md
 
 # Lint-probe fixtures are deliberate rule violations; a live probe workspace or a crashed probe's
 # leftovers must never fail an unrelated scan (quality-gates §Probe hermeticity).

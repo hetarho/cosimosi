@@ -1,9 +1,6 @@
-import { useState } from 'react'
+import { useDiaryExport } from '@cosimosi/universe/react/exports'
 
-import { useTransport } from '@connectrpc/connect-query'
-import { useMutation } from '@tanstack/react-query'
-
-import { createMemoryClient, ExportFormat } from '@cosimosi/api-client'
+import { ExportFormat } from '@cosimosi/api-client'
 import { Button, Card } from '@cosimosi/ui'
 
 import { useErrorToast } from '@cosimosi/errors/react'
@@ -11,16 +8,9 @@ import { m } from '../../../shared/i18n/index.ts'
 import { deliverDiaryExport } from '../lib/deliver-export.ts'
 
 export function ExportDiaries() {
-  const transport = useTransport()
-  const showError = useErrorToast()
-  const [format, setFormat] = useState(ExportFormat.CSV)
-  const mutation = useMutation({
-    gcTime: 0,
-    mutationFn: async (next: ExportFormat) => {
-      const response = await createMemoryClient(transport).export({ format: next })
-      deliverDiaryExport(response)
-    },
-    onError: showError,
+  const { format, setFormat, pending, runExport } = useDiaryExport({
+    deliver: deliverDiaryExport,
+    onError: useErrorToast(),
   })
 
   return (
@@ -31,7 +21,7 @@ export function ExportDiaries() {
           size="sm"
           variant={format === ExportFormat.CSV ? 'contained' : 'outlined'}
           onClick={() => setFormat(ExportFormat.CSV)}
-          disabled={mutation.isPending}
+          disabled={pending}
         >
           {m.me_export_format_csv()}
         </Button>
@@ -39,13 +29,13 @@ export function ExportDiaries() {
           size="sm"
           variant={format === ExportFormat.MD ? 'contained' : 'outlined'}
           onClick={() => setFormat(ExportFormat.MD)}
-          disabled={mutation.isPending}
+          disabled={pending}
         >
           {m.me_export_format_md()}
         </Button>
       </div>
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => mutation.mutate(format)} loading={mutation.isPending}>
+        <Button size="sm" onClick={runExport} loading={pending}>
           {m.me_export_action()}
         </Button>
       </div>

@@ -118,6 +118,7 @@ function createDefaultWebAuthFacade(): AuthFacade {
         // establishes the session on load. The URL must be in the Supabase redirect
         // allowlist for every origin we serve (prod, localhost, previews) — an
         // unlisted origin silently falls back to the prod Site URL (DEPLOY.md §5).
+        ownsClient: true,
         google: { redirectTo: `${window.location.origin}/` },
       },
     ),

@@ -1,28 +1,20 @@
-# packages/ — 공유 패키지 경계
+# Shared package boundaries
 
-여러 앱(`apps/web`, 미래 `apps/mobile`, `apps/blog`)이 같은 코드를 실제로 쓰게 될 때
-승격(promote)할 자리다. **빈 패키지를 미리 만들지 않는다** — 추상화는 두 번째 소비자가
-생기는 순간에만 비용을 낸다(FSD "needs-driven / 미리 추상화하지 말 것").
+Web and mobile share product behavior through workspace packages. App slices own platform views and composition; packages never import an app. Domain model and computation modules do not depend on React, renderers, DOM or native APIs.
 
-## 승격 규칙 (promote-on-reuse)
+| Capability                                                    | Owner and entry point                                                                                                                                                            | Host responsibility                                                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Authentication session, signup completion and profile editing | `@cosimosi/auth`, `@cosimosi/auth/react`, `@cosimosi/auth/react/signup`, `@cosimosi/auth/react/profile`                                                                          | Select the auth adapter; inject locale/storage and navigation capabilities.                              |
+| Paid intent, writing, recall, deletion and diary jump control | `@cosimosi/universe/react/flows`                                                                                                                                                 | Compose DOM/native controls; inject error presentation, balance/achievement invalidation and navigation. |
+| Diary export command                                          | `@cosimosi/universe/react/exports`                                                                                                                                               | Deliver returned bytes through the browser or native sharing API.                                        |
+| Universe and archive reads, optimistic reconciliation         | `@cosimosi/universe/react`                                                                                                                                                       | Mount query providers; consume stable domain projections.                                                |
+| Memory types and deterministic forgetting/graph calculations  | `@cosimosi/memory`, `@cosimosi/memory-logic`, `@cosimosi/emotion`, `@cosimosi/force-sim`                                                                                         | Supply input facts; render results without reproducing domain rules.                                     |
+| Rendering projection and renderer resources                   | `@cosimosi/universe-render`, `@cosimosi/3d-renderer`                                                                                                                             | Supply a canvas host and supported platform capabilities.                                                |
+| Product contexts                                              | `@cosimosi/twinkle`, `@cosimosi/store`, `@cosimosi/achievement`                                                                                                                  | Compose their published query/action hooks.                                                              |
+| UI, control charts and infrastructure                         | `@cosimosi/ui`, `@cosimosi/state-machine`, `@cosimosi/api-client`, `@cosimosi/client-cache`, `@cosimosi/errors`, `@cosimosi/observability`, `@cosimosi/i18n`, `@cosimosi/config` | Inject platform adapters at app composition roots.                                                       |
 
-- **두 번째 실제 소비자**가 생기는 순간 승격한다. 한 앱만 쓰는 코드는 그 앱 안(`apps/web/src/shared/*` 등)에 둔다.
-- 승격해도 **헌법 §4 import 방향**은 깨지지 않는다: `ui → model` OK, `model`/`core`는 `three`/React/DOM 미의존(모바일 재사용 전제). 플랫폼 분기는 앱의 `ui`에서만.
-- 앱끼리 서로의 `src`를 **relative import 하지 않는다**. 공유가 필요하면 `packages/*` 또는 루트 `proto/`(전송 계약)로만 연결한다(헌법 §5).
+New flow hosts use the capability entry points above. The universe root remains a compatibility API for existing entity/feature consumers; flow views cannot import low-level mutation helpers or mutable draft stores. The FSD layout gate checks both platforms and workspace dependency cycles. Auth owns only its reset leg; composition roots inject product reset legs, so auth does not depend on product packages.
 
-## 후보 (아직 만들지 않음)
+A passive fact (current memory text, metadata, universe clock) belongs to an entity projection. A feature represents a user action. Platform JSX belongs in `ui`; a slice's `lib` contains reusable, non-visual code. Cross-slice consumers use the slice's `index.ts`. Web/mobile forks share control logic and differ at renderer, storage and UI capabilities.
 
-| 후보                                | 무엇                                                                                       | 승격 조건                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `packages/core`                     | 앱 독립 순수 로직 — memory physics(`force-sim`의 순수 `tick`), values 해석, mood utilities | 순수 로직이 web 밖(모바일 등)에서 필요해질 때                                                               |
-| `packages/rendering` (또는 `webgl`) | TSL 노드 조립, WebGPU renderer 포트, R3F 헬퍼, shader-art toolkit                          | 모바일 렌더러(`react-native-webgpu` 등)가 확정돼 같은 셰이더/씬을 공유할 때 — 그 전엔 app-local 유지가 기본 |
-
-## 이미 승격된 패키지
-
-- **`packages/ui`** (`@cosimosi/ui`) — 공유 디자인 토큰 + 접근성 UI 프리미티브. web·mobile이 day-one에 함께 쓰는
-  Phase 1 예외라(promote-later 아님, ARCH-27) 처음부터 패키지로 짓는다. `packages/`의
-  "DOM/native 미의존" 규칙의 **플랫폼 인지 예외**: DOM(`*.tsx`) + RN(`*.native.tsx`) 형제를 `exports` 조건으로 가른다.
-  규칙은 [spec/ssot/UI.md](../spec/ssot/UI.md) UI-23–31.
-
-루트 `proto/`는 패키지가 아니라 **모든 클라이언트가 공유하는 transport 계약**이다 — `packages/`로 옮기지 않는다.
-모바일 재사용 전략의 전체 그림은 [spec/ssot/ARCH.md](../spec/ssot/ARCH.md) ARCH-27–28을 본다.
+Do not create empty packages in anticipation of reuse. Extract a shared capability when both platforms actually consume it; keep its public surface narrower than the package's implementation. Platform rendering exceptions use explicit `*.native` siblings. Rules: [ARCH-21–28](../spec/ssot/ARCH.md), [UI-23–31](../spec/ssot/UI.md).

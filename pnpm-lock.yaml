@@ -534,24 +534,9 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
-      '@cosimosi/emotion':
+      '@cosimosi/state-machine':
         specifier: workspace:*
-        version: link:../emotion
-      '@cosimosi/onboarding':
-        specifier: workspace:*
-        version: link:../onboarding
-      '@cosimosi/sequence':
-        specifier: workspace:*
-        version: link:../sequence
-      '@cosimosi/store':
-        specifier: workspace:*
-        version: link:../store
-      '@cosimosi/twinkle':
-        specifier: workspace:*
-        version: link:../twinkle
-      '@cosimosi/universe':
-        specifier: workspace:*
-        version: link:../universe
+        version: link:../state-machine
       '@supabase/supabase-js':
         specifier: ^2.108.2
         version: 2.108.2
@@ -1061,12 +1046,18 @@ importers:
       '@cosimosi/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@cosimosi/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../emotion
+      '@cosimosi/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@cosimosi/force-sim':
         specifier: workspace:*
         version: link:../force-sim
@@ -1076,6 +1067,9 @@ importers:
       '@cosimosi/memory-logic':
         specifier: workspace:*
         version: link:../memory-logic
+      '@cosimosi/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
       xstate:
         specifier: ^5.32.2
         version: 5.32.2

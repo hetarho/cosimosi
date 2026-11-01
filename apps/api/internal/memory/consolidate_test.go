@@ -289,7 +289,7 @@ func TestConsolidateHeldOrFirstAdvanceIsANoop(t *testing.T) {
 	}
 }
 
-func TestConsolidateRequiresScopeAndConsolidateTx(t *testing.T) {
+func TestConsolidateRequiresScope(t *testing.T) {
 	t.Parallel()
 	handler := NewConsolidator(nil)
 	from := consolidateDate(0)
@@ -298,30 +298,6 @@ func TestConsolidateRequiresScopeAndConsolidateTx(t *testing.T) {
 	if err := handler.OnAdvance(context.Background(), platform.UserScope{}, newFakeConsolidateTx(), &from, to); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("scope-less advance err = %v, want ErrScopeRequired", err)
 	}
-	// A ProgressionTx that cannot be upgraded to the consolidation surface is a wiring
-	// error, surfaced loudly instead of silently skipping the sleep.
-	if err := handler.OnAdvance(context.Background(), testScope(t), progressionOnlyTx{}, &from, to); !errors.Is(err, ErrConsolidateTxRequired) {
-		t.Fatalf("narrow tx err = %v, want ErrConsolidateTxRequired", err)
-	}
-}
-
-type progressionOnlyTx struct{}
-
-func (progressionOnlyTx) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
-	return job, nil
-}
-func (progressionOnlyTx) LockGraphMutation(context.Context, platform.UserScope) error { return nil }
-func (progressionOnlyTx) UniverseClock(context.Context, platform.UserScope) (*time.Time, error) {
-	return nil, nil
-}
-func (progressionOnlyTx) UniverseClockForUpdate(context.Context, platform.UserScope) (*time.Time, error) {
-	return nil, nil
-}
-func (progressionOnlyTx) LatestLaunchedUniverseTime(context.Context, platform.UserScope) (*time.Time, error) {
-	return nil, nil
-}
-func (progressionOnlyTx) AdvanceUniverseClock(_ context.Context, _ platform.UserScope, target time.Time) (time.Time, error) {
-	return target, nil
 }
 
 func TestConsolidateAdvancesAllCrossedStagesClampedWithProvenance(t *testing.T) {

@@ -92,7 +92,7 @@ func TestAdminUserListDatabaseRoundTripsStayConstant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("twinkle.NewService: %v", err)
 	}
-	memoryStore := memorypg.NewStore(counter)
+	memoryStore := memorypg.NewReadStore(counter)
 	service, err := admin.NewService(admin.ServiceDeps{
 		Store:     adminpg.NewStore(counter),
 		Directory: adminAccountDirectory{source: platformsupabase.Fake{Accounts: accounts}},

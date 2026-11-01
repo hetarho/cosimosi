@@ -1,10 +1,11 @@
 # ARCH architecture
-> r1 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
+
+> r2 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
 
 ## decisions
 - ARCH-1 [o] cosimosi is one pnpm workspace of peer apps, shared packages and one RPC contract; each app builds and ships on its own
   | root | holds | build |
-  |---|---|---|
+  | ------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- |
   | `apps/web` | the web app, Feature-Sliced Design →~ARCH-21 | Vite → `apps/web/dist` |
   | `apps/mobile` | the React Native app, Feature-Sliced Design, with its own committed `ios/` and `android/` | Metro |
   | `apps/api` | the Go backend →~ARCH-5 | Go toolchain →~ARCH-46 |
@@ -16,7 +17,7 @@
   - web and mobile are two separate React applications: mobile is never hosted inside the web build
 - ARCH-2 [o] the stack per layer; exact versions live in each `package.json` and in `apps/api/go.mod`
   | layer | choice |
-  |---|---|
+  | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
   | backend | Go 1.26 (module `github.com/cosimosi/api`), Connect RPC + Protobuf (buf), Postgres + pgvector, sqlc on pgx v5, goose migrations |
   | web | React 19, Vite 8, TypeScript 6, TanStack Router, Tailwind CSS 4 |
   | mobile | React Native 0.86 bare (Metro, New Architecture), React Navigation 7, Reanimated + Worklets |
@@ -42,7 +43,7 @@
   - no ORM, no DI framework, no generic repository over sqlc; hand-written Go around sqlc is an adapter only when mapping, dynamic SQL, transactions or tests need one
 - ARCH-6 [o] the backend is a small set of bounded contexts: one core domain, supporting contexts around it, external-service wrappers; `internal/platform` is shared infrastructure, not a context
   | kind | contexts |
-  |---|---|
+  | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
   | core | `memory` →~MEM-1 |
   | supporting | `account`, `twinkle`, `store`, `achievement` |
   | operator console | `admin`: a standalone context reaching every other one only through its own consumer-owned ports; no product code calls it →~ADMIN |
@@ -52,7 +53,7 @@
   - a context is created by the first feature that needs it
 - ARCH-7 [o] a context starts as one readable package and splits by dependency direction only as a refactor that removes noise, import cycles, test pain or mixed IO/domain code
   | path | holds |
-  |---|---|
+  | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
   | `apps/api/cmd/api`, `apps/api/cmd/worker` | composition roots →~ARCH-18 |
   | `internal/<context>/` | domain types and canonical names, behavior and use-cases, consumer-owned ports (`ports.go`) once a consumer exists |
   | `internal/<context>/pg/` | sqlc + thin pgx adapter, row↔domain mapping |
@@ -69,10 +70,11 @@
   - domain logic never calls RPC, sqlc, pgx, SDK clients or framework code
 - ARCH-9 [o] contexts never talk through an event bus: every cross-context edge is a composition-root adapter over a consumer-owned port, in exactly one of two shapes
   | shape | when | mechanism |
-  |---|---|---|
-  | shared-transaction port | the consumer's write must commit or roll back with the producer's fact | the adapter asserts the producer's opaque tx to `interface{ DB() dbgen.DBTX }` and binds the consumer's `pg` store onto it: one transaction, never shared queries; a handle-less tx is a wiring fault and is refused |
+  | ----------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | shared-transaction port | the consumer's write must commit or roll back with the producer's fact | the producer transaction declares the consumer-shaped behavior it needs; its `pg` adapter receives a composition-root capability factory bound to that exact open transaction. No `any`, runtime DB assertion or persistence type crosses inward; an unbound capability fails closed |
   | idempotent pairing | the effect lands in another context's ledger or rows | commit in the owning context first, then call the other through its port keyed by a stable id (a claim id, a grant id), so a replay completes the effect and never doubles it |
-  - a dependency cycle between contexts closes through a late-bound holder the root binds once; an unbound holder refuses instead of dropping the fact
+  - generic job envelopes, storage and leases live in `platform/jobqueue`; producer contexts own job identities, payload validation and handlers, and composition roots explicitly register durable retry policy
+  - split independent read/recording capabilities from payout and command services so the root constructs a complete dependency graph in order, without mutating a late-bound holder
   - a required port is never silently defaulted: a service refuses a nil collaborator at construction, and a deliberate no-op is an explicit named binding
   - both composition roots carry every leg they run: `cmd/api` serves requests and runs the dev worker, `cmd/worker` runs the job queue, the withdrawal sweep with every purge leg and the settlement drain
   - a seam bound in one root and forgotten in the other is invisible to a build, so `cmd/worker`'s test constructs its runner with every seam bound and `cmd/api` refuses to boot on wiring drift: a forgotten leg fails CI or the boot, never silently in production
@@ -122,7 +124,7 @@
   - an external service sits behind a consumer-owned port with a keyless mock fallback injected at the composition root, cost-metered (per-call caps, caching, daily and monthly limits); a new provider slots in behind the same consumed behavior →~AI-14 →~AI-25
 - ARCH-20 [o] forbidden backend patterns, numbered for review citations
   | # | forbidden | rule |
-  |---|---|---|
+  | --- | ----------------------------------------------------------------------------------------------------------------- | --------- |
   | 1 | renaming a concept across layers | →=ARCH-4 |
   | 2 | packages for a diagram: empty `domain`/`app`/`infra` folders, pass-through services, interfaces no consumer needs | →=ARCH-7 |
   | 3 | a computed relationship as domain source of truth | →=ARCH-10 |
@@ -134,7 +136,7 @@
   | 9 | high-frequency events as server streaming | →=ARCH-16 |
 - ARCH-21 [o] the frontend is Feature-Sliced Design, applied identically by web and mobile: six layers `app → pages → widgets → features → entities → shared`, and a slice imports only lower layers
   | layer | role | one-line test |
-  |---|---|---|
+  | ---------- | ----------------------------------------------------------------- | ------------------------------ |
   | `app` | composition: providers, routing, global style | wires the app together |
   | `pages` | a route or screen composing lower layers, holding no domain logic | a URL lands here |
   | `widgets` | a large self-contained block reused across pages | a big chunk a page drops in |
@@ -153,7 +155,7 @@
   - guard `pnpm lint:fsd:layout` (`scripts/lint-fsd-layout.mjs`) checks directories as well as loose files
 - ARCH-23 [o] inside a slice, files group by technical role into segments; generic folders (`components`, `hooks`, `utils`, `helpers`, `types`, `constants`, `misc`) are forbidden
   | segment | holds |
-  |---|---|
+  | -------- | --------------------------------------------------------------------------------------------------- |
   | `ui` | React and R3F components, shader bindings: the only platform-aware code (`*.native.tsx` lives here) |
   | `model` | types, Zustand stores, XState machines, pure slice logic |
   | `api` | backend calls and proto→domain mappers for the slice |
@@ -180,7 +182,7 @@
   - what the domain treats as emergent stays emergent: rendered, never modeled →~INV-5
 - ARCH-27 [o] `packages/` is the cross-app core: one job and one home per package, consumed by web and mobile from the start, so pure code is written cross-platform into a package directly, never built web-first and extracted later
   | role | packages |
-  |---|---|
+  | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
   | generated config | `config` →~ARCH-32 |
   | transport and cache | `api-client` (generated client, service descriptors), `client-cache` (Query defaults, keys, optimistic helpers, RPC cache policy) |
   | platform seams | `auth`, `errors`, `i18n`, `observability`, `state-machine` |
@@ -200,7 +202,7 @@
   - a `ui` file joins that comparison when it carries no platform marker (a React Native or `react-dom` import, a DOM global, a lowercase JSX intrinsic) and holds more than a wiring shell
 - ARCH-29 [o] parity is per surface: every user surface ships on both apps unless a waiver is written here ← `lint:fsd:layout` does not check page peering, so an unwritten waiver would go unnoticed
   | surface | web | mobile | waiver owner |
-  |---|---|---|---|
+  | ----------------------- | --- | ------ | --------------------------- |
   | landing page | yes | no | →=MKT-26 |
   | blog and its miss route | yes | no | →=MKT-26 |
   | demo page | yes | no | →=DEMO-35 |
@@ -221,7 +223,7 @@
   - protocol and structural safety bounds (vendor response byte caps, bounded error-body drains, fixed vector shapes) sit beside the protocol code with an invariant comment
 - ARCH-34 [o] `values.yaml` groups are closed and keys inside a group are open: a change may add a key to a group its domain owns, while a new group is an ARCH change
   | owner | groups |
-  |---|---|
+  | ------ | ---------------------------------- |
   | CLIENT | `client_cache` |
   | ERR | `errors` |
   | AUTH | `auth_session`, `supabase_auth` |
@@ -269,7 +271,7 @@
   - no gate needs production secrets, and no gate boots an emulator or a device; on-device render confirmation stays manual →~ARCH-3
 - ARCH-41 [o] `pnpm lint` chains every static gate, one rule per command
   | command | fails when | rule |
-  |---|---|---|
+  | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
   | `check:node` | Node or the `.node-version` pin is below the `engines` floor, or a declared `workspace:` dependency is not installed | →~ARCH-2 |
   | `format:check` | a file is not Prettier-formatted | →~ARCH-37 |
   | `lint:web` | oxlint, steiger, ESLint boundaries or React-hooks diagnostics report anything, or the web boundary probe fails | →~ARCH-21 |
@@ -323,7 +325,7 @@
   - one owner runs the batch gate: the coordinating or standalone session, on the final integrated candidate; worker and review sessions run the task tier only and hand the rest off
 - ARCH-48 [o] tests are a default obligation: every task's acceptance names the tests it adds or changes, and no ARCH decision exempts a kind of change from them
   | surface | runner | expected |
-  |---|---|---|
+  | -------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
   | a pure domain function mirrored in Go and TS | `go test` + Vitest | golden parity: one fixture `apps/api/internal/<context>/testdata/*golden*.json`, regenerated only by the Go suite (`UPDATE_GOLDEN=1`) and asserted by the TS mirror's suite |
   | Go behavior, adapters, handlers, composition roots | `go test` | `_test.go` beside the code; SQL paths run against the compose Postgres and skip without `COSIMOSI_TEST_DATABASE_URL` or `DATABASE_URL` |
   | `packages/*` | Vitest | `*.test.ts(x)` beside the module |
@@ -358,4 +360,6 @@
 - the `be-architecture`, `fe-architecture` and `mobile-architecture` skills are procedures over these decisions, never a second source of their rules
 
 ## chg
+
+- r2 261102 ARCH-9✎ opaque DB assertions and late-bound holders→typed transaction behaviors and independently constructed read/recording capabilities ; queue producer ownership stays with each context
 - r1 261102 initial

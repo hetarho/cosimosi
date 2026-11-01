@@ -54,7 +54,7 @@ func NewDefaultJobRunner(
 	semanticizer Semanticizer,
 	pollInterval time.Duration,
 	logger *log.Logger,
-	extraHandlers ...map[JobKind]jobqueue.Handler[Job],
+	extraHandlers ...map[JobKind]jobqueue.Registration[Job],
 ) (jobqueue.Runner[Job], error) {
 	return NewJobRunner(
 		store,
@@ -80,13 +80,15 @@ func NewJobRunner(
 	embedder Embedder,
 	semanticizer Semanticizer,
 	cfg WorkerConfig,
-	extraHandlers ...map[JobKind]jobqueue.Handler[Job],
+	extraHandlers ...map[JobKind]jobqueue.Registration[Job],
 ) (jobqueue.Runner[Job], error) {
 	now := cfg.Now
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
+	forever := map[string]bool{string(JobKindRetention): true}
 	maintained := &maintenanceQueue{
+		retryForever:     forever,
 		JobQueue:         queue,
 		cleaner:          cleaner,
 		now:              now,
@@ -105,7 +107,9 @@ func NewJobRunner(
 	// clean and then never processes that kind — and jobqueue.NewRunner filters nil handlers again
 	// downstream, so a skip here would be invisible on both sides.
 	for _, extra := range extraHandlers {
-		for kind, handler := range extra {
+		for kind, registration := range extra {
+			handler := registration.Handler
+			forever[string(kind)] = registration.RetryForever
 			key := string(kind)
 			if key == "" || handler == nil {
 				return jobqueue.Runner[Job]{}, ErrInvalidJobHandler
@@ -117,12 +121,13 @@ func NewJobRunner(
 		}
 	}
 	return jobqueue.NewRunner[Job](maintained, handlers, jobqueue.Config{
-		MaxAttempts:  cfg.MaxAttempts,
-		MaxClaims:    cfg.MaxClaims,
-		BackoffBase:  cfg.BackoffBase,
-		PollInterval: cfg.PollInterval,
-		Now:          now,
-		Logger:       cfg.Logger,
+		RetryForeverKinds: forever,
+		MaxAttempts:       cfg.MaxAttempts,
+		MaxClaims:         cfg.MaxClaims,
+		BackoffBase:       cfg.BackoffBase,
+		PollInterval:      cfg.PollInterval,
+		Now:               now,
+		Logger:            cfg.Logger,
 	})
 }
 
@@ -130,13 +135,14 @@ func NewJobRunner(
 // loop. Cleanup is the one documented global maintenance scan and fails open so
 // transient housekeeping errors never stop due product work.
 //
-// The kinds retriedIndefinitely names do not give up on a spent retry budget: each is the only
+// The kinds the composition registry marks durable do not give up on a spent retry budget: each is the only
 // durable trigger for something the user cannot ask for a second time. That override covers Fail
 // ALONE. DeadLetter is deliberately not overridden and not even declared here, so the embedded queue
 // answers it: the runner's claim ceiling and its unhandled-kind stop are safety transitions, and a
 // retry policy that swallowed them would turn a job that kills its worker into an endless loop at
 // the head of the queue — with a log line claiming it had been contained.
 type maintenanceQueue struct {
+	retryForever map[string]bool
 	JobQueue
 	cleaner          TerminalJobCleaner
 	now              func() time.Time
@@ -200,7 +206,7 @@ func (q *maintenanceQueue) reopenCleanupWindow(now time.Time) {
 
 // Fail is the POLICY give-up — the retry budget is spent. Only this one is overridden.
 func (q *maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
-	if !retriedIndefinitely(job.Kind) {
+	if !q.retryForever[string(job.Kind)] {
 		return q.JobQueue.Fail(ctx, job, nextAttempts)
 	}
 	delay := q.backoff

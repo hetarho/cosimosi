@@ -58,6 +58,7 @@ export const ERROR_REASONS = {
   memoryReleaseMemoryNotFound: 'MEMORY_RELEASE_MEMORY_NOT_FOUND',
   memoryReleaseNoLiveMemories: 'MEMORY_RELEASE_NO_LIVE_MEMORIES',
   memoryRestoreNotReleased: 'MEMORY_RESTORE_NOT_RELEASED',
+  memoryRecallSourceChanged: 'MEMORY_RECALL_SOURCE_CHANGED',
   memoryRecallMemoryUnavailable: 'MEMORY_RECALL_MEMORY_UNAVAILABLE',
   memoryViewSemanticStageNotRisen: 'MEMORY_VIEW_SEMANTIC_STAGE_NOT_RISEN',
   memoryReleaseMemoryUnavailable: 'MEMORY_RELEASE_MEMORY_UNAVAILABLE',

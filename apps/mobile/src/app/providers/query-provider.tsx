@@ -1,3 +1,9 @@
+import { resetMoodPalette } from '@cosimosi/emotion'
+import { resetOnboardingUserState } from '@cosimosi/onboarding'
+import { resetSequenceUserState } from '@cosimosi/sequence'
+import { resetStoreUserState } from '@cosimosi/store'
+import { resetTwinkleUserState } from '@cosimosi/twinkle'
+import { resetUniverseUserState } from '@cosimosi/universe'
 import {
   createContext,
   useCallback,
@@ -69,10 +75,14 @@ export function MobileClientCacheProvider({
       // never on mount — so unlike an effect keyed on the signed-in identity, a development
       // double-effect cannot throw away notices the incoming session has just queued.
       for (const owner of SESSION_SCOPED_TOAST_OWNERS) dropByOwner(owner)
-      resetUserState(nextScopeKey, {
-        name: 'locale',
-        reset: resetMobileLocaleUserState,
-      })
+      resetUserState(
+        nextScopeKey,
+        {
+          name: 'locale',
+          reset: resetMobileLocaleUserState,
+        },
+        MOBILE_USER_STATE_RESETS,
+      )
     },
     [dropByOwner, resolvedQueryClient],
   )
@@ -112,3 +122,13 @@ export function useMobileApiTransport(): ApiTransport {
 export function useMobileApiBaseUrl(): string {
   return useMobileApiContext().baseUrl
 }
+
+// Product state belongs to app composition; auth owns only its own session state.
+export const MOBILE_USER_STATE_RESETS = [
+  { name: 'universe', reset: resetUniverseUserState },
+  { name: 'twinkle', reset: resetTwinkleUserState },
+  { name: 'palette', reset: resetMoodPalette },
+  { name: 'store', reset: resetStoreUserState },
+  { name: 'sequence', reset: resetSequenceUserState },
+  { name: 'onboarding', reset: resetOnboardingUserState },
+] as const

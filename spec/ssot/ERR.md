@@ -1,5 +1,5 @@
 # ERR error contract
-> r1 | how a failed RPC travels from a Go context to the user: the two error classes, the `ErrorInfo` detail, the reason registry, masking and reporting, and the shared FE decode, copy and recovery seam
+> r2 | how a failed RPC travels from a Go context to the user: the two error classes, the `ErrorInfo` detail, the reason registry, masking and reporting, and the shared FE decode, copy and recovery seam
 
 ## decisions
 - ERR-1 [o] every RPC failure is exactly one of two classes, decided by its Connect code after the owning context's mapping: a domain refusal (any code but `Internal`/`Unknown`) or an unexpected failure (`Internal`/`Unknown`)
@@ -79,6 +79,7 @@
   | `MEMORY_OPERATION_CONFLICT` | memory | AlreadyExists | reason copy |
   | `MEMORY_RECALL_MEMORY_NOT_FOUND`, `MEMORY_VIEW_SEMANTIC_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_MEMORY_NOT_FOUND` | memory | NotFound | shared target-not-found copy |
   | `MEMORY_RECALL_NO_LIVE_MEMORIES`, `MEMORY_PROVENANCE_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_NO_LIVE_MEMORIES`, `MEMORY_RESTORE_NOT_RELEASED` | memory | NotFound | coarse |
+  | `MEMORY_RECALL_SOURCE_CHANGED` | memory | FailedPrecondition | shared target-unavailable copy; refresh quote before retry |
   | `MEMORY_RECALL_MEMORY_UNAVAILABLE`, `MEMORY_RELEASE_MEMORY_UNAVAILABLE` | memory | FailedPrecondition | shared target-unavailable copy |
   | `MEMORY_VIEW_SEMANTIC_STAGE_NOT_RISEN`, `MEMORY_RESTORE_WINDOW_EXPIRED` | memory | FailedPrecondition | reason copy |
   | `MEMORY_ALREADY_RELEASED` | memory | FailedPrecondition | reason copy; the diary already has a live full delete (`Release`), not a letting-go →=DEL-2 |
@@ -158,4 +159,5 @@
 - the only `values.yaml` key ERR owns is `errors.toast_auto_dismiss_ms`; reasons, `ErrorInfo` and the `debug_detail` gate are contract or runtime env, never values
 
 ## chg
+- r2 261102 ERR-12✎ recall refusals without source-version guard→add MEMORY_RECALL_SOURCE_CHANGED for a comparison invalidated by a concurrent rewrite
 - r1 261102 initial

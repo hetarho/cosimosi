@@ -1,6 +1,6 @@
 import type { ReconcilerRoot, RootState } from '@react-three/fiber'
 import { createRoot, events, extend, unmountComponentAtNode } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppState, PixelRatio, type AppStateStatus } from 'react-native'
 import { Canvas, type CanvasRef } from 'react-native-webgpu'
 import * as THREE from 'three/webgpu'
@@ -93,6 +93,7 @@ export function UniverseCanvas({
 }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)
+  const [initError, setInitError] = useState<unknown>(null)
   const canvasRef = useRef<CanvasRef>(null)
   const renderer = useRef<THREE.WebGPURenderer | null>(null)
   const r3fState = useRef<RootState | null>(null)
@@ -144,11 +145,20 @@ export function UniverseCanvas({
 
     // context.canvas is a DOM-canvas-shaped shim from react-native-webgpu; the mobile tsconfig
     // has no DOM lib, so treat it loosely.
+    let cancelled = false
+    let initialized = false
+    let disposed = false
+    let ownedRenderer: THREE.WebGPURenderer | null = null
+    const disposeOwned = () => {
+      if (disposed || !ownedRenderer) return
+      disposed = true
+      ownedRenderer.dispose()
+    }
     const canvas = context.canvas
     const initial = live.current
     const reconciler = createRoot(canvas)
     root.current = reconciler
-    reconciler.configure({
+    const configuration = reconciler.configure({
       // No measurement on native: the shim reports the surface's own bounds, and R3F multiplies
       // this logical size by the dpr below to size the drawing buffer.
       size: { top: 0, left: 0, width: canvas.clientWidth, height: canvas.clientHeight },
@@ -176,7 +186,19 @@ export function UniverseCanvas({
         gpuRenderer.toneMapping = resolveToneMapping(initial.toneMapping)
         gpuRenderer.toneMappingExposure = initial.exposure
         renderer.current = gpuRenderer
-        await gpuRenderer.init()
+        ownedRenderer = gpuRenderer
+        try {
+          await gpuRenderer.init()
+        } catch (error) {
+          initialized = true
+          disposeOwned()
+          throw error
+        }
+        initialized = true
+        if (cancelled) {
+          disposeOwned()
+          throw new Error('Renderer initialization canceled')
+        }
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web
         // host gets this from the browser compositor). Wrap render() to present ONLY when
         // drawing to the surface (getRenderTarget() === null) — a frame with post-processing
@@ -192,6 +214,7 @@ export function UniverseCanvas({
       },
       frameloop: 'always',
       onCreated: (state) => {
+        if (cancelled) return
         r3fState.current = state
         applyLiveConfig.current()
         // A device brought up while the app is already backgrounded must not start rendering; the
@@ -200,7 +223,13 @@ export function UniverseCanvas({
       },
     })
 
+    void configuration.catch((error: unknown) => {
+      if (initialized) disposeOwned()
+      if (!cancelled) setInitError(error)
+    })
+
     return () => {
+      cancelled = true
       unmountComponentAtNode(canvas)
       root.current = null
       r3fState.current = null
@@ -209,9 +238,8 @@ export function UniverseCanvas({
       // exists on WebGPURenderer — so the device is ours to release, or a remount (StrictMode, a
       // forceWebGL flip) leaks it. The ref is cleared before disposing so a second cleanup can
       // never dispose the same device twice.
-      const disposing = renderer.current
-      renderer.current = null
-      disposing?.dispose()
+      if (renderer.current === ownedRenderer) renderer.current = null
+      if (initialized) disposeOwned()
     }
   }, [forceWebGL])
 
@@ -233,6 +261,7 @@ export function UniverseCanvas({
     return () => subscription.remove()
   }, [])
 
+  if (initError) throw initError
   return <Canvas ref={canvasRef} style={styles.fill} />
 }
 

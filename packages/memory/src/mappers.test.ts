@@ -13,6 +13,7 @@ import {
   neuronFromDto,
   synapseFromDto,
   universeFromResponse,
+  createUniverseMapper,
 } from './mappers.ts'
 
 const memoryDtoFixture = (overrides: Record<string, unknown> = {}) =>
@@ -32,6 +33,18 @@ const memoryDtoFixture = (overrides: Record<string, unknown> = {}) =>
   })
 
 describe('GetUniverse proto→domain mappers', () => {
+  it('reuses unchanged projections and replaces a refreshed entity without retaining old keys', () => {
+    const map = createUniverseMapper()
+    const original = memoryDtoFixture()
+    const response = create(GetUniverseResponseSchema)
+    response.memories = [original]
+    const first = map(response)
+    const appended = map({ ...response, memories: [original, memoryDtoFixture({ id: 'second' })] })
+    expect(appended.memories[0]).toBe(first.memories[0])
+    const refreshed = map({ ...response, memories: [{ ...original, recallCount: 3 }] })
+    expect(refreshed.memories[0]).not.toBe(first.memories[0])
+    expect(refreshed.memories[0]?.recallCount).toBe(3)
+  })
   it('maps the stored episodic-memory facts verbatim', () => {
     const memory = episodicMemoryFromDto(
       memoryDtoFixture({

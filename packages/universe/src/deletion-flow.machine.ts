@@ -20,6 +20,7 @@ export type DeletionFlowPhase =
 // state of its own — the notice is advisory, it gates nothing ([X7]).
 export interface DeletionFlowContext {
   diaryId: string | null
+  error: boolean
   episodicMemoryId: string | null
 }
 
@@ -42,18 +43,22 @@ export const deletionFlowMachine = setup({
   },
   actions: {
     setDeleteTarget: assign(({ event }) =>
-      event.type === 'OPEN_DELETE' ? { diaryId: event.diaryId, episodicMemoryId: null } : {},
+      event.type === 'OPEN_DELETE'
+        ? { diaryId: event.diaryId, episodicMemoryId: null, error: false }
+        : {},
     ),
     setLetGoTarget: assign(({ event }) =>
       event.type === 'OPEN_LETGO'
-        ? { episodicMemoryId: event.episodicMemoryId, diaryId: null }
+        ? { episodicMemoryId: event.episodicMemoryId, diaryId: null, error: false }
         : {},
     ),
-    clearTarget: assign({ diaryId: null, episodicMemoryId: null }),
+    clearTarget: assign({ diaryId: null, episodicMemoryId: null, error: false }),
+    clearError: assign({ error: false }),
+    setError: assign({ error: true }),
   },
 }).createMachine({
   id: 'deletionFlow',
-  context: { diaryId: null, episodicMemoryId: null },
+  context: { diaryId: null, episodicMemoryId: null, error: false },
   initial: 'idle',
   // CANCEL closes the sheet only from the INTERACTIVE steps (it lives on each such state below, not
   // globally): the loading states deleting/suggesting/sealing are deliberately un-closable so a
@@ -69,35 +74,41 @@ export const deletionFlowMachine = setup({
     // Full-delete confirm: the affected stars + the 30-day restore + export reassurances shown
     // before the act ([X1][X2][W6]). CONFIRM is the user's explicit removal ([I1]).
     confirmingDelete: {
-      on: { CONFIRM: 'deleting', CANCEL: { target: 'idle', actions: 'clearTarget' } },
+      on: {
+        CONFIRM: { target: 'deleting', actions: 'clearError' },
+        CANCEL: { target: 'idle', actions: 'clearTarget' },
+      },
     },
     // Release(diary_id) in flight; the returned ids are optimistically removed on success. A failed
     // call returns here, retriable — nothing was removed ([X3][I5]). Un-closable while in flight.
     deleting: {
-      on: { DONE: 'done', ERROR: 'confirmingDelete' },
+      on: { DONE: 'done', ERROR: { target: 'confirmingDelete', actions: 'setError' } },
     },
     // Letting-go step 1 — say the words ([X6]); symbolic framing from the first screen ([X7]).
     phrasing: {
-      on: { SUGGEST: 'suggesting', CANCEL: { target: 'idle', actions: 'clearTarget' } },
+      on: {
+        SUGGEST: { target: 'suggesting', actions: 'clearError' },
+        CANCEL: { target: 'idle', actions: 'clearTarget' },
+      },
     },
     // Loading — SuggestLetGo in flight (LLM latency). A failed call returns to phrasing, retriable.
     // Un-closable while in flight.
     suggesting: {
-      on: { DONE: 'approving', ERROR: 'phrasing' },
+      on: { DONE: 'approving', ERROR: { target: 'phrasing', actions: 'setError' } },
     },
     // Candidate review + select-to-seal ([X6]); the heavy-state notice renders here if flagged, and
     // never blocks progression ([X7]). BACK reopens phrasing to reword.
     approving: {
       on: {
-        SEAL: 'sealing',
-        BACK: 'phrasing',
+        SEAL: { target: 'sealing', actions: 'clearError' },
+        BACK: { target: 'phrasing', actions: 'clearError' },
         CANCEL: { target: 'idle', actions: 'clearTarget' },
       },
     },
     // Loading — LetGo in flight. A failed call returns to approving with nothing sealed ([X5]).
     // Un-closable while in flight.
     sealing: {
-      on: { DONE: 'done', ERROR: 'approving' },
+      on: { DONE: 'done', ERROR: { target: 'approving', actions: 'setError' } },
     },
     // The star vanished (delete) or persists as a silent engram (let-go); the sheet closes.
     done: {

@@ -1,10 +1,3 @@
-import { resetMoodPalette } from '@cosimosi/emotion'
-import { resetOnboardingUserState } from '@cosimosi/onboarding'
-import { resetSequenceUserState } from '@cosimosi/sequence'
-import { resetStoreUserState } from '@cosimosi/store'
-import { resetTwinkleUserState } from '@cosimosi/twinkle'
-import { resetUniverseUserState } from '@cosimosi/universe'
-
 import { resetSignupUserState } from './signup-completion.ts'
 
 interface UserStateResetEntry {
@@ -15,20 +8,6 @@ interface UserStateResetEntry {
 export type PlatformUserStateReset = UserStateResetEntry
 
 const USER_STATE_RESET_REGISTRY: readonly UserStateResetEntry[] = [
-  { name: 'universe', reset: resetUniverseUserState },
-  { name: 'twinkle', reset: resetTwinkleUserState },
-  // Colors are per-user, so the previous account's must be off the render seam before the next
-  // account's read applies its own — otherwise the incoming universe flashes someone else's sky.
-  { name: 'palette', reset: () => resetMoodPalette() },
-  // A live decoration preview belongs to the account that opened it: the incoming universe must not
-  // open wearing the previous user's sky, not even for a frame.
-  { name: 'store', reset: resetStoreUserState },
-  // The anchor registry is module-level, so an onboarding run's registered controls would otherwise
-  // survive into the next account's subtree and let a tour point at a control that is no longer there.
-  { name: 'sequence', reset: () => resetSequenceUserState() },
-  // A pending replay request would open a tour in the incoming account's universe, and an unconsumed
-  // signal report would advance it — both are module-level and both belong to whoever was signed in.
-  { name: 'onboarding', reset: () => resetOnboardingUserState() },
   { name: 'signup-completion', reset: resetSignupUserState },
 ]
 
@@ -47,7 +26,12 @@ export function extendUserStateResetInventory(platformLeg: PlatformUserStateRese
 // drop therefore lives in each app's client-cache provider, in the same `onScopeChange` callback that
 // calls this function. A reader looking for "everything cleared on scope change" needs both halves.
 /** Clears shared user state in one order, then delegates the final platform-specific leg. */
-export function resetUserState(nextScopeKey: string, platformLeg: PlatformUserStateReset): void {
+export function resetUserState(
+  nextScopeKey: string,
+  platformLeg: PlatformUserStateReset,
+  productLegs: readonly PlatformUserStateReset[] = [],
+): void {
+  for (const entry of productLegs) entry.reset(nextScopeKey)
   for (const entry of USER_STATE_RESET_REGISTRY) entry.reset(nextScopeKey)
   platformLeg.reset(nextScopeKey)
 }

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, type ReactNode } from 'react'
 
 import {
   FakeAuthAdapter,
@@ -45,14 +45,13 @@ export function MobileAuthProvider({
   supabase,
   devUserId,
 }: MobileAuthProviderProps) {
+  const createFacade = useCallback(
+    () => createAuthFacade({ adapter: createDefaultMobileAuthAdapter(supabase, devUserId) }),
+    [supabase, devUserId],
+  )
   bindPendingInviteStorage(mobilePendingInviteStorage)
   return (
-    <AuthProvider
-      facade={facade}
-      createFacade={() =>
-        createAuthFacade({ adapter: createDefaultMobileAuthAdapter(supabase, devUserId) })
-      }
-    >
+    <AuthProvider facade={facade} createFacade={createFacade}>
       <OAuthCallbackBridge />
       {children}
     </AuthProvider>
@@ -105,6 +104,7 @@ function createDefaultMobileAuthAdapter(
       // External-browser PKCE flow: consent opens in the system browser and returns
       // through the cosimosi:// callback, which OAuthCallbackBridge feeds back into
       // the facade for the code exchange.
+      ownsClient: true,
       google: { redirectTo: mobileAuthCallbackUrl, openUrl: openExternalUrl },
     },
   )

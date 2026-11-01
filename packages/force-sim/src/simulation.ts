@@ -15,6 +15,7 @@ import {
 import { applyForceSimForces, createForceModel, type ForceSimForceModel } from './forces.ts'
 import {
   clampToHippocampusZ,
+  createCentroidModel,
   placeEpisodicMemoriesAtCentroids,
   seedInitialPositions,
 } from './seed.ts'
@@ -43,6 +44,8 @@ export interface CreateForceSimulationOptions {
 export interface ForceSimulation {
   readonly nodeIndex: ForceSimNodeIndex
   readonly coordinates: ForceSimCoordinateBuffer
+  readonly settled: boolean
+  reheat(): void
   tick(dt: number, output?: ForceSimCoordinateBuffer): ForceSimCoordinateBuffer
   getPosition(kind: 'neuron' | 'episodicMemory', id: ForceSimNodeId): ForceSimCoordinate | undefined
 }
@@ -57,25 +60,56 @@ export function createForceSimulation(
 
   const nodeIndex = createForceSimNodeIndex(graph)
   const forceModel = createForceModel(graph, nodeIndex)
+  const centroidModel = createCentroidModel(graph, nodeIndex, values)
   const positions = seedInitialPositions(graph, nodeIndex, values)
   const velocities = new Float64Array(positions.length)
   const forces = new Float64Array(positions.length)
   const coordinates = new Float32Array(positions.length)
   let alpha = 1
+  const settleEpsilon = values.settleEpsilon ?? DEFAULT_FORCE_SIM_VALUES.settleEpsilon!
+  const settleTicks = values.settleTicks ?? DEFAULT_FORCE_SIM_VALUES.settleTicks!
+  const quietAnchor = new Float64Array(positions)
+  let quietTicks = 0
+  let settled = forceModel.neuronNodeIndices.length === 0
 
   writeCoordinates(positions, coordinates)
 
   return {
     nodeIndex,
     coordinates,
+    get settled() {
+      return settled
+    },
+    reheat() {
+      alpha = 1
+      quietTicks = 0
+      settled = forceModel.neuronNodeIndices.length === 0
+      quietAnchor.set(positions)
+    },
     tick(dt, output) {
       const frameStep = normalizeFrameStep(dt)
-      if (frameStep > 0) {
+      if (frameStep > 0 && !settled) {
         applyForceSimForces(forceModel, values, positions, forces)
         integrateNeurons(forceModel, values, positions, velocities, forces, alpha, frameStep)
-        placeEpisodicMemoriesAtCentroids(graph, nodeIndex, values, positions)
+        placeEpisodicMemoriesAtCentroids(graph, nodeIndex, values, positions, centroidModel)
         alpha = Math.max(values.minAlpha, alpha * (1 - values.tickAlphaDecay))
         writeCoordinates(positions, coordinates)
+        if (settleEpsilon > 0 && alpha === values.minAlpha) {
+          let quiet = true
+          for (let i = 0; i < positions.length; i++) {
+            if (Math.abs(positions[i]! - quietAnchor[i]!) > settleEpsilon) {
+              quiet = false
+              break
+            }
+          }
+          if (quiet) settled = ++quietTicks >= settleTicks
+          else {
+            quietTicks = 0
+            quietAnchor.set(positions)
+          }
+        } else {
+          quietAnchor.set(positions)
+        }
       }
       if (output && output !== coordinates) {
         writeCoordinates(positions, output)
@@ -128,6 +162,13 @@ function normalizeFrameStep(dt: number): number {
 }
 
 function validateForceSimValues(values: ForceSimValues): void {
+  const epsilon = values.settleEpsilon ?? DEFAULT_FORCE_SIM_VALUES.settleEpsilon!
+  const ticks = values.settleTicks ?? DEFAULT_FORCE_SIM_VALUES.settleTicks!
+  if (!Number.isFinite(epsilon) || epsilon < 0 || !Number.isSafeInteger(ticks) || ticks < 1) {
+    throw new Error(
+      'force-sim settlement requires a nonnegative tolerance and positive tick interval',
+    )
+  }
   const entries: Array<[keyof ForceSimValues, number]> = [
     ['charge', values.charge],
     ['linkDistance', values.linkDistance],

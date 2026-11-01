@@ -5,6 +5,14 @@ import * as THREE from 'three/webgpu'
 
 import { fbm01 } from '../shader-art/noise.ts'
 import { attributeVec3Node } from '../tsl.ts'
+import {
+  createInstanceFrameKey,
+  recordInstanceFrame,
+  resetInstanceFrame,
+  sameInstanceFrame,
+  createCameraRevision,
+  updateCameraRevision,
+} from './instance-frame-gate.ts'
 
 // The field's cloud grammar (code, like the star's seed-form graph — not values.yaml tuning): how
 // large the gas structure is in world units, and how far it may thin or thicken the mid-field.
@@ -134,15 +142,42 @@ export function ColorField({
     [geometry, material],
   )
 
+  const lastFrame = useMemo(() => createInstanceFrameKey(), [])
+  const nextFrame = useMemo(() => createInstanceFrameKey(), [])
+  const cameraFrame = useMemo(() => createCameraRevision(), [])
+  const lastMesh = useRef<THREE.InstancedMesh | null>(null)
+  const frameChannels = useMemo(
+    () => ({ nodeIndices, radii, geometry }),
+    [nodeIndices, radii, geometry],
+  )
   useFrame(({ camera }) => {
     const mesh = meshRef.current
     if (!mesh) return
     const buffer = positions.current
     if (!buffer || !nodeIndices || !radii || count <= 0) {
       mesh.visible = false
+      resetInstanceFrame(lastFrame)
       return
     }
     camera.getWorldQuaternion(rotation)
+    if (lastMesh.current !== mesh) {
+      resetInstanceFrame(lastFrame)
+      lastMesh.current = mesh
+    }
+    nextFrame.buffer = buffer
+    nextFrame.bufferVersion = positions.version ?? Number.NaN
+    nextFrame.channels = frameChannels
+    nextFrame.count = count
+    nextFrame.firstNodeIndex = 0
+    nextFrame.scale = 1
+    nextFrame.animationRevision = updateCameraRevision(
+      cameraFrame,
+      rotation.x,
+      rotation.y,
+      rotation.z,
+      rotation.w,
+    )
+    if (sameInstanceFrame(lastFrame, nextFrame)) return
     for (let i = 0; i < count; i++) {
       const offset = (nodeIndices[i] ?? 0) * 3
       // No live coordinate for this contributor yet — e.g. a memory inserted optimistically before
@@ -163,6 +198,7 @@ export function ColorField({
     mesh.count = count
     mesh.visible = true
     mesh.instanceMatrix.needsUpdate = true
+    recordInstanceFrame(lastFrame, nextFrame)
   })
 
   return (

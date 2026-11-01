@@ -8,13 +8,11 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
-// newRecordService pairs a service with the store its reports are written through. RecordProgress
-// never touches the service's own repo — the store arrives as an argument — so the repo is the same
-// fake, which keeps a second throwaway out of every test.
-func newRecordService(t *testing.T) (*Service, *fakeStore) {
+// Recorder tests construct only the counter store they consume.
+func newRecordService(t *testing.T) (*Recorder, *fakeStore) {
 	t.Helper()
 	store := newFakeStore()
-	return newTestService(t, store), store
+	return NewRecorder(), store
 }
 
 func TestRecordProgressRefusesWhatCannotBeAFact(t *testing.T) {

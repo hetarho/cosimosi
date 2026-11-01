@@ -167,17 +167,23 @@ export function InstancedNodeLayer({
     [composedFrame],
   )
 
+  const [sourceError, setSourceError] = useState<unknown>(null)
   useEffect(() => {
     let cancelled = false
-    Promise.resolve(source.resolve({ kind, id: bodyId })).then((object) => {
-      const mesh = object instanceof THREE.Mesh ? object : null
-      if (cancelled || !mesh) {
-        // Not adopted (unmounted meanwhile, or a source yielded a non-Mesh) — release it.
-        disposeBody(object)
-        return
-      }
-      setBody(mesh)
-    })
+    Promise.resolve()
+      .then(() => source.resolve({ kind, id: bodyId }))
+      .then((object) => {
+        const mesh = object instanceof THREE.Mesh ? object : null
+        if (cancelled || !mesh) {
+          // Not adopted (unmounted meanwhile, or a source yielded a non-Mesh) — release it.
+          disposeBody(object)
+          return
+        }
+        setBody(mesh)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setSourceError(error)
+      })
     return () => {
       cancelled = true
       setBody(null)
@@ -326,6 +332,7 @@ export function InstancedNodeLayer({
   const pick = (instanceId: number | undefined): number | null =>
     instanceId !== undefined && instanceId < count ? instanceId : null
 
+  if (sourceError) throw sourceError
   return (
     <instancedMesh
       key={instanceCount}

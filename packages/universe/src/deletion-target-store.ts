@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useDiaryStore } from './diary-store.ts'
 
 // The open channel between a delete/letting-go affordance and the deletion-flow sheet (§3.2 data,
 // the recall-target-store precedent): a host records which act to open, the sheet subscribes on a
@@ -18,7 +19,16 @@ export interface DeletionTargetState {
 
 export const useDeletionTargetStore = create<DeletionTargetState>()((set) => ({
   target: null,
-  openFullDelete: (diaryId) => set({ target: { mode: 'delete', diaryId } }),
-  openLetGo: (episodicMemoryId) => set({ target: { mode: 'letGo', episodicMemoryId } }),
-  clear: () => set({ target: null }),
+  openFullDelete: (diaryId) => {
+    useDiaryStore.getState().retainForDeletion(diaryId)
+    set({ target: { mode: 'delete', diaryId } })
+  },
+  openLetGo: (episodicMemoryId) => {
+    useDiaryStore.getState().retainForDeletion(null)
+    set({ target: { mode: 'letGo', episodicMemoryId } })
+  },
+  clear: () => {
+    useDiaryStore.getState().retainForDeletion(null)
+    set({ target: null })
+  },
 }))

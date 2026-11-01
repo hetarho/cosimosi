@@ -22,8 +22,8 @@ import { useUniverseScene, type UniverseSceneState } from './use-universe-scene.
  *
  * What this pins is the one thing the fork had already got wrong on native (R006): a pick arrives as
  * an INSTANCE index and must resolve against the entity store the layer indexed its instances by —
- * NOT the projected graph. The two diverge by exactly one row after a launch, and it is the row a
- * person reaches for first.
+ * The graph and layer both include explicit pending launches; index resolution still follows
+ * the live store so a response or launch between renders cannot select another memory.
  */
 const EMOTION = { mood: 'JOY', valence: 0.5, arousal: 0.4, intensity: 0.6 } as const
 
@@ -94,7 +94,7 @@ describe('useUniverseScene — pick resolution (R006)', () => {
     useSynapseStore.getState().clear()
   })
 
-  it('resolves a pick at the optimistic tail, which the projected graph does not carry', async () => {
+  it('keeps an optimistic memory in the graph and resolves its pick through the current store', async () => {
     const actor = createActor(universeNavigationMachine).start()
     const { captured, view } = mountScene(actor)
 
@@ -109,16 +109,15 @@ describe('useUniverseScene — pick resolution (R006)', () => {
     // refetch has brought it back from the server. Wrapped in `act` so the hook re-renders and the
     // pick callback closes over the grown id list; a stale closure would answer for two rows.
     act(() => {
-      useEpisodicMemoryStore
-        .getState()
-        .setAll([...['server-a', 'server-b'].map(serverStoredMemory), optimisticMemory])
+      const store = useEpisodicMemoryStore.getState()
+      store.setAll([...['server-a', 'server-b'].map(serverStoredMemory), optimisticMemory])
+      store.markPending([optimisticMemory.id])
     })
 
     const scene = captured.current
     expect(scene).not.toBeNull()
-    // The graph is built from the RESPONSE, so it holds two memories — index 2 does not exist there,
-    // and resolving the pick through it would drop this tap entirely.
-    expect(scene?.graph?.episodicMemories).toHaveLength(2)
+    // The scene and layer share the reconciled snapshot, including the pending launch.
+    expect(scene?.graph?.episodicMemories).toHaveLength(3)
 
     scene?.focusMemory(2)
 

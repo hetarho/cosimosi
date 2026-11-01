@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	connectcors "connectrpc.com/cors"
@@ -15,6 +16,7 @@ import (
 const requestIDHeader = "X-Request-Id"
 
 type handlerConfig struct {
+	budgets          RequestBudgets
 	logger           *log.Logger
 	corsOrigins      []string
 	authVerifier     AuthTokenVerifier
@@ -86,6 +88,7 @@ func WithRPCService(build RPCServiceBuilder) HandlerOption {
 
 func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	cfg := handlerConfig{
+		budgets:          DefaultRequestBudgets(),
 		logger:           logger,
 		corsOrigins:      defaultCORSOrigins(),
 		publicProcedures: []string{platformv1connect.PlatformServicePingProcedure},
@@ -112,21 +115,22 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 		PanicRecoveryInterceptor(cfg.logger, cfg.observability),
 		RequestIDInterceptor(),
 		StructuredErrorInterceptor(cfg.observability),
+		RequestBudgetInterceptor(cfg.budgets),
 		LoggingInterceptor(cfg.logger),
 		AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
 	}
 	if len(cfg.services) > 0 {
 		chain = append(chain, WithdrawnScopeInterceptor(cfg.accountStatus, cfg.withdrawnExempt))
 	}
-	interceptors := connect.WithInterceptors(chain...)
-	path, handler := platformv1connect.NewPlatformServiceHandler(cfg.platformService, interceptors)
+	options := []connect.HandlerOption{connect.WithInterceptors(chain...), connect.WithReadMaxBytes(cfg.budgets.MaxMessageBytes)}
+	path, handler := platformv1connect.NewPlatformServiceHandler(cfg.platformService, options...)
 	mux.Handle(path, handler)
 	for _, build := range cfg.services {
-		servicePath, serviceHandler := build(interceptors)
+		servicePath, serviceHandler := build(options...)
 		mux.Handle(servicePath, serviceHandler)
 	}
 
-	return requestIDMiddleware(corsMiddleware(cfg.corsOrigins, mux))
+	return requestIDMiddleware(corsMiddleware(cfg.corsOrigins, http.MaxBytesHandler(mux, int64(cfg.budgets.MaxMessageBytes))))
 }
 
 func NewHTTPServer(addr string, logger *log.Logger, opts ...HandlerOption) *http.Server {
@@ -135,9 +139,13 @@ func NewHTTPServer(addr string, logger *log.Logger, opts ...HandlerOption) *http
 	protocols.SetUnencryptedHTTP2(true)
 
 	return &http.Server{
-		Addr:      addr,
-		Handler:   NewHandler(logger, opts...),
-		Protocols: protocols,
+		Addr:              addr,
+		Handler:           NewHandler(logger, opts...),
+		Protocols:         protocols,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      4 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
 	}
 }
 

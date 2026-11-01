@@ -156,11 +156,13 @@ function normalizedDigest(path) {
 }
 
 export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
-  const problems = []
+  const problems = findWorkspacePackageCycles(root)
 
   for (const app of apps) {
     const srcAbs = join(root, app, 'src')
     if (!existsSync(srcAbs)) continue
+
+    problems.push(...findSliceBoundaryProblems(srcAbs, root))
 
     const appAbs = join(srcAbs, 'app')
     if (existsSync(appAbs)) {
@@ -246,6 +248,139 @@ export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
     }
   }
 
+  return problems
+}
+
+export function findWorkspacePackageCycles(root = repoRoot) {
+  const packages = join(root, 'packages')
+  if (!existsSync(packages)) return []
+  const graph = new Map()
+  for (const entry of readdirSync(packages, { withFileTypes: true })) {
+    const manifest = join(packages, entry.name, 'package.json')
+    if (!entry.isDirectory() || !existsSync(manifest)) continue
+    const data = JSON.parse(readFileSync(manifest, 'utf8'))
+    graph.set(
+      data.name,
+      Object.keys(data.dependencies ?? {}).filter((name) => name.startsWith('@cosimosi/')),
+    )
+  }
+  const problems = []
+  const complete = new Set()
+  const visit = (name, trail) => {
+    const cycle = trail.indexOf(name)
+    if (cycle >= 0) {
+      problems.push(`workspace package cycle: ${[...trail.slice(cycle), name].join(' → ')}`)
+      return
+    }
+    if (complete.has(name)) return
+    for (const target of graph.get(name) ?? []) visit(target, [...trail, name])
+    complete.add(name)
+  }
+  for (const name of graph.keys()) visit(name, [])
+  return problems
+}
+
+// Both apps use this check, including RN where Steiger is not part of the gate.
+export function findSliceBoundaryProblems(srcAbs, root = repoRoot) {
+  const problems = []
+  const files = walkFiles(srcAbs).filter((p) => /\.[jt]sx?$/.test(p) && !/\.(test|spec)\./.test(p))
+  const known = new Set(files)
+  const layers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']
+  for (const file of files) {
+    const local = portableRelative(srcAbs, file)
+    const [layer, slice] = local.split('/')
+    const source = ts.createSourceFile(
+      file,
+      readFileSync(file, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      /x$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    )
+    const imports = []
+    let jsx = false
+    const visit = (node) => {
+      if (
+        /^widgets\/(writing-flow|recall-flow|deletion-flow|diary-reader)\/ui\//.test(local) &&
+        ts.isImportDeclaration(node) &&
+        ts.isStringLiteralLike(node.moduleSpecifier) &&
+        node.moduleSpecifier.text === '@cosimosi/universe' &&
+        !node.importClause?.isTypeOnly
+      ) {
+        const bindings = node.importClause?.namedBindings
+        const mutable = new Set([
+          'useProposalStore',
+          'useRecallDraftStore',
+          'useDeletionDraftStore',
+          'applyRecallResult',
+          'insertLaunchedMemories',
+          'requestRecall',
+          'requestRecallDiaryStars',
+          'requestLaunchStars',
+        ])
+        if (
+          bindings &&
+          (ts.isNamespaceImport(bindings) ||
+            bindings.elements.some(
+              (binding) =>
+                !binding.isTypeOnly && mutable.has((binding.propertyName ?? binding.name).text),
+            ))
+        )
+          problems.push(
+            `${portableRelative(root, file)} — flow UI must use its shared controller capability`,
+          )
+      }
+      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))
+        jsx = true
+      if (
+        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+        node.moduleSpecifier &&
+        ts.isStringLiteralLike(node.moduleSpecifier)
+      )
+        imports.push(node.moduleSpecifier.text)
+      if (
+        ts.isCallExpression(node) &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          node.expression.getText(source) === 'require') &&
+        node.arguments.length === 1 &&
+        ts.isStringLiteralLike(node.arguments[0])
+      )
+        imports.push(node.arguments[0].text)
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    if (/^(pages|widgets|features|entities)\/[^/]+\/lib\//.test(local) && jsx)
+      problems.push(`${portableRelative(root, file)} — platform JSX belongs in ui, not lib`)
+    for (const specifier of imports) {
+      if (/^(three|@react-three\/fiber)(\/|$)/.test(specifier))
+        problems.push(
+          `${portableRelative(root, file)} — renderer imports belong in @cosimosi/3d-renderer`,
+        )
+      if (!specifier.startsWith('.')) continue
+      const target = resolve(file, '..', specifier)
+      const found = [
+        target,
+        target + '.ts',
+        target + '.tsx',
+        join(target, 'index.ts'),
+        join(target, 'index.tsx'),
+      ].find((p) => known.has(p))
+      if (!found) continue
+      const [toLayer, toSlice, ...tail] = portableRelative(srcAbs, found).split('/')
+      if (!layers.includes(layer) || !layers.includes(toLayer) || layer === 'app') continue
+      if (layers.indexOf(toLayer) < layers.indexOf(layer))
+        problems.push(`${portableRelative(root, file)} — upward layer import ${specifier}`)
+      if (toLayer === 'shared') continue
+      if (layer === toLayer && slice === toSlice) continue
+      const crossApi =
+        layer === 'entities' && toLayer === 'entities' && tail.join('/') === `@x/${slice}.ts`
+      if (layer === toLayer && !crossApi)
+        problems.push(
+          `${portableRelative(root, file)} — same-layer cross-slice import ${specifier}`,
+        )
+      if (!crossApi && !/^index\.[jt]sx?$/.test(tail.join('/')))
+        problems.push(`${portableRelative(root, file)} — private slice import ${specifier}`)
+    }
+  }
   return problems
 }
 

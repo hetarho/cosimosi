@@ -10,6 +10,9 @@ export interface DiaryState {
   /** The current non-owning segment; retained when the owning page settles later. */
   contributedById: Readonly<Record<string, Diary>>
   contributedIds: readonly string[]
+  /** One read handoff, retained only while its deletion confirmation owns it. */
+  pinnedDiary: Diary | null
+  retainForDeletion: (id: string | null) => void
   setAll: (diaries: readonly Diary[]) => void
   /** Add or refresh contributed entries without removing earlier contributions. */
   add: (diaries: readonly Diary[]) => void
@@ -33,6 +36,19 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
   ownerIds: [],
   contributedById: {},
   contributedIds: [],
+  pinnedDiary: null,
+  retainForDeletion: (id) =>
+    set((state) => {
+      if (state.pinnedDiary?.id === id) return state
+      const byId = { ...state.byId }
+      let ids = state.ids
+      const previous = state.pinnedDiary
+      if (previous && !state.ownerById[previous.id] && !state.contributedById[previous.id]) {
+        delete byId[previous.id]
+        ids = ids.filter((key) => key !== previous.id)
+      }
+      return withPinnedDiary(byId, ids, id ? (state.byId[id] ?? null) : null)
+    }),
   setAll: (diaries) =>
     set((state) => {
       const ownerIds = diaries.map((diary) => diary.id)
@@ -40,11 +56,14 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
       const ownerById = Object.fromEntries(diaries.map((diary) => [diary.id, diary]))
       const retainedIds = state.contributedIds.filter((id) => !ownerSet.has(id))
       return {
-        byId: {
-          ...state.contributedById,
-          ...ownerById,
-        },
-        ids: [...ownerIds, ...retainedIds],
+        ...withPinnedDiary(
+          {
+            ...state.contributedById,
+            ...ownerById,
+          },
+          [...ownerIds, ...retainedIds],
+          state.pinnedDiary,
+        ),
         ownerById,
         ownerIds,
       }
@@ -62,6 +81,9 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
       }
       return {
         byId: { ...state.byId, ...Object.fromEntries(diaries.map((diary) => [diary.id, diary])) },
+        pinnedDiary: state.pinnedDiary
+          ? (diaries.find((diary) => diary.id === state.pinnedDiary?.id) ?? state.pinnedDiary)
+          : null,
         ids: fresh.length === 0 ? state.ids : [...state.ids, ...fresh.map((diary) => diary.id)],
         contributedById,
         contributedIds:
@@ -76,8 +98,11 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
       const ownerSet = new Set(state.ownerIds)
       const contributedById = Object.fromEntries(diaries.map((diary) => [diary.id, diary]))
       return {
-        byId: { ...state.ownerById, ...contributedById },
-        ids: [...state.ownerIds, ...contributedIds.filter((id) => !ownerSet.has(id))],
+        ...withPinnedDiary(
+          { ...state.ownerById, ...contributedById },
+          [...state.ownerIds, ...contributedIds.filter((id) => !ownerSet.has(id))],
+          state.pinnedDiary,
+        ),
         contributedById,
         contributedIds,
       }
@@ -90,5 +115,17 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
       ownerIds: [],
       contributedById: {},
       contributedIds: [],
+      pinnedDiary: null,
     }),
 }))
+
+function withPinnedDiary(
+  byId: Readonly<Record<string, Diary>>,
+  ids: readonly string[],
+  pinned: Diary | null,
+) {
+  if (!pinned) return { byId, ids, pinnedDiary: null }
+  const current = byId[pinned.id]
+  if (current) return { byId, ids, pinnedDiary: current }
+  return { byId: { ...byId, [pinned.id]: pinned }, ids: [...ids, pinned.id], pinnedDiary: pinned }
+}

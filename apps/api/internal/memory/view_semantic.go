@@ -59,9 +59,9 @@ type ViewSemanticRepo interface {
 // ViewSemanticTx is the narrow transaction surface the paid gist view consumes: the per-user
 // graph lock (so concurrent duplicates of one operation serialize), the gist read, and the
 // paid-action receipt store. It deliberately exposes NO write beyond the receipt — no anchors, no
-// clock, no provenance — so a view cannot express a rewrite. The concrete (memory/pg) also carries
-// the DB() handle the economy seam binds the Twinkle spend onto, so the debit joins this tx.
+// clock, no provenance — so a view cannot express a rewrite. Economy effects join this transaction.
 type ViewSemanticTx interface {
+	EconomyTx
 	GraphMutationLocker
 	GistReader
 	PaidActionReceiptStore
@@ -111,7 +111,7 @@ type ViewSemanticResult struct {
 // concrete, not a gist), so stage k's text is SemanticStages[k-1]; the depth served is the risen
 // semantic_stage clamped to the DERIVED stage-array length, never a declared count and never a
 // client's number. The load precedes the spend so a not-found or unrisen memory never charges.
-func (s *Service) ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (ViewSemanticResult, error) {
+func (s *CommandService) ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (ViewSemanticResult, error) {
 	if scope.UserID() == "" {
 		return ViewSemanticResult{}, ErrScopeRequired
 	}

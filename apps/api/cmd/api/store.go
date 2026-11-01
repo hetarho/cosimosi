@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	dbgen "github.com/cosimosi/api/db/gen"
 	storev1connect "github.com/cosimosi/api/internal/gen/cosimosi/store/v1/storev1connect"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
@@ -14,7 +13,6 @@ import (
 	storepg "github.com/cosimosi/api/internal/store/pg"
 	storerpc "github.com/cosimosi/api/internal/store/rpc"
 	"github.com/cosimosi/api/internal/twinkle"
-	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 // Store wiring (ARCH-8). The context imports nothing and nothing imports it: its two
@@ -30,7 +28,7 @@ func newStoreService(
 	twinkleService *twinkle.Service,
 	achievements store.AchievementRecorder,
 ) (*store.Service, error) {
-	repo := storepg.NewStore(pool.PgxPool())
+	repo := bindStoreTransactions(storepg.NewStore(pool.PgxPool()), twinkleService)
 	return store.NewService(store.ServiceDeps{
 		Ownerships: repo,
 		Selections: repo,
@@ -56,23 +54,10 @@ func (g storeSpendGate) CheckAndSpend(
 	tx store.EconomyTx,
 	spend store.PurchaseSpend,
 ) error {
-	ledger, err := decorateLedger(tx)
-	if err != nil {
-		return err
+	if tx == nil {
+		return errDecorateTxUnusable
 	}
-	intent := twinkle.PurchaseSpendIntent(spend.Amount, spend.DedupKey)
-	if err := g.service.CheckAndSpend(ctx, scope, ledger, intent); err != nil {
-		return storeSpendRefusal(err)
-	}
-	return nil
-}
-
-func decorateLedger(tx store.EconomyTx) (twinkle.LedgerStore, error) {
-	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
-	if !ok || carrier.DB() == nil {
-		return nil, errDecorateTxUnusable
-	}
-	return twinklepg.NewStore(carrier.DB()), nil
+	return tx.SpendPurchase(ctx, scope, spend)
 }
 
 // storeSpendRefusal translates the economy's denial into the store context's vocabulary, carrying its

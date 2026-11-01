@@ -20,6 +20,7 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
@@ -64,7 +65,7 @@ type withdrawalComposition struct {
 }
 
 func newWithdrawalComposition(
-	jobStore memory.UserJobStore,
+	jobStore jobqueue.UserJobStore,
 	memoryPurgeRepo memory.UserPurgeRepo,
 	twinklePurgeRepo twinkle.UserPurgeRepo,
 	// The store and achievement legs arrive as BUILT purgers rather than repos: each purges its two
@@ -73,7 +74,7 @@ func newWithdrawalComposition(
 	// third same-typed positional parameter threaded through every caller and test.
 	builtPurgers ...account.UserDataPurger,
 ) (withdrawalComposition, error) {
-	userJobs, err := memory.NewUserJobService(jobStore, nil, nil)
+	userJobs, err := account.NewWithdrawalJobScheduler(jobStore, nil, nil)
 	if err != nil {
 		return withdrawalComposition{}, err
 	}
@@ -160,7 +161,9 @@ func requireProductionCredentialDirectory(directory accountServiceDirectory) err
 // accountInviteResolver translates the account context's eligible bound invite into Twinkle's
 // consumer-owned signup identity. No policy lives in this adapter.
 type accountInviteResolver struct {
-	service *account.Service
+	service interface {
+		ResolveInviteSettlement(context.Context, account.InviteSettlementRequest) (account.SettledInvite, error)
+	}
 }
 
 func (r accountInviteResolver) Resolve(

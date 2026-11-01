@@ -16,18 +16,18 @@
 
 ## ssot
 | id | rev | tasked | pending | [?] |
-|---|---|---|---|---|
-| ARCH | 1 | 1 | - | 0 |
+| ------ | --- | ------ | ------- | --- |
+| ARCH   | 2   | 2      | -       | 0   |
 | PROD | 1 | 1 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
 | UL | 1 | 1 | - | 0 |
-| MEM | 1 | 1 | - | 0 |
+| MEM    | 2   | 2      | -       | 0   |
 | ENC | 1 | 1 | - | 0 |
 | LINK | 1 | 1 | - | 0 |
 | WRITE | 1 | 1 | - | 0 |
 | TIME | 1 | 1 | - | 0 |
-| RECALL | 1 | 1 | - | 1 |
+| RECALL | 2   | 2      | -       | 1   |
 | FORGET | 1 | 1 | - | 0 |
 | CONSOL | 1 | 1 | - | 0 |
 | MOOD | 1 | 1 | - | 0 |
@@ -36,23 +36,25 @@
 | DIARY | 1 | 1 | - | 0 |
 | SOCIAL | 1 | 1 | - | 0 |
 | TWINK | 1 | 1 | - | 0 |
-| ACH | 1 | 1 | - | 0 |
+| ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 1 | 1 | - | 0 |
 | ONB | 1 | 1 | - | 1 |
-| VIS | 1 | 1 | - | 0 |
-| ACCT | 1 | 1 | - | 1 |
+| VIS    | 2   | 2      | -       | 0   |
+| ACCT   | 2   | 2      | -       | 1   |
 | AUTH | 1 | 1 | - | 0 |
 | CLIENT | 1 | 1 | - | 0 |
 | UI | 1 | 1 | - | 2 |
-| ERR | 1 | 1 | - | 0 |
+| ERR | 2 | 2 | - | 0 |
 | OBS | 1 | 1 | - | 0 |
 | AI | 2 | 2 | - | 1 |
 | ADMIN | 2 | 2 | - | 0 |
 
 ## review
 | id | st |
-|---|---|
+| ------------------------------------- | ---------------- |
+| all-261102                            | converted@261102 |
+| architecture-261102                   | converted@261102 |
 | frontend-rendering-experience-260726 | open@260726 |
 | phase-1-critical-readiness-260629 | converted@260629 |
 | phase-1-foundation-runtime-260629 | converted@260629 |
@@ -71,13 +73,20 @@
 
 ## tasks
 | id | title | ssot | dep | st |
-|---|---|---|---|---|
+| ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | - | todo |
 
 ## next
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2)
+- T166–T180 are archived; compatible protocol/window and device follow-ups are recorded in reports/261102-refactor.md
 
 ## log
+- 261102 T166–T180 done: shared frontend capabilities, owned lifetimes, enforced boundaries, typed atomic backend effects, unlocked provider comparison, bounded graph/export persistence, producer-owned jobs and isolated DB tests
 - 261102 legacy spec migration done: 32 SSOTs in ssot/, 164 done tasks + T165 in tasks/, 15 code reviews in review/; legacy docs removed (FORMAT maps legacy [<L>n] and ARCHITECTURE §n citations)
+- 261102 user adopted both reviews; T166–T180 created, implementation and main push authorized; preserve unrelated migration/AI work
+- 261102 review-code architecture-261102 deep review and integrated migration proposal complete; 12 proposals with FSD ownership/backend testability evidence await triage
+- 261102 review-code architecture-261102 start; deeper FSD/backend cohesion and testability audit
+- 261102 review-code all-261102 review and phased refactor proposal complete; 16 findings await triage
+- 261102 review-code all-261102 start
 - 261102 migrate legacy spec/ (PRD · plan · policy · tech · jobs · changes · code-review) into ssot/ · tasks/ · review/

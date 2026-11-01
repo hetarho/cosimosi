@@ -1,76 +1,91 @@
-import { setup } from 'xstate'
+import { assign, setup } from 'xstate'
+import type { PaidActionAttempt } from './paid-action-session.ts'
 
-// The recall (회고하기) flow control-state (§3.2): which phase the summon-and-rewrite flow is in.
-// Context is empty — the recalled memory id, the rewrite text, and the result all live in the
-// Zustand store; the machine only sequences the phases. `confirmingSync` is entered only when the
-// clock is behind today (the OPEN event carries that decision as a guard input, [R1a][T2]);
-// `reconsolidating` is the loading phase covering the server-side LLM compare + atomic recall.
-export type RecallFlowPhase = 'idle' | 'confirmingSync' | 'rewriting' | 'reconsolidating' | 'result'
-
+export type RecallFlowPhase =
+  'idle' | 'confirmingSync' | 'quoting' | 'rewriting' | 'reconsolidating' | 'result'
+export interface RecallFlowContext {
+  attempt: PaidActionAttempt | null
+  consented: boolean
+}
 export type RecallFlowEvent =
-  | { type: 'OPEN'; needsSync: boolean }
+  | { type: 'OPEN'; needsSync: boolean; attempt?: PaidActionAttempt }
   | { type: 'ACCEPT' }
+  | { type: 'PROCEED' }
   | { type: 'REJECT' }
   | { type: 'RECALL' }
   | { type: 'DONE' }
   | { type: 'ERROR' }
-  | { type: 'CONSENT_REQUIRED' }
+  | { type: 'REQUOTE'; attempt?: PaidActionAttempt }
+  | { type: 'CONSENT_REQUIRED'; attempt?: PaidActionAttempt }
   | { type: 'SESSION_INVALIDATED' }
   | { type: 'CLOSE' }
   | { type: 'RESET' }
 
+// Interaction phase and intent identity have one owner. Text/results remain in the draft store.
 export const recallFlowMachine = setup({
-  types: {
-    events: {} as RecallFlowEvent,
-  },
-  guards: {
-    // The clock is behind today → consent is required before the recall's server-side sync ([R1a]).
-    needsSync: ({ event }) => event.type === 'OPEN' && event.needsSync,
+  types: { events: {} as RecallFlowEvent, context: {} as RecallFlowContext },
+  guards: { needsSync: ({ event }) => event.type === 'OPEN' && event.needsSync },
+  actions: {
+    start: assign(({ event }) => ({
+      attempt: event.type === 'OPEN' ? (event.attempt ?? null) : null,
+      consented: false,
+    })),
+    consent: assign({ consented: true }),
+    reset: assign({ attempt: null, consented: false }),
+    retry: assign(({ context, event }) => ({
+      attempt: 'attempt' in event ? (event.attempt ?? context.attempt) : context.attempt,
+    })),
   },
 }).createMachine({
   id: 'recallFlow',
   initial: 'idle',
+  context: { attempt: null, consented: false },
   states: {
     idle: {
       on: {
-        OPEN: [{ target: 'confirmingSync', guard: 'needsSync' }, { target: 'rewriting' }],
+        OPEN: [
+          { target: 'confirmingSync', guard: 'needsSync', actions: 'start' },
+          { target: 'quoting', actions: 'start' },
+        ],
       },
     },
-    // The reusable sync-consent modal ([T2] case 2): 예 → rewrite, 아니오 → cancel with the clock
-    // unmoved (the recall's sync only fires server-side on the later RECALL, never here).
     confirmingSync: {
       on: {
-        ACCEPT: 'rewriting',
-        REJECT: 'idle',
-        CLOSE: 'idle',
-        SESSION_INVALIDATED: 'idle',
+        ACCEPT: { target: 'quoting', actions: 'consent' },
+        REJECT: { target: 'idle', actions: 'reset' },
+        CLOSE: { target: 'idle', actions: 'reset' },
+        SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
+      },
+    },
+    quoting: {
+      on: {
+        PROCEED: 'rewriting',
+        CLOSE: { target: 'idle', actions: 'reset' },
+        SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },
     },
     rewriting: {
       on: {
         RECALL: 'reconsolidating',
-        CLOSE: 'idle',
-        SESSION_INVALIDATED: 'idle',
+        CLOSE: { target: 'idle', actions: 'reset' },
+        SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },
     },
-    // "떠올리는 중" — the single synchronous Recall covers sync + compare + recall atomically.
-    // Non-dismissible (A4): no CLOSE — an in-flight paid action cannot be escaped/backdropped/X'd,
-    // so a late completion can never mutate a closed/reopened flow. ERROR returns to a retriable
-    // rewriting with the rewrite text intact (the store keeps it, A8); CONSENT_REQUIRED is the
-    // pre-spend consent-race backstop — the server refused an unconsented sync, so re-show consent.
+    // Ambiguous failure retains the paid intent and accepted quote; a known refusal re-quotes.
     reconsolidating: {
       on: {
         DONE: 'result',
         ERROR: 'rewriting',
-        CONSENT_REQUIRED: 'confirmingSync',
-        SESSION_INVALIDATED: 'idle',
+        REQUOTE: { target: 'quoting', actions: 'retry' },
+        CONSENT_REQUIRED: { target: 'confirmingSync', actions: 'retry' },
+        SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },
     },
     result: {
       on: {
-        RESET: 'idle',
-        CLOSE: 'idle',
-        SESSION_INVALIDATED: 'idle',
+        RESET: { target: 'idle', actions: 'reset' },
+        CLOSE: { target: 'idle', actions: 'reset' },
+        SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },
     },
   },

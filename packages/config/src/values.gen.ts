@@ -220,6 +220,8 @@ export const VALUES = {
     tickAlphaDecay: 0.022,
     velocityDamping: 0.62,
     minAlpha: 0.02,
+    settleEpsilon: 0.0001,
+    settleTicks: 30,
     hippocampusZMin: -16,
     hippocampusZMax: 16,
     zCenterGain: 1.5,
@@ -228,6 +230,7 @@ export const VALUES = {
     seed: 190019,
   },
   diaryReader: {
+    exportPageSize: 128,
     pageSize: 20,
     searchMinQueryLength: 2,
     calendarMonthPageSize: 31,
@@ -262,5 +265,8 @@ export const VALUES = {
   landing: {
     walkthroughFadeSpanDays: 150,
     walkthroughMirrorRecalls: 5,
+  },
+  persistence: {
+    graphWriteBatchSize: 256,
   },
 } as const

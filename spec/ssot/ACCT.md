@@ -1,5 +1,6 @@
 # ACCT account & access
-> r1 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
+
+> r2 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
 
 ## decisions
 - ACCT-1 [o] only an authenticated user reaches their own universe, and every product row is isolated per user by `user_id` →!AUTH
@@ -46,7 +47,7 @@
   - the token →!ACCT-17, binding →=ACCT-18, capture →=ACCT-34, the reward condition →=ACCT-20
 - ACCT-9 [o] `/me` is the one signed-in account home with exactly five tabs in this order, and account is not one of them ← identity, ways in, sign-out and withdrawal are facts about the person the profile is about
   | tab id | holds | owner |
-  |---|---|---|
+  | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
   | `profile` | nickname, language, time zone, the invite link, the onboarding replay; at the foot, behind a separating rule: identity, linked providers, sign-out, withdrawal | ACCT; replay row →=ONB-5 |
   | `mood-colors` | the per-mood colour editor for the 13 moods | →=MOOD |
   | `stardust` | both balances and the chronological ledger | →=TWINK-7 |
@@ -91,7 +92,7 @@
   - the `/me` language row is the only locale write →=ACCT-37
 - ACCT-16 [o] the account tables are product-owned, scoped by `user_id`, and have no foreign key to `users`
   | table | key | invariants |
-  |---|---|---|
+  | ---------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
   | `users` | `user_id` | no email column; `deleted_at` written only by withdrawal and restore |
   | `auth_providers` | `(user_id, provider)` | `provider IN ('GOOGLE','PASSWORD')` |
   | `invites` | `id`; `user_id` is the inviter | `token` unique; `invitee_user_id` unique; `invitee_user_id <> user_id`; `invitee_user_id` and `bound_at` NOT NULL; `rewarded_at` null or ≥ `bound_at`; no `deleted_at` |
@@ -121,7 +122,7 @@
   - the response carries nickname, time zone, locale and `invite_bound`
 - ACCT-20 [o] a valid signup, the condition for paying both invite legs, is judged at settlement and needs all four conditions, checked in this order →~TWINK-6 ← each fake account must cost an LLM encode round trip
   | # | condition | when it fails |
-  |---|---|---|
+  | --- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
   | 1 | a bound, unrewarded invite whose inviter is distinct and live | permanent; one indexed read |
   | 2 | the invitee launched an `EpisodicMemory` | cannot fail: the only caller is the launch hook |
   | 3 | the inviter's rewarded invites are fewer than `twinkle.invite_reward_max_per_inviter` (lifetime) | permanent |
@@ -144,7 +145,7 @@
   - a job left by a failed mark is inert, because every sweep re-reads the marker
   - a retry returns the original `withdrawn_at` and `restore_deadline_at` (RFC3339 UTC); the window never moves
   - no withdrawal ledger, group table or per-effect rows; the user's pending enrichment jobs keep running, so restore returns the account intact
-  - the job stays memory-owned: `memory.WithdrawalSweepJobIdentity(scope)` alone builds the `withdrawal:<userID>` identity, and the scheduling spec has no payload or target field (the target is the user) →=MEM
+  - account owns the job: `account.WithdrawalSweepJobIdentity(scope)` alone builds the `withdrawal:<userID>` identity, and the scheduling spec has no payload or target field (the target is the user) →=ARCH-9
 - ACCT-23 [o] a withdrawn scope may call only `RestoreAccount`: the platform admission gate refuses every other procedure, `SignUp` included, before any context handler runs →!ACCT-1
   - refusal `PLATFORM_ACCOUNT_WITHDRAWN` (PermissionDenied, never Unauthenticated, which would drive session refresh) with metadata `withdrawn_at` and `restore_deadline_at`
   - `platform.WithdrawnScopeInterceptor` runs directly after authentication, consumes only `AccountStatusReader`, and exempts exactly `AccountServiceRestoreAccountProcedure`
@@ -178,7 +179,7 @@
   - production refuses to compose without the scheduler, the credential directory and at least one named, unique purge leg
 - ACCT-28 [o] the sweep removes only the withdrawn user's own rows
   | rows | during the window | at the sweep |
-  |---|---|---|
+  | -------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
   | memory aggregate, diaries, `release_*`, `universe_state` | untouched, unreachable | deleted |
   | Twinkle balance and ledger | untouched | deleted |
   | ornament ownerships and selections | untouched, unreachable | deleted →=DECOR |
@@ -209,7 +210,7 @@
   - Google has no separate sign-up: `signInWithGoogle` creates the Supabase user through the fixed, allowlisted redirect
 - ACCT-32 [o] an app-layer profile gate reads `GetProfile` before any product route, palette read or universe read mounts, and resolves to exactly one arm →!ACCT-13
   | read | renders |
-  |---|---|
+  | ------------------------------- | -------------------------------------- |
   | pending | a hold |
   | profile absent | the nickname step |
   | present, signup handoff waiting | the first colour screen →=ACCT-33 |
@@ -275,7 +276,7 @@
   - the app slices `features/{sign-up,account-profile,account-settings,invite-link,withdraw-account,export-diaries}` hold only `ui` (and the export sink) →=ARCH
 - ACCT-43 [o] `cosimosi.account.v1.AccountService` is the whole account wire surface, and no request names a user
   | RPC | kind | rule |
-  |---|---|---|
+  | ---------------------------------------------------- | --------------- | --------- |
   | `SignUp` | mutation | →=ACCT-19 |
   | `GetProfile` | read | →=ACCT-13 |
   | `UpdateProfile` | mutation | →=ACCT-14 |
@@ -288,7 +289,7 @@
   - absent on purpose: `AcceptInvite`, any unlink, `PurgeAccount`, a withdrawal-status read, a withdrawal reason or exit-survey field, and any profile field for a mood, coordinate, strength or memory id
 - ACCT-44 [o] account refusal reasons, mirrored in `packages/errors/src/core.ts` →=ERR
   | reason | code | when |
-  |---|---|---|
+  | -------------------------------------------------------------------------------- | ------------------ | -------------------------------------------- |
   | `PLATFORM_ACCOUNT_WITHDRAWN` | PermissionDenied | a withdrawn scope calls anything but restore |
   | `ACCOUNT_SIGNUP_REQUIRED` | FailedPrecondition | no profile yet |
   | `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID` | InvalidArgument | a profile field is refused |
@@ -311,4 +312,6 @@
 - reward numbers are Twinkle keys read here: `twinkle.earn_signup_bonus`, `twinkle.invite_reward_max_per_inviter`, `twinkle.earn_invite_inviter`, `twinkle.earn_invite_invitee` →=TWINK
 
 ## chg
+
+- r2 261102 ACCT-22✎ memory-owned withdrawal scheduling→account-owned identity and handler over the infrastructure queue; persisted kind, dedup key and target unchanged
 - r1 261102 initial

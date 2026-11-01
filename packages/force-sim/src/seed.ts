@@ -60,67 +60,69 @@ export function seedInitialPositions(
   return positions
 }
 
+interface CentroidTarget {
+  readonly offset: number
+  readonly links: readonly { offset: number; weight: number }[]
+  readonly totalWeight: number
+  readonly fallback: ForceSimCoordinate
+}
+
+export function createCentroidModel(
+  graph: ForceSimGraph,
+  nodeIndex: ForceSimNodeIndex,
+  values: ForceSimValues,
+): readonly CentroidTarget[] {
+  const byMemory = new Map<ForceSimNodeId, { offset: number; weight: number }[]>()
+  for (const activation of graph.activations) {
+    const neuron = nodeIndex.neurons[activation.neuronId]
+    if (
+      neuron === undefined ||
+      nodeIndex.episodicMemories[activation.episodicMemoryId] === undefined
+    )
+      continue
+    const links = byMemory.get(activation.episodicMemoryId) ?? []
+    links.push({ offset: forceSimCoordinateOffset(neuron), weight: Math.max(0, activation.weight) })
+    byMemory.set(activation.episodicMemoryId, links)
+  }
+  return graph.episodicMemories.flatMap((memory): CentroidTarget[] => {
+    const index = nodeIndex.episodicMemories[memory.id]
+    if (index === undefined) return []
+    const links = byMemory.get(memory.id) ?? []
+    return [
+      {
+        offset: forceSimCoordinateOffset(index),
+        links,
+        totalWeight: links.reduce((total, link) => total + link.weight, 0),
+        fallback: memory.seedHint
+          ? sanitizeCoordinate(memory.seedHint, values)
+          : seededClusterCenter(values, rngFor(values, `fallback:${memory.id}`)),
+      },
+    ]
+  })
+}
+
 export function placeEpisodicMemoriesAtCentroids(
   graph: ForceSimGraph,
   nodeIndex: ForceSimNodeIndex,
   values: ForceSimValues,
   positions: Float64Array,
+  model = createCentroidModel(graph, nodeIndex, values),
 ): void {
-  const activationsByMemory = new Map<ForceSimNodeId, { neuronIndex: number; weight: number }[]>()
-
-  for (const activation of graph.activations) {
-    const episodicMemoryIndex = nodeIndex.episodicMemories[activation.episodicMemoryId]
-    const neuronIndex = nodeIndex.neurons[activation.neuronId]
-    if (episodicMemoryIndex === undefined || neuronIndex === undefined) continue
-
-    const links = activationsByMemory.get(activation.episodicMemoryId) ?? []
-    links.push({ neuronIndex, weight: Math.max(0, activation.weight) })
-    activationsByMemory.set(activation.episodicMemoryId, links)
-  }
-
-  for (const episodicMemory of graph.episodicMemories) {
-    const index = nodeIndex.episodicMemories[episodicMemory.id]
-    if (index === undefined) continue
-
-    const links = activationsByMemory.get(episodicMemory.id)
-    if (!links?.length) {
-      const fallback = episodicMemory.seedHint
-        ? sanitizeCoordinate(episodicMemory.seedHint, values)
-        : seededClusterCenter(values, rngFor(values, `fallback:${episodicMemory.id}`))
-      writePosition(positions, index, fallback, values)
-      continue
+  for (const target of model) {
+    let x = 0,
+      y = 0,
+      z = 0
+    for (const link of target.links) {
+      if (link.weight === 0) continue
+      x += positions[link.offset] * link.weight
+      y += positions[link.offset + 1] * link.weight
+      z += positions[link.offset + 2] * link.weight
     }
-
-    let totalWeight = 0
-    let x = 0
-    let y = 0
-    let z = 0
-    for (const link of links) {
-      const weight = link.weight
-      if (weight === 0) continue
-      const offset = forceSimCoordinateOffset(link.neuronIndex)
-      x += positions[offset] * weight
-      y += positions[offset + 1] * weight
-      z += positions[offset + 2] * weight
-      totalWeight += weight
-    }
-
-    if (totalWeight === 0) {
-      const fallback = episodicMemory.seedHint
-        ? sanitizeCoordinate(episodicMemory.seedHint, values)
-        : seededClusterCenter(values, rngFor(values, `fallback:${episodicMemory.id}`))
-      writePosition(positions, index, fallback, values)
-      continue
-    }
-
-    writePosition(
-      positions,
-      index,
-      {
-        x: x / totalWeight,
-        y: y / totalWeight,
-        z: z / totalWeight,
-      },
+    const { offset, totalWeight, fallback } = target
+    positions[offset] = totalWeight === 0 ? fallback.x : finiteOrZero(x / totalWeight)
+    positions[offset + 1] = totalWeight === 0 ? fallback.y : finiteOrZero(y / totalWeight)
+    positions[offset + 2] = clampToHippocampusZ(
+      totalWeight === 0 ? fallback.z : finiteOrZero(z / totalWeight),
       values,
     )
   }

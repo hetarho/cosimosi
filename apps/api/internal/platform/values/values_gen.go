@@ -329,6 +329,8 @@ const (
 	ForceSimTickAlphaDecay  = 0.022
 	ForceSimVelocityDamping = 0.62
 	ForceSimMinAlpha        = 0.02
+	ForceSimSettleEpsilon   = 0.0001
+	ForceSimSettleTicks     = 30
 	ForceSimHippocampusZMin = -16
 	ForceSimHippocampusZMax = 16
 	ForceSimZCenterGain     = 1.5
@@ -339,6 +341,7 @@ const (
 
 // diary_reader
 const (
+	DiaryReaderExportPageSize             = 128
 	DiaryReaderPageSize                   = 20
 	DiaryReaderSearchMinQueryLength       = 2
 	DiaryReaderCalendarMonthPageSize      = 31
@@ -383,4 +386,9 @@ const (
 const (
 	LandingWalkthroughFadeSpanDays  = 150
 	LandingWalkthroughMirrorRecalls = 5
+)
+
+// persistence
+const (
+	PersistenceGraphWriteBatchSize = 256
 )

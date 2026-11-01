@@ -130,11 +130,12 @@ func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope
 		dates[activation.MemoryID] = activation.MemoryDate
 	}
 
+	synapses := make([]Synapse, 0, len(pairs))
 	for key, pair := range pairs {
 		base, found := baseByPair[key]
 		near := temporalNear(launchedMemoryIDs, memoryDatesByNeuron[pair.a], memoryDatesByNeuron[pair.b])
 		strength := computeLinkStrength(base, found, pair.occurrences, near)
-		if _, err := tx.UpsertSynapse(ctx, scope, Synapse{
+		synapses = append(synapses, Synapse{
 			ID:                        l.newID(),
 			NeuronAID:                 pair.a,
 			NeuronBID:                 pair.b,
@@ -142,11 +143,9 @@ func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope
 			CoActivationCount:         pair.occurrences,
 			LastActivatedUniverseTime: pair.latestDate,
 			CreatedAt:                 l.now(),
-		}); err != nil {
-			return err
-		}
+		})
 	}
-	return nil
+	return tx.UpsertSynapses(ctx, scope, synapses)
 }
 
 type pairKey struct {

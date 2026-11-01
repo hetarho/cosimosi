@@ -4,11 +4,11 @@ import { Badge, Button, defaultThemeKey, themes, tokens } from '@cosimosi/ui'
 
 import { useScreenInsets } from '../../../shared/native/index.ts'
 
-import { FoundationsPanel } from '../lib/foundations-panel.tsx'
-import { PatternsPanel } from '../lib/patterns-panel.tsx'
-import { PrimitivesPanel } from '../lib/primitives-panel.tsx'
+import { FoundationsPanel } from './foundations-panel.tsx'
+import { PatternsPanel } from './patterns-panel.tsx'
+import { PrimitivesPanel } from './primitives-panel.tsx'
 import { T } from '../lib/showcase-copy.ts'
-import { UniversePanel } from '../lib/universe-panel.tsx'
+import { UniversePanel } from './universe-panel.tsx'
 
 /**
  * The native design showcase — the mobile half of the surface a design review reads.

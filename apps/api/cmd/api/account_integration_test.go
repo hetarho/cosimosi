@@ -106,7 +106,7 @@ func TestAPIWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
-	identity, err := memory.WithdrawalSweepJobIdentity(scope)
+	identity, err := account.WithdrawalSweepJobIdentity(scope)
 	if err != nil {
 		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
 	}

@@ -62,6 +62,7 @@ function reasonMessage(reason: string): string | undefined {
     case ERROR_REASONS.memoryViewSemanticMemoryNotFound:
     case ERROR_REASONS.memoryReleaseMemoryNotFound:
       return m.error_memory_target_not_found()
+    case ERROR_REASONS.memoryRecallSourceChanged:
     case ERROR_REASONS.memoryRecallMemoryUnavailable:
     case ERROR_REASONS.memoryReleaseMemoryUnavailable:
       return m.error_memory_target_unavailable()

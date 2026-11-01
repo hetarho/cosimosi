@@ -37,22 +37,49 @@ func (f *fakeExportReader) LiveMemoriesForExport(_ context.Context, scope platfo
 	return f.memories, nil
 }
 
+func (f *fakeExportReader) WalkExport(ctx context.Context, scope platform.UserScope, visit func(ExportDiary, []ExportMemory) error) error {
+	diaries, err := f.DiariesForExport(ctx, scope)
+	if err != nil {
+		return err
+	}
+	memories, err := f.LiveMemoriesForExport(ctx, scope)
+	if err != nil {
+		return err
+	}
+	for _, diary := range diaries {
+		var members []ExportMemory
+		for _, member := range memories {
+			if member.DiaryID == diary.ID {
+				members = append(members, member)
+			}
+		}
+		if err := visit(diary, members); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func exportDate(day int) time.Time {
 	return time.Date(2026, 6, day, 0, 0, 0, 0, time.UTC)
 }
 
 func TestExportCSVKeepsTheDiaryBodyByteVerbatim(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	reader := &fakeExportReader{}
+	service, err := NewExportService(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	// A body with the three characters CSV must escape: a comma, a "quote", and a
 	// newline.
 	body := "line one, with a comma\nline two with \"quotes\""
-	fixture.exports.diaries = []ExportDiary{{ID: "d1", Body: body, DiaryDate: exportDate(1)}}
-	fixture.exports.memories = []ExportMemory{
+	reader.diaries = []ExportDiary{{ID: "d1", Body: body, DiaryDate: exportDate(1)}}
+	reader.memories = []ExportMemory{
 		{DiaryID: "d1", Name: "the market", Mood: MoodJoy, CreatedUniverseTime: exportDate(1)},
 	}
 
-	result, err := fixture.service.Export(context.Background(), testScope(t), ExportFormatCSV)
+	result, err := service.Export(context.Background(), testScope(t), ExportFormatCSV)
 	if err != nil {
 		t.Fatalf("Export CSV failed: %v", err)
 	}
@@ -84,13 +111,17 @@ func TestExportCSVKeepsTheDiaryBodyByteVerbatim(t *testing.T) {
 
 func TestExportMarkdownIsDatedSectionsWithVerbatimBodyAndMemoryList(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
-	fixture.exports.diaries = []ExportDiary{{ID: "d1", Body: "a quiet morning", DiaryDate: exportDate(3)}}
-	fixture.exports.memories = []ExportMemory{
+	reader := &fakeExportReader{}
+	service, err := NewExportService(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader.diaries = []ExportDiary{{ID: "d1", Body: "a quiet morning", DiaryDate: exportDate(3)}}
+	reader.memories = []ExportMemory{
 		{DiaryID: "d1", Name: "the coffee", Mood: MoodCalm, CreatedUniverseTime: exportDate(3)},
 	}
 
-	result, err := fixture.service.Export(context.Background(), testScope(t), ExportFormatMD)
+	result, err := service.Export(context.Background(), testScope(t), ExportFormatMD)
 	if err != nil {
 		t.Fatalf("Export MD failed: %v", err)
 	}
@@ -111,12 +142,16 @@ func TestExportMarkdownIsDatedSectionsWithVerbatimBodyAndMemoryList(t *testing.T
 
 func TestExportKeepsAStarlessRetainedDiary(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
+	reader := &fakeExportReader{}
+	service, err := NewExportService(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	// A8: a saved-but-past-dated diary whose memory was never launched (no live memory) is still exported.
-	fixture.exports.diaries = []ExportDiary{{ID: "d1", Body: "past-dated entry", DiaryDate: exportDate(5)}}
-	fixture.exports.memories = nil
+	reader.diaries = []ExportDiary{{ID: "d1", Body: "past-dated entry", DiaryDate: exportDate(5)}}
+	reader.memories = nil
 
-	csvResult, err := fixture.service.Export(context.Background(), testScope(t), ExportFormatCSV)
+	csvResult, err := service.Export(context.Background(), testScope(t), ExportFormatCSV)
 	if err != nil {
 		t.Fatalf("Export CSV failed: %v", err)
 	}
@@ -127,7 +162,7 @@ func TestExportKeepsAStarlessRetainedDiary(t *testing.T) {
 	if len(records) != 2 || records[1][1] != "past-dated entry" || records[1][2] != "" {
 		t.Fatalf("rows = %v, want the memory-less diary as one row with empty memory columns", records)
 	}
-	mdResult, err := fixture.service.Export(context.Background(), testScope(t), ExportFormatMD)
+	mdResult, err := service.Export(context.Background(), testScope(t), ExportFormatMD)
 	if err != nil {
 		t.Fatalf("Export MD failed: %v", err)
 	}
@@ -138,21 +173,25 @@ func TestExportKeepsAStarlessRetainedDiary(t *testing.T) {
 
 func TestExportValidatesFormatAndScope(t *testing.T) {
 	t.Parallel()
-	fixture := newFixture(t)
-	fixture.exports.diaries = []ExportDiary{{ID: "d1", Body: "body", DiaryDate: exportDate(1)}}
+	reader := &fakeExportReader{}
+	service, err := NewExportService(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader.diaries = []ExportDiary{{ID: "d1", Body: "body", DiaryDate: exportDate(1)}}
 
-	if _, err := fixture.service.Export(context.Background(), testScope(t), ExportFormat("")); !errors.Is(err, ErrExportFormatRequired) {
+	if _, err := service.Export(context.Background(), testScope(t), ExportFormat("")); !errors.Is(err, ErrExportFormatRequired) {
 		t.Fatalf("unspecified format err = %v, want ErrExportFormatRequired", err)
 	}
-	if _, err := fixture.service.Export(context.Background(), testScope(t), ExportFormat("pdf")); !errors.Is(err, ErrExportFormatRequired) {
+	if _, err := service.Export(context.Background(), testScope(t), ExportFormat("pdf")); !errors.Is(err, ErrExportFormatRequired) {
 		t.Fatalf("unknown format err = %v, want ErrExportFormatRequired", err)
 	}
-	if _, err := fixture.service.Export(context.Background(), platform.UserScope{}, ExportFormatCSV); !errors.Is(err, ErrScopeRequired) {
+	if _, err := service.Export(context.Background(), platform.UserScope{}, ExportFormatCSV); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("empty scope err = %v, want ErrScopeRequired", err)
 	}
 	// A6: an invalid request never reaches the reader.
-	if fixture.exports.diaryCalls != 0 {
-		t.Fatalf("diary reads = %d, want 0 on invalid input", fixture.exports.diaryCalls)
+	if reader.diaryCalls != 0 {
+		t.Fatalf("diary reads = %d, want 0 on invalid input", reader.diaryCalls)
 	}
 }
 

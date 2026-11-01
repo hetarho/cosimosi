@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 var (
@@ -30,7 +31,7 @@ func NewWithdrawalPurger(repo UserPurgeRepo) WithdrawalPurger {
 func (WithdrawalPurger) PurgeName() string { return "memory" }
 
 func (p WithdrawalPurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	jobID, _ := WithdrawalSweepJobID(ctx)
+	jobID, _ := jobqueue.CurrentJobID(ctx)
 	return PurgeUser(ctx, p.repo, scope, jobID)
 }
 

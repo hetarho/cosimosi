@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -19,11 +18,6 @@ import (
 // homeostatically Downscales the user's synapses (SHY, [C4][I9]), and enqueues the interval's
 // heavy work on the worker ([C7]). There is no cron and no RPC — the advance hook is the sole
 // trigger, and consolidation is never a user action ([T4]).
-
-// ErrConsolidateTxRequired is returned when the advance transaction handed to the hook cannot
-// be upgraded to the consolidation write surface — a mis-wired composition root, never a
-// runtime condition (the pg transaction store implements ConsolidateTx).
-var ErrConsolidateTxRequired = errors.New("advance progression tx does not support consolidation")
 
 // StageAdvance is one memory's gist rise over the advance interval: the risen stage and the
 // consumed timer anchor. Persisting the consumed anchor is what makes Consolidate convergent —
@@ -56,14 +50,12 @@ type SynapseStrength struct {
 	Strength  float64
 }
 
-// ConsolidateTx is the consolidation write surface, consumer-owned here (§2.4). The advance
-// hook hands the handler the universe-clock seam's ProgressionTx — that port signature is unchanged — and the
-// handler upgrades it to this surface via a type assertion; the pg transaction store
-// implements both, so the upgrade is a wiring fact, not a runtime gamble. Like LaunchTx and
-// RecallTx it exposes NO Diary write and NO delete of any kind, so the consolidation path
-// cannot express an [I1]/[I2] violation. Method names match the memory/pg concrete.
+// ConsolidateTx declares the consolidation writes required by the advance hook at compile time.
+// The pg transaction store implements it directly. It exposes no Diary write or deletion,
+// so consolidation cannot express an [I1]/[I2] violation.
 type ConsolidateTx interface {
-	ProgressionTx
+	UniverseClockStore
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
 	MemoryProvenanceStore
 	// ConsolidationWatermarkForUpdate returns (locked, nil = never consolidated) the
 	// universe-time this user's consolidation already processed through — the clamp
@@ -107,9 +99,8 @@ type ConsolidateTx interface {
 }
 
 // Consolidator is the concrete AdvanceProgression handler ([T4]), bound at cmd/api. It works
-// entirely through the universe-clock advance port: the signature, the launch/sync call sites, and the
-// no-op-on-held-clock guarantee belong to that seam, and this handler must never require
-// widening it (its extra write surface comes from the ConsolidateTx upgrade instead).
+// through the declared progression capability. Held clocks are a no-op, and the handler
+// requires no runtime capability assertion.
 type Consolidator struct {
 	newID func() string
 }
@@ -139,11 +130,7 @@ func (c Consolidator) OnAdvance(ctx context.Context, scope platform.UserScope, t
 	if !to.After(*from) {
 		return nil
 	}
-	consolidateTx, ok := tx.(ConsolidateTx)
-	if !ok {
-		return ErrConsolidateTxRequired
-	}
-	return c.consolidate(ctx, scope, consolidateTx, *from, to)
+	return c.consolidate(ctx, scope, tx, *from, to)
 }
 
 func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, from time.Time, to time.Time) error {

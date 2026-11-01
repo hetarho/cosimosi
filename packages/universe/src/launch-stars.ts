@@ -73,6 +73,7 @@ export function insertLaunchedMemories(
     .map((id) => store.byId[id])
     .filter((memory): memory is EpisodicMemory => Boolean(memory))
   store.setAll([...existing, ...inserted])
+  store.markPending(inserted.map((memory) => memory.id))
 }
 
 function optimisticMemory(

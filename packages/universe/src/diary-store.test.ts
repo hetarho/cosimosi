@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Diary } from '@cosimosi/memory'
 
 import { useDiaryStore } from './diary-store.ts'
+import { useDeletionTargetStore } from './deletion-target-store.ts'
 
 const diary = (id: string, memberIds: readonly string[]): Diary => ({
   id,
@@ -12,7 +13,38 @@ const diary = (id: string, memberIds: readonly string[]): Diary => ({
 })
 
 describe('useDiaryStore', () => {
-  beforeEach(() => useDiaryStore.getState().clear())
+  beforeEach(() => {
+    useDeletionTargetStore.getState().clear()
+    useDiaryStore.getState().clear()
+  })
+
+  it('hands one selected diary to deletion confirmation after both archive reads unmount', () => {
+    const store = useDiaryStore.getState()
+    store.setAll([diary('visible', [])])
+    store.replaceContributions([diary('picked-day', ['m1', 'm2'])])
+    useDeletionTargetStore.getState().openFullDelete('picked-day')
+    store.setAll([])
+    store.replaceContributions([])
+    expect(useDiaryStore.getState().ids).toEqual(['picked-day'])
+    expect(useDiaryStore.getState().byId['picked-day'].memories).toHaveLength(2)
+    useDeletionTargetStore.getState().clear()
+    expect(useDiaryStore.getState().ids).toEqual([])
+    expect(useDiaryStore.getState().pinnedDiary).toBeNull()
+  })
+
+  it('releases the handoff for another action and on an account-data reset', () => {
+    const store = useDiaryStore.getState()
+    store.setAll([diary('picked', ['m1'])])
+    useDeletionTargetStore.getState().openFullDelete('picked')
+    store.setAll([])
+    useDeletionTargetStore.getState().openLetGo('m1')
+    expect(useDiaryStore.getState().ids).toEqual([])
+    store.setAll([diary('next', ['m2'])])
+    useDeletionTargetStore.getState().openFullDelete('next')
+    store.clear()
+    expect(useDiaryStore.getState().pinnedDiary).toBeNull()
+    expect(useDiaryStore.getState().ids).toEqual([])
+  })
 
   it('keys diaries by id and preserves the arrival (reverse-chron) order', () => {
     useDiaryStore.getState().setAll([diary('d2', ['m1']), diary('d1', [])])

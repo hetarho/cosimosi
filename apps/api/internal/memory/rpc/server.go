@@ -19,13 +19,30 @@ var ErrServiceRequired = errors.New("memory rpc server requires the memory servi
 
 type Server struct {
 	service *memory.Service
+	*ExportServer
+	*PaidServer
 }
 
-func NewServer(service *memory.Service) (*Server, error) {
+func NewServer(service *memory.Service, exports ...ExportUseCase) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
-	return &Server{service: service}, nil
+	exporter := ExportUseCase(service)
+	if len(exports) > 1 {
+		return nil, ErrServiceRequired
+	}
+	if len(exports) == 1 {
+		exporter = exports[0]
+	}
+	read, err := NewExportServer(exporter)
+	if err != nil {
+		return nil, err
+	}
+	paid, err := NewPaidServer(service.CommandService)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{service: service, ExportServer: read, PaidServer: paid}, nil
 }
 
 func (s *Server) SplitDiary(ctx context.Context, req *connect.Request[memoryv1.SplitDiaryRequest]) (*connect.Response[memoryv1.SplitDiaryResponse], error) {
@@ -93,58 +110,6 @@ func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.Ge
 	return connect.NewResponse(universeResponse(facts, universeTime)), nil
 }
 
-func (s *Server) Recall(ctx context.Context, req *connect.Request[memoryv1.RecallRequest]) (*connect.Response[memoryv1.RecallResponse], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result, err := s.service.Recall(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetMemoryId(), req.Msg.GetRewriteText(), req.Msg.GetSyncConsent())
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&memoryv1.RecallResponse{
-		Reconsolidated:       result.Reconsolidated,
-		CurrentText:          result.CurrentText,
-		Seed:                 result.Seed,
-		RecallCount:          result.RecallCount,
-		EffectiveStrength:    float32(result.EffectiveStrength),
-		PreviousUniverseTime: dateValue(result.Sync.Previous),
-		UniverseTime:         result.Sync.Current.Format(time.DateOnly),
-	}), nil
-}
-
-func (s *Server) RecallDiaryStars(ctx context.Context, req *connect.Request[memoryv1.RecallDiaryStarsRequest]) (*connect.Response[memoryv1.RecallDiaryStarsResponse], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result, err := s.service.RecallDiaryStars(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetDiaryId(), req.Msg.GetSyncConsent())
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&memoryv1.RecallDiaryStarsResponse{
-		DiaryId:              result.DiaryID,
-		EpisodicMemoryIds:    result.EpisodicMemoryIDs,
-		PreviousUniverseTime: dateValue(result.Sync.Previous),
-		UniverseTime:         result.Sync.Current.Format(time.DateOnly),
-	}), nil
-}
-
-func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1.ViewSemanticRequest]) (*connect.Response[memoryv1.ViewSemanticResponse], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetEpisodicMemoryId())
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&memoryv1.ViewSemanticResponse{
-		Text:         result.Text,
-		ReachedStage: int32(result.ReachedStage),
-	}), nil
-}
-
 func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.SyncStatusRequest]) (*connect.Response[memoryv1.SyncStatusResponse], error) {
 	scope, err := userScope(ctx)
 	if err != nil {
@@ -170,26 +135,6 @@ func (s *Server) GetProvenance(ctx context.Context, req *connect.Request[memoryv
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(&memoryv1.GetProvenanceResponse{Entries: provenanceEntries(entries)}), nil
-}
-
-func (s *Server) Export(ctx context.Context, req *connect.Request[memoryv1.ExportRequest]) (*connect.Response[memoryv1.ExportResponse], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	format, err := domainExportFormat(req.Msg.GetFormat())
-	if err != nil {
-		return nil, err
-	}
-	result, err := s.service.Export(ctx, scope, format)
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&memoryv1.ExportResponse{
-		Content:     result.Content,
-		ContentType: result.ContentType,
-		Filename:    result.Filename,
-	}), nil
 }
 
 func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.GetDiariesRequest]) (*connect.Response[memoryv1.GetDiariesResponse], error) {
@@ -430,6 +375,8 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeNotFound, reasonReleaseNoLiveMemories, err, nil)
 	case errors.Is(err, memory.ErrRestoreNotReleased):
 		return apperr.Domain(connect.CodeNotFound, reasonRestoreNotReleased, err, nil)
+	case errors.Is(err, memory.ErrRecallSourceChanged):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonRecallSourceChanged, err, nil)
 	case errors.Is(err, memory.ErrRecallMemoryUnavailable):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonRecallMemoryUnavailable, err, nil)
 	case errors.Is(err, memory.ErrViewSemanticStageNotRisen):
@@ -468,10 +415,7 @@ func domainError(err error) error {
 		// An extractor adapter emitting an out-of-schema shape is a server-side
 		// contract breach, not a client mistake.
 		return apperr.Internal(err)
-	case errors.Is(err, memory.ErrConsolidateTxRequired):
-		// A progression transaction that cannot consolidate is a composition-root
-		// wiring fault, never a client mistake.
-		return apperr.Internal(err)
+
 	case errors.Is(err, memory.ErrScopeRequired):
 		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
 	default:

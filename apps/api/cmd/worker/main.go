@@ -62,11 +62,11 @@ type withdrawalComposition struct {
 // built purgers because each purges its own two tables in one transaction it owns.
 func newWithdrawalComposition(
 	pool *platformdb.Pool,
-	jobStore memory.UserJobStore,
+	jobStore jobqueue.UserJobStore,
 	memoryPurgeRepo memory.UserPurgeRepo,
 	twinklePurgeRepo twinkle.UserPurgeRepo,
 ) (withdrawalComposition, error) {
-	userJobs, err := memory.NewUserJobService(jobStore, nil, nil)
+	userJobs, err := account.NewWithdrawalJobScheduler(jobStore, nil, nil)
 	if err != nil {
 		return withdrawalComposition{}, err
 	}
@@ -166,9 +166,9 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		adapters.Semanticizer,
 		jobqueue.DefaultPollInterval,
 		logger,
-		map[memory.JobKind]jobqueue.Handler[memory.Job]{
-			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),
-			memory.JobKindAchievementSettle: memory.NewAchievementSettleJobHandler(settler),
+		map[memory.JobKind]jobqueue.Registration[memory.Job]{
+			account.WithdrawalJobKind:     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
+			achievement.SettlementJobKind: {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
 		},
 	)
 	if err != nil {
@@ -185,10 +185,8 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 // than wired: it quotes no spend, settles no invite and saves no decoration, and a permissive stub
 // would let a path that unexpectedly reached one of them succeed quietly.
 func newAchievementSettler(pool *platformdb.Pool, accountService *account.Service) (*achievement.Service, error) {
-	// store and achievement need each other: a grant reports a counter through the achievement
-	// service, and the achievement service pays through the store service. The API root closes this
-	// cycle with a late binding and so does this one, because the drain drives both halves.
-	binding := &workerAchievementBinding{}
+	// The independent recorder is ready before the store and the payout settler.
+	binding := &workerAchievementBinding{service: achievement.NewRecorder()}
 	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
 		Ledger:         twinklepg.NewStore(pool.PgxPool()),
 		InviteResolver: twinkle.UnavailableInviteResolver{},
@@ -198,7 +196,9 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 	if err != nil {
 		return nil, err
 	}
-	ornaments := storepg.NewStore(pool.PgxPool())
+	ornaments := storepg.NewStore(pool.PgxPool()).WithEconomyBinding(func(tx dbgen.DBTX) store.EconomyTx {
+		return workerStoreTransaction{tx: tx, binding: binding}
+	})
 	storeService, err := store.NewService(store.ServiceDeps{
 		Ownerships: ornaments,
 		Selections: ornaments,
@@ -225,15 +225,12 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 	if err != nil {
 		return nil, err
 	}
-	binding.bind(settler)
 	return settler, nil
 }
 
 type workerAchievementBinding struct {
-	service *achievement.Service
+	service *achievement.Recorder
 }
-
-func (b *workerAchievementBinding) bind(service *achievement.Service) { b.service = service }
 
 // workerStoreAchievementRecorder binds a counter store onto the GRANT's own transaction, so the
 // ownership row and the ornament-owned total commit together — the same edge the API root binds for
@@ -252,13 +249,10 @@ func (r workerStoreAchievementRecorder) RecordProgress(
 	if r.binding == nil || r.binding.service == nil {
 		return errWorkerAchievementRecordingUnavailable
 	}
-	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
-	if !ok || carrier.DB() == nil {
+	if tx == nil {
 		return errWorkerRecorderTxUnusable
 	}
-	return r.binding.service.RecordProgress(
-		ctx, scope, achievementpg.NewStore(carrier.DB()), achievement.CounterKey(counterKey), delta,
-	)
+	return tx.RecordProgress(ctx, scope, counterKey, delta)
 }
 
 type workerAccountDirectory interface {

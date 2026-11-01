@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import { createRouterTransport, type Transport } from '@connectrpc/connect'
 import { TransportProvider } from '@connectrpc/connect-query'
@@ -11,6 +11,8 @@ import {
   useDiaryStore,
   useEpisodicMemoryStore,
   useReleasedGroupsStore,
+  resetUniverseUserState,
+  useDeletionDraftStore,
 } from '@cosimosi/universe'
 
 import { ErrorToastContext } from '@cosimosi/errors/react'
@@ -119,6 +121,47 @@ describe('DeletionFlowSheet — letting-go (mobile)', () => {
 })
 
 describe('DeletionFlowSheet — full delete (mobile)', () => {
+  it('does not publish an old account release after unmount and scope reset', async () => {
+    let finish!: (result: {
+      diaryId: string
+      episodicMemoryIds: string[]
+      deletedAt: string
+    }) => void
+    let started = false
+    const transport = createRouterTransport(({ service }) => {
+      service(MemoryService, {
+        release() {
+          started = true
+          return new Promise((resolve) => {
+            finish = resolve
+          })
+        },
+      })
+    })
+    useDeletionTargetStore.getState().openFullDelete('account-a')
+    const view = renderSheet(transport)
+    await waitFor(() => expect(view.getByText(m.deletion_delete_confirm())).toBeTruthy())
+    fireEvent.press(view.getByText(m.deletion_delete_confirm()))
+    await waitFor(() => expect(started).toBe(true))
+    view.unmount()
+    resetUniverseUserState()
+    useDeletionTargetStore.getState().openFullDelete('account-b')
+    await act(async () => {
+      finish({
+        diaryId: 'account-a',
+        episodicMemoryIds: ['a-memory'],
+        deletedAt: '2026-11-02T00:00:00Z',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(useReleasedGroupsStore.getState().groups).toEqual([])
+    expect(useDeletionTargetStore.getState().target).toEqual({
+      mode: 'delete',
+      diaryId: 'account-b',
+    })
+    expect(useDeletionDraftStore.getState().candidates).toEqual([])
+  })
+
   it('confirms → fires Release carrying only diary_id → records the restore group (A1/A2/A9)', async () => {
     let releaseRequest: Record<string, unknown> | undefined
     const transport = createRouterTransport(({ service }) => {

@@ -59,8 +59,8 @@ func TestRecallReplaysCommittedReceiptWithoutRedoingWork(t *testing.T) {
 	if len(fixture.launches.recall.provenance) != 0 {
 		t.Fatalf("provenance rows on the replay tx = %d, want 0 (the replay appends none)", len(fixture.launches.recall.provenance))
 	}
-	if fixture.launches.recallTxCount != 2 {
-		t.Fatalf("recall transactions = %d, want 2 (both opened; the second replays inside its tx)", fixture.launches.recallTxCount)
+	if fixture.launches.recallTxCount != 3 {
+		t.Fatalf("recall transactions = %d, want 3 (prepare, commit, and receipt replay)", fixture.launches.recallTxCount)
 	}
 }
 

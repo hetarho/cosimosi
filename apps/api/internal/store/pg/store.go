@@ -23,29 +23,30 @@ var (
 )
 
 type Store struct {
-	queries *dbgen.Queries
-	db      dbgen.DBTX
-	txer    txStarter
+	capabilities     store.EconomyTx
+	bindCapabilities func(dbgen.DBTX) store.EconomyTx
+	queries          *dbgen.Queries
+	db               dbgen.DBTX
+	txer             txStarter
 }
 
 type txStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-func NewStore(db dbgen.DBTX) Store {
-	built := Store{queries: dbgen.New(db), db: db}
-	if txer, ok := db.(txStarter); ok {
-		built.txer = txer
-	}
-	return built
+// TransactionDB declares the pool capability required by transaction-owning operations.
+type TransactionDB interface {
+	dbgen.DBTX
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-// DB exposes the query handle this store is bound to — the pool, or the open transaction inside
-// InDecorateTx. It exists for the composition root's economy seam: the root binds the twinkle ledger
-// store onto the very same transaction a save runs in, so the purchase and its debit commit or roll
-// back together. Context behavior never calls it — the handle stays opaque behind store.EconomyTx.
-func (s Store) DB() dbgen.DBTX {
-	return s.db
+func NewStore(db TransactionDB) Store {
+	return Store{queries: dbgen.New(db), txer: db}
+}
+
+// NewReadStore binds queries to an existing handle without opening independent transactions.
+func NewReadStore(db dbgen.DBTX) Store {
+	return Store{queries: dbgen.New(db)}
 }
 
 // InDecorateTx runs one save inside one transaction, over a store bound to it ([P8]).
@@ -63,7 +64,7 @@ func (s Store) InDecorateTx(ctx context.Context, fn func(tx store.DecorateTx) er
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
+	if err := fn(s.boundTransaction(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

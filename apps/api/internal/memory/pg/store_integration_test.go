@@ -492,15 +492,15 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first ClaimDue failed: %v", err)
 	}
-	if claimed.ID != job.ID || claimed.Status != memory.JobStatusRunning || !claimed.NextRunAt.Equal(jobLeaseUntil(now)) {
+	if claimed.ID != job.ID || claimed.Status != memory.JobStatusRunning || !claimed.NextRunAt.Equal(now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond)) {
 		t.Fatalf("claimed job = %s", diagnosticValue(claimed))
 	}
 
-	if _, err := store.ClaimDue(ctx, now.Add(jobLeaseDuration()-time.Second)); !errors.Is(err, jobqueue.ErrNoJob) {
+	if _, err := store.ClaimDue(ctx, now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond-time.Second)); !errors.Is(err, jobqueue.ErrNoJob) {
 		t.Fatalf("ClaimDue before lease expiry error = %v, want ErrNoJob", err)
 	}
 
-	reclaimed, err := store.ClaimDue(ctx, now.Add(jobLeaseDuration()+time.Second))
+	reclaimed, err := store.ClaimDue(ctx, now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond+time.Second))
 	if err != nil {
 		t.Fatalf("reclaim ClaimDue failed: %v", err)
 	}
@@ -534,7 +534,7 @@ func TestEnqueueJobCanSharePersistTransaction(t *testing.T) {
 			_ = tx.Rollback(ctx)
 		}
 	}()
-	txStore := NewStore(tx)
+	txStore := NewReadStore(tx)
 
 	if _, err := txStore.InsertDiary(ctx, scope, memory.Diary{
 		ID:        base + "-diary",

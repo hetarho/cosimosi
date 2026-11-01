@@ -8,14 +8,12 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
-	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/achievement"
 	achievementpg "github.com/cosimosi/api/internal/achievement/pg"
 	achievementrpc "github.com/cosimosi/api/internal/achievement/rpc"
 	achievementv1connect "github.com/cosimosi/api/internal/gen/cosimosi/achievement/v1/achievementv1connect"
 	"github.com/cosimosi/api/internal/memory"
-	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/store"
@@ -48,10 +46,10 @@ func newAchievementService(pool *platformdb.Pool, deps achievementDeps) (*achiev
 		return nil, err
 	}
 	return achievement.NewService(achievement.AchievementServiceDeps{
-		Repo:      achievementpg.NewStore(pool.PgxPool()),
+		Repo:      bindClaimTransactions(achievementpg.NewStore(pool.PgxPool())),
 		Twinkle:   achievementTwinkleGranter{service: deps.twinkle},
 		Ornaments: achievementOrnamentGranter{service: deps.store},
-		// The drain rides the claim's own transaction; the enqueue is memory's, the claim is
+		// The drain rides the claim's own transaction; the queue is infrastructure, the claim is
 		// achievement's, and this is the only place both are visible.
 		Settlements: achievementSettlementScheduler{},
 	})
@@ -188,16 +186,15 @@ func reconcileRewards(rows []achievement.Achievement) error {
 // counter write commits or rolls back with the launch/recall/view/release/save that caused it — the
 // shipped economy-seam pattern: the two contexts share the transaction and never the queries.
 
-// achievementRecorderBinding is late-bound on purpose: the producing services are constructed before
-// the achievement service exists, because a claim pays through twinkle and store, which are built
-// after account. The root hands the producers this holder and binds the service once — the same shape
-// the invite-reward granter already uses for the twinkle↔account cycle.
+// Immutable recorder capabilities are ready before any payout services are built.
 type achievementRecorderBinding struct {
-	service *achievement.Service
+	service progressRecorder
 	pool    *platformdb.Pool
 }
 
-func (b *achievementRecorderBinding) bind(service *achievement.Service) { b.service = service }
+type progressRecorder interface {
+	RecordProgress(context.Context, platform.UserScope, achievement.ProgressStore, achievement.CounterKey, int) error
+}
 
 type achievementRecorder struct {
 	binding *achievementRecorderBinding
@@ -206,7 +203,7 @@ type achievementRecorder struct {
 func (r achievementRecorder) record(
 	ctx context.Context,
 	scope platform.UserScope,
-	bound achievement.Store,
+	bound achievement.ProgressStore,
 	counterKey string,
 	delta int,
 ) error {
@@ -214,17 +211,6 @@ func (r achievementRecorder) record(
 		return errAchievementRecorderUnbound
 	}
 	return r.binding.service.RecordProgress(ctx, scope, bound, achievement.CounterKey(counterKey), delta)
-}
-
-// boundStore binds the counter store onto the producer's own transaction. A handle-less tx is a wiring
-// fault and is refused rather than quietly written through the pool: a counter written outside the
-// causing transaction would survive its rollback, which is exactly the guarantee the port promises.
-func (r achievementRecorder) boundStore(tx any) (achievement.Store, error) {
-	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
-	if !ok || carrier.DB() == nil {
-		return nil, errRecorderTxUnusable
-	}
-	return achievementpg.NewStore(carrier.DB()), nil
 }
 
 // pooledStore is the one sanctioned transaction-less write: account's invite settlement is a locked
@@ -241,18 +227,19 @@ func (r achievementRecorder) pooledStore() achievement.Store {
 func (r achievementRecorder) report(
 	ctx context.Context,
 	scope platform.UserScope,
-	tx any,
+	tx interface {
+		RecordProgress(context.Context, platform.UserScope, string, int) error
+	},
 	counterKey string,
 	delta int,
 ) error {
 	if r.binding == nil || r.binding.service == nil {
 		return errAchievementRecorderUnbound
 	}
-	bound, err := r.boundStore(tx)
-	if err != nil {
-		return err
+	if tx == nil {
+		return errRecorderTxUnusable
 	}
-	return r.record(ctx, scope, bound, counterKey, delta)
+	return tx.RecordProgress(ctx, scope, counterKey, delta)
 }
 
 type memoryAchievementRecorder struct{ achievementRecorder }
@@ -337,7 +324,7 @@ func (g achievementOrnamentGranter) Grant(
 // the commit leaves neither, and a crash after it leaves a job that will pay the reward without the
 // user pressing anything.
 //
-// memory's user-job seam is reused rather than a second queue introduced. That keeps the one global
+// The infrastructure user-job scheduler is reused. That keeps the one global
 // scan this system sanctions (ClaimDueJob) the only one, so no achievement statement has to leave
 // its user scope and no globalQueries exemption is needed.
 type achievementSettlementScheduler struct{}
@@ -348,15 +335,10 @@ func (achievementSettlementScheduler) ScheduleSettlement(
 	tx achievement.ClaimTx,
 	achievementID string,
 ) error {
-	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
-	if !ok || carrier.DB() == nil {
+	if tx == nil {
 		return errRecorderTxUnusable
 	}
-	jobs, err := memory.NewUserJobService(memorypg.NewStore(carrier.DB()), nil, nil)
-	if err != nil {
-		return err
-	}
-	return jobs.ScheduleAchievementSettlement(ctx, scope, achievementID)
+	return tx.EnqueueSettlement(ctx, scope, achievementID)
 }
 
 // accountAchievementUnavailable is the fail-closed account recorder for a root that never settles a

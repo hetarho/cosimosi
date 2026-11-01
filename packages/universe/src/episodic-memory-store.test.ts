@@ -87,6 +87,28 @@ describe('episodic memory store', () => {
     expect(useEpisodicMemoryStore.getState().byId.alpha?.semanticStage).toBe(1)
   })
 
+  it('drops omitted confirmed memories and preserves only pending launches until acknowledged', () => {
+    const store = useEpisodicMemoryStore.getState()
+    store.setAll([memory('confirmed', 1), memory('launched', 0)])
+    store.markPending(['launched'])
+    store.reconcile([])
+    expect(useEpisodicMemoryStore.getState().ids).toEqual(['launched'])
+    store.reconcile([memory('launched', 1)])
+    expect(useEpisodicMemoryStore.getState().pendingIds.size).toBe(0)
+    store.reconcile([])
+    expect(useEpisodicMemoryStore.getState().ids).toEqual([])
+  })
+
+  it('releases pending ownership on account reset', () => {
+    const store = useEpisodicMemoryStore.getState()
+    store.setAll([memory('pending', 0)])
+    store.markPending(['pending'])
+    store.clear()
+    store.reconcile([])
+    expect(useEpisodicMemoryStore.getState().ids).toEqual([])
+    expect(useEpisodicMemoryStore.getState().pendingIds.size).toBe(0)
+  })
+
   it('does not invent a stage for a memory it has never mirrored', () => {
     useEpisodicMemoryStore.getState().setAll([memory('alpha', 2)])
 

@@ -7,8 +7,7 @@ import (
 )
 
 type Service struct {
-	store              Store
-	directory          Directory
+	*ReadService
 	inviteSigner       InviteSigner
 	inviteGranter      InviteRewardGranter
 	signupBonusGranter SignupBonusGranter
@@ -92,8 +91,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		deps.NewID = platform.NewID
 	}
 	return &Service{
-		store:              deps.Store,
-		directory:          deps.Directory,
+		ReadService:        &ReadService{store: deps.Store, directory: deps.Directory},
 		inviteSigner:       deps.InviteSigner,
 		inviteGranter:      deps.InviteGranter,
 		signupBonusGranter: deps.SignupBonusGranter,

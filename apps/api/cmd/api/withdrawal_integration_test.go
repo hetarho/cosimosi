@@ -70,7 +70,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 	if err != nil {
 		t.Fatalf("Withdraw(first) failed: %v", err)
 	}
-	identity, err := memory.WithdrawalSweepJobIdentity(scope)
+	identity, err := account.WithdrawalSweepJobIdentity(scope)
 	if err != nil {
 		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		FROM jobs
 		WHERE user_id = $1 AND kind = $2`,
 		userID,
-		string(memory.JobKindWithdrawal),
+		string(account.WithdrawalJobKind),
 	).Scan(&firstJobID, &firstDedupKey); err != nil {
 		t.Fatalf("read first withdrawal job failed: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		FROM jobs
 		WHERE user_id = $1 AND kind = $2`,
 		userID,
-		string(memory.JobKindWithdrawal),
+		string(account.WithdrawalJobKind),
 	).Scan(&cancelledJobs); err != nil || cancelledJobs != 0 {
 		t.Fatalf("jobs after restore = %d, err %v, want zero", cancelledJobs, err)
 	}
@@ -122,19 +122,19 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		FROM jobs
 		WHERE user_id = $1 AND kind = $2 AND dedup_key = $3`,
 		userID,
-		string(memory.JobKindWithdrawal),
+		string(account.WithdrawalJobKind),
 		identity.DedupKey(),
 	).Scan(&secondJobID); err != nil {
 		t.Fatalf("read second withdrawal job failed: %v", err)
 	}
-	handler := memory.NewWithdrawalSweepJobHandler(
+	handler := account.NewWithdrawalSweepJobHandler(
 		service,
 		func() time.Time { return second.RestoreDeadlineAt },
 	)
 	if err := handler(ctx, memory.Job{
 		ID:      secondJobID,
 		UserID:  userID,
-		Kind:    memory.JobKindWithdrawal,
+		Kind:    account.WithdrawalJobKind,
 		Payload: []byte(`{}`),
 		Targets: []memory.JobTarget{{
 			Kind: memory.JobTargetUser,
@@ -243,11 +243,11 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		t.Fatalf("accountServiceOption failed: %v", err)
 	}
 	sweepNow := now.Add(-time.Hour - time.Second)
-	handler := memory.NewWithdrawalSweepJobHandler(service, func() time.Time { return sweepNow })
+	handler := account.NewWithdrawalSweepJobHandler(service, func() time.Time { return sweepNow })
 	job := memory.Job{
 		ID:      keepJobID,
 		UserID:  userID,
-		Kind:    memory.JobKindWithdrawal,
+		Kind:    account.WithdrawalJobKind,
 		Payload: []byte(`{}`),
 		Targets: []memory.JobTarget{{
 			Kind: memory.JobTargetUser,
@@ -496,7 +496,7 @@ func seedWithdrawalTables(
 	if err != nil {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
-	withdrawalIdentity, err := memory.WithdrawalSweepJobIdentity(scope)
+	withdrawalIdentity, err := account.WithdrawalSweepJobIdentity(scope)
 	if err != nil {
 		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
 	}

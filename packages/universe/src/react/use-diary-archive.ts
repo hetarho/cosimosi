@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useInfiniteQuery } from '@tanstack/react-query'
 
-import { createGetDiariesInfiniteQueryOptions, type GetDiariesInput } from '@cosimosi/api-client'
+import {
+  createGetDiariesInfiniteQueryOptions,
+  type GetDiariesInput,
+  type DiaryDto,
+} from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 import { diariesFromDtos, type Diary } from '@cosimosi/memory'
 
@@ -41,10 +45,27 @@ export function syncDiaryArchiveMirror(
   mirror: boolean,
   diaries: readonly Diary[],
 ): void {
-  if (!enabled) return
   const store = useDiaryStore.getState()
+  if (!enabled) {
+    if (!mirror) store.replaceContributions([])
+    return
+  }
   if (mirror) store.setAll(diaries)
   else store.replaceContributions(diaries)
+}
+
+// Keys follow Query's immutable page arrays. Evicted pages do not remain in a strong mapping cache.
+export function createDiaryPageMapper() {
+  const mapped = new WeakMap<readonly DiaryDto[], readonly Diary[]>()
+  return (pages: readonly { diaries: readonly DiaryDto[] }[]): readonly Diary[] =>
+    pages.flatMap((page) => {
+      let diaries = mapped.get(page.diaries)
+      if (!diaries) {
+        diaries = diariesFromDtos(page.diaries)
+        mapped.set(page.diaries, diaries)
+      }
+      return diaries
+    })
 }
 
 export function useDiaryArchive(
@@ -58,10 +79,17 @@ export function useDiaryArchive(
       pageSize: VALUES.diaryReader.pageSize,
     }),
     enabled,
+    gcTime: 0,
   })
-  const diaries = useMemo(
-    () => diariesFromDtos((query.data?.pages ?? []).flatMap((page) => page.diaries)),
-    [query.data],
+  const mapPages = useMemo(() => createDiaryPageMapper(), [])
+  const diaries = useMemo(() => mapPages(query.data?.pages ?? []), [query.data, mapPages])
+  useEffect(
+    () => () => {
+      const store = useDiaryStore.getState()
+      if (mirror) store.setAll([])
+      else store.replaceContributions([])
+    },
+    [mirror],
   )
   useEffect(() => {
     syncDiaryArchiveMirror(enabled, mirror, diaries)

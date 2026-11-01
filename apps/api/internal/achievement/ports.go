@@ -19,7 +19,16 @@ import (
 // TouchCounter's boolean is the first-touch signal the derived variety counters are bumped on;
 // MarkAchieved's, MarkClaimed's and SettleClaim's report whether THIS call changed the row, so a
 // replay reads as false rather than as a second grant.
+// ProgressStore is the complete write capability consumed by Recorder: no claim, payout or queue access.
+type ProgressStore interface {
+	TouchCounter(context.Context, platform.UserScope, CounterKey) (bool, error)
+	AddCounter(context.Context, platform.UserScope, CounterKey, int64) (int64, error)
+	RaiseCounter(context.Context, platform.UserScope, CounterKey, int64) (int64, error)
+	MarkAchieved(context.Context, platform.UserScope, string) (bool, error)
+}
+
 type Store interface {
+	ClaimTx
 	ListCounters(ctx context.Context, scope platform.UserScope) (map[CounterKey]int64, error)
 	ListProgress(ctx context.Context, scope platform.UserScope) ([]ProgressRecord, error)
 	GetProgress(ctx context.Context, scope platform.UserScope, achievementID string) (*ProgressRecord, error)
@@ -68,10 +77,10 @@ type OrnamentGranter interface {
 	Grant(ctx context.Context, scope platform.UserScope, claimID string, ornamentID string) error
 }
 
-// ClaimTx is the open claim transaction, opaque here: only the composition root knows the concrete,
-// so this context cannot reach into the job queue's tables and the queue's owner is not imported
-// (the shape store's SpendGate already uses for the ledger).
-type ClaimTx any
+// ClaimTx can schedule only the settlement belonging to this claim transaction.
+type ClaimTx interface {
+	EnqueueSettlement(context.Context, platform.UserScope, string) error
+}
 
 // SettlementScheduler enqueues the drain for the claim being stamped, INSIDE the claim's own
 // transaction. That placement is the whole point: a process death between the commit and the payout

@@ -44,6 +44,7 @@ export interface SupabaseGoogleAuthOptions {
 }
 
 export interface SupabaseAuthAdapterOptions {
+  ownsClient?: boolean
   now?: () => number
   /** Google OAuth wiring; omitted → `signInWithGoogle` rejects as not configured. */
   google?: SupabaseGoogleAuthOptions
@@ -71,7 +72,7 @@ export function createSupabaseAuthClient({
 
 export function createSupabaseAuthAdapter(
   client: SupabaseClient,
-  { now = Date.now, google }: SupabaseAuthAdapterOptions = {},
+  { now = Date.now, google, ownsClient = false }: SupabaseAuthAdapterOptions = {},
 ): AuthAdapter {
   return {
     async bootstrap() {
@@ -141,6 +142,9 @@ export function createSupabaseAuthAdapter(
         listener(toSessionSnapshot(session, now), { source: toAuthAdapterChangeSource(event) })
       })
       return () => data.subscription.unsubscribe()
+    },
+    dispose() {
+      if (ownsClient) void client.auth.dispose().catch(() => undefined)
     },
   }
 }

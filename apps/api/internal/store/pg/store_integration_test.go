@@ -143,7 +143,7 @@ func TestStoreRepositoryRefusesScopelessAndUnbuiltUse(t *testing.T) {
 	if _, err := (Store{}).ListOrnamentSelections(ctx, mustUserScope(t, "any-user")); err != ErrQueriesRequired {
 		t.Errorf("unbuilt repository read err = %v, want ErrQueriesRequired", err)
 	}
-	repo := NewStore(fakeDBTX{})
+	repo := NewReadStore(fakeDBTX{})
 	if _, err := repo.ListOrnamentOwnerships(ctx, platform.UserScope{}); err != ErrUserScopeRequired {
 		t.Errorf("scopeless read err = %v, want ErrUserScopeRequired", err)
 	}

@@ -79,7 +79,6 @@ export default defineConfig([
     // insignificant future slice still gets flagged.
     files: [
       './src/entities/universe-clock/**',
-      './src/features/universe-clock-hud/**',
       './src/features/accelerate-time/**',
       './src/features/confirm-time-sync/**',
       './src/widgets/universe-time/**',
@@ -89,17 +88,11 @@ export default defineConfig([
     },
   },
   {
-    // The star-detail vertical has three single-surface read features composed by one panel
-    // widget, mounted by the universe page — the same one-action grain as writing-flow. A feature
-    // is one user surface (§3.1), not a slice to merge away; later references arrive as the panel's
+    // The star-detail vertical composes passive memory facts and user actions in one panel
+    // widget, mounted by the universe page — the same one-action grain as writing-flow. Facts live in entities and actions live in features; later references arrive as the panel's
     // hand-offs light up (the recall flow it opens, the gist view a gist selection routes to).
     // Scoped so a genuinely insignificant future slice still gets flagged.
-    files: [
-      './src/features/star-meta/**',
-      './src/features/current-memory-text/**',
-      './src/features/star-provenance/**',
-      './src/widgets/star-detail/**',
-    ],
+    files: ['./src/features/star-provenance/**', './src/widgets/star-detail/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },

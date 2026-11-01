@@ -24,6 +24,7 @@ func TestMaintenanceQueueRunsCleanupOnceWithinWindowForIdleAndBusyClaims(t *test
 			queue := &fakeWorkerQueue{claimErr: tc.claimErr}
 			cleaner := &fakeTerminalJobCleaner{}
 			maintained := maintenanceQueue{
+				retryForever:     map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
 				JobQueue:         queue,
 				cleaner:          cleaner,
 				cleanupInterval:  time.Hour,
@@ -56,6 +57,7 @@ func TestMaintenanceQueueDrainsOneFullBatchPerClaim(t *testing.T) {
 	queue := &fakeWorkerQueue{claimErr: jobqueue.ErrNoJob}
 	cleaner := &fakeTerminalJobCleaner{results: []int{2, 2, 1}}
 	maintained := maintenanceQueue{
+		retryForever:     map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
 		JobQueue:         queue,
 		cleaner:          cleaner,
 		cleanupInterval:  time.Hour,
@@ -80,6 +82,7 @@ func TestMaintenanceQueueCleanupFailureBacksOffAndClaimsProceed(t *testing.T) {
 	queue := &fakeWorkerQueue{}
 	cleaner := &fakeTerminalJobCleaner{errs: []error{errors.New("cleanup unavailable")}}
 	maintained := maintenanceQueue{
+		retryForever:     map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
 		JobQueue:         queue,
 		cleaner:          cleaner,
 		cleanupInterval:  time.Hour,
@@ -101,6 +104,7 @@ func TestMaintenanceQueueRunsAgainAcrossClockWindows(t *testing.T) {
 	queue := &fakeWorkerQueue{claimErr: jobqueue.ErrNoJob}
 	cleaner := &fakeTerminalJobCleaner{}
 	maintained := maintenanceQueue{
+		retryForever:     map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
 		JobQueue:         queue,
 		cleaner:          cleaner,
 		cleanupInterval:  time.Hour,
@@ -194,9 +198,10 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
 	queue := &fakeWorkerQueue{}
 	maintained := maintenanceQueue{
-		JobQueue: queue,
-		now:      func() time.Time { return now },
-		backoff:  5 * time.Minute,
+		retryForever: map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
+		JobQueue:     queue,
+		now:          func() time.Time { return now },
+		backoff:      5 * time.Minute,
 	}
 	retention := revisionedJob(JobKindRetention, JobTarget{Kind: JobTargetRelease, ID: "release-1"})
 	retention.LeaseGeneration = int64(values.AiJobMaxClaims) + 100
@@ -207,11 +212,11 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 	if queue.retries != 1 || queue.fails != 0 || queue.retryAttempts != 0 || !queue.retryAt.Equal(now.Add(5*time.Minute)) {
 		t.Fatalf("retention transition = retries %d fails %d attempts %d at %v", queue.retries, queue.fails, queue.retryAttempts, queue.retryAt)
 	}
-	if got := retention.JobLeaseGeneration(); got != 0 {
-		t.Fatalf("retention claim ceiling value = %d, want 0 for durable retry", got)
+	if got := retention.JobLeaseGeneration(); got != retention.LeaseGeneration {
+		t.Fatalf("retention claim ceiling value = %d, want the persisted fence generation", got)
 	}
 
-	withdrawal := revisionedJob(JobKindWithdrawal, JobTarget{
+	withdrawal := revisionedJob(JobKind("external_durable"), JobTarget{
 		Kind: JobTargetUser,
 		ID:   "user-1",
 	})
@@ -219,7 +224,7 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 	if err := maintained.Fail(context.Background(), withdrawal, int32(values.AiJobMaxAttempts)); err != nil {
 		t.Fatalf("withdrawal Fail failed: %v", err)
 	}
-	if queue.retries != 2 || queue.fails != 0 || withdrawal.JobLeaseGeneration() != 0 {
+	if queue.retries != 2 || queue.fails != 0 || withdrawal.JobLeaseGeneration() != withdrawal.LeaseGeneration {
 		t.Fatalf(
 			"withdrawal transition = retries %d fails %d lease ceiling %d, want durable retry",
 			queue.retries,
@@ -244,12 +249,13 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 // had been dead-lettered.
 func TestMaintenanceQueueDoesNotSwallowTheRunnersSafetyStops(t *testing.T) {
 	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
-	for _, kind := range []JobKind{JobKindWithdrawal, JobKindRetention, JobKindAchievementSettle} {
+	for _, kind := range []JobKind{JobKind("external_durable"), JobKindRetention, JobKind("another_durable")} {
 		queue := &fakeWorkerQueue{}
 		maintained := maintenanceQueue{
-			JobQueue: queue,
-			now:      func() time.Time { return now },
-			backoff:  5 * time.Minute,
+			retryForever: map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
+			JobQueue:     queue,
+			now:          func() time.Time { return now },
+			backoff:      5 * time.Minute,
 		}
 		job := revisionedJob(kind, JobTarget{Kind: JobTargetUser, ID: "user-1"})
 		job.LeaseGeneration = int64(values.AiJobMaxClaims) + 1
@@ -275,11 +281,12 @@ func TestMaintenanceQueueStillRetriesASpentBudgetForDurableKinds(t *testing.T) {
 	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
 	queue := &fakeWorkerQueue{}
 	maintained := maintenanceQueue{
-		JobQueue: queue,
-		now:      func() time.Time { return now },
-		backoff:  5 * time.Minute,
+		retryForever: map[string]bool{string(JobKindRetention): true, string(JobKind("external_durable")): true, string(JobKind("another_durable")): true},
+		JobQueue:     queue,
+		now:          func() time.Time { return now },
+		backoff:      5 * time.Minute,
 	}
-	job := revisionedJob(JobKindWithdrawal, JobTarget{Kind: JobTargetUser, ID: "user-1"})
+	job := revisionedJob(JobKind("external_durable"), JobTarget{Kind: JobTargetUser, ID: "user-1"})
 
 	if err := maintained.Fail(context.Background(), job, int32(values.AiJobMaxAttempts)); err != nil {
 		t.Fatalf("withdrawal Fail failed: %v", err)

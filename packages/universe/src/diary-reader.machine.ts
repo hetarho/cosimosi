@@ -1,14 +1,16 @@
-import { setup } from 'xstate'
+import { assign, setup } from 'xstate'
+import type { PaidActionAttempt } from './paid-action-session.ts'
 
 // The diary-jump control-state (§3.2): which phase 이 일기로 태어난 별 보기 is in. Reading the
 // archive is free ([D2]) and lives outside this machine (`browsing` is the resting state); only
-// the jump spends and moves the clock. Context is empty — the target diary id, the quote, and the
-// result all live in the widget/stores; the machine only sequences the phases. `confirming` is
+// the jump spends and moves the clock. The active paid intent lives in chart context; archive data and results remain in read models. `confirming` is
 // entered only when the clock is behind today (the JUMP event carries that decision as a guard
 // input, [R1a][T2]); `recalling` is the loading phase covering the server-side sync + reinforce.
 export type DiaryReaderPhase = 'browsing' | 'confirming' | 'recalling' | 'flying'
 
 export type DiaryReaderEvent =
+  | { type: 'START'; attempt: PaidActionAttempt }
+  | { type: 'CANCEL' }
   | { type: 'JUMP'; needsSync: boolean }
   | { type: 'ACCEPT' }
   | { type: 'REJECT' }
@@ -19,6 +21,7 @@ export type DiaryReaderEvent =
 export const diaryReaderMachine = setup({
   types: {
     events: {} as DiaryReaderEvent,
+    context: {} as { attempt: PaidActionAttempt | null },
   },
   guards: {
     // The clock is behind today → consent is required before the recall's server-side sync ([R1a]).
@@ -27,9 +30,12 @@ export const diaryReaderMachine = setup({
 }).createMachine({
   id: 'diaryReader',
   initial: 'browsing',
+  context: { attempt: null },
   states: {
     browsing: {
       on: {
+        START: { actions: assign({ attempt: ({ event }) => event.attempt }) },
+        CANCEL: { actions: assign({ attempt: null }) },
         JUMP: [{ target: 'confirming', guard: 'needsSync' }, { target: 'recalling' }],
       },
     },
@@ -38,7 +44,7 @@ export const diaryReaderMachine = setup({
     confirming: {
       on: {
         ACCEPT: 'recalling',
-        REJECT: 'browsing',
+        REJECT: { target: 'browsing', actions: assign({ attempt: null }) },
       },
     },
     // "별들을 다시 떠올리는 중" — the single synchronous RecallDiaryStars covers receipt check +
@@ -48,7 +54,7 @@ export const diaryReaderMachine = setup({
     // modal on the sync-consent race; an ambiguous failure is handled by the widget (no blind retry).
     recalling: {
       on: {
-        DONE: 'flying',
+        DONE: { target: 'flying', actions: assign({ attempt: null }) },
         ERROR: 'browsing',
         CONSENT_REQUIRED: 'confirming',
       },

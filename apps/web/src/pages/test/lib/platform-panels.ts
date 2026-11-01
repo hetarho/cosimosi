@@ -6,8 +6,8 @@ import {
   QueryCachePanel,
   TransportPingPanel,
   ValuesPanel,
-} from './platform-panel-components.tsx'
-import { UiTestPanel } from './ui-test-panel.tsx'
+} from '../ui/platform-panel-components.tsx'
+import { UiTestPanel } from '../ui/ui-test-panel.tsx'
 import {
   createTestPanelRegistry,
   type TestPanelCapability,

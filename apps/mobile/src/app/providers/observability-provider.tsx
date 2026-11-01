@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/react-native'
 import {
   captureContext,
   createObservabilityRuntime,
+  createTelemetryBindingManager,
   platformFeatureFlags,
   type FeatureFlagDefinition,
   type ObservabilityFacade,
@@ -50,27 +51,12 @@ export function MobileObservabilityProvider({
   const [runtime] = useState<ObservabilityRuntime | null>(() =>
     facade ? null : createDefaultMobileObservabilityRuntime(),
   )
-  const vendorConfig = useRef<MobileVendorTelemetryOptions | null>(null)
-  const vendorBinding = useRef<MobileVendorTelemetryBinding | null>(null)
-
+  const manager = useRef(runtime ? createTelemetryBindingManager(runtime) : null)
   useEffect(() => {
     if (facade || !runtime) return
-    const activeRuntime = runtime
-    const nextConfig = { sentryDsn, release, posthog }
-    if (sameMobileVendorTelemetryOptions(vendorConfig.current, nextConfig)) return
-    vendorConfig.current = nextConfig
-    let cancelled = false
-    async function replaceVendorAdapter() {
-      await vendorBinding.current?.dispose()
-      if (cancelled) return
-      const nextBinding = createMobileVendorTelemetryAdapter(nextConfig)
-      activeRuntime.setVendorAdapter(nextBinding.adapter)
-      vendorBinding.current = nextBinding
-    }
-    replaceVendorAdapter()
-    return () => {
-      cancelled = true
-    }
+    return manager.current!.replace(() =>
+      createMobileVendorTelemetryAdapter({ sentryDsn, release, posthog }),
+    )
   }, [facade, posthog, release, runtime, sentryDsn])
 
   return (
@@ -166,15 +152,4 @@ function createMobileVendorTelemetryAdapter({
       posthog?.reset()
     },
   }
-}
-
-function sameMobileVendorTelemetryOptions(
-  previous: MobileVendorTelemetryOptions | null,
-  next: MobileVendorTelemetryOptions,
-): boolean {
-  return (
-    previous?.sentryDsn === next.sentryDsn &&
-    previous?.release === next.release &&
-    previous?.posthog === next.posthog
-  )
 }

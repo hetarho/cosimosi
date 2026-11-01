@@ -27,6 +27,7 @@ var (
 	// exist; ErrRecallMemoryUnavailable when it is soft-deleted ([R1]).
 	ErrRecallMemoryNotFound    = errors.New("recall target memory not found")
 	ErrRecallMemoryUnavailable = errors.New("recall target memory is unavailable")
+	ErrRecallSourceChanged     = errors.New("recall source changed during comparison; retry with a fresh quote")
 	// ErrRecallNoLiveMemories rejects a whole-diary recall that resolves to zero still-live
 	// memories for the caller — an all-let-go/deleted diary or, crucially, another user's diary
 	// (a foreign diary_id yields zero of the caller's anchors). Raised before the sync/spend/
@@ -39,6 +40,10 @@ var (
 // roots). cmd/api binds the real balance-check + deduct in its place (§CC2). Mirrors
 // NoopAdvanceProgression's stance — a deliberate no-op, not a missing binding.
 type AllowAllSpendGate struct{}
+
+func (AllowAllSpendGate) CheckCanSpend(context.Context, platform.UserScope, EconomyTx, SpendIntent) error {
+	return nil
+}
 
 func (AllowAllSpendGate) CheckAndSpend(context.Context, platform.UserScope, EconomyTx, SpendIntent) error {
 	return nil
@@ -95,13 +100,10 @@ type RecallDiaryStarsResult struct {
 // spend + anchors + reinforce + (reconsolidate) + provenance land wholly or not at all;
 // the Diary is never in that write set ([I2][R7]).
 //
-// The prediction-error LLM compare runs INSIDE the transaction on purpose: the spend must
-// gate it (an unaffordable recall never pays for the compare — §CC2) and the spend +
-// reinforce must be atomic, which forces the compare between them. That is safe here — the
-// per-user graph-mutation lock serializes a user's writes (a user cannot launch while recalling),
-// the compare is metered + cached + keyless-mock-deterministic, and any compare error rolls
-// the whole recall back, charging and resetting nothing.
-func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
+// A short preparation transaction verifies scope, receipt, consent, target and affordability.
+// Provider comparison runs after that transaction releases its graph lock. The commit transaction
+// repeats the receipt/consent/spend checks and rejects a changed source before applying any effect.
+func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
 	if scope.UserID() == "" {
 		return RecallResult{}, ErrScopeRequired
 	}
@@ -114,8 +116,53 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 	}
 	fingerprint := recallFingerprint(memoryID, rewriteText)
 
+	var prepared EpisodicMemory
 	var result RecallResult
+	replayed := false
 	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
+		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
+		if err != nil {
+			return err
+		}
+		response, replay, err := replayReceipt(receipt, found, PaidActionRecall, fingerprint)
+		if err != nil {
+			return err
+		}
+		if replay {
+			replayed = true
+			return decodeReceiptResponse(response, &result)
+		}
+		_, target, err := s.syncTarget(ctx, scope, tx, syncConsent)
+		if err != nil {
+			return err
+		}
+		prepared, err = tx.EpisodicMemoryForRecall(ctx, scope, memoryID)
+		if err != nil {
+			return err
+		}
+		if prepared.DeletedAt != nil {
+			return ErrRecallMemoryUnavailable
+		}
+		return s.spendGate.CheckCanSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(prepared), target)))
+	})
+	if err != nil {
+		return RecallResult{}, err
+	}
+	if replayed {
+		return result, nil
+	}
+	differs, err := s.predictionError.Differs(ctx, prepared.CurrentText, rewriteText)
+	if err != nil {
+		return RecallResult{}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return RecallResult{}, err
+	}
+
+	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
 		// 0. Serialize this user's paid actions and look up a matching receipt BEFORE any
 		// work: concurrent duplicates queue on the lock, so the loser reads the winner's
 		// committed receipt and replays it — no second spend, no second recall (A2/A3). A
@@ -153,6 +200,10 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 		if memory.DeletedAt != nil {
 			return ErrRecallMemoryUnavailable
 		}
+		if memory.RepresentationRevision != prepared.RepresentationRevision || memory.CurrentText != prepared.CurrentText {
+			return ErrRecallSourceChanged
+		}
+
 		// 3. Spend Twinkle for the recall: the intent carries the post-sync accessibility
 		// signal + the operation id (its dedup key) and joins this transaction, so a denial
 		// aborts the whole recall, resetting and charging nothing (§CC2).
@@ -164,11 +215,6 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 			recovered = 1
 		}
 		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
-			return err
-		}
-		// 4. Prediction-error judgement — an LLM semantic compare of content ([R6]).
-		differs, err := s.predictionError.Differs(ctx, memory.CurrentText, rewriteText)
-		if err != nil {
 			return err
 		}
 		// 5. Reinforce on either branch ([R2][R3][R5][F5]).
@@ -217,7 +263,7 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 // spend the recall of each still-live memory born from the diary, and Reinforce each — in
 // ONE transaction. It never calls PredictionError or Reconsolidate, writes no current_text,
 // and changes no seed ([R4][R6][I8]).
-func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
+func (s *CommandService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
 	if scope.UserID() == "" {
 		return RecallDiaryStarsResult{}, ErrScopeRequired
 	}
@@ -321,7 +367,7 @@ type reinforceEffects struct {
 // event (one pass over the edge set; a rolled-back attempt leaves no trace), and touches no
 // memory↔memory edge — only neuron↔neuron synapses ([I4][I6][I9]). The recalled memory takes
 // no self-offset; it recovers wholly ([F5]).
-func (s *Service) reinforce(ctx context.Context, scope platform.UserScope, tx RecallTx, memoryID string, universeTime time.Time) (reinforceEffects, error) {
+func (s *CommandService) reinforce(ctx context.Context, scope platform.UserScope, tx RecallTx, memoryID string, universeTime time.Time) (reinforceEffects, error) {
 	anchors, err := tx.ResetRecallAnchors(ctx, scope, memoryID, universeTime)
 	if err != nil {
 		return reinforceEffects{}, err
@@ -335,19 +381,15 @@ func (s *Service) reinforce(ctx context.Context, scope platform.UserScope, tx Re
 	if err != nil {
 		return reinforceEffects{}, err
 	}
+	updates := make([]Synapse, 0, len(synapses))
 	for _, synapse := range synapses {
-		next := Potentiate(float64(synapse.Strength), values.SynapsePotentiationRate)
-		if _, err := tx.UpsertSynapse(ctx, scope, Synapse{
-			ID:                        synapse.ID,
-			NeuronAID:                 synapse.NeuronAID,
-			NeuronBID:                 synapse.NeuronBID,
-			Strength:                  float32(next),
-			CoActivationCount:         1,
-			LastActivatedUniverseTime: universeTime,
-			CreatedAt:                 synapse.CreatedAt,
-		}); err != nil {
-			return reinforceEffects{}, err
-		}
+		synapse.Strength = float32(Potentiate(float64(synapse.Strength), values.SynapsePotentiationRate))
+		synapse.CoActivationCount = 1
+		synapse.LastActivatedUniverseTime = universeTime
+		updates = append(updates, synapse)
+	}
+	if err := tx.UpsertSynapses(ctx, scope, updates); err != nil {
+		return reinforceEffects{}, err
 	}
 
 	// Neighbor forgetting ± ([R5]): group neighbors by the signed delta their shared
@@ -386,7 +428,7 @@ func (s *Service) reinforce(ctx context.Context, scope platform.UserScope, tx Re
 // stage texts on the new basis (keeping already-risen gist stages, [C7]), and append the
 // reconsolidated/user provenance row. The anchors, LTP, strength bump, and neighbor ± have
 // already run in reinforce. The Diary is untouched ([I2]). Returns the new seed.
-func (s *Service) reconsolidate(ctx context.Context, scope platform.UserScope, tx RecallTx, memory EpisodicMemory, rewriteText string, universeTime time.Time) (int64, error) {
+func (s *CommandService) reconsolidate(ctx context.Context, scope platform.UserScope, tx RecallTx, memory EpisodicMemory, rewriteText string, universeTime time.Time) (int64, error) {
 	// The use-case owns randomness so the domain stays pure: it mints the fresh entropy
 	// and Reshape guarantees the returned seed differs from the current one ([V5]).
 	newSeed := Reshape(seedOrZero(memory.Seed), s.newSeed())

@@ -21,12 +21,14 @@ export interface ObservabilityRuntime {
 
 export interface CreateObservabilityRuntimeOptions {
   flagRegistry?: FeatureFlagRegistry<PlatformFeatureFlagKey>
+  historyCapacity?: number
 }
 
 export function createObservabilityRuntime({
   flagRegistry = platformFeatureFlags,
+  historyCapacity = 0,
 }: CreateObservabilityRuntimeOptions = {}): ObservabilityRuntime {
-  const memoryAdapter = createInMemoryTelemetryAdapter()
+  const memoryAdapter = createInMemoryTelemetryAdapter({ capacity: historyCapacity })
   let vendorAdapter: TelemetryAdapter | null = null
   const delegatedVendorAdapter = createDelegatedTelemetryAdapter(() => vendorAdapter)
   const facade = createObservabilityFacade({
@@ -68,6 +70,52 @@ export function createDelegatedTelemetryAdapter(
     getFeatureFlag(definition) {
       return getAdapter()?.getFeatureFlag?.(definition)
     },
+  }
+}
+
+export interface TelemetryBinding {
+  readonly adapter: TelemetryAdapter | null
+  dispose(): Promise<void>
+}
+
+/** Serializes SDK close/init while making canceled effect setups inert. */
+export function createTelemetryBindingManager(runtime: ObservabilityRuntime) {
+  let work = Promise.resolve()
+  let installed: TelemetryBinding | null = null
+  const report = (error: unknown) =>
+    runtime.facade.captureException(error, { source: 'telemetry-lifecycle' })
+  return {
+    replace(createBinding: () => TelemetryBinding | Promise<TelemetryBinding>): () => void {
+      let canceled = false
+      let owned: TelemetryBinding | null = null
+      work = work
+        .then(async () => {
+          if (canceled) return
+          owned = await createBinding()
+          if (canceled) {
+            await owned.dispose()
+            owned = null
+            return
+          }
+          installed = owned
+          runtime.setVendorAdapter(owned.adapter)
+        })
+        .catch(report)
+      return () => {
+        canceled = true
+        if (installed === owned) {
+          runtime.setVendorAdapter(null)
+          installed = null
+        }
+        work = work
+          .then(async () => {
+            await owned?.dispose()
+            owned = null
+          })
+          .catch(report)
+      }
+    },
+    settled: () => work,
   }
 }
 

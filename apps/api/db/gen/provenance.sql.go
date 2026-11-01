@@ -50,6 +50,55 @@ func (q *Queries) ListDiariesForExport(ctx context.Context, userID string) ([]Li
 	return items, nil
 }
 
+const listDiariesForExportPage = `-- name: ListDiariesForExportPage :many
+SELECT id, body, diary_date
+FROM diaries
+WHERE user_id = $1
+  AND ($2::date IS NULL
+    OR (diary_date, id) > ($2::date, $3::text))
+ORDER BY diary_date, id
+LIMIT $4
+`
+
+type ListDiariesForExportPageParams struct {
+	UserID     string
+	CursorDate pgtype.Date
+	CursorID   pgtype.Text
+	PageLimit  int32
+}
+
+type ListDiariesForExportPageRow struct {
+	ID        string
+	Body      string
+	DiaryDate pgtype.Date
+}
+
+// The export walks retained diaries in bounded keyset batches, including released diaries.
+func (q *Queries) ListDiariesForExportPage(ctx context.Context, arg ListDiariesForExportPageParams) ([]ListDiariesForExportPageRow, error) {
+	rows, err := q.db.Query(ctx, listDiariesForExportPage,
+		arg.UserID,
+		arg.CursorDate,
+		arg.CursorID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDiariesForExportPageRow
+	for rows.Next() {
+		var i ListDiariesForExportPageRow
+		if err := rows.Scan(&i.ID, &i.Body, &i.DiaryDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEpisodicMemoriesForExport = `-- name: ListEpisodicMemoriesForExport :many
 SELECT
     diary_id,

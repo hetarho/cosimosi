@@ -1,20 +1,12 @@
-import { useState } from 'react'
 import { KeyboardAvoidingView, Platform, StyleSheet, Text } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
 
 import { signUp } from '@cosimosi/api-client'
-import {
-  pendingInvite,
-  readErrorMessage,
-  recordSignupCompletion,
-  validateNickname,
-} from '@cosimosi/auth'
+import { useSignupProfileController } from '@cosimosi/auth/react/signup'
 import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/index.ts'
-import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 
-import { useMachine } from '@cosimosi/state-machine/react'
 import { InviteAcknowledgment } from './InviteAcknowledgment.tsx'
 
 export interface NicknameStepProps {
@@ -23,39 +15,13 @@ export interface NicknameStepProps {
 
 export function NicknameStep({ onCompleted }: NicknameStepProps) {
   const transport = useTransport()
-  const [value, setValue] = useState('')
-  const [snapshot, send, actorRef] = useMachine(asyncCommandMachine)
-  const pending = snapshot.context.status === 'submitting'
-
-  const handleSubmit = async () => {
-    if (actorRef.getSnapshot().context.status === 'submitting') return
-    const validation = validateNickname(value)
-    send({ type: 'SUBMIT', commandId: 'signup-profile' })
-    const attempt = actorRef.getSnapshot().context.attempt
-    if (!validation.valid) {
-      send({ type: 'REJECT', error: 'invalid-nickname', attempt })
-      return
-    }
-
-    const inviteToken = pendingInvite.consume() ?? ''
-    try {
-      const response = await signUp(transport, {
-        nickname: validation.nickname,
-        timezone: resolveDeviceTimeZone() ?? 'UTC',
-        locale: getActiveLocale(),
-        inviteToken,
-      })
-      recordSignupCompletion()
-      send({ type: 'RESOLVE', resultId: response.nickname, attempt })
-      await onCompleted()
-    } catch (error) {
-      send({
-        type: 'REJECT',
-        error: readErrorMessage(error, 'signup failed'),
-        attempt,
-      })
-    }
-  }
+  const { value, setValue, pending, status, error, submitProfile } = useSignupProfileController({
+    submit: (request) => signUp(transport, request),
+    locale: getActiveLocale,
+    timeZone: resolveDeviceTimeZone,
+    onCompleted,
+  })
+  const handleSubmit = submitProfile
 
   return (
     <KeyboardAvoidingView
@@ -72,9 +38,9 @@ export function NicknameStep({ onCompleted }: NicknameStepProps) {
           autoCapitalize="none"
           editable={!pending}
         />
-        {snapshot.context.status === 'failed' ? (
+        {status === 'failed' ? (
           <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.error}>
-            {snapshot.context.error === 'invalid-nickname'
+            {error === 'invalid-nickname'
               ? m.signup_nickname_invalid()
               : m.signup_nickname_failed()}
           </Text>

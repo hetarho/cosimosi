@@ -1,6 +1,9 @@
 package memory
 
-import "time"
+import (
+	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"time"
+)
 
 type NeuronType string
 
@@ -32,7 +35,8 @@ func AllNeuronTypes() []NeuronType {
 	return []NeuronType{NeuronTypeSemantic, NeuronTypeSpatial, NeuronTypeEntity}
 }
 
-type JobKind string
+// Queue envelopes are neutral infrastructure; memory owns only its producer kinds.
+type JobKind = jobqueue.Kind
 
 const (
 	JobKindEmbed       JobKind = "embed"
@@ -41,49 +45,29 @@ const (
 	JobKindExtract     JobKind = "extract"
 	JobKindConsolidate JobKind = "consolidate"
 	JobKindRetention   JobKind = "retention_sweep"
-	JobKindWithdrawal  JobKind = "withdrawal_sweep"
-	// JobKindAchievementSettle drains a claim whose stamp committed but whose reward has not landed.
-	// It sits in this vocabulary for the same reason the withdrawal sweep does: the queue is
-	// memory-owned, and the alternative — a periodic cross-user scan of another context's product
-	// table — would need a global-scan exemption that queue-driven, user-scoped work does not.
-	JobKindAchievementSettle JobKind = "achievement_settle"
 )
 
-// retriedIndefinitely marks the kinds that must never dead-letter. Each is the sole durable trigger
-// for something a user cannot re-request: an inactive user's Release, a withdrawn account's purge,
-// and a claimed reward's credit. Dead-lettering one silently keeps the thing that was promised.
-func retriedIndefinitely(kind JobKind) bool {
-	return kind == JobKindRetention || kind == JobKindWithdrawal || kind == JobKindAchievementSettle
-}
-
-type JobStatus string
+type JobStatus = jobqueue.Status
 
 const (
-	JobStatusPending  JobStatus = "pending"
-	JobStatusRunning  JobStatus = "running"
-	JobStatusDone     JobStatus = "done"
-	JobStatusFailed   JobStatus = "failed"
-	JobStatusCanceled JobStatus = "cancelled"
+	JobStatusPending  = jobqueue.StatusPending
+	JobStatusRunning  = jobqueue.StatusRunning
+	JobStatusDone     = jobqueue.StatusDone
+	JobStatusFailed   = jobqueue.StatusFailed
+	JobStatusCanceled = jobqueue.StatusCanceled
 )
 
-type JobTargetKind string
+type JobTargetKind = jobqueue.TargetKind
 
 const (
-	JobTargetMemory  JobTargetKind = "episodic_memory"
-	JobTargetNeuron  JobTargetKind = "neuron"
-	JobTargetRelease JobTargetKind = "release_group"
-	JobTargetUser    JobTargetKind = "user"
+	JobTargetMemory  = jobqueue.TargetMemory
+	JobTargetNeuron  = jobqueue.TargetNeuron
+	JobTargetRelease = jobqueue.TargetRelease
+	JobTargetUser    = jobqueue.TargetUser
 )
 
-// JobTarget is identity/revision metadata indexed outside the payload. It lets
-// Release cancel work without inspecting JSON and lets Sweep remove every queue
-// trace before deleting the target aggregate. Revision is zero for identity-only
-// lifecycle targets such as a release group.
-type JobTarget struct {
-	Kind             JobTargetKind
-	ID               string
-	ExpectedRevision int64
-}
+type JobTarget = jobqueue.Target
+type Job = jobqueue.Record
 
 // ProvenanceKind labels a representational event in a memory's 변천사 ([R8a][D1]).
 // 'created' is never written — it is synthesized at read from the memory's
@@ -227,49 +211,6 @@ type Embedding struct {
 }
 
 type SemanticStages [4]string
-
-type Job struct {
-	ID                  string
-	UserID              string
-	Kind                JobKind
-	Payload             []byte
-	Status              JobStatus
-	Attempts            int32
-	NextRunAt           time.Time
-	CreatedAt           time.Time
-	DedupKey            *string
-	Targets             []JobTarget
-	TerminalAt          *time.Time
-	CanceledByReleaseID *string
-	// LeaseGeneration is the fence token the worker holds for this claim; a terminal
-	// transition matches only while it equals the row's current generation.
-	LeaseGeneration int64
-}
-
-func (j Job) JobID() string {
-	return j.ID
-}
-
-func (j Job) JobLeaseGeneration() int64 {
-	// The indefinitely-retried kinds pass the generic dead-letter claim ceiling; the actual
-	// LeaseGeneration field still fences their database operations.
-	if retriedIndefinitely(j.Kind) {
-		return 0
-	}
-	return j.LeaseGeneration
-}
-
-func (j Job) JobUserID() string {
-	return j.UserID
-}
-
-func (j Job) JobKind() string {
-	return string(j.Kind)
-}
-
-func (j Job) JobAttempts() int32 {
-	return j.Attempts
-}
 
 type UniverseFacts struct {
 	EpisodicMemories []EpisodicMemory
