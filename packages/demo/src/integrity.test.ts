@@ -404,19 +404,21 @@ describe('package isolation', () => {
     // cannot accidentally become a product write. Anything added has to answer that first.
     //
     // What each entry buys: `emotion` for the mood→arousal→strength relationship the fixtures show
-    // rather than hand-tune ([I3]), `memory` for the shapes the resolver returns, `memory-logic` for
-    // the pinned read-time math ([Z5]: nothing is re-implemented), `i18n` for the `Locale` the text
-    // split is keyed by. No `store` ([Z8]), no `twinkle`, no `api-client`, no `universe`.
+    // rather than hand-tune ([I3]), `memory` for the shapes the resolver returns, `i18n` for the
+    // `Locale` the text split is keyed by. No `store` ([Z8]), no `twinkle`, no `api-client`, no
+    // `universe`.
     expect(Object.keys(manifest.dependencies).sort()).toEqual([
       '@cosimosi/emotion',
       '@cosimosi/i18n',
       '@cosimosi/memory',
-      '@cosimosi/memory-logic',
     ])
     // `config` is a dev dependency because only this file reads `VALUES` — to assert the fixtures
     // against the shipped ratios. The resolver itself needs no tuning scalar, and a manifest that
     // said otherwise would overstate what the shipped package pulls in.
     expect(Object.keys(manifest.devDependencies)).toContain('@cosimosi/config')
+    // `memory-logic` likewise: this file checks the fixtures against the pinned read-time math ([Z5]:
+    // nothing is re-implemented), and the resolver itself never calls it.
+    expect(Object.keys(manifest.devDependencies)).toContain('@cosimosi/memory-logic')
     expect(manifest.peerDependencies).toBeUndefined()
   })
 })

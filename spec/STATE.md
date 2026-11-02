@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:24Z | T211 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:30Z | T212 |
 
 ## inbox
 - 261103 decided UI-30 T210: F29 deletes the unused background seam that UI-30 still defined → UI-30 [x] (r2) and the seam, `useBackground` and their exports removed (alt: keep the seam as reserved API | give it a consumer) ← no surface reads it, and ARCH-27 forbids entries publishing what nothing imports
@@ -93,7 +93,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T211 | Manifests match imports and the workspace uses one TypeScript major | ARCH | T210 | todo |
 | T212 | Universe scene projection and showcase have their own entries; scene assembly is shared | ARCH | T204 | todo |
 | T213 | Color math has one implementation | ARCH | - | todo |
 | T214 | Canvases render only while visible | ARCH | - | todo |
@@ -106,11 +105,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T211 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T212 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T211 done
 - 261103 T210 done
 - 261103 T209 done
 - 261103 T208 done
@@ -130,4 +130,3 @@
 - 261103 T194 done
 - 261103 T193 done
 - 261103 T192 done
-- 261103 T191 done

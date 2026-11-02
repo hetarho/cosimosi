@@ -10,7 +10,11 @@
 //     scripts/package-dead-exports.baseline.json — a new one fails, a removed one asks to lower it.
 // E4  A `react-native` entry that re-exports its default entry (overriding only a platform host)
 //     publishes exactly the names the default entry does, so the shared surface cannot drift.
+// E5  A package's manifest matches its source: every bare import in a non-test file — types too,
+//     since consumers typecheck the shipped source — is in dependencies or peerDependencies, and
+//     every runtime dependency is imported by some non-test file (CSS `@import` counts).
 
+import { builtinModules } from 'node:module'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -358,10 +362,112 @@ export function compareDeadExports(measured, baseline) {
   return { added, removed }
 }
 
+const BUILTINS = new Set(builtinModules)
+// Test support that is not itself a `*.test.*` file — a harness only suites import.
+const TEST_SUPPORT = /(^|[.-])test([.-]|$)/
+
+function walkCss(dir) {
+  if (!existsSync(dir)) return []
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : walkCss(path)
+    return entry.name.endsWith('.css') ? [path] : []
+  })
+}
+const packageOf = (specifier) =>
+  specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]
+
+// Every bare package a file imports, split by whether any import of it carries a value.
+function bareImports(file) {
+  const value = new Set()
+  const typeOnly = new Set()
+  const source = parse(file)
+  const add = (specifier, isType) => {
+    if (specifier.startsWith('.') || specifier.startsWith('node:') || BUILTINS.has(specifier))
+      return
+    const name = packageOf(specifier)
+    if (isType) typeOnly.add(name)
+    else value.add(name)
+  }
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
+      const clause = node.importClause
+      const isType =
+        clause?.isTypeOnly ||
+        (clause &&
+          !clause.name &&
+          clause.namedBindings &&
+          ts.isNamedImports(clause.namedBindings) &&
+          clause.namedBindings.elements.length > 0 &&
+          clause.namedBindings.elements.every((element) => element.isTypeOnly))
+      add(node.moduleSpecifier.text, Boolean(isType))
+    }
+    if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    )
+      add(node.moduleSpecifier.text, node.isTypeOnly)
+    if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 'require')) &&
+      ts.isStringLiteralLike(node.arguments[0])
+    )
+      add(node.arguments[0].text, false)
+    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
+      add(node.argument.literal.text, true)
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  for (const name of value) typeOnly.delete(name)
+  return { value, typeOnly }
+}
+
+export function findManifestProblems(root = repoRoot) {
+  parsed.clear()
+  const problems = []
+  for (const [name, pkg] of workspacePackages(root)) {
+    const manifest = JSON.parse(readFileSync(join(pkg.dir, 'package.json'), 'utf8'))
+    const runtime = new Set([
+      ...Object.keys(manifest.dependencies ?? {}),
+      ...Object.keys(manifest.peerDependencies ?? {}),
+    ])
+    const imported = new Set()
+    const sources = walk(join(pkg.dir, 'src')).filter(
+      (path) => !TEST.test(path) && !TEST_SUPPORT.test(path.split(sep).at(-1)),
+    )
+    for (const file of sources) {
+      const { value, typeOnly } = bareImports(file)
+      for (const dependency of value) {
+        imported.add(dependency)
+        if (dependency !== name && !runtime.has(dependency))
+          problems.push(
+            `${name} — ${portable(root, file)} imports ${dependency}, which is not in dependencies or peerDependencies`,
+          )
+      }
+      for (const dependency of typeOnly) {
+        imported.add(dependency)
+        if (dependency !== name && !runtime.has(dependency))
+          problems.push(
+            `${name} — ${portable(root, file)} imports types from ${dependency}, which is not in dependencies or peerDependencies`,
+          )
+      }
+    }
+    for (const css of walkCss(join(pkg.dir, 'src')))
+      for (const match of readFileSync(css, 'utf8').matchAll(/@import\s+['"]([^'".][^'"]*)['"]/g))
+        imported.add(packageOf(match[1]))
+    for (const dependency of Object.keys(manifest.dependencies ?? {}))
+      if (!imported.has(dependency))
+        problems.push(`${name} — depends on ${dependency}, which no non-test source file imports`)
+  }
+  return [...new Set(problems)]
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   section('package entries (ARCH-27)')
-  const problems = findEntryProblems()
+  const problems = [...findEntryProblems(), ...findManifestProblems()]
   const measured = findDeadExports()
   const baselinePath = join(repoRoot, DEAD_EXPORTS_BASELINE)
   if (process.argv.includes('--write-baseline')) {

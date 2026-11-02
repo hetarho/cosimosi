@@ -13,7 +13,6 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@connectrpc/connect": "^2.1.2",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "zustand": "^5.0.14"
@@ -24,6 +23,7 @@
     "react": ">=19"
   },
   "devDependencies": {
+    "@connectrpc/connect": "^2.1.2",
     "@connectrpc/connect-query": "^2.2.0",
     "@tanstack/react-query": "^5.101.4",
     "@types/node": "^24.13.2",

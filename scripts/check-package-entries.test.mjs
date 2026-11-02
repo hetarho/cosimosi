@@ -7,7 +7,12 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, test } from 'node:test'
 
-import { compareDeadExports, findDeadExports, findEntryProblems } from './check-package-entries.mjs'
+import {
+  compareDeadExports,
+  findDeadExports,
+  findEntryProblems,
+  findManifestProblems,
+} from './check-package-entries.mjs'
 
 const roots = []
 afterEach(() => {
@@ -117,4 +122,36 @@ test('an exported value nothing outside imports is dead, and a new one fails aga
     added: [],
     removed: ['@cosimosi/lib: unused'],
   })
+})
+
+test('a manifest must declare what non-test source imports, and import what it declares', () => {
+  const root = workspace()
+  put(
+    root,
+    'packages/drifty/package.json',
+    JSON.stringify({
+      name: '@cosimosi/drifty',
+      exports: { '.': './src/index.ts' },
+      dependencies: { zod: '^1', 'unused-lib': '^1', 'font-pack': '^1' },
+      devDependencies: { vitest: '^4', xstate: '^5' },
+    }),
+  )
+  put(
+    root,
+    'packages/drifty/src/index.ts',
+    "import { z } from 'zod'\nimport { readFileSync } from 'node:fs'\nimport type { ActorRef } from 'xstate'\nimport { nanoid } from 'nanoid'\nexport const parse = [z, readFileSync, nanoid]\nexport type Ref = ActorRef<never, never>\n",
+  )
+  put(root, 'packages/drifty/src/fonts.css', "@import 'font-pack/variable.css';\n")
+  put(
+    root,
+    'packages/drifty/src/index.test.ts',
+    "import { it } from 'vitest'\nimport 'test-only-lib'\nit('x', () => {})\n",
+  )
+  put(root, 'packages/drifty/src/flow-test-harness.ts', "import 'harness-only-lib'\n")
+
+  assert.deepEqual(findManifestProblems(root), [
+    '@cosimosi/drifty — packages/drifty/src/index.ts imports nanoid, which is not in dependencies or peerDependencies',
+    '@cosimosi/drifty — packages/drifty/src/index.ts imports types from xstate, which is not in dependencies or peerDependencies',
+    '@cosimosi/drifty — depends on unused-lib, which no non-test source file imports',
+  ])
 })

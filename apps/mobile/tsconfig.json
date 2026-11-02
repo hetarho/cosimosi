@@ -4,25 +4,13 @@
   // Self-contained instead of extending @react-native/typescript-config: that
   // package is hoisted to the repo-root node_modules and pins a fixed `types`
   // list, which the editor can't always resolve here. The options below mirror the
-  // RN base; leaving `types` unset auto-includes @types/jest for the shell tests.
+  // RN base on the workspace's TypeScript and ES2023 lib; `types` names the globals
+  // the shell tests use, since TypeScript 6 includes no `@types` package unasked.
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "lib": [
-      "es2019",
-      "es2020.bigint",
-      "es2020.date",
-      "es2020.number",
-      "es2020.promise",
-      "es2020.string",
-      "es2020.symbol.wellknown",
-      "es2021.promise",
-      "es2021.string",
-      "es2021.weakref",
-      "es2022.array",
-      "es2022.object",
-      "es2022.string"
-    ],
+    "lib": ["es2023"],
+    "types": ["jest", "node"],
     "allowJs": true,
     "jsx": "react-native",
     "noEmit": true,

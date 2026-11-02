@@ -19,6 +19,8 @@
   "peerDependencies": {
     "@react-three/fiber": ">=9",
     "react": ">=19",
+    "react-native": ">=0.86",
+    "react-native-webgpu": ">=0.8",
     "three": ">=0.185"
   },
   "peerDependenciesMeta": {
