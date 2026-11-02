@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Code, ConnectError } from '@connectrpc/connect'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorInfoSchema, type RecallDiaryStarsResponse } from '@cosimosi/api-client'
 import { invalidateUserScope } from '@cosimosi/auth/scope'
 import { ERROR_REASONS } from '@cosimosi/errors/core'
@@ -34,6 +34,9 @@ const operationIds = (ports: { request: { mock: { calls: [DiaryRecallInput][] } 
   ports.request.mock.calls.map(([input]) => input.operationId)
 
 describe('useDiaryJump', () => {
+  // Unmount every rendered hook so a store subscription never outlives its test.
+  afterEach(cleanup)
+
   it('keeps the operation id after an ambiguous failure, retrying once with it', async () => {
     const { ports, result } = renderDiaryJump(() =>
       Promise.reject(new ConnectError('down', Code.Unavailable)),

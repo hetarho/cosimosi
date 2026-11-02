@@ -1067,6 +1067,12 @@ importers:
       '@cosimosi/memory-logic':
         specifier: workspace:*
         version: link:../memory-logic
+      '@cosimosi/onboarding':
+        specifier: workspace:*
+        version: link:../onboarding
+      '@cosimosi/sequence':
+        specifier: workspace:*
+        version: link:../sequence
       '@cosimosi/state-machine':
         specifier: workspace:*
         version: link:../state-machine

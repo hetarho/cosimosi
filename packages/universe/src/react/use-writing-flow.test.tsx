@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Code, ConnectError } from '@connectrpc/connect'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LaunchStarsResponse, SplitDiaryResponse } from '@cosimosi/api-client'
 import { invalidateUserScope } from '@cosimosi/auth/scope'
 
@@ -41,6 +41,9 @@ function openAndWrite(result: { current: ReturnType<typeof useWritingFlowControl
 }
 
 describe('useWritingFlowController', () => {
+  // Unmount every rendered hook so a store subscription never outlives its test.
+  afterEach(cleanup)
+
   beforeEach(() => {
     useProposalStore.getState().reset()
   })

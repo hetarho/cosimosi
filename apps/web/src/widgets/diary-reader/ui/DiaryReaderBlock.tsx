@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 
 import type { GetDiariesInput } from '@cosimosi/api-client'
 import type { Diary } from '@cosimosi/memory'
@@ -12,24 +12,20 @@ import {
   SegmentedControl,
   Tooltip,
 } from '@cosimosi/ui'
-import {
-  resolveCalendarMonth,
-  useDeletionTargetStore,
-  useOpenDiaryTargetStore,
-} from '@cosimosi/universe'
+import { useDeletionTargetStore } from '@cosimosi/universe'
 
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
-import { DiaryEntry, DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
+import { DiaryEntry, DiaryList } from '../../../features/read-diary-list/index.ts'
 import { HighlightedBody, SearchDiary } from '../../../features/search-diary/index.ts'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
-import { DiaryCalendar, useDiaryCalendar } from '../../../features/diary-calendar/index.ts'
+import { DiaryCalendar } from '../../../features/diary-calendar/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
-import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
+import { useDiaryArchiveNavigation, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useDiaryJump } from '@cosimosi/universe/react/flows'
 
 // widgets/diary-reader ([D2][D3]): the archive block. It composes the free read (read-diary-list)
@@ -63,66 +59,25 @@ export function DiaryReaderBlock({
   onMonthChange: (month: string) => void
 }) {
   const showError = useErrorToast()
-  const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive(query)
-  const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
-
-  // Any condition change starts a fresh keyset page, so the opened entry may not be in the new result
-  // set and the reader should be looking at the top of it ([D7]).
-  const changeQuery = useCallback(
-    (update: DiaryConditionsUpdate) => {
-      setOpenedDiaryId(null)
-      onQueryChange(update)
-    },
-    [onQueryChange],
-  )
-
-  // The ORDER is deliberately absent: it narrows nothing, so an archive read oldest-first is not a
-  // filtered archive and 조건 지우기 must not turn it back over.
-  const conditionsActive =
-    (query.query ?? '') !== '' ||
-    (query.moods ?? []).length > 0 ||
-    (query.from ?? '') !== '' ||
-    (query.to ?? '') !== '' ||
-    query.minMemories !== undefined ||
-    query.maxMemories !== undefined
-
-  const clearConditions = useCallback(() => {
-    changeQuery((previous) => ({
-      ...previous,
-      query: '',
-      moods: [],
-      from: '',
-      to: '',
-      minMemories: undefined,
-      maxMemories: undefined,
-    }))
-  }, [changeQuery])
-
-  // The month is RESOLVED rather than stored, from the archive page the list has already fetched, and is
-  // never written back — mounting the calendar must add no history entry, while stepping does ([D12]).
-  const displayedMonth = resolveCalendarMonth(
-    month,
-    diaries.map((diary) => diary.diaryDate),
-    new Date(),
-  )
-  const calendar = useDiaryCalendar(displayedMonth, view === 'calendar')
-
-  // Selecting a day opens that day's writing over the calendar, so the month the reader is browsing
-  // stays where it is. It opens the DAY, not a guessed entry: a day may hold several diaries and the
-  // modal shows all of them ([D12][D8]). The read is a second archive page bounded to that one date,
-  // and it is issued only once a day is picked.
-  const [dayModalDate, setDayModalDate] = useState<string | null>(null)
-  // Held here rather than inside the panel: the archive body swaps between branches as reads settle,
-  // and a disclosure owned down there would refold every time one did.
-  const [moodsOpen, setMoodsOpen] = useState(false)
-  // Bounded by the DATE ALONE, deliberately: the grid marks every day that holds writing, without
-  // regard for the keyword or the mood chips, so a day the reader can see marked must open to what
-  // it is marked for. Carrying the conditions in would let a marked day open onto nothing.
-  const dayArchive = useDiaryArchive(
-    { sort: query.sort, from: dayModalDate ?? '', to: dayModalDate ?? '' },
-    { enabled: dayModalDate !== null, mirror: false },
-  )
-  const selectDay = useCallback((date: string) => setDayModalDate(date), [])
+  // Opened entry, conditions, calendar month, the picked day and deep-link paging are the package's
+  // archive navigation; this block renders them.
+  const {
+    archive: { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore },
+    openedDiaryId,
+    openedDiary,
+    openDiary: setOpenedDiaryId,
+    changeQuery,
+    conditionsActive,
+    clearConditions,
+    displayedMonth,
+    calendar,
+    dayModalDate,
+    selectDay,
+    closeDay,
+    dayArchive,
+    moodsOpen,
+    setMoodsOpen,
+  } = useDiaryArchiveNavigation({ query, onQueryChange, view, month })
 
   const invalidateBalance = useInvalidateTwinkleBalance()
   const invalidateAchievements = useInvalidateAchievements()
@@ -144,46 +99,6 @@ export function DiaryReaderBlock({
     invalidateAchievements,
     requestEarnGuide,
   })
-
-  const deepLinkMemoryId = useOpenDiaryTargetStore((state) => state.memoryId)
-  const clearDeepLink = useOpenDiaryTargetStore((state) => state.clear)
-  useEffect(() => {
-    if (!deepLinkMemoryId) return
-    // An entry the reader opened themselves outranks a request still paging for its diary: swapping
-    // the body under an open surface would replace what they are reading with something they never
-    // asked for. The request is dropped rather than queued — they are already in the archive.
-    if (openedDiaryId) {
-      clearDeepLink()
-      return
-    }
-    const match = diaries.find((diary) =>
-      diary.memories.some((member) => member.episodicMemoryId === deepLinkMemoryId),
-    )
-    if (match) {
-      setOpenedDiaryId(match.id)
-      clearDeepLink()
-      return
-    }
-    // The archive the star's diary must be found in is the whole archive: paging a filtered one would
-    // run out of pages and drop the request, so the conditions are lifted first and the search then
-    // continues over every entry.
-    if (conditionsActive) {
-      clearConditions()
-      return
-    }
-    if (hasMore && !isLoadingMore) loadMore()
-    else if (!hasMore) clearDeepLink()
-  }, [
-    deepLinkMemoryId,
-    diaries,
-    hasMore,
-    isLoadingMore,
-    loadMore,
-    clearDeepLink,
-    conditionsActive,
-    clearConditions,
-    openedDiaryId,
-  ])
 
   const openedEntry = useCallback(
     (diary: Diary, dismiss: () => void) => (
@@ -223,16 +138,6 @@ export function DiaryReaderBlock({
     ),
     [initiateJump, openFullDelete, query.query],
   )
-
-  const openedDiary = openedDiaryId
-    ? (diaries.find((diary) => diary.id === openedDiaryId) ?? null)
-    : null
-  // The archive can lose the entry under an open surface — a release elsewhere, a refetch that
-  // returns a shorter set. Letting the id outlive its diary would make the surface reappear the
-  // moment a later page happened to carry that id again, unprompted.
-  useEffect(() => {
-    if (openedDiaryId && !openedDiary && !isLoading) setOpenedDiaryId(null)
-  }, [openedDiaryId, openedDiary, isLoading])
 
   return (
     <div className="flex flex-col gap-4">
@@ -348,7 +253,7 @@ export function DiaryReaderBlock({
       {dayModalDate && (
         <Dialog
           open
-          onClose={() => setDayModalDate(null)}
+          onClose={() => closeDay()}
           title={m.calendar_day_title({ date: dayModalDate })}
           closeLabel={m.common_dismiss()}
         >
@@ -361,7 +266,7 @@ export function DiaryReaderBlock({
           ) : (
             <div className="flex flex-col gap-6">
               {dayArchive.diaries.map((diary) => (
-                <div key={diary.id}>{openedEntry(diary, () => setDayModalDate(null))}</div>
+                <div key={diary.id}>{openedEntry(diary, () => closeDay())}</div>
               ))}
             </div>
           )}

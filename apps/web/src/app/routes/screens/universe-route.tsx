@@ -13,7 +13,7 @@ export function UniverseRoute() {
   const navigate = useAppNavigate()
   return (
     <UniverseHomePage
-      onOpenReader={() => navigate({ to: '/diary' })}
+      onOpenDiary={() => navigate({ to: '/diary' })}
       onOpenMe={() => navigate({ to: '/me', search: { tab: 'profile' } })}
       // Where earning is actually claimed ([A4]) — the app layer owns the tab id because it owns the
       // route; the page and the widget below it know only the intent.

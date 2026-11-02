@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Code, ConnectError } from '@connectrpc/connect'
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, renderHook } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorInfoSchema, type ViewSemanticResponse } from '@cosimosi/api-client'
 import { invalidateUserScope } from '@cosimosi/auth/scope'
 import { ERROR_REASONS } from '@cosimosi/errors/core'
@@ -40,6 +40,9 @@ const operationIds = (ports: { request: { mock: { calls: [ViewSemanticInput][] }
   ports.request.mock.calls.map(([input]) => input.operationId)
 
 describe('useGistViewController', () => {
+  // Unmount every rendered hook so a store subscription never outlives its test.
+  afterEach(cleanup)
+
   it('reveals the gist after the paid read and refreshes balance and achievements', async () => {
     const { ports, result } = renderGistView(() => Promise.resolve(viewed))
 
