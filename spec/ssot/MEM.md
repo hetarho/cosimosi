@@ -144,6 +144,6 @@
 
 ## chg
 
-- r3 261103 MEM-13✎ purge scope +`universe_revisions` ; MEM-14✎ +lock statement advances the universe revision ; MEM-21+ per-user universe revision for client freshness reads
+- r3 261103 MEM-13✎ purge scope "`universe_state` row"→"`universe_state` and `universe_revisions` rows" ; MEM-14✎ lock statement "lock only"→"lock and advance the universe revision" ; MEM-21+ per-user universe revision
 - r2 261102 MEM-16✎ memory-owned queue→shared infrastructure; MEM-17✎ memory-owned foreign producer policy and lease-token masking→owner schedulers/handlers and explicit registry retry policy, with unchanged persisted identities and fencing
 - r1 261102 initial

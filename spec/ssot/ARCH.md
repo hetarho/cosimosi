@@ -369,6 +369,6 @@
 
 ## chg
 
-- r3 261103 ARCH-7✎ +`cmd/internal/wiring` shared by both roots ; ARCH-21✎ feature "one user-facing action"→"the view(s) of one user action wherever its request runs", widget "reused across pages"→"binds one controller or composes features", entity "a domain object mirror"→"read-only views of one noun", +passive facts are entity UI ; ARCH-27✎ +`account` mirror package, auth "platform seam"→"session only", React "only through seam entries"→"seam entries plus Zustand hook stores in roots", +named entry exports, +`color` package ; ARCH-34✎ +MEM owns `persistence` ; ARCH-41✎ +`lint:package-entries`
+- r3 261103 ARCH-7✎ +`cmd/internal/wiring` ; ARCH-21✎ feature "one action"→"views of one action", widget "reused across pages"→"binds a controller or composes features", entity "domain mirror"→"read-only views of one noun" ; ARCH-27✎ +`account` +`color`, auth "platform seam"→"session only", React "seam entries only"→"plus root hook stores", +named exports ; ARCH-34✎ +MEM `persistence` ; ARCH-41✎ +`lint:package-entries`
 - r2 261102 ARCH-9✎ opaque DB assertions and late-bound holders→typed transaction behaviors and independently constructed read/recording capabilities ; queue producer ownership stays with each context
 - r1 261102 initial
