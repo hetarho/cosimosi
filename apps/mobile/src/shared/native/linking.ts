@@ -49,40 +49,52 @@ export function openExternalUrl(url: string): Promise<void> {
   return Linking.openURL(url)
 }
 
+// A URL reaches at most one delivery per process. `getInitialURL` and the `url` event can BOTH
+// report the cold-start link, and a remounted provider subscribes again; a second exchange of the
+// same single-use OAuth code would race and fail the sign-in.
+const deliveredUrls = new Set<string>()
+
 /**
- * Deliver every auth-callback deep link — including the one that cold-started the
- * app — to `onUrl`. Non-callback URLs are ignored here; they belong to the
- * navigation linking config. `getInitialURL` and the `url` event can BOTH report
- * the cold-start link, so identical URLs are delivered once — a second exchange of
- * the same single-use OAuth code would race and fail the sign-in.
+ * Deliver each matching URL — including the one that cold-started the app — to `onValue`, never
+ * after the subscription is removed (a late `getInitialURL` would otherwise reach a released
+ * owner).
  */
-export function subscribeToAuthCallbackUrls(onUrl: (url: string) => void): () => void {
-  let lastDelivered: string | null = null
+function subscribeToUrls<T>(
+  select: (url: string) => T | null,
+  onValue: (value: T) => void,
+): () => void {
+  let active = true
   const deliver = (url: string | null) => {
-    if (!url || !isAuthCallbackUrl(url) || url === lastDelivered) return
-    lastDelivered = url
-    onUrl(url)
+    if (!active || !url || deliveredUrls.has(url)) return
+    const value = select(url)
+    if (value === null) return
+    deliveredUrls.add(url)
+    onValue(value)
   }
   Linking.getInitialURL()
     .then(deliver)
     .catch(() => undefined)
   const subscription = Linking.addEventListener('url', ({ url }) => deliver(url))
-  return () => subscription.remove()
+  return () => {
+    active = false
+    subscription.remove()
+  }
+}
+
+/**
+ * Deliver every auth-callback deep link to `onUrl`. Non-callback URLs are ignored here; they
+ * belong to the navigation linking config.
+ */
+export function subscribeToAuthCallbackUrls(onUrl: (url: string) => void): () => void {
+  return subscribeToUrls((url) => (isAuthCallbackUrl(url) ? url : null), onUrl)
 }
 
 /** Capture invite links at the shell seam; they are auth-entry events, not screens. */
 export function subscribeToInviteUrls(onToken: (token: string) => void): () => void {
-  let lastDelivered: string | null = null
-  const deliver = (url: string | null) => {
-    if (!url || url === lastDelivered) return
-    const token = inviteTokenFromUrl(url)
-    if (!token) return
-    lastDelivered = url
-    onToken(token)
-  }
-  Linking.getInitialURL()
-    .then(deliver)
-    .catch(() => undefined)
-  const subscription = Linking.addEventListener('url', ({ url }) => deliver(url))
-  return () => subscription.remove()
+  return subscribeToUrls(inviteTokenFromUrl, onToken)
+}
+
+/** Test seam: forget which URLs this process has delivered. */
+export function forgetDeliveredUrlsForTests(): void {
+  deliveredUrls.clear()
 }

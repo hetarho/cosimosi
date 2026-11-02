@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T18:37Z | T185 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T18:39Z | T186 |
 
 ## inbox
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
@@ -85,7 +85,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T185 | Mobile inbound links are delivered once and never after unsubscribe | ARCH ACCT | - | todo |
 | T186 | Each shared-transaction edge has one mechanism | ARCH | T181 | todo |
 | T187 | Memory command services are sized to their use cases | ARCH | T186 | todo |
 | T188 | Receipt replay and clock fallback each exist once | ARCH MEM | T187 | todo |
@@ -124,11 +123,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T185 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T186 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T185 done
 - 261103 T184 done
 - 261103 T183 done
 - 261103 T182 done
