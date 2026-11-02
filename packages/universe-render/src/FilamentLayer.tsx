@@ -6,7 +6,8 @@ import {
   type CoordinateBufferRef,
 } from '@cosimosi/3d-renderer'
 
-import { projectFilaments, useSynapseStore } from '@cosimosi/universe'
+import { projectFilaments } from '@cosimosi/universe/scene'
+import { useSynapseStore } from '@cosimosi/universe'
 
 export interface FilamentLayerProps {
   readonly positions: CoordinateBufferRef

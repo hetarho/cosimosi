@@ -30,12 +30,14 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 import {
   GIST_SHAPE_STAR_MAGNIFICATION,
   SHOWCASE_UNIVERSE_TIME,
-  UNIVERSE_CAMERA_ENVELOPE,
   gistShapesShowcaseScene,
+  type GistShowcaseScene,
+} from '@cosimosi/universe/showcase'
+import {
+  UNIVERSE_CAMERA_ENVELOPE,
   starChannels,
   universeEmotionSlices,
-  type GistShowcaseScene,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/scene'
 import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
 
 import { T } from '../lib/showcase-copy.ts'

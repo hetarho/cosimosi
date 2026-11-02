@@ -20,7 +20,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { moodColor, type EmotionSlice } from '@cosimosi/emotion'
 import { ObservedErrorBoundary } from '@cosimosi/observability/react'
-import { starChannels } from '@cosimosi/universe'
+import { starChannels } from '@cosimosi/universe/scene'
 import { tokens, useReducedMotion } from '@cosimosi/ui'
 
 import type { EpisodicMemory } from '@cosimosi/memory'

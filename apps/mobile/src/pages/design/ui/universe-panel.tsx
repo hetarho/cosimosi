@@ -41,15 +41,13 @@ import {
   SHOWCASE_UNIVERSE_TIME,
   ambientShowcaseScene,
   awakenShowcaseField,
-  cellStarChannels,
   forgettingShowcaseScene,
   gistShowcaseScene,
   moodRingShowcaseScene,
   starFormsShowcaseScene,
-  starChannels,
-  universeEmotionSlices,
-  useLatentConsumedStore,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/showcase'
+import { cellStarChannels, starChannels, universeEmotionSlices } from '@cosimosi/universe/scene'
+import { useLatentConsumedStore } from '@cosimosi/universe'
 import { tokens, useReducedMotion } from '@cosimosi/ui'
 
 import { Section, Specimen } from './showcase-shell.tsx'

@@ -11,12 +11,8 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 
-import {
-  gistStageOffset,
-  gistStarInstances,
-  useEpisodicMemoryStore,
-  type GistStarInstance,
-} from '@cosimosi/universe'
+import { gistStageOffset, gistStarInstances, type GistStarInstance } from '@cosimosi/universe/scene'
+import { useEpisodicMemoryStore } from '@cosimosi/universe'
 
 // One stage-rise event on the choreography seam when a gist body newly rises — the reserved
 // [V8] hook the consolidation-replay choreography ([C2][C8]) consumes. This layer emits the

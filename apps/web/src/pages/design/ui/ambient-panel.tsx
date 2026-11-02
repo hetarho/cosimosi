@@ -18,12 +18,8 @@ import {
 } from '@cosimosi/3d-renderer'
 import { showcaseEmotions } from '@cosimosi/emotion'
 import { LatentStarField } from '@cosimosi/universe-render'
-import {
-  UNIVERSE_CAMERA_ENVELOPE,
-  ambientShowcaseScene,
-  cellStarChannels,
-  type AmbientShowcaseScene,
-} from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_ENVELOPE, cellStarChannels } from '@cosimosi/universe/scene'
+import { ambientShowcaseScene, type AmbientShowcaseScene } from '@cosimosi/universe/showcase'
 import { Switch, useReducedMotion } from '@cosimosi/ui'
 
 import { T } from '../lib/showcase-copy.ts'

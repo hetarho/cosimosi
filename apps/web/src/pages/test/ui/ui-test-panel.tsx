@@ -23,12 +23,8 @@ import {
   type Mood,
 } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import {
-  UNIVERSE_CAMERA_ENVELOPE,
-  useEpisodicMemoryStore,
-  useNeuronStore,
-  useSynapseStore,
-} from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_ENVELOPE } from '@cosimosi/universe/scene'
+import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/universe-render'
 import {
   Badge,

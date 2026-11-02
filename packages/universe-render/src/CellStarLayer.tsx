@@ -6,7 +6,8 @@ import {
   type CoordinateBufferRef,
 } from '@cosimosi/3d-renderer'
 
-import { cellStarChannels, useNeuronStore } from '@cosimosi/universe'
+import { cellStarChannels } from '@cosimosi/universe/scene'
+import { useNeuronStore } from '@cosimosi/universe'
 
 export interface CellStarLayerProps {
   readonly positions: CoordinateBufferRef

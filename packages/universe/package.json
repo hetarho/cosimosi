@@ -10,6 +10,8 @@
     "./react/flows": "./src/react/flows.ts",
     "./react/exports": "./src/react/use-export.ts",
     "./i18n": "./src/i18n.ts",
+    "./scene": "./src/scene.ts",
+    "./showcase": "./src/showcase.ts",
     "./testing": "./src/testing.ts"
   },
   "scripts": {

@@ -11,7 +11,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { moodColor } from '@cosimosi/emotion'
 import { ObservedErrorBoundary } from '@cosimosi/observability/react'
-import { UNIVERSE_ARRIVAL_CAMERA_POSITION, generateLatentField } from '@cosimosi/universe'
+import { UNIVERSE_ARRIVAL_CAMERA_POSITION, generateLatentField } from '@cosimosi/universe/scene'
 import { LatentStarField } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 

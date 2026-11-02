@@ -4,7 +4,7 @@ import { StrictMode, type MutableRefObject } from 'react'
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { SPOTLIGHT_SCENE_DIM, useSpotlightStore } from '@cosimosi/universe'
+import { SPOTLIGHT_SCENE_DIM, useSpotlightStore } from '@cosimosi/universe/scene'
 
 const renderer = vi.hoisted(() => ({
   onFrame: null as ((delta: number) => void) | null,

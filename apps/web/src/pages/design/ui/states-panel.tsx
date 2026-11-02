@@ -30,16 +30,18 @@ import { AwakenNeuron, LatentStarField } from '@cosimosi/universe-render'
 import {
   SHOWCASE_ELAPSED_DAYS,
   SHOWCASE_UNIVERSE_TIME,
-  UNIVERSE_CAMERA_ENVELOPE,
   awakenShowcaseField,
   forgettingShowcaseScene,
   gistShowcaseScene,
-  starChannels,
-  universeEmotionSlices,
-  useLatentConsumedStore,
   type ForgettingShowcaseScene,
   type GistShowcaseScene,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/showcase'
+import {
+  UNIVERSE_CAMERA_ENVELOPE,
+  starChannels,
+  universeEmotionSlices,
+} from '@cosimosi/universe/scene'
+import { useLatentConsumedStore } from '@cosimosi/universe'
 import { Button, Switch, useReducedMotion } from '@cosimosi/ui'
 
 import { T } from '../lib/showcase-copy.ts'

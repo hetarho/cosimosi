@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { VALUES } from '@cosimosi/config'
 import { DEFAULT_FORCE_SIM_VALUES, type ForceSimGraph } from '@cosimosi/force-sim'
 
-import { createUniverseSimBridge, type SimWorkerLike, type SimWorkerRequest } from './index.ts'
+import { createUniverseSimBridge, type SimWorkerLike, type SimWorkerRequest } from './sim-bridge.ts'
 
 const neuron = (id: string) => ({ id, connectivity: 1 })
 const graphOf = (ids: string[]): ForceSimGraph => ({

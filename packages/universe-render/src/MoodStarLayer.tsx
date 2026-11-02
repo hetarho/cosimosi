@@ -13,7 +13,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { VALUES } from '@cosimosi/config'
 import { MOODS, type Color, type Mood } from '@cosimosi/emotion'
-import { generateLatentField, hexToLinearRgb } from '@cosimosi/universe'
+import { generateLatentField, hexToLinearRgb } from '@cosimosi/universe/scene'
 
 export interface MoodStarLayerProps {
   readonly colors: Readonly<Record<Mood, Color>>

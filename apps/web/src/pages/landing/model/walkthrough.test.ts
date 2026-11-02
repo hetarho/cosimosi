@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { starChannels } from '@cosimosi/universe'
+import { starChannels } from '@cosimosi/universe/scene'
 
 import { walkthroughContent } from '../config/walkthrough-content.ts'
 import {

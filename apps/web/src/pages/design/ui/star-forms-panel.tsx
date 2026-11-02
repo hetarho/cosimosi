@@ -30,7 +30,7 @@ import {
   buildContributors,
   starChannels,
   universeEmotionSlices,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/scene'
 import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'

@@ -20,6 +20,11 @@ export {
   type UniverseSceneLayersProps,
 } from './UniverseSceneLayers.tsx'
 export {
+  useSceneAssembly,
+  type SceneAssembly,
+  type SceneAssemblyInputs,
+} from './use-scene-assembly.ts'
+export {
   useUniverseScene,
   type UniverseNavigationActorRef,
   type UniverseSceneOptions,

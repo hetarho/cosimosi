@@ -12,7 +12,8 @@ import {
   type BloomParams,
   type StarFieldProfile,
 } from '@cosimosi/3d-renderer'
-import { UNIVERSE_CAMERA_RIG, advanceSkyRate, gistStageOffset } from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_RIG, gistStageOffset } from '@cosimosi/universe/scene'
+import { advanceSkyRate } from '@cosimosi/universe'
 
 import { AwakenNeuron } from './AwakenNeuron.tsx'
 import { CellStarLayer } from './CellStarLayer.tsx'

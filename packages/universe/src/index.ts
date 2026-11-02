@@ -1,31 +1,10 @@
 // @cosimosi/universe — the pure, cross-app core of the universe write + render vertical: the
-// domain→force-sim graph projection, the sim-host bridge, the camera/selection XState machine,
-// the domain→visual channel projections, the read-model stores, and the
-// launch/awaken logic. Free of three/DOM/native by rule; web and mobile import it verbatim and
-// keep only their platform forks (worker spawner, canvas host, DOM/RN sheets). The R3F bindings
-// that consume these live in @cosimosi/universe-render.
-export { buildUniverseGraph, buildSynapseEndpointIndexPairs } from './build-graph.ts'
-export {
-  createUniverseSimBridge,
-  coordinatesMovedBeyond,
-  type UniverseSimBridge,
-  type MutableCoordinateBufferRef,
-  type SimWorkerLike,
-  type SimWorkerSpawner,
-  type SimWorkerRequest,
-  type SimWorkerResponse,
-} from './sim-bridge.ts'
-export {
-  universeNavigationMachine,
-  type UniverseNavigationContext,
-  type UniverseNavigationEvent,
-  type UniverseNavigationMode,
-} from './universe-navigation.machine.ts'
-export {
-  UNIVERSE_ARRIVAL_CAMERA_POSITION,
-  UNIVERSE_CAMERA_ENVELOPE,
-  UNIVERSE_CAMERA_RIG,
-} from './camera-rig.ts'
+// read-model stores, the selection machine, the flows' shared state and the time presentation core.
+// The scene projection (graph build, sim bridge, camera rig, navigation, channels, latent field,
+// awaken pick, spotlight) is `./scene` and the showcase scenes are `./showcase`, so a scene change
+// has one home. Free of three/DOM/native by rule; web and mobile import it verbatim and keep only
+// their platform forks (worker spawner, canvas host, DOM/RN sheets). The R3F bindings that consume
+// these live in @cosimosi/universe-render.
 export {
   UNIVERSE_DEFAULT_VIEW_MODE,
   useUniverseViewStore,
@@ -83,14 +62,6 @@ export {
 } from './released-groups-store.ts'
 export { type DeletionCandidate } from './deletion-draft-store.ts'
 export { usePendingFlyTargetStore, type PendingFlyTargetState } from './pending-fly-target-store.ts'
-export {
-  SPOTLIGHT_FADE_LAMBDA,
-  SPOTLIGHT_HOLD_SECONDS,
-  SPOTLIGHT_SCENE_DIM,
-  SPOTLIGHT_STAR_LIFT,
-  useSpotlightStore,
-  type SpotlightState,
-} from './spotlight-store.ts'
 export { renameMemory, setMemoryMood, mergeMemory, splitMemory } from './proposal.ts'
 export { isPastDated } from './launch-stars.ts'
 
@@ -135,25 +106,12 @@ export { useLaunchedNeuronsStore, type LaunchedNeuronsState } from './launched-n
 export { releaseAdvance } from './release-advance.ts'
 export { syncUniverseClock } from './sync-universe-clock.ts'
 
-// Stardust economy control-state; the Twinkle data/IO package owns balances and charge requests.
-
-// Awaken (entry choreography) logic + idempotency registry
-export {
-  pickAwakenSeeds,
-  recentlyActiveNeuronIds,
-  type AwakenAnchor,
-  type AwakenSeedInput,
-  type RecentlyActiveInput,
-  type RecentMemory,
-} from './pick-awaken-seed.ts'
+// The awaken's idempotency registry and the latent field's consumed marks: account state the scene
+// reads, cleared with the rest on a scope change.
 export { useAwakenRegistryStore, type AwakenRegistryState } from './awaken-registry.ts'
-
-// Latent field (decorative gray engram scatter) + its consumed-marks store
-export { generateLatentField, type LatentField, type LatentFieldParams } from './latent-field.ts'
 export { useLatentConsumedStore, type LatentConsumedState } from './latent-consumed-store.ts'
 
-// Domain → visual channel projections (one-way, §3.4)
-export { starChannels, hexToLinearRgb, normalizeSeed, type StarChannels } from './star-channels.ts'
+// What a memory reads as now: its forgetting stage, its decayed text and its readings.
 export {
   currentDecayStage,
   currentDecaySpans,
@@ -162,42 +120,6 @@ export {
   type MemoryReadings,
   type DecayTextSpan,
 } from './current-decay-text.ts'
-export {
-  gistNodeId,
-  gistStageOffset,
-  gistStarInstances,
-  parseGistNodeId,
-  type GistStarInstance,
-} from './gist-star-channels.ts'
-export { cellStarChannels, type CellStarChannels } from './cell-star-channels.ts'
-export {
-  filamentChannels,
-  projectFilaments,
-  type FilamentChannels,
-  type FilamentBatch,
-} from './filament-channels.ts'
-export {
-  buildContributors,
-  type NebulaContributors,
-  type ContributorParams,
-} from './contributors.ts'
-export { universeEmotionSlices } from './universe-emotion-slices.ts'
-export {
-  GIST_SHAPE_STAR_MAGNIFICATION,
-  SHOWCASE_ELAPSED_DAYS,
-  SHOWCASE_UNIVERSE_TIME,
-  ambientShowcaseScene,
-  awakenShowcaseField,
-  forgettingShowcaseScene,
-  gistShapesShowcaseScene,
-  gistShowcaseScene,
-  moodRingShowcaseScene,
-  starFormsShowcaseScene,
-  type AmbientShowcaseScene,
-  type ForgettingShowcaseScene,
-  type GistShowcaseScene,
-  type MoodRingShowcaseScene,
-} from './showcase-scene.ts'
 
 // Read-model stores (data, §3.2) — populated per GetUniverse read, read by the render bindings
 export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-memory-store.ts'

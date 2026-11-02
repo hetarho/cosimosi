@@ -1,6 +1,6 @@
 import { createForceSimulation, type ForceSimulation } from '@cosimosi/force-sim'
 
-import type { SimWorkerRequest, SimWorkerResponse } from '@cosimosi/universe'
+import type { SimWorkerRequest, SimWorkerResponse } from '@cosimosi/universe/scene'
 
 // Module worker hosting the deterministic force sim off the render thread (§3.3). Buffers
 // ping-pong as transferables: each tick writes coordinates into the caller-owned buffer

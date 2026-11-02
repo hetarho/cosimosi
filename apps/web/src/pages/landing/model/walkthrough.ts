@@ -6,12 +6,8 @@ import {
   type Mood,
 } from '@cosimosi/emotion'
 import { decayStageText, reshape } from '@cosimosi/memory-logic'
-import {
-  currentDecaySpans,
-  currentDecayText,
-  universeEmotionSlices,
-  type DecayTextSpan,
-} from '@cosimosi/universe'
+import { currentDecaySpans, currentDecayText, type DecayTextSpan } from '@cosimosi/universe'
+import { universeEmotionSlices } from '@cosimosi/universe/scene'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 

@@ -2,7 +2,8 @@ import { VALUES } from '@cosimosi/config'
 import { LatentField } from '@cosimosi/3d-renderer'
 
 import { LATENT_STAR_COLOR, LATENT_STAR_DRIFT } from './latent-constants.ts'
-import { useLatentConsumedStore, type LatentField as LatentFieldData } from '@cosimosi/universe'
+import { useLatentConsumedStore } from '@cosimosi/universe'
+import { type LatentField as LatentFieldData } from '@cosimosi/universe/scene'
 
 export interface LatentStarFieldProps {
   readonly field: LatentFieldData

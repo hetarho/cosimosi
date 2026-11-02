@@ -12,12 +12,8 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 
-import {
-  SPOTLIGHT_STAR_LIFT,
-  starChannels,
-  useEpisodicMemoryStore,
-  useSpotlightStore,
-} from '@cosimosi/universe'
+import { SPOTLIGHT_STAR_LIFT, starChannels, useSpotlightStore } from '@cosimosi/universe/scene'
+import { useEpisodicMemoryStore } from '@cosimosi/universe'
 
 export interface StarLayerProps {
   readonly positions: CoordinateBufferRef

@@ -6,7 +6,7 @@ import {
   SPOTLIGHT_HOLD_SECONDS,
   SPOTLIGHT_SCENE_DIM,
   useSpotlightStore,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/scene'
 
 /**
  * Holds the rest of the sky back while a spotlight is on, and gives it its light back afterwards.

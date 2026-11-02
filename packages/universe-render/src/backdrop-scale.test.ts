@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { SKY_SPHERE_RADIUS, UNIVERSE_CANVAS_FAR } from '@cosimosi/3d-renderer'
-import { UNIVERSE_CAMERA_RIG } from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_RIG } from '@cosimosi/universe/scene'
 
 import { UNIVERSE_BACKDROP } from './UniverseSceneLayers.tsx'
 

@@ -3,13 +3,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { FrameTick, InstancedNodeLayer, createPrimitiveBodySource } from '@cosimosi/3d-renderer'
 import { VALUES } from '@cosimosi/config'
 
-import {
-  pickAwakenSeeds,
-  useAwakenRegistryStore,
-  useLatentConsumedStore,
-  type AwakenAnchor,
-  type LatentField,
-} from '@cosimosi/universe'
+import { pickAwakenSeeds, type AwakenAnchor, type LatentField } from '@cosimosi/universe/scene'
+import { useAwakenRegistryStore, useLatentConsumedStore } from '@cosimosi/universe'
 
 import {
   advanceAwakenFlares,

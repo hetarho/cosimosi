@@ -3,52 +3,39 @@ import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import type { NavigationPose, PinnedView } from '@cosimosi/3d-renderer'
-import {
-  FORCE_SIM_COORDINATE_STRIDE,
-  createForceSimNodeIndex,
-  forceSimCoordinateOffset,
-  type ForceSimGraph,
-  type ForceSimNodeIndex,
-} from '@cosimosi/force-sim'
-import { usePaletteVersion } from '@cosimosi/emotion/react'
+import { FORCE_SIM_COORDINATE_STRIDE, forceSimCoordinateOffset } from '@cosimosi/force-sim'
 import { useActorRef } from '@cosimosi/state-machine/react'
 import type { OrnamentKind } from '@cosimosi/store'
 import { useWornOrnaments } from '@cosimosi/store/react'
 import {
-  buildUniverseGraph,
-  createUniverseSimBridge,
-  generateLatentField,
   gistNodeId,
   recentlyActiveNeuronIds,
-  universeEmotionSlices,
   universeNavigationMachine,
+  useSpotlightStore,
+  type AwakenAnchor,
+  type UniverseNavigationMode,
+} from '@cosimosi/universe/scene'
+import {
   useAdvanceSweepStore,
   useEpisodicMemoryStore,
   useLaunchedNeuronsStore,
   useNeuronStore,
   usePendingFlyTargetStore,
-  useSpotlightStore,
   useUniverseViewStore,
-  type AwakenAnchor,
-  type LatentField,
-  type SimWorkerSpawner,
-  type UniverseNavigationMode,
-  type UniverseSimBridge,
 } from '@cosimosi/universe'
 import { useUniverse } from '@cosimosi/universe/react'
+
+import {
+  useSceneAssembly,
+  type SceneAssembly,
+  type SceneAssemblyInputs,
+} from './use-scene-assembly.ts'
 
 export type UniverseNavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 
-export interface UniverseSceneOptions {
-  /**
-   * The web app returns a module-Worker spawner; React Native has no standard Worker primitive and
-   * returns null, which runs the sim inline on the JS thread behind the same bridge seam.
-   */
-  readonly simSpawner: SimWorkerSpawner | null
-  /** How many latent bodies to scatter — the MVP native scene carries fewer. */
-  readonly latentStarCount: number
+export interface UniverseSceneOptions extends Omit<SceneAssemblyInputs, 'universe'> {
   /**
    * Lifted from the composing page/screen so a sibling widget (the star-detail panel) subscribes to
    * the SAME selection — the canvas machine stays the single selection owner (§3.2). Mounted without
@@ -57,16 +44,8 @@ export interface UniverseSceneOptions {
   readonly navigationActorRef?: UniverseNavigationActorRef
 }
 
-export interface UniverseSceneState {
-  readonly bridge: UniverseSimBridge
-  readonly graph: ForceSimGraph | null
-  readonly nodeIndex: ForceSimNodeIndex | null
-  /** Memories share the star layer's buffer slots starting here; neurons occupy [0, neuronCount). */
-  readonly neuronCount: number
-  readonly latentField: LatentField
+export interface UniverseSceneState extends SceneAssembly {
   readonly newNeuronIds: readonly string[]
-  readonly paletteVersion: number
-  readonly skyStops: ReturnType<typeof universeEmotionSlices>
   /** What this universe wears ([P4]) — the resolved registry key per kind, preview-aware. Every
    *  kind, not a hand-picked subset: a kind the store publishes and this scene has no layer for is
    *  the store's problem to answer for, and narrowing here would hide it until a panel row did
@@ -79,7 +58,6 @@ export interface UniverseSceneState {
   readonly getPose: () => NavigationPose
   readonly getPinnedView: () => PinnedView
   readonly onArrived: () => void
-  readonly pump: (dt: number) => void
   readonly focusNeuron: (index: number) => void
   readonly flyToNeuron: (index: number) => void
   readonly focusMemory: (index: number) => void
@@ -106,14 +84,8 @@ export function useUniverseScene({
   navigationActorRef,
 }: UniverseSceneOptions): UniverseSceneState {
   const { universe } = useUniverse()
-  const graph = useMemo(() => (universe ? buildUniverseGraph(universe) : null), [universe])
-  const nodeIndex = useMemo(() => (graph ? createForceSimNodeIndex(graph) : null), [graph])
-
-  const bridge = useMemo(() => createUniverseSimBridge(simSpawner), [simSpawner])
-  useEffect(() => () => bridge.dispose(), [bridge])
-  useEffect(() => {
-    if (graph) bridge.start(graph)
-  }, [bridge, graph])
+  const assembly = useSceneAssembly({ universe, simSpawner, latentStarCount })
+  const { bridge, nodeIndex } = assembly
 
   const ownActorRef = useActorRef(universeNavigationMachine)
   const actorRef = navigationActorRef ?? ownActorRef
@@ -213,7 +185,6 @@ export function useUniverseScene({
   }, [actorRef, bridge, nodeIndex, pinnedView])
 
   const onArrived = useCallback(() => actorRef.send({ type: 'ARRIVED' }), [actorRef])
-  const pump = useCallback((dt: number) => bridge.pump(dt), [bridge])
   const sendNodeCommand = useCallback(
     (nodeId: string | undefined, command: 'focus' | 'fly') => {
       if (!nodeId) return
@@ -259,13 +230,6 @@ export function useUniverseScene({
     [actorRef],
   )
 
-  // The emotion-colored layers memoize each memory's mood color into instanced buffers, so a live
-  // palette swap (module-level setMoodPalette) is invisible to their memos. Remounting them on the
-  // palette version recomputes the buffers through the unchanged moodColor seam — a live re-color
-  // with no rendering-package edit and no GetUniverse refetch. Only the color-bearing layers key on
-  // it; neuron/synapse layers carry no emotion color and stay mounted.
-  const paletteVersion = usePaletteVersion()
-
   // The clock the SCENE projects at. While a time acceleration plays it is the sweep's sampled date,
   // so brightness walks down in front of the viewer instead of being found already down; otherwise
   // it is the committed read clock. It changes at most once per sampled step, never per frame, so
@@ -281,31 +245,9 @@ export function useUniverseScene({
   // are never for sale — bloom, camera, the bare night ([V10][I11]).
   const wearing = useWornOrnaments()
 
-  const skyStops = useMemo(() => {
-    // The version is a genuine input: moodColor reads the module-level palette it stamps.
-    void paletteVersion
-    // Every feeling the universe holds goes to the sky. The emotion axis divides the sphere by
-    // weight, so more feelings means smaller territories, never a muddier wash.
-    return universe ? universeEmotionSlices(universe.memories) : []
-  }, [universe, paletteVersion])
-
   // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
   // ones (idempotent via the awaken registry). Empty until the first launch of this session.
   const newNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
-
-  // The gray latent field is generated once from the shared seed (web↔native agree on the seed, not
-  // on the count) and is NOT a sim node — decorative, static, never attracting real nodes [E7a][I5].
-  const latentField = useMemo(
-    () =>
-      generateLatentField({
-        seed: VALUES.forceSim.seed,
-        count: latentStarCount,
-        zMin: VALUES.forceSim.hippocampusZMin,
-        zMax: VALUES.forceSim.hippocampusZMax,
-        radius: VALUES.rendering.latentFieldRadius,
-      }),
-    [latentStarCount],
-  )
 
   // The awaken's anchor set: positions of recently-active neurons (a client heuristic over the
   // visible graph, [L4] window used conceptually), read from the live coordinate buffer at trigger
@@ -333,21 +275,14 @@ export function useUniverseScene({
   )
 
   return {
-    bridge,
-    graph,
-    nodeIndex,
-    neuronCount: graph?.neurons.length ?? 0,
-    latentField,
+    ...assembly,
     newNeuronIds,
-    paletteVersion,
-    skyStops,
     wearing,
     sceneTime,
     pinned,
     getPose,
     getPinnedView,
     onArrived,
-    pump,
     focusNeuron,
     flyToNeuron,
     focusMemory,

@@ -13,7 +13,8 @@ import {
 } from '@cosimosi/3d-renderer'
 import { Button } from '@cosimosi/ui'
 
-import { UNIVERSE_CAMERA_ENVELOPE, moodRingShowcaseScene } from '@cosimosi/universe'
+import { UNIVERSE_CAMERA_ENVELOPE } from '@cosimosi/universe/scene'
+import { moodRingShowcaseScene } from '@cosimosi/universe/showcase'
 import { m } from '../../../shared/i18n/index.ts'
 
 function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {

@@ -7,13 +7,8 @@ import { createActor } from 'xstate'
 
 import { createMemoryMockTransport } from '@cosimosi/api-client'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import {
-  universeNavigationMachine,
-  useEpisodicMemoryStore,
-  useNeuronStore,
-  useSpotlightStore,
-  useSynapseStore,
-} from '@cosimosi/universe'
+import { universeNavigationMachine, useSpotlightStore } from '@cosimosi/universe/scene'
+import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 
 import { useUniverseScene, type UniverseSceneState } from './use-universe-scene.ts'
 

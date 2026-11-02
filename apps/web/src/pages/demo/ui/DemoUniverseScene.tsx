@@ -13,17 +13,13 @@ import {
   resolveActiveSkin,
   useSkin,
 } from '@cosimosi/3d-renderer'
-import { createForceSimNodeIndex } from '@cosimosi/force-sim'
-import { paletteVersion } from '@cosimosi/emotion'
 import {
   UNIVERSE_ARRIVAL_CAMERA_POSITION,
   UNIVERSE_CAMERA_ENVELOPE,
-  advanceSkyRate,
-  buildUniverseGraph,
-  createUniverseSimBridge,
-  generateLatentField,
   gistStageOffset,
-  universeEmotionSlices,
+} from '@cosimosi/universe/scene'
+import {
+  advanceSkyRate,
   useEpisodicMemoryStore,
   useNeuronStore,
   useSynapseStore,
@@ -36,6 +32,7 @@ import {
   LatentStarField,
   NebulaField,
   StarLayer,
+  useSceneAssembly,
 } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 
@@ -53,8 +50,7 @@ const noAnchors = () => []
 // widget itself is never mounted here — its `useUniverse()` throws without a session, and the demo
 // has none.
 //
-// Positions come from `createUniverseSimBridge(null)`: the INLINE main-thread bridge, no worker. A
-// public trailer that spawns a worker to lay out eighteen nodes buys latency, not smoothness.
+// Positions, sky and latent field come from `useSceneAssembly`, the product canvas's own assembly.
 function DemoCanvasHost({
   scene,
   taste,
@@ -95,36 +91,16 @@ function DemoCanvasHost({
     [scene],
   )
 
-  const graph = useMemo(() => buildUniverseGraph(snapshot), [snapshot])
-  const nodeIndex = useMemo(() => createForceSimNodeIndex(graph), [graph])
+  // The product's own assembly over the demo's fixtures: the same graph, layout and sky. The INLINE
+  // main-thread bridge (no spawner): a public trailer that spawns a worker to lay out eighteen nodes
+  // buys latency, not smoothness.
+  const { bridge, nodeIndex, neuronCount, latentField, skyStops, pump, paletteVersion } =
+    useSceneAssembly({
+      universe: snapshot,
+      simSpawner: null,
+      latentStarCount: VALUES.rendering.latentStarCount,
+    })
 
-  const bridge = useMemo(() => createUniverseSimBridge(null), [])
-  useEffect(() => () => bridge.dispose(), [bridge])
-  useEffect(() => {
-    bridge.start(graph)
-  }, [bridge, graph])
-
-  const pump = useCallback((delta: number) => bridge.pump(delta), [bridge])
-
-  const latentField = useMemo(
-    () =>
-      generateLatentField({
-        seed: VALUES.forceSim.seed,
-        count: VALUES.rendering.latentStarCount,
-        zMin: VALUES.forceSim.hippocampusZMin,
-        zMax: VALUES.forceSim.hippocampusZMax,
-        radius: VALUES.rendering.latentFieldRadius,
-      }),
-    [],
-  )
-
-  // The sky's ramp is filled from the universe's OWN emotions — the honest definition made visible,
-  // not an average. It follows the launched memories directly: an empty universe opens on the bare
-  // night, and the first star to go up is what puts colour in the sky, which is the same rule the
-  // product surface renders under.
-  const skyStops = useMemo(() => universeEmotionSlices(scene.memories), [scene.memories])
-
-  const neuronCount = graph.neurons.length
   // Bloom and the camera's field of view stay the fixed skin's: the taster offers every kind the
   // catalog has, and those two were deliberately left outside it.
   const skyEffect = taste.background ?? undefined
@@ -150,7 +126,7 @@ function DemoCanvasHost({
       />
       <StarField mote={mote} field={moteField} reducedMotion={reducedMotion} />
       <NebulaField
-        key={`nebula-${paletteVersion()}`}
+        key={`nebula-${paletteVersion}`}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
       />
@@ -159,7 +135,7 @@ function DemoCanvasHost({
       {/* The layers project at the DISPLAYED clock — while a time jump plays, the page hands in
           the sweep's sampled date, so forgetting is watched happening rather than found after. */}
       <StarLayer
-        key={`star-${paletteVersion()}-${bodyShape ?? 'default'}`}
+        key={`star-${paletteVersion}-${bodyShape ?? 'default'}`}
         shape={bodyShape}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
@@ -170,7 +146,7 @@ function DemoCanvasHost({
       />
       <FilamentLayer
         positions={bridge.coordinates}
-        neuronIndexById={nodeIndex.neurons ?? EMPTY_NEURON_INDEX}
+        neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
         universeTime={displayTime}
         reducedMotion={reducedMotion}
       />
@@ -181,10 +157,10 @@ function DemoCanvasHost({
         intensity={VALUES.rendering.gistRiseLayerFog}
       />
       <GistStarLayer
-        key={`gist-${paletteVersion()}-${summaryShape ?? 'default'}`}
+        key={`gist-${paletteVersion}-${summaryShape ?? 'default'}`}
         shape={summaryShape}
         positions={bridge.coordinates}
-        memoryIndexById={nodeIndex.episodicMemories ?? EMPTY_NEURON_INDEX}
+        memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NEURON_INDEX}
         onSelect={selectGist}
       />
       {/* The awaken's anchors are positions of recently-active neurons on the product canvas. The

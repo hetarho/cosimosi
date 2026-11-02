@@ -31,13 +31,12 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 import type { EpisodicMemory } from '@cosimosi/memory'
+import { SHOWCASE_UNIVERSE_TIME, starFormsShowcaseScene } from '@cosimosi/universe/showcase'
 import {
-  SHOWCASE_UNIVERSE_TIME,
   UNIVERSE_CAMERA_ENVELOPE,
   starChannels,
-  starFormsShowcaseScene,
   universeEmotionSlices,
-} from '@cosimosi/universe'
+} from '@cosimosi/universe/scene'
 import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
 
 import { T } from '../lib/showcase-copy.ts'

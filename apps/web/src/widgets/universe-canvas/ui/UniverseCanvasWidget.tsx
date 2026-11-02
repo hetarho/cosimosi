@@ -10,7 +10,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { useReducedMotion } from '@cosimosi/ui'
-import { UNIVERSE_ARRIVAL_CAMERA_POSITION } from '@cosimosi/universe'
+import { UNIVERSE_ARRIVAL_CAMERA_POSITION } from '@cosimosi/universe/scene'
 import {
   UNIVERSE_BACKDROP,
   UniverseSceneLayers,

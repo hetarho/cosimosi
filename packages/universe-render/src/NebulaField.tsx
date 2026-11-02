@@ -3,7 +3,8 @@ import { useMemo } from 'react'
 import { VALUES } from '@cosimosi/config'
 import { ColorField, type CoordinateBufferRef } from '@cosimosi/3d-renderer'
 
-import { buildContributors, useEpisodicMemoryStore } from '@cosimosi/universe'
+import { buildContributors } from '@cosimosi/universe/scene'
+import { useEpisodicMemoryStore } from '@cosimosi/universe'
 
 export interface NebulaFieldProps {
   readonly positions: CoordinateBufferRef

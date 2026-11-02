@@ -5,7 +5,7 @@ import {
   GIST_INSTANCE_TINT,
   type InstanceAttributeChannel,
 } from '@cosimosi/3d-renderer'
-import { gistNodeId, gistStageOffset, type GistStarInstance } from '@cosimosi/universe'
+import { gistNodeId, gistStageOffset, type GistStarInstance } from '@cosimosi/universe/scene'
 
 import {
   createGistRenderSnapshot,

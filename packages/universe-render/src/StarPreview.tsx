@@ -19,7 +19,7 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { starChannels } from '@cosimosi/universe'
+import { starChannels } from '@cosimosi/universe/scene'
 
 /** One star, at the origin the canvas camera already looks at. Never written, so it is shared. */
 const ORIGIN: CoordinateBufferRef = { current: new Float32Array([0, 0, 0]) }

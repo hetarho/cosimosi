@@ -5,15 +5,14 @@ import { Button, Dialog, IconButton, Menu, StarActionsIcon } from '@cosimosi/ui'
 import { useWornOrnaments } from '@cosimosi/store/react'
 import {
   currentDecaySpans,
-  parseGistNodeId,
   resolveSelection,
   starDetailMachine,
   useEpisodicMemoryStore,
   useNeuronStore,
   useUniverseClockStore,
   type StarDetailPhase,
-  type universeNavigationMachine,
 } from '@cosimosi/universe'
+import { parseGistNodeId, type universeNavigationMachine } from '@cosimosi/universe/scene'
 
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
