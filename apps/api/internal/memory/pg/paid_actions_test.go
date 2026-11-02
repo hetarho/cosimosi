@@ -29,7 +29,7 @@ func TestRecallReceiptReplayIsIdempotentEndToEnd(t *testing.T) {
 	}
 	store := NewStore(pool.PgxPool())
 	seedRecallGraph(t, ctx, store, scope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 
 	op := base + "-op-1"
 	first, err := service.Recall(ctx, scope, op, base+"-m1", "a wholly different account", true)
@@ -105,7 +105,7 @@ func TestConcurrentRecallDuplicateCommitsOneEffectEndToEnd(t *testing.T) {
 	}
 	store := NewStore(pool.PgxPool())
 	seedRecallGraph(t, ctx, store, scope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 
 	start := make(chan struct{})
 	errs := make(chan error, 2)
@@ -163,7 +163,7 @@ func TestGistAndDiaryReceiptsReplayAgainstRealStore(t *testing.T) {
 		WHERE user_id = $1 AND id = $2`, userID, base+"-m1"); err != nil {
 		t.Fatalf("seed gist ladder failed: %v", err)
 	}
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 
 	firstView, err := service.ViewSemantic(ctx, scope, base+"-view-op", base+"-m1")
 	if err != nil {
@@ -220,7 +220,7 @@ func TestRecallRefusesUnconsentedSyncEndToEnd(t *testing.T) {
 	store := NewStore(pool.PgxPool())
 	// The graph is seeded behind the service's "today", so a recall would advance the clock.
 	seedRecallGraph(t, ctx, store, scope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 
 	if _, err := service.Recall(ctx, scope, base+"-op-1", base+"-m1", "reworded", false); !errors.Is(err, memory.ErrSyncConsentRequired) {
 		t.Fatalf("unconsented recall err = %v, want ErrSyncConsentRequired", err)

@@ -270,7 +270,7 @@ func (s *Service) settleInvite(ctx context.Context, scope, inviterScope platform
 	// dedup-keyed and replays as a no-op). Stamping first would make a failed report unrecoverable,
 	// and the only row reading this counter has a target of one — so a retry counting twice costs
 	// nothing, while losing the count would cost the achievement.
-	if err := s.achievements.RecordProgress(ctx, inviterScope, nil, CounterInviteSettled, 1); err != nil {
+	if err := s.achievements.RecordProgress(ctx, inviterScope, CounterInviteSettled, 1); err != nil {
 		return fmt.Errorf("record invite settled: %w", err)
 	}
 	return s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC())

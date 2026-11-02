@@ -16,6 +16,7 @@ func consolidateServiceDay() time.Time { return time.Date(2026, 7, 2, 0, 0, 0, 0
 
 func newConsolidateService(t *testing.T, store Store) *memory.Service {
 	t.Helper()
+	store = withEconomy(store, memory.NoEconomy{})
 	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
 	if err != nil {
 		t.Fatalf("NewAdapters failed: %v", err)
@@ -30,9 +31,6 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		// The real Epic-E binding under test: the advance consolidates ([T4]).
 		Progression:      memory.NewConsolidator(nil),
 		Recalls:          store,
-		SpendGate:        memory.AllowAllSpendGate{},
-		Earn:             memory.NoEarnOnWrite{},
-		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,

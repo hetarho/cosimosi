@@ -19,22 +19,23 @@ import (
 
 // These factories receive the transaction opened by the owning pg adapter. Domain ports expose
 // behavior only; the shared database handle never crosses inward and no runtime assertion is needed.
-func bindMemoryTransactions(repo memorypg.Store, economy *twinkle.Service) memorypg.Store {
+func bindMemoryTransactions(repo memorypg.Store, economy *twinkle.Service, progress progressRecorder) memorypg.Store {
 	return repo.WithEconomyBinding(func(tx dbgen.DBTX) memory.EconomyTx {
-		return memoryTransaction{tx: tx, economy: economy}
+		return memoryTransaction{tx: tx, economy: economy, progress: progress}
 	})
 }
 
 type memoryTransaction struct {
-	tx      dbgen.DBTX
-	economy *twinkle.Service
+	tx       dbgen.DBTX
+	economy  *twinkle.Service
+	progress progressRecorder
 }
 
 func (t memoryTransaction) SpendMemory(ctx context.Context, scope platform.UserScope, spend memory.SpendIntent) error {
 	if t.economy == nil {
 		return errEconomyTxUnusable
 	}
-	return (twinkleSpendGate{service: t.economy}).spendBound(ctx, scope, twinkleLedgerTx(t.tx), spend)
+	return spendMemory(ctx, t.economy, scope, twinkleLedgerTx(t.tx), spend)
 }
 func (t memoryTransaction) EarnDiary(ctx context.Context, scope platform.UserScope, diaryID string) error {
 	if t.economy == nil {
@@ -43,16 +44,19 @@ func (t memoryTransaction) EarnDiary(ctx context.Context, scope platform.UserSco
 	return t.economy.EarnOnWrite(ctx, scope, twinkleLedgerTx(t.tx), diaryID)
 }
 func (t memoryTransaction) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
-	return recordTransactionProgress(ctx, scope, t.tx, key, delta)
+	return recordTransactionProgress(ctx, scope, t.progress, t.tx, key, delta)
 }
 
-func bindStoreTransactions(repo storepg.Store, economy *twinkle.Service) storepg.Store {
-	return repo.WithEconomyBinding(func(tx dbgen.DBTX) store.EconomyTx { return storeTransaction{tx: tx, economy: economy} })
+func bindStoreTransactions(repo storepg.Store, economy *twinkle.Service, progress progressRecorder) storepg.Store {
+	return repo.WithEconomyBinding(func(tx dbgen.DBTX) store.EconomyTx {
+		return storeTransaction{tx: tx, economy: economy, progress: progress}
+	})
 }
 
 type storeTransaction struct {
-	tx      dbgen.DBTX
-	economy *twinkle.Service
+	tx       dbgen.DBTX
+	economy  *twinkle.Service
+	progress progressRecorder
 }
 
 func (t storeTransaction) SpendPurchase(ctx context.Context, scope platform.UserScope, spend store.PurchaseSpend) error {
@@ -63,10 +67,16 @@ func (t storeTransaction) SpendPurchase(ctx context.Context, scope platform.User
 	return storeSpendRefusal(err)
 }
 func (t storeTransaction) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
-	return recordTransactionProgress(ctx, scope, t.tx, key, delta)
+	return recordTransactionProgress(ctx, scope, t.progress, t.tx, key, delta)
 }
-func recordTransactionProgress(ctx context.Context, scope platform.UserScope, tx dbgen.DBTX, key string, delta int) error {
-	return achievement.NewRecorder().RecordProgress(ctx, scope, achievementpg.NewReadStore(tx), achievement.CounterKey(key), delta)
+
+// recordTransactionProgress writes a counter report on the producer's own transaction, so it commits
+// or rolls back with the launch, recall, view, release or save that caused it.
+func recordTransactionProgress(ctx context.Context, scope platform.UserScope, progress progressRecorder, tx dbgen.DBTX, key string, delta int) error {
+	if progress == nil {
+		return errAchievementRecorderUnbound
+	}
+	return progress.RecordProgress(ctx, scope, achievementpg.NewReadStore(tx), achievement.CounterKey(key), delta)
 }
 
 func bindClaimTransactions(repo achievementpg.Store) achievementpg.Store {

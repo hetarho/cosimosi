@@ -13,7 +13,7 @@ import (
 // universe-time order. It is the read half of the trace-vs-record contrast ([D4]): the history records
 // only the representation's evolution, while the objective Diary is reached only through Export and the
 // reader ([I2]). Read-only — it advances no clock ([T3]), appends no row ([CC5]), and spends no stardust
-// (metadata tier [R1][G1]); it carries no SpendGate call.
+// (metadata tier [R1][G1]); it carries no spend.
 
 var (
 	// ErrProvenanceInputRequired rejects an empty target memory id.

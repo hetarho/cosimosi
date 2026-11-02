@@ -1417,7 +1417,7 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 	}
 
 	// The full use-case over the real store returns the stored stage text…
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 	result, err := service.ViewSemantic(ctx, scope, "op-view-1", risen.ID)
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)

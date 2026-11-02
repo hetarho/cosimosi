@@ -31,7 +31,7 @@ type SelectionStore interface {
 // DecorateTx is the save's transaction surface, and it is deliberately narrow: it can acquire, apply
 // and revert-to-default, and that is all. There is **no ownership delete** on it, so a refund, an
 // expiry or a re-purchase is not something the save could do wrong — it cannot express them ([P9][I1]).
-// It carries no ledger method either: the debit reaches the same transaction through SpendGate, so
+// It carries no ledger method either: the debit reaches the same transaction through EconomyTx, so
 // `store` never learns what a balance is.
 type DecorateTx interface {
 	EconomyTx
@@ -47,7 +47,11 @@ type DecorateRepo interface {
 	InDecorateTx(ctx context.Context, fn func(tx DecorateTx) error) error
 }
 
-// EconomyTx declares the save's cross-context effects, bound to its open transaction.
+// EconomyTx declares the save's cross-context effects, bound to its open transaction by the
+// composition root over the Twinkle economy, so the ownership rows, the applied rows and the debit
+// commit together or not at all ([P8]). RecordProgress reports a counter key and a delta; the
+// payload has no field for a memory id, a strength, a mood or any text, which is how "achievements
+// touch no meaning field" holds structurally rather than by review ([A6][I11]).
 type EconomyTx interface {
 	SpendPurchase(context.Context, platform.UserScope, PurchaseSpend) error
 	RecordProgress(context.Context, platform.UserScope, string, int) error
@@ -60,31 +64,4 @@ type EconomyTx interface {
 type PurchaseSpend struct {
 	Amount   int
 	DedupKey string
-}
-
-// SpendGate is the one cross-context edge a save has. The concrete is bound at the composition root
-// over the Twinkle economy, onto this save's own transaction.
-type SpendGate interface {
-	CheckAndSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend PurchaseSpend) error
-}
-
-// AchievementRecorder is how a save reports progress: a counter key and a delta, inside the same
-// transaction. The payload has no field for a memory id, a strength, a mood or any text, which is how
-// "achievements touch no meaning field" holds structurally rather than by review ([A6][I11]).
-type AchievementRecorder interface {
-	RecordProgress(ctx context.Context, scope platform.UserScope, tx EconomyTx, counterKey string, delta int) error
-}
-
-// NoAchievementRecorder is the shipped default: a save records nothing until the achievement context
-// binds the concrete. Counting is not a precondition for decorating.
-type NoAchievementRecorder struct{}
-
-func (NoAchievementRecorder) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	EconomyTx,
-	string,
-	int,
-) error {
-	return nil
 }

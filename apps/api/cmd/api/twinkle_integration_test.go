@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/cosimosi/api/internal/achievement"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
@@ -35,15 +36,14 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	scope := economyScope(t, userID)
 
 	twinkleService := economyTwinkleService(t, pool)
-	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService)
-	gate := twinkleSpendGate{service: twinkleService}
+	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
 	intent := memory.RecallSpendIntent("op-1", "memory-1", 1.0)
 	wantCost := twinkle.RecallCost(1.0)
 
 	// Roll back: the gate's ledger write vanishes with the enclosing transaction.
 	injected := errors.New("injected recall failure after the spend")
 	err := memoryStore.InRecallTx(ctx, func(tx memory.RecallTx) error {
-		if err := gate.CheckAndSpend(ctx, scope, tx, intent); err != nil {
+		if err := tx.SpendMemory(ctx, scope, intent); err != nil {
 			return err
 		}
 		return injected
@@ -57,7 +57,7 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 
 	// Commit: the same spend lands atomically with the transaction.
 	err = memoryStore.InRecallTx(ctx, func(tx memory.RecallTx) error {
-		return gate.CheckAndSpend(ctx, scope, tx, intent)
+		return tx.SpendMemory(ctx, scope, intent)
 	})
 	if err != nil {
 		t.Fatalf("recall tx failed: %v", err)
@@ -84,13 +84,12 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	scope := economyScope(t, userID)
 
 	twinkleService := economyTwinkleService(t, pool)
-	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService)
-	earn := twinkleEarnPort{service: twinkleService}
+	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
 
 	// Roll back: a failed launch leaves no grant.
 	injected := errors.New("injected launch failure after the grant")
 	err := memoryStore.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
-		if err := earn.OnDiaryLaunched(ctx, scope, tx, "diary-rollback"); err != nil {
+		if err := tx.EarnDiary(ctx, scope, "diary-rollback"); err != nil {
 			return err
 		}
 		return injected
@@ -105,7 +104,7 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	// Commit: one grant per diary, replay-proof across transactions.
 	for range 2 {
 		err = memoryStore.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
-			return earn.OnDiaryLaunched(ctx, scope, tx, "diary-commit")
+			return tx.EarnDiary(ctx, scope, "diary-commit")
 		})
 		if err != nil {
 			t.Fatalf("launch tx failed: %v", err)
@@ -331,4 +330,11 @@ func TestTwinkleIntentMapsKindsAndSignals(t *testing.T) {
 	if _, err := twinkleIntent(memory.SpendIntent{Kind: "unknown"}); err == nil {
 		t.Fatal("an unknown kind must be a wiring fault, not a silent free spend")
 	}
+}
+
+// noProgress is the test roots' counter-less recorder: these suites assert the economy, not progress.
+type noProgress struct{}
+
+func (noProgress) RecordProgress(context.Context, platform.UserScope, achievement.ProgressStore, achievement.CounterKey, int) error {
+	return nil
 }

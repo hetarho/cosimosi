@@ -23,7 +23,7 @@ import (
 
 // domainServiceOptions wires the memory + twinkle contexts at the composition root
 // over ONE shared DB pool: pg stores, env-selected AI adapters (real or keyless
-// mock), the cross-context economy seam (the real SpendGate + EarnPort into memory,
+// mock), the cross-context economy seam (the transaction-bound spend and earn capabilities into memory,
 // memory's published reads into twinkle's quote — see twinkle.go), and both Connect
 // handlers registered on the platform mux. Without DATABASE_URL the API still boots
 // (matching the dev worker's opt-in posture) and only skips the domain services.
@@ -72,8 +72,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	store = bindMemoryTransactions(store, twinkleService)
-	achievementRecorders := &achievementRecorderBinding{pool: pool, service: achievement.NewRecorder()}
+	// One progress recorder serves every producer: memory and store report on their own
+	// transactions, account on the pool.
+	progress := achievement.NewRecorder()
+	store = bindMemoryTransactions(store, twinkleService, progress)
+	achievementRecorders := &achievementRecorderBinding{pool: pool, service: progress}
 	accountOptions, accountService, err := accountServiceOption(
 		pool, accountDirectoryAdapter{source: directory},
 		&accountInviteRewardGranter{service: twinkleService},
@@ -95,9 +98,6 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		Linker:           memory.NewLinkService(memory.LinkDeps{}),
 		Progression:      memory.NewConsolidator(nil),
 		Recalls:          store,
-		SpendGate:        twinkleSpendGate{service: twinkleService},
-		Earn:             twinkleEarnPort{service: twinkleService},
-		Achievements:     memoryAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
 		SignupSettlement: accountSignupSettlement{service: accountService, logger: logger},
 		PredictionError:  adapters.PredictionError,
 		ViewSemantics:    store,
@@ -139,11 +139,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	// The store service is built after twinkle because a save's debit joins the save's transaction
 	// through the economy; the withdrawal sweep takes its purge leg over the pool instead, so the two
 	// contexts still meet only here.
-	storeService, err := newStoreService(
-		pool,
-		twinkleService,
-		storeAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
-	)
+	storeService, err := newStoreService(pool, twinkleService, progress)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err

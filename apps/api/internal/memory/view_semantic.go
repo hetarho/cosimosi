@@ -14,7 +14,7 @@ import (
 // already-abstracted string and writes NOTHING — no current_text/seed, no
 // recall_count/brightness, no gist timer, no provenance, no clock advance, no LLM
 // ([I2][I8][I10], [C7]). The only side effect is the Twinkle spend, and that belongs
-// to the SpendGate, not this unit (§CC2).
+// to the economy, not this unit (§CC2).
 
 var (
 	// ErrViewSemanticInputRequired rejects an empty memory id. The caller names only a memory;
@@ -106,7 +106,7 @@ type ViewSemanticResult struct {
 
 // ViewSemantic returns the pregenerated semantic_stages text for the memory's CURRENT gist
 // depth, read-only ([R8]): load (per-user scoped) → derive the stage from the memory itself
-// (§2.9#8) → spend through the SpendGate — a precondition of the read, so a denial returns no
+// (§2.9#8) → spend through EconomyTx — a precondition of the read, so a denial returns no
 // text ([G1]) → return the stored text. Stages are the 1-based gist ladder ([C6a]; stage 0 =
 // concrete, not a gist), so stage k's text is SemanticStages[k-1]; the depth served is the risen
 // semantic_stage clamped to the DERIVED stage-array length, never a declared count and never a
@@ -158,7 +158,7 @@ func (s *CommandService) ViewSemantic(ctx context.Context, scope platform.UserSc
 		// The spend joins this transaction (tx is the EconomyTx the composition-root seam binds
 		// the Twinkle ledger onto), so the debit + the receipt commit together — a view's only
 		// write is the debit and its receipt.
-		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, GistViewSpendIntent(operationID, memoryID, stage)); err != nil {
+		if err := tx.SpendMemory(ctx, scope, GistViewSpendIntent(operationID, memoryID, stage)); err != nil {
 			return err
 		}
 		result = ViewSemanticResult{

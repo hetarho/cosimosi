@@ -19,41 +19,27 @@ type ServiceDeps struct {
 	Ownerships OwnershipStore
 	Selections SelectionStore
 	Purge      UserPurgeRepo
-	// Decorate and Spend are the save's legs: the transaction runner, and the economy edge the debit
-	// joins it through. A root that binds neither still serves the reads.
+	// Decorate is the save's transaction runner; its economy effects are bound by the repository at
+	// the composition root. A root that binds none still serves the reads.
 	Decorate DecorateRepo
-	Spend    SpendGate
-	// Achievements is the counter-report seam a save fires; required (the no-op for achievement-less
-	// composition) so no root can save decorations with the seam silently unbound.
-	Achievements AchievementRecorder
 }
 
 type Service struct {
-	ownerships   OwnershipStore
-	selections   SelectionStore
-	purge        UserPurgeRepo
-	decorate     DecorateRepo
-	spend        SpendGate
-	achievements AchievementRecorder
+	ownerships OwnershipStore
+	selections SelectionStore
+	purge      UserPurgeRepo
+	decorate   DecorateRepo
 }
 
 func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Ownerships == nil || deps.Selections == nil || deps.Purge == nil {
 		return nil, ErrStoreRequired
 	}
-	// Required, like every other context's recorder: a root that silently defaulted to the no-op would
-	// lose this save's three counters entirely, and that is precisely the drift the boot reconciliation
-	// exists to make impossible.
-	if deps.Achievements == nil {
-		return nil, ErrAchievementsRequired
-	}
 	return &Service{
-		ownerships:   deps.Ownerships,
-		selections:   deps.Selections,
-		purge:        deps.Purge,
-		decorate:     deps.Decorate,
-		spend:        deps.Spend,
-		achievements: deps.Achievements,
+		ownerships: deps.Ownerships,
+		selections: deps.Selections,
+		purge:      deps.Purge,
+		decorate:   deps.Decorate,
 	}, nil
 }
 

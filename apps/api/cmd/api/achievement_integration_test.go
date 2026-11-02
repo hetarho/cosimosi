@@ -90,49 +90,20 @@ func TestAchievementCounterKeyReconciliationFailsInBothDirections(t *testing.T) 
 }
 
 // A recorder handed out before the root finished binding refuses rather than dropping the report —
-// the producing transaction fails loudly instead of committing a fact nothing counted.
-func TestAchievementRecorderFailsClosedUntilBound(t *testing.T) {
+// the producing transaction fails loudly instead of committing a fact nothing counted. Transactional
+// producers report through their own transaction handle, so they have no pool to fall back to.
+func TestAchievementRecordersFailClosedUntilBound(t *testing.T) {
 	t.Parallel()
-	binding := &achievementRecorderBinding{}
-	recorder := memoryAchievementRecorder{achievementRecorder{binding: binding}}
 	scope, err := platform.NewUserScope("boot-guard-user")
 	if err != nil {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
-	if err := recorder.RecordProgress(
-		context.Background(),
-		scope,
-		nil,
-		"diary_written",
-		1,
-	); !errors.Is(err, errAchievementRecorderUnbound) {
-		t.Fatalf("unbound recorder = %v, want errAchievementRecorderUnbound", err)
+	account := accountAchievementRecorder{achievementRecorder{binding: &achievementRecorderBinding{}}}
+	if err := account.RecordProgress(context.Background(), scope, "invite_settled", 1); !errors.Is(err, errAchievementRecorderUnbound) {
+		t.Fatalf("unbound account recorder = %v, want errAchievementRecorderUnbound", err)
 	}
-}
-
-// A transactional producer's tx that carries no database handle is a wiring fault, not a client
-// mistake, and it must NOT fall back to the pool — a counter written outside the causing transaction
-// would survive its rollback, which is the one thing the port promises. `nil` is the case that
-// matters: the pool fallback exists for account's transaction-less settlement, and this proves the
-// transactional recorders cannot reach it.
-func TestTransactionalRecordersRefuseATransactionTheyCannotBind(t *testing.T) {
-	t.Parallel()
-	binding := &achievementRecorderBinding{service: achievement.NewRecorder()}
-	scope, err := platform.NewUserScope("tx-guard-user")
-	if err != nil {
-		t.Fatalf("NewUserScope failed: %v", err)
-	}
-	for range 1 {
-		if err := (memoryAchievementRecorder{achievementRecorder{binding: binding}}).RecordProgress(
-			context.Background(), scope, nil, "diary_written", 1,
-		); !errors.Is(err, errRecorderTxUnusable) {
-			t.Fatalf("memory recorder with nil tx = %v, want errRecorderTxUnusable", err)
-		}
-		if err := (storeAchievementRecorder{achievementRecorder{binding: binding}}).RecordProgress(
-			context.Background(), scope, nil, "decoration_saved", 1,
-		); !errors.Is(err, errRecorderTxUnusable) {
-			t.Fatalf("store recorder with nil tx = %v, want errRecorderTxUnusable", err)
-		}
+	if err := recordTransactionProgress(context.Background(), scope, nil, nil, "diary_written", 1); !errors.Is(err, errAchievementRecorderUnbound) {
+		t.Fatalf("unbound transactional report = %v, want errAchievementRecorderUnbound", err)
 	}
 }
 
@@ -147,7 +118,6 @@ func TestWorkerAccountRecorderRefusesRatherThanCountingNothing(t *testing.T) {
 	if err := (accountAchievementUnavailable{}).RecordProgress(
 		context.Background(),
 		scope,
-		nil,
 		"invite_settled",
 		1,
 	); !errors.Is(err, errAchievementSignupRecordingUnavailable) {

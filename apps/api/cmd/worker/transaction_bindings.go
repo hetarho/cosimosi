@@ -15,7 +15,7 @@ type workerStoreTransaction struct {
 }
 
 func (t workerStoreTransaction) SpendPurchase(context.Context, platform.UserScope, store.PurchaseSpend) error {
-	return errWorkerRecorderTxUnusable
+	return errWorkerPurchaseUnavailable
 }
 func (t workerStoreTransaction) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
 	if t.binding == nil || t.binding.service == nil {

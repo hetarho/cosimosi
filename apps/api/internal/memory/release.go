@@ -56,7 +56,7 @@ var (
 // releases first, then in one transaction soft-delete every live memory born from
 // the diary, seal the removal set's orphan neurons, weaken the shared neurons' contribution (LTD), and
 // record the release-effect ledger plus its exact-deadline retention job so Restore can reverse it
-// exactly. No hard delete, no Diary UPDATE, no SpendGate (deletion is never priced).
+// exactly. No hard delete, no Diary UPDATE, no spend (deletion is never priced).
 func (s *CommandService) Release(ctx context.Context, scope platform.UserScope, diaryID string) (ReleaseResult, error) {
 	if scope.UserID() == "" {
 		return ReleaseResult{}, ErrScopeRequired

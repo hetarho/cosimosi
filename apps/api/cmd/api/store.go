@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -26,38 +25,16 @@ var errDecorateTxUnusable = errors.New("store decorate tx does not expose a data
 func newStoreService(
 	pool *platformdb.Pool,
 	twinkleService *twinkle.Service,
-	achievements store.AchievementRecorder,
+	progress progressRecorder,
 ) (*store.Service, error) {
-	repo := bindStoreTransactions(storepg.NewStore(pool.PgxPool()), twinkleService)
+	// The save's debit and counter reports ride its own transaction, so a refused save counts nothing.
+	repo := bindStoreTransactions(storepg.NewStore(pool.PgxPool()), twinkleService, progress)
 	return store.NewService(store.ServiceDeps{
 		Ownerships: repo,
 		Selections: repo,
 		Purge:      repo,
 		Decorate:   repo,
-		Spend:      storeSpendGate{service: twinkleService},
-		// The save's counter reports ride its own transaction, so a refused save counts nothing.
-		Achievements: achievements,
 	})
-}
-
-// storeSpendGate implements store.SpendGate over the Twinkle economy: it binds a ledger store onto the
-// save's OWN transaction, so the ownership rows, the applied rows and the debit commit together or not
-// at all ([P8]). twinkle learns an amount and a dedup key — never what was bought ([I11]) — and store
-// never reads a balance.
-type storeSpendGate struct {
-	service *twinkle.Service
-}
-
-func (g storeSpendGate) CheckAndSpend(
-	ctx context.Context,
-	scope platform.UserScope,
-	tx store.EconomyTx,
-	spend store.PurchaseSpend,
-) error {
-	if tx == nil {
-		return errDecorateTxUnusable
-	}
-	return tx.SpendPurchase(ctx, scope, spend)
 }
 
 // storeSpendRefusal translates the economy's denial into the store context's vocabulary, carrying its

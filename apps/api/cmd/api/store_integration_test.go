@@ -29,7 +29,7 @@ func TestDecorateBuysAndDebitsInOneTransaction(t *testing.T) {
 	cleanupStoreRows(t, pool, userID)
 	scope := economyScope(t, userID)
 	twinkleService := economyTwinkleService(t, pool)
-	storeService, err := newStoreService(pool, twinkleService, store.NoAchievementRecorder{})
+	storeService, err := newStoreService(pool, twinkleService, noProgress{})
 	if err != nil {
 		t.Fatalf("newStoreService failed: %v", err)
 	}
@@ -187,13 +187,8 @@ func TestClaimingAnOrnamentCapstoneMovesTheOwnershipCounter(t *testing.T) {
 
 	// The same cycle both roots close: store reports through achievement, achievement pays through
 	// store. Built here rather than reused, because a test root binds its own concretes.
-	recorders := &achievementRecorderBinding{pool: pool, service: achievement.NewRecorder()}
 	twinkleService := economyTwinkleService(t, pool)
-	storeService, err := newStoreService(
-		pool,
-		twinkleService,
-		storeAchievementRecorder{achievementRecorder{binding: recorders}},
-	)
+	storeService, err := newStoreService(pool, twinkleService, achievement.NewRecorder())
 	if err != nil {
 		t.Fatalf("newStoreService failed: %v", err)
 	}

@@ -15,12 +15,15 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
+// graphBarrierEarn is an economy whose write grant parks until the test releases it, holding the
+// launch transaction open inside its economy effect.
 type graphBarrierEarn struct {
+	memory.NoEconomy
 	entered chan struct{}
 	proceed chan struct{}
 }
 
-func (b graphBarrierEarn) OnDiaryLaunched(ctx context.Context, _ platform.UserScope, _ memory.EconomyTx, _ string) error {
+func (b graphBarrierEarn) EarnDiary(ctx context.Context, _ platform.UserScope, _ string) error {
 	close(b.entered)
 	select {
 	case <-b.proceed:
@@ -30,18 +33,20 @@ func (b graphBarrierEarn) OnDiaryLaunched(ctx context.Context, _ platform.UserSc
 	}
 }
 
-type graphBarrierSpendGate struct {
-	next    memory.SpendGate
+// graphBarrierSpend is an economy whose debit parks until the test releases it, holding the recall
+// transaction open inside its economy effect.
+type graphBarrierSpend struct {
+	memory.NoEconomy
 	once    sync.Once
 	entered chan struct{}
 	proceed chan struct{}
 }
 
-func (b *graphBarrierSpendGate) CheckAndSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
+func (b *graphBarrierSpend) SpendMemory(ctx context.Context, _ platform.UserScope, _ memory.SpendIntent) error {
 	b.once.Do(func() { close(b.entered) })
 	select {
 	case <-b.proceed:
-		return b.next.CheckAndSpend(ctx, scope, tx, spend)
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -104,23 +109,25 @@ func newGraphConcurrencyService(
 	t *testing.T,
 	store Store,
 	releases memory.ReleaseRepo,
-	earn memory.EarnPort,
+	economy memory.EconomyTx,
 	now func() time.Time,
 ) *memory.Service {
 	t.Helper()
-	return newGraphConcurrencyServiceWith(t, store, releases, memory.NoopAdvanceProgression{}, memory.AllowAllSpendGate{}, earn, now)
+	return newGraphConcurrencyServiceWith(t, store, releases, memory.NoopAdvanceProgression{}, economy, now)
 }
 
+// newGraphConcurrencyServiceWith binds economy onto the service's own transactions; the release
+// repository keeps the binding its store already carries.
 func newGraphConcurrencyServiceWith(
 	t *testing.T,
 	store Store,
 	releases memory.ReleaseRepo,
 	progression memory.AdvanceProgression,
-	spendGate memory.SpendGate,
-	earn memory.EarnPort,
+	economy memory.EconomyTx,
 	now func() time.Time,
 ) *memory.Service {
 	t.Helper()
+	store = withEconomy(store, economy)
 	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
 	if err != nil {
 		t.Fatalf("NewAdapters failed: %v", err)
@@ -134,9 +141,6 @@ func newGraphConcurrencyServiceWith(
 		Linker:           memory.NewLinkService(memory.LinkDeps{}),
 		Progression:      progression,
 		Recalls:          store,
-		SpendGate:        spendGate,
-		Earn:             earn,
-		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,
@@ -198,7 +202,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := NewStore(pool.PgxPool())
+	store := withEconomy(NewStore(pool.PgxPool()), memory.NoEconomy{})
 	day := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
 	now := day.AddDate(0, 0, 1)
 
@@ -218,9 +222,9 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 			entered:     make(chan struct{}),
 			proceed:     make(chan struct{}),
 		}
-		releaseService := newGraphConcurrencyService(t, store, barrier, memory.NoEarnOnWrite{}, func() time.Time { return now })
-		recallService := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return now })
-		otherService := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return now })
+		releaseService := newGraphConcurrencyService(t, store, barrier, memory.NoEconomy{}, func() time.Time { return now })
+		recallService := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return now })
+		otherService := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return now })
 		releaseErr := make(chan error, 1)
 		type recallOutcome struct {
 			result memory.RecallDiaryStarsResult
@@ -315,13 +319,12 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		cleanupMemoryTestRows(t, pool, userID)
 		scope, _ := platform.NewUserScope(userID)
 		g := seedReleaseGraph(t, ctx, store, scope, base, day)
-		barrier := &graphBarrierSpendGate{
-			next:    memory.AllowAllSpendGate{},
+		barrier := &graphBarrierSpend{
 			entered: make(chan struct{}),
 			proceed: make(chan struct{}),
 		}
-		recallService := newGraphConcurrencyServiceWith(t, store, store, memory.NoopAdvanceProgression{}, barrier, memory.NoEarnOnWrite{}, func() time.Time { return now })
-		releaseService := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return now })
+		recallService := newGraphConcurrencyServiceWith(t, store, store, memory.NoopAdvanceProgression{}, barrier, func() time.Time { return now })
+		releaseService := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return now })
 		recallErr := make(chan error, 1)
 		releaseErr := make(chan error, 1)
 
@@ -376,8 +379,8 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 			entered: make(chan struct{}),
 			proceed: make(chan struct{}),
 		}
-		consolidateService := newGraphConcurrencyServiceWith(t, store, store, barrier, memory.AllowAllSpendGate{}, memory.NoEarnOnWrite{}, func() time.Time { return now })
-		releaseService := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return now })
+		consolidateService := newGraphConcurrencyServiceWith(t, store, store, barrier, memory.NoEconomy{}, func() time.Time { return now })
+		releaseService := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return now })
 		consolidateErr := make(chan error, 1)
 		releaseErr := make(chan error, 1)
 
@@ -416,7 +419,7 @@ func TestConcurrentLaunchBeforeReleasePreservesSharedNeuron(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := NewStore(pool.PgxPool())
+	store := withEconomy(NewStore(pool.PgxPool()), memory.NoEconomy{})
 	base := fmt.Sprintf("test-release-launch-%d", time.Now().UnixNano())
 	userID := base + "-user"
 	cleanupMemoryTestRows(t, pool, userID)
@@ -452,7 +455,7 @@ func TestConcurrentLaunchBeforeReleasePreservesSharedNeuron(t *testing.T) {
 	proceed := make(chan struct{})
 	now := func() time.Time { return day.AddDate(0, 0, 1) }
 	launchService := newGraphConcurrencyService(t, store, store, graphBarrierEarn{entered: entered, proceed: proceed}, now)
-	releaseService := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, now)
+	releaseService := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, now)
 	launchErr := make(chan error, 1)
 	releaseErr := make(chan error, 1)
 	go func() {
@@ -509,7 +512,7 @@ func TestConcurrentOverlappingReleasesMatchSerialExecution(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := NewStore(pool.PgxPool())
+	store := withEconomy(NewStore(pool.PgxPool()), memory.NoEconomy{})
 	base := fmt.Sprintf("test-concurrent-overlap-%d", time.Now().UnixNano())
 	userID := base + "-user"
 	cleanupMemoryTestRows(t, pool, userID)
@@ -523,8 +526,8 @@ func TestConcurrentOverlappingReleasesMatchSerialExecution(t *testing.T) {
 		entered:     make(chan struct{}),
 		proceed:     make(chan struct{}),
 	}
-	serviceA := newGraphConcurrencyService(t, store, barrier, memory.NoEarnOnWrite{}, func() time.Time { return releaseAt })
-	serviceB := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return releaseAt })
+	serviceA := newGraphConcurrencyService(t, store, barrier, memory.NoEconomy{}, func() time.Time { return releaseAt })
+	serviceB := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return releaseAt })
 	errA := make(chan error, 1)
 	errB := make(chan error, 1)
 	go func() {
@@ -610,7 +613,7 @@ func TestConcurrentReleaseAndRestoreMatchBothSerialOrders(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := NewStore(pool.PgxPool())
+	store := withEconomy(NewStore(pool.PgxPool()), memory.NoEconomy{})
 	day := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
 	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
 	raceAt := releaseAt.Add(time.Hour)
@@ -623,7 +626,7 @@ func TestConcurrentReleaseAndRestoreMatchBothSerialOrders(t *testing.T) {
 			cleanupMemoryTestRows(t, pool, userID)
 			scope, _ := platform.NewUserScope(userID)
 			g := seedReleaseGraph(t, ctx, store, scope, base, day)
-			if _, err := newGraphConcurrencyService(t, store, store, memory.NoEarnOnWrite{}, func() time.Time { return releaseAt }).Release(ctx, scope, g.d1); err != nil {
+			if _, err := newGraphConcurrencyService(t, store, store, memory.NoEconomy{}, func() time.Time { return releaseAt }).Release(ctx, scope, g.d1); err != nil {
 				t.Fatalf("seed Release failed: %v", err)
 			}
 
@@ -643,8 +646,8 @@ func TestConcurrentReleaseAndRestoreMatchBothSerialOrders(t *testing.T) {
 			} else {
 				restoreRepo = barrier
 			}
-			releaseService := newGraphConcurrencyService(t, store, releaseRepo, memory.NoEarnOnWrite{}, func() time.Time { return raceAt })
-			restoreService := newGraphConcurrencyService(t, store, restoreRepo, memory.NoEarnOnWrite{}, func() time.Time { return raceAt })
+			releaseService := newGraphConcurrencyService(t, store, releaseRepo, memory.NoEconomy{}, func() time.Time { return raceAt })
+			restoreService := newGraphConcurrencyService(t, store, restoreRepo, memory.NoEconomy{}, func() time.Time { return raceAt })
 			releaseErr := make(chan error, 1)
 			restoreErr := make(chan error, 1)
 			startRelease := func() {
@@ -726,7 +729,7 @@ func TestConcurrentRestoreAndBoundarySweepConverge(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store := NewStore(pool.PgxPool())
+	store := withEconomy(NewStore(pool.PgxPool()), memory.NoEconomy{})
 	day := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
 	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
 	deadline := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
@@ -759,7 +762,7 @@ func TestConcurrentRestoreAndBoundarySweepConverge(t *testing.T) {
 				err   error
 			}, 1)
 			startRestore := func(repo memory.ReleaseRepo) {
-				service := newGraphConcurrencyService(t, store, repo, memory.NoEarnOnWrite{}, func() time.Time { return deadline })
+				service := newGraphConcurrencyService(t, store, repo, memory.NoEconomy{}, func() time.Time { return deadline })
 				go func() {
 					_, err := service.Restore(ctx, scope, g.d1)
 					restoreErr <- err
@@ -812,8 +815,4 @@ func TestConcurrentRestoreAndBoundarySweepConverge(t *testing.T) {
 			}
 		})
 	}
-}
-
-func (b *graphBarrierSpendGate) CheckCanSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
-	return b.next.CheckCanSpend(ctx, scope, tx, spend)
 }

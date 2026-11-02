@@ -10,9 +10,6 @@ type CommandService struct {
 	linker           Linker
 	progression      AdvanceProgression
 	recalls          RecallRepo
-	spendGate        SpendGate
-	earn             EarnPort
-	achievements     AchievementRecorder
 	signupSettlement SignupSettlementPort
 	predictionError  PredictionError
 	viewSemantics    ViewSemanticRepo
@@ -29,9 +26,6 @@ type CommandDeps struct {
 	Linker           Linker
 	Progression      AdvanceProgression
 	Recalls          RecallRepo
-	SpendGate        SpendGate
-	Earn             EarnPort
-	Achievements     AchievementRecorder
 	SignupSettlement SignupSettlementPort
 	PredictionError  PredictionError
 	ViewSemantics    ViewSemanticRepo
@@ -55,15 +49,6 @@ func NewCommandService(deps CommandDeps) (*CommandService, error) {
 	}
 	if deps.Recalls == nil {
 		return nil, ErrRecallsRequired
-	}
-	if deps.SpendGate == nil {
-		return nil, ErrSpendGateRequired
-	}
-	if deps.Earn == nil {
-		return nil, ErrEarnRequired
-	}
-	if deps.Achievements == nil {
-		return nil, ErrAchievementsRequired
 	}
 	if deps.SignupSettlement == nil {
 		return nil, ErrSignupSettlementRequired
@@ -97,9 +82,6 @@ func NewCommandService(deps CommandDeps) (*CommandService, error) {
 		linker:           deps.Linker,
 		progression:      deps.Progression,
 		recalls:          deps.Recalls,
-		spendGate:        deps.SpendGate,
-		earn:             deps.Earn,
-		achievements:     deps.Achievements,
 		signupSettlement: deps.SignupSettlement,
 		predictionError:  deps.PredictionError,
 		viewSemantics:    deps.ViewSemantics,

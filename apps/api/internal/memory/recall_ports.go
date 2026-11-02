@@ -14,7 +14,7 @@ import (
 // are pure domain with no IO — so these are the first recall ports.
 // Domain-shaped in and out: no proto, sqlc, pgx, or SDK type crosses any of them.
 
-// ErrInsufficientTwinkle is the canonical denial a SpendGate returns when the caller
+// ErrInsufficientTwinkle is the canonical denial EconomyTx.SpendMemory returns when the caller
 // cannot afford the action ([G1], §CC2). Recall/RecallDiaryStars surface it verbatim
 // so the transport maps one code and the UI shows one message; the no-op gate never
 // returns it (it charges nothing), the real economy gate does.
@@ -31,7 +31,7 @@ const (
 	SpendKindViewGist SpendKind = "view_gist"
 )
 
-// SpendIntent tells the SpendGate what is being spent on: the action kind, the target
+// SpendIntent tells the economy what is being spent on: the action kind, the target
 // memory, the client operation id, and the kind's depth signal — a recall carries the
 // server-derived accessibility cost weight ([F4], computed at spend time by the recall
 // use-case), a gist view carries the viewed stage ([R8][G4]). It carries NO price: this
@@ -56,8 +56,18 @@ func RecallSpendIntent(operationID string, memoryID string, accessibilityCost fl
 	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID, OperationID: operationID, AccessibilityCost: accessibilityCost}
 }
 
-// EconomyTx exposes only the cross-context effects bound to this open transaction.
-// The composition root supplies these behaviors; persistence handles never cross inward.
+// EconomyTx exposes only the cross-context effects bound to this open transaction; the composition
+// root supplies these behaviors and persistence handles never cross inward. Each effect commits or
+// rolls back with the transaction that produced it.
+//
+//   - The spend pair takes only a SpendIntent's kind, target and depth signal, never a price. A
+//     denial is ErrInsufficientTwinkle and, joining the caller's transaction, resets nothing.
+//   - EarnDiary is the write grant ([G3]): once per launched diary, not per memory, and only after
+//     the monotonic launch guard admits the diary ([I10]).
+//   - RecordProgress reports a counter key and a delta ([A6][I11]). The payload cannot describe a
+//     memory, the return carries no value, the producer reduces measurements to counts before it
+//     reports, and an error aborts the causing transaction: the pre-recall decay depth is
+//     unrecoverable afterwards, so a counter that silently diverged could never be repaired.
 type EconomyTx interface {
 	CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error
 	SpendMemory(context.Context, platform.UserScope, SpendIntent) error
@@ -65,17 +75,14 @@ type EconomyTx interface {
 	RecordProgress(context.Context, platform.UserScope, string, int) error
 }
 
-// SpendGate is the consumer-owned check-and-spend port ([G1], §2.4). Declared ONCE
-// here and shared with the gist-view use-case — the two are the only spend actions in
-// v1. The shipped default is an allow-all no-op (AllowAllSpendGate) for economy-less
-// composition (tests); cmd/api binds the real balance-check + deduct. A denial returns
-// ErrInsufficientTwinkle and, because the spend joins the caller's transaction (tx),
-// resets nothing (§CC2). The gate never sees a price — only the SpendIntent's
-// kind/target/depth signals.
-type SpendGate interface {
-	CheckCanSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error
-	CheckAndSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error
-}
+// NoEconomy is the economy-less EconomyTx binding for tests and roots without an economy: nothing
+// is charged, earned or counted. Production roots bind the real capabilities.
+type NoEconomy struct{}
+
+func (NoEconomy) CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error { return nil }
+func (NoEconomy) SpendMemory(context.Context, platform.UserScope, SpendIntent) error      { return nil }
+func (NoEconomy) EarnDiary(context.Context, platform.UserScope, string) error             { return nil }
+func (NoEconomy) RecordProgress(context.Context, platform.UserScope, string, int) error   { return nil }
 
 // MemoryProvenanceStore appends one append-only 변천사 row ([R8a]). Consumer-owned by
 // recall (Reconsolidate is the writer); the concrete is memory/pg's AppendMemoryProvenance,

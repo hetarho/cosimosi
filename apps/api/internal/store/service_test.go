@@ -16,6 +16,9 @@ type fakeOrnamentRepo struct {
 	purged     []string
 	listErr    error
 	insertErr  error
+	// spend and recorder receive the transaction's EconomyTx calls; a staged clone keeps them.
+	spend    *fakeSpendGate
+	recorder *fakeRecorder
 }
 
 func newFakeOrnamentRepo() *fakeOrnamentRepo {
@@ -71,6 +74,8 @@ func (f *fakeOrnamentRepo) clone() *fakeOrnamentRepo {
 	staged := newFakeOrnamentRepo()
 	staged.listErr = f.listErr
 	staged.insertErr = f.insertErr
+	staged.spend = f.spend
+	staged.recorder = f.recorder
 	for userID, rows := range f.ownerships {
 		staged.ownerships[userID] = append([]store.OrnamentOwnership(nil), rows...)
 	}
@@ -130,18 +135,17 @@ func newTestService(t *testing.T, repo *fakeOrnamentRepo) *store.Service {
 	return service
 }
 
-// newGrantService binds the two seams a grant now needs — the transaction it runs in and a CAPTURING
-// recorder, since the shipped NoAchievementRecorder records nothing and a test over it would assert
-// against a no-op.
+// newGrantService binds the two seams a grant needs — the transaction it runs in and a CAPTURING
+// recorder on that transaction, so a test asserts the counter reports rather than a no-op.
 func newGrantService(t *testing.T, repo *fakeOrnamentRepo) (*store.Service, *fakeRecorder) {
 	t.Helper()
 	recorder := &fakeRecorder{}
+	repo.recorder = recorder
 	service, err := store.NewService(store.ServiceDeps{
-		Ownerships:   repo,
-		Selections:   repo,
-		Purge:        repo,
-		Decorate:     &fakeDecorateRepo{repo: repo},
-		Achievements: recorder,
+		Ownerships: repo,
+		Selections: repo,
+		Purge:      repo,
+		Decorate:   &fakeDecorateRepo{repo: repo},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -353,13 +357,13 @@ func TestGrantOwnershipRollsBackWhenTheCounterReportFails(t *testing.T) {
 	t.Parallel()
 	repo := newFakeOrnamentRepo()
 	recorder := &fakeRecorder{err: errors.New("counter store unavailable")}
+	repo.recorder = recorder
 	tx := &fakeDecorateRepo{repo: repo}
 	service, err := store.NewService(store.ServiceDeps{
-		Ownerships:   repo,
-		Selections:   repo,
-		Purge:        repo,
-		Decorate:     tx,
-		Achievements: recorder,
+		Ownerships: repo,
+		Selections: repo,
+		Purge:      repo,
+		Decorate:   tx,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -444,10 +448,16 @@ func TestWithdrawalPurgerNamesTheContextAndDelegates(t *testing.T) {
 	}
 }
 
-func (*fakeOrnamentRepo) RecordProgress(context.Context, platform.UserScope, string, int) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (f *fakeOrnamentRepo) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
+	if f.recorder == nil {
+		panic("unexpected transaction capability call; bind the tested collaborator")
+	}
+	return f.recorder.RecordProgress(ctx, scope, f, key, delta)
 }
 
-func (*fakeOrnamentRepo) SpendPurchase(context.Context, platform.UserScope, store.PurchaseSpend) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (f *fakeOrnamentRepo) SpendPurchase(ctx context.Context, scope platform.UserScope, spend store.PurchaseSpend) error {
+	if f.spend == nil {
+		panic("unexpected transaction capability call; bind the tested collaborator")
+	}
+	return f.spend.CheckAndSpend(ctx, scope, f, spend)
 }

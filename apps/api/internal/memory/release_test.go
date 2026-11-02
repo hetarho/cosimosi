@@ -71,6 +71,7 @@ type fakeRelGroup struct {
 // and ReleaseTx so InReleaseTx runs fn against itself, with a snapshot restore on error so an aborted
 // transaction leaves no partial write (the double-release no-double-seal guarantee).
 type fakeReleaseRepo struct {
+	economy     *fakeEconomy
 	memories    map[string]*fakeRelMemory
 	neurons     map[string]*fakeRelNeuron
 	activations []fakeRelActivation
@@ -87,6 +88,7 @@ type fakeReleaseRepo struct {
 
 func newFakeReleaseRepo() *fakeReleaseRepo {
 	return &fakeReleaseRepo{
+		economy:  &fakeEconomy{spend: &fakeSpendGate{}, earn: &fakeEarnPort{}, achievements: &fakeAchievementRecorder{}},
 		memories: map[string]*fakeRelMemory{},
 		neurons:  map[string]*fakeRelNeuron{},
 		synapses: map[string]*fakeRelSynapse{},
@@ -710,9 +712,6 @@ func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealS
 		Linker:           &fakeLinker{},
 		Progression:      &fakeProgression{store: launches},
 		Recalls:          launches,
-		SpendGate:        &fakeSpendGate{},
-		Earn:             &fakeEarnPort{},
-		Achievements:     NoAchievementRecorder{},
 		SignupSettlement: NoSignupSettlement{},
 		PredictionError:  &fakePredictionError{},
 		Gists:            &fakeGistReader{},
@@ -1538,18 +1537,18 @@ func TestReleasePathsRejectEmptyScope(t *testing.T) {
 // file fails to compile if the constant is renamed away.
 var _ = values.ReleaseSoftDeleteRetentionDays
 
-func (*fakeReleaseRepo) RecordProgress(context.Context, platform.UserScope, string, int) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (f *fakeReleaseRepo) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
+	return f.economy.record(ctx, scope, f, key, delta)
 }
 
-func (*fakeReleaseRepo) SpendMemory(context.Context, platform.UserScope, SpendIntent) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (f *fakeReleaseRepo) SpendMemory(ctx context.Context, scope platform.UserScope, spend SpendIntent) error {
+	return f.economy.charge(ctx, scope, f, spend)
 }
 
-func (*fakeReleaseRepo) EarnDiary(context.Context, platform.UserScope, string) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (f *fakeReleaseRepo) EarnDiary(ctx context.Context, scope platform.UserScope, diaryID string) error {
+	return f.economy.grant(ctx, scope, f, diaryID)
 }
 
-func (*fakeReleaseRepo) CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error {
-	panic("unexpected affordability capability call")
+func (f *fakeReleaseRepo) CheckMemorySpend(ctx context.Context, scope platform.UserScope, spend SpendIntent) error {
+	return f.economy.check(ctx, scope, f, spend)
 }

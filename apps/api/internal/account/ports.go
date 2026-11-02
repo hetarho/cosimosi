@@ -87,25 +87,18 @@ type CredentialDirectory interface {
 }
 
 // AchievementRecorder is account's consumer-owned progress-report seam ([A6][I11]): a key and a
-// delta, and no field in which an account fact could travel. The transaction handle is `any` —
-// account's invite settlement runs as a locked sequence of statements rather than one transaction,
-// so the concrete adapter binds a pool-bound store; the parameter exists so the port matches the
-// producer shape the other contexts use.
+// delta, and no field in which an account fact could travel. Invite settlement is a sequence of
+// independently idempotent statements rather than one transaction, so the report carries no
+// transaction and the concrete adapter records on the pool.
 type AchievementRecorder interface {
-	RecordProgress(ctx context.Context, scope platform.UserScope, tx any, counterKey string, delta int) error
+	RecordProgress(ctx context.Context, scope platform.UserScope, counterKey string, delta int) error
 }
 
 // NoAchievementRecorder is the achievement-less binding: a settled invite counts nothing. Production
 // binds the real recorder — cmd/api refuses to boot without it.
 type NoAchievementRecorder struct{}
 
-func (NoAchievementRecorder) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	any,
-	string,
-	int,
-) error {
+func (NoAchievementRecorder) RecordProgress(context.Context, platform.UserScope, string, int) error {
 	return nil
 }
 

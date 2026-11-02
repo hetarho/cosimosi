@@ -35,20 +35,6 @@ var (
 	ErrRecallNoLiveMemories = errors.New("recall diary has no live memories for this user")
 )
 
-// AllowAllSpendGate is the economy-less SpendGate binding: it permits every action and
-// charges nothing, so the recall loop composes without the economy (tests, minimal
-// roots). cmd/api binds the real balance-check + deduct in its place (§CC2). Mirrors
-// NoopAdvanceProgression's stance — a deliberate no-op, not a missing binding.
-type AllowAllSpendGate struct{}
-
-func (AllowAllSpendGate) CheckCanSpend(context.Context, platform.UserScope, EconomyTx, SpendIntent) error {
-	return nil
-}
-
-func (AllowAllSpendGate) CheckAndSpend(context.Context, platform.UserScope, EconomyTx, SpendIntent) error {
-	return nil
-}
-
 // recallAccessibilitySignal derives the spend-time accessibility cost weight ([F4])
 // the recall SpendIntent carries: the same read-time forgetting chain the render
 // path uses (offset-inclusive elapsed → decay depth → convex weight), evaluated at
@@ -152,7 +138,7 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 		if prepared.DeletedAt != nil {
 			return ErrRecallMemoryUnavailable
 		}
-		return s.spendGate.CheckCanSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(prepared), target)))
+		return tx.CheckMemorySpend(ctx, scope, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(prepared), target)))
 	})
 	if err != nil {
 		return RecallResult{}, err
@@ -220,7 +206,7 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 		if recallRecoversDecay(anchor, sync.Current) {
 			recovered = 1
 		}
-		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
+		if err := tx.SpendMemory(ctx, scope, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 			return err
 		}
 		// 5. Reinforce on either branch ([R2][R3][R5][F5]).
@@ -335,7 +321,7 @@ func (s *CommandService) RecallDiaryStars(ctx context.Context, scope platform.Us
 			if recallRecoversDecay(anchor, sync.Current) {
 				recovered++
 			}
-			if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
+			if err := tx.SpendMemory(ctx, scope, RecallSpendIntent(operationID, anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 				return err
 			}
 		}

@@ -39,7 +39,7 @@ func TestEconomyPathsCompleteOnASingleConnection(t *testing.T) {
 		t.Fatalf("EarnAdminGrant on one connection failed: %v", err)
 	}
 
-	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService)
+	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
 	// The write grant inside a launch transaction.
 	if err := memoryStore.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
 		return tx.EarnDiary(ctx, scope, "diary-"+userID)

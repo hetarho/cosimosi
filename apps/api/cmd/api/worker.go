@@ -138,12 +138,7 @@ func newDevWorkerAchievementSettler(
 		return nil, err
 	}
 	// Progress recording is independent of payout settlement and is ready before the store.
-	recorders := &achievementRecorderBinding{pool: pool, service: achievement.NewRecorder()}
-	storeService, err := newStoreService(
-		pool,
-		twinkleService,
-		storeAchievementRecorder{achievementRecorder{binding: recorders}},
-	)
+	storeService, err := newStoreService(pool, twinkleService, achievement.NewRecorder())
 	if err != nil {
 		return nil, err
 	}

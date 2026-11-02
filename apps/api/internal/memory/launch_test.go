@@ -15,6 +15,9 @@ import (
 // state that only becomes visible (committed) when fn returns nil — mirroring the
 // all-or-nothing transaction contract the tests assert.
 type fakeLaunchStore struct {
+	// economy receives the transaction's spend, earn and counter calls (EconomyTx); the fakes it
+	// forwards to record what each path charged, granted and counted.
+	economy        *fakeEconomy
 	inRecallTx     bool
 	ConsolidateTx  // Unused when tests bind their explicit fakeProgression.
 	clock          *time.Time
@@ -945,18 +948,54 @@ func TestPersistEncodedDuplicateNeuronInOneMemoryActivatesOnce(t *testing.T) {
 	}
 }
 
-func (*fakeLaunchStore) RecordProgress(context.Context, platform.UserScope, string, int) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+// fakeEconomy is the transaction's EconomyTx in unit tests: it forwards each effect to the fake that
+// records it, handing the transaction itself over as the handle the effect joined.
+type fakeEconomy struct {
+	spend        *fakeSpendGate
+	earn         *fakeEarnPort
+	achievements *fakeAchievementRecorder
 }
 
-func (*fakeLaunchStore) SpendMemory(context.Context, platform.UserScope, SpendIntent) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (e *fakeEconomy) check(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error {
+	if e == nil || e.spend == nil {
+		panic("unexpected affordability capability call")
+	}
+	return e.spend.CheckCanSpend(ctx, scope, tx, spend)
 }
 
-func (*fakeLaunchStore) EarnDiary(context.Context, platform.UserScope, string) error {
-	panic("unexpected transaction capability call; bind the tested collaborator")
+func (e *fakeEconomy) charge(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error {
+	if e == nil || e.spend == nil {
+		panic("unexpected transaction capability call; bind the tested collaborator")
+	}
+	return e.spend.CheckAndSpend(ctx, scope, tx, spend)
 }
 
-func (*fakeLaunchStore) CheckMemorySpend(context.Context, platform.UserScope, SpendIntent) error {
-	panic("unexpected affordability capability call")
+func (e *fakeEconomy) grant(ctx context.Context, scope platform.UserScope, tx EconomyTx, diaryID string) error {
+	if e == nil || e.earn == nil {
+		panic("unexpected transaction capability call; bind the tested collaborator")
+	}
+	return e.earn.OnDiaryLaunched(ctx, scope, tx, diaryID)
+}
+
+func (e *fakeEconomy) record(ctx context.Context, scope platform.UserScope, tx EconomyTx, key string, delta int) error {
+	if e == nil || e.achievements == nil {
+		panic("unexpected transaction capability call; bind the tested collaborator")
+	}
+	return e.achievements.RecordProgress(ctx, scope, tx, key, delta)
+}
+
+func (f *fakeLaunchStore) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
+	return f.economy.record(ctx, scope, f, key, delta)
+}
+
+func (f *fakeLaunchStore) SpendMemory(ctx context.Context, scope platform.UserScope, spend SpendIntent) error {
+	return f.economy.charge(ctx, scope, f, spend)
+}
+
+func (f *fakeLaunchStore) EarnDiary(ctx context.Context, scope platform.UserScope, diaryID string) error {
+	return f.economy.grant(ctx, scope, f, diaryID)
+}
+
+func (f *fakeLaunchStore) CheckMemorySpend(ctx context.Context, scope platform.UserScope, spend SpendIntent) error {
+	return f.economy.check(ctx, scope, f, spend)
 }

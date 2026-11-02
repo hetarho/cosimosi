@@ -14,7 +14,7 @@ import (
 // GetDiaries use-case ([D2]) — the diary-reader archive read: one chronological page of immutable
 // Diary entries, each carrying its split membership (the still-live episodic memories it launched,
 // [D3]). It is free ([G4]): no clock advance ([T3]), no write, no Twinkle spend — it
-// carries no SpendGate call. GET-eligible / NO_SIDE_EFFECTS (§2.7).
+// carries no spend. GET-eligible / NO_SIDE_EFFECTS (§2.7).
 
 var (
 	ErrDiaryPageTokenInvalid    = errors.New("get diaries page token is invalid")

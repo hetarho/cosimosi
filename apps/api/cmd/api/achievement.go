@@ -182,9 +182,8 @@ func reconcileRewards(rows []achievement.Achievement) error {
 	return nil
 }
 
-// The three recorder adapters. Each binds a counter store onto the PRODUCER's own transaction, so the
-// counter write commits or rolls back with the launch/recall/view/release/save that caused it — the
-// shipped economy-seam pattern: the two contexts share the transaction and never the queries.
+// Transactional producers (memory, store) report through their transaction bindings
+// (recordTransactionProgress); account reports through the pool-bound recorder below.
 
 // Immutable recorder capabilities are ready before any payout services are built.
 type achievementRecorderBinding struct {
@@ -221,58 +220,12 @@ func (r achievementRecorder) pooledStore() achievement.Store {
 	return achievementpg.NewStore(r.binding.pool.PgxPool())
 }
 
-// report is the transactional producers' shared body. The binding is checked BEFORE the transaction
-// handle: an unbound recorder is a wiring fault whatever the caller passed, and reporting "tx
-// unusable" for it would send the next reader after the wrong thing.
-func (r achievementRecorder) report(
-	ctx context.Context,
-	scope platform.UserScope,
-	tx interface {
-		RecordProgress(context.Context, platform.UserScope, string, int) error
-	},
-	counterKey string,
-	delta int,
-) error {
-	if r.binding == nil || r.binding.service == nil {
-		return errAchievementRecorderUnbound
-	}
-	if tx == nil {
-		return errRecorderTxUnusable
-	}
-	return tx.RecordProgress(ctx, scope, counterKey, delta)
-}
-
-type memoryAchievementRecorder struct{ achievementRecorder }
-
-func (r memoryAchievementRecorder) RecordProgress(
-	ctx context.Context,
-	scope platform.UserScope,
-	tx memory.EconomyTx,
-	counterKey string,
-	delta int,
-) error {
-	return r.report(ctx, scope, tx, counterKey, delta)
-}
-
-type storeAchievementRecorder struct{ achievementRecorder }
-
-func (r storeAchievementRecorder) RecordProgress(
-	ctx context.Context,
-	scope platform.UserScope,
-	tx store.EconomyTx,
-	counterKey string,
-	delta int,
-) error {
-	return r.report(ctx, scope, tx, counterKey, delta)
-}
-
 // accountAchievementRecorder is the one producer whose report is NOT transactional — see pooledStore.
 type accountAchievementRecorder struct{ achievementRecorder }
 
 func (r accountAchievementRecorder) RecordProgress(
 	ctx context.Context,
 	scope platform.UserScope,
-	_ any,
 	counterKey string,
 	delta int,
 ) error {
@@ -346,13 +299,7 @@ func (achievementSettlementScheduler) ScheduleSettlement(
 // counting nothing, so a path that unexpectedly reached it is loud.
 type accountAchievementUnavailable struct{}
 
-func (accountAchievementUnavailable) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	any,
-	string,
-	int,
-) error {
+func (accountAchievementUnavailable) RecordProgress(context.Context, platform.UserScope, string, int) error {
 	return errAchievementSignupRecordingUnavailable
 }
 

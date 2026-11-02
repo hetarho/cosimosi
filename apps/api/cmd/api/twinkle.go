@@ -23,7 +23,7 @@ import (
 
 // Twinkle wiring + the cross-context economy adapters (ARCHITECTURE §2.4): twinkle
 // never imports memory and memory never imports twinkle — the two meet only here.
-// The adapters map memory's SpendGate/EarnPort/EconomyTx vocabulary onto twinkle
+// The adapters map memory's EconomyTx vocabulary onto twinkle
 // use-case inputs, and twinkle's SpendSignalReader onto memory's published reads.
 
 // errEconomyTxUnusable is the wiring fault of an EconomyTx handle the economy
@@ -94,46 +94,21 @@ func twinkleServiceOption(service *twinkle.Service) (platform.HandlerOption, err
 	}), nil
 }
 
-// twinkleSpendGate implements memory.SpendGate over the twinkle economy: it binds
-// the ledger store onto the caller's transaction (or lets the gate open its own for
-// the tx-less gist view), maps the SpendIntent's kind + depth signal onto twinkle's
-// intent, and translates the canonical denial back into memory's vocabulary.
-type twinkleSpendGate struct {
-	service *twinkle.Service
-}
-
-func (g twinkleSpendGate) CheckAndSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
-	if tx == nil {
-		return errEconomyTxUnusable
-	}
-	return tx.SpendMemory(ctx, scope, spend)
-}
-
-func (g twinkleSpendGate) spendBound(ctx context.Context, scope platform.UserScope, ledger twinkle.LedgerTx, spend memory.SpendIntent) error {
+// spendMemory charges a memory spend on the caller's transaction-bound ledger: it maps the
+// SpendIntent's kind and depth signal onto twinkle's intent and translates the canonical denial back
+// into memory's vocabulary.
+func spendMemory(ctx context.Context, service *twinkle.Service, scope platform.UserScope, ledger twinkle.LedgerTx, spend memory.SpendIntent) error {
 	intent, err := twinkleIntent(spend)
 	if err != nil {
 		return err
 	}
-	if err := g.service.CheckAndSpend(ctx, scope, ledger, intent); err != nil {
+	if err := service.CheckAndSpend(ctx, scope, ledger, intent); err != nil {
 		if errors.Is(err, twinkle.ErrInsufficientTwinkle) {
 			return fmt.Errorf("%w: %w", memory.ErrInsufficientTwinkle, err)
 		}
 		return err
 	}
 	return nil
-}
-
-// twinkleEarnPort implements memory.EarnPort: the write grant fired inside the
-// launch transaction, once per launched diary ([G3]).
-type twinkleEarnPort struct {
-	service *twinkle.Service
-}
-
-func (p twinkleEarnPort) OnDiaryLaunched(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, diaryID string) error {
-	if tx == nil {
-		return errEconomyTxUnusable
-	}
-	return tx.EarnDiary(ctx, scope, diaryID)
 }
 
 // twinkleIntent maps memory's spend vocabulary onto twinkle's: kind → entry reason,
@@ -203,11 +178,4 @@ func quoteTargetError(err error) error {
 	default:
 		return err
 	}
-}
-
-func (g twinkleSpendGate) CheckCanSpend(ctx context.Context, scope platform.UserScope, tx memory.EconomyTx, spend memory.SpendIntent) error {
-	if tx == nil {
-		return errEconomyTxUnusable
-	}
-	return tx.CheckMemorySpend(ctx, scope, spend)
 }

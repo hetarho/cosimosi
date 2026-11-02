@@ -48,7 +48,7 @@ func TestWorkerSettlementGrantersFailLoudly(t *testing.T) {
 	// This process settles no signup, so the recorder refuses rather than counting nothing: an
 	// unexpected settlement here should be loud.
 	if err := (workerNoAchievementRecorder{}).RecordProgress(
-		context.Background(), scope, nil, "invite_settled", 1,
+		context.Background(), scope, "invite_settled", 1,
 	); !errors.Is(err, errWorkerAchievementRecordingUnavailable) {
 		t.Fatalf("worker achievement recorder err = %v", err)
 	}

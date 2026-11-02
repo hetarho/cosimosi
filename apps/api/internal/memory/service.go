@@ -16,9 +16,6 @@ var (
 	ErrLinkerRequired           = errors.New("memory service requires a linker")
 	ErrProgressionRequired      = errors.New("memory service requires an advance progression hook")
 	ErrRecallsRequired          = errors.New("memory service requires a recall repo")
-	ErrSpendGateRequired        = errors.New("memory service requires a spend gate")
-	ErrEarnRequired             = errors.New("memory service requires an earn port")
-	ErrAchievementsRequired     = errors.New("memory service requires an achievement recorder")
 	ErrSignupSettlementRequired = errors.New("memory service requires a signup settlement port")
 	ErrPredictionErrorRequired  = errors.New("memory service requires a prediction-error port")
 	ErrGistsRequired            = errors.New("memory service requires a gist reader")
@@ -58,22 +55,11 @@ type ServiceDeps struct {
 	// composition root can advance the clock without the seam the
 	// advance-triggered handlers hang their work on.
 	Progression AdvanceProgression
-	// Recalls runs the recall transaction; SpendGate gates the Twinkle spend
-	// (AllowAllSpendGate for economy-less composition, the real gate at cmd/api);
-	// PredictionError is the LLM semantic-compare deciding reinforce vs.
-	// reconsolidate. All required so no composition root can wire a recall path
-	// missing its economy or its gate.
+	// Recalls runs the recall transaction; PredictionError is the LLM semantic-compare deciding
+	// reinforce vs. reconsolidate. Spend, earn and counter effects reach these transactions
+	// through EconomyTx, bound by the repository at the composition root.
 	Recalls         RecallRepo
-	SpendGate       SpendGate
 	PredictionError PredictionError
-	// Earn is the write-earn seam fired inside the launch transaction ([G3]);
-	// required (NoEarnOnWrite for economy-less composition) so no composition root
-	// can launch diaries with the grant seam silently unbound.
-	Earn EarnPort
-	// Achievements is the counter-report seam fired inside the launch/recall/view/release
-	// transactions ([A6]); required (NoAchievementRecorder for achievement-less composition) so no
-	// composition root can run those paths with the report seam silently unbound.
-	Achievements AchievementRecorder
 	// SignupSettlement is fired after a successful admitted launch commits. It is required so
 	// production cannot silently omit the deferred signup/invite reward path.
 	SignupSettlement SignupSettlementPort
@@ -132,9 +118,6 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		Linker:           deps.Linker,
 		Progression:      deps.Progression,
 		Recalls:          deps.Recalls,
-		SpendGate:        deps.SpendGate,
-		Earn:             deps.Earn,
-		Achievements:     deps.Achievements,
 		SignupSettlement: deps.SignupSettlement,
 		PredictionError:  deps.PredictionError,
 		ViewSemantics:    deps.ViewSemantics,

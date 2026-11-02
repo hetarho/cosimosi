@@ -14,8 +14,9 @@ import (
 // anchors are deterministic against the wall clock.
 func recallServiceDay() time.Time { return time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC) }
 
-func newRecallService(t *testing.T, store Store, launches memory.LaunchRepo, universe memory.UniverseReader, candidates memory.NeuronCandidateRepo) *memory.Service {
+func newRecallService(t *testing.T, store Store) *memory.Service {
 	t.Helper()
+	store = withEconomy(store, memory.NoEconomy{})
 	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
 	if err != nil {
 		t.Fatalf("NewAdapters failed: %v", err)
@@ -24,15 +25,12 @@ func newRecallService(t *testing.T, store Store, launches memory.LaunchRepo, uni
 	service, err := memory.NewService(memory.ServiceDeps{
 		Extractor:        adapters.Extractor,
 		Embedder:         adapters.Embedder,
-		Candidates:       candidates,
-		Launches:         launches,
-		Universe:         universe,
+		Candidates:       store,
+		Launches:         store,
+		Universe:         store,
 		Linker:           memory.NewLinkService(memory.LinkDeps{}),
 		Progression:      memory.NoopAdvanceProgression{},
 		Recalls:          store,
-		SpendGate:        memory.AllowAllSpendGate{},
-		Earn:             memory.NoEarnOnWrite{},
-		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,
@@ -72,7 +70,7 @@ func TestRecallReconsolidatesAndReinforcesEndToEnd(t *testing.T) {
 	day := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	seedRecallGraph(t, ctx, store, scope, base, day)
 
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 	result, err := service.Recall(ctx, scope, base+"-op-1", base+"-m1", "a wholly different afternoon fishing trip", true)
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
@@ -168,7 +166,7 @@ func TestRecallIsUserScoped(t *testing.T) {
 	store := NewStore(pool.PgxPool())
 	seedRecallGraph(t, ctx, store, ownerScope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
 
-	service := newRecallService(t, store, store, store, store)
+	service := newRecallService(t, store)
 	if _, err := service.Recall(ctx, intruderScope, base+"-op-1", base+"-m1", "a different memory", true); err == nil {
 		t.Fatal("recalling another user's memory must be rejected")
 	}

@@ -186,6 +186,9 @@ func newFixture(t *testing.T) *serviceFixture {
 	// The paid gist-view transaction reads gists through the launch store, delegating to the same
 	// fakeGistReader the quote reads (one gist data source, as the single pg store is).
 	launches.gistReader = fixture.gists
+	economy := &fakeEconomy{spend: fixture.spendGate, earn: fixture.earn, achievements: fixture.achievements}
+	launches.economy = economy
+	fixture.releases.economy = economy
 	ids := 0
 	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
 	// reshape entropy is deterministic in tests.
@@ -199,9 +202,6 @@ func newFixture(t *testing.T) *serviceFixture {
 		Linker:           fixture.linker,
 		Progression:      fixture.progression,
 		Recalls:          fixture.launches,
-		SpendGate:        fixture.spendGate,
-		Earn:             fixture.earn,
-		Achievements:     fixture.achievements,
 		SignupSettlement: fixture.signupSettlement,
 		PredictionError:  fixture.predictionError,
 		Gists:            fixture.gists,
@@ -245,9 +245,6 @@ func TestNewServiceRejectsUnboundSignupSettlement(t *testing.T) {
 		Linker:          fixture.linker,
 		Progression:     fixture.progression,
 		Recalls:         fixture.launches,
-		SpendGate:       fixture.spendGate,
-		Earn:            fixture.earn,
-		Achievements:    NoAchievementRecorder{},
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
 		ViewSemantics:   fixture.launches,

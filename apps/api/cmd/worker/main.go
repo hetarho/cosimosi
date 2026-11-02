@@ -216,11 +216,9 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 		Purge:      ornaments,
 		// A grant runs in its own transaction so the ownership row and the ornament-owned counter
 		// commit together, so this root binds the transaction runner even though it saves no
-		// decoration. Spend stays unbound: the drain never charges.
+		// decoration. Its counter report goes through the recorder the achievement context binds,
+		// exactly as in the API root; a purchase charge is refused, since the drain never charges.
 		Decorate: ornaments,
-		// The grant's counter report is a real report, not decoration progress — it goes through the
-		// recorder the achievement context binds, exactly as it does in the API root.
-		Achievements: workerStoreAchievementRecorder{binding: binding},
 	})
 	if err != nil {
 		return nil, err
@@ -241,29 +239,6 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 
 type workerAchievementBinding struct {
 	service *achievement.Recorder
-}
-
-// workerStoreAchievementRecorder binds a counter store onto the GRANT's own transaction, so the
-// ownership row and the ornament-owned total commit together — the same edge the API root binds for
-// a decoration save.
-type workerStoreAchievementRecorder struct {
-	binding *workerAchievementBinding
-}
-
-func (r workerStoreAchievementRecorder) RecordProgress(
-	ctx context.Context,
-	scope platform.UserScope,
-	tx store.EconomyTx,
-	counterKey string,
-	delta int,
-) error {
-	if r.binding == nil || r.binding.service == nil {
-		return errWorkerAchievementRecordingUnavailable
-	}
-	if tx == nil {
-		return errWorkerRecorderTxUnusable
-	}
-	return tx.RecordProgress(ctx, scope, counterKey, delta)
 }
 
 type workerAccountDirectory interface {
@@ -323,8 +298,8 @@ var (
 	errWorkerClaimSchedulingUnavailable = errors.New(
 		"achievement claims are not taken in the worker process",
 	)
-	errWorkerRecorderTxUnusable = errors.New(
-		"producer tx does not expose a database handle",
+	errWorkerPurchaseUnavailable = errors.New(
+		"ornament purchases are not charged in the worker process",
 	)
 )
 
@@ -340,13 +315,7 @@ func (workerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) err
 
 type workerNoAchievementRecorder struct{}
 
-func (workerNoAchievementRecorder) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	any,
-	string,
-	int,
-) error {
+func (workerNoAchievementRecorder) RecordProgress(context.Context, platform.UserScope, string, int) error {
 	return errWorkerAchievementRecordingUnavailable
 }
 

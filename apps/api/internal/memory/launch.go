@@ -112,7 +112,7 @@ func (s *CommandService) PersistEncoded(ctx context.Context, scope platform.User
 		// inside this transaction so the launch and its grant commit or roll back
 		// together. Placed after the monotonic guard's early return, so a past-dated
 		// diary that launches no episodic memory earns nothing ([I10]).
-		if err := s.earn.OnDiaryLaunched(ctx, scope, tx, diary.ID); err != nil {
+		if err := tx.EarnDiary(ctx, scope, diary.ID); err != nil {
 			return err
 		}
 

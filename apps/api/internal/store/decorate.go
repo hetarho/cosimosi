@@ -109,7 +109,7 @@ func (s *Service) Decorate(
 	if scope.UserID() == "" {
 		return nil, 0, ErrScopeRequired
 	}
-	if s.decorate == nil || s.spend == nil {
+	if s.decorate == nil {
 		return nil, 0, ErrStoreRequired
 	}
 	// Validated before the transaction opens: an id nobody publishes, or an id whose kind is not the
@@ -138,7 +138,7 @@ func (s *Service) Decorate(
 		charged = chargeTotal(acquired)
 		if charged > 0 {
 			spend := PurchaseSpend{Amount: charged, DedupKey: purchaseDedupKey(acquired)}
-			if err := s.spend.CheckAndSpend(ctx, scope, tx, spend); err != nil {
+			if err := tx.SpendPurchase(ctx, scope, spend); err != nil {
 				return blameShortItem(err, acquired)
 			}
 		}
@@ -342,7 +342,7 @@ func (s *Service) record(
 	if len(changedKinds) == 0 {
 		return nil
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterDecorationSaved, 1); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterDecorationSaved, 1); err != nil {
 		return fmt.Errorf("record decoration saved: %w", err)
 	}
 	if err := s.recordOwnershipTotal(ctx, scope, tx, ownedAfter); err != nil {
@@ -350,7 +350,7 @@ func (s *Service) record(
 	}
 	for _, kind := range changedKinds {
 		key := CounterOrnamentKindDecorated(kind)
-		if err := s.achievements.RecordProgress(ctx, scope, tx, key, 1); err != nil {
+		if err := tx.RecordProgress(ctx, scope, key, 1); err != nil {
 			return fmt.Errorf("record %s: %w", key, err)
 		}
 	}
@@ -382,7 +382,7 @@ func (s *Service) recordOwnershipTotal(
 	tx EconomyTx,
 	ownedAfter int,
 ) error {
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterOrnamentOwned, ownedAfter); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterOrnamentOwned, ownedAfter); err != nil {
 		return fmt.Errorf("record ornament owned: %w", err)
 	}
 	return nil

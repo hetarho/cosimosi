@@ -26,10 +26,10 @@ func (s *CommandService) recordLaunchProgress(
 	if len(launched) == 0 {
 		return nil
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterDiaryWritten, 1); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterDiaryWritten, 1); err != nil {
 		return fmt.Errorf("record diary written %s: %w", diaryID, err)
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterEpisodicMemoryLaunched, len(launched)); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterEpisodicMemoryLaunched, len(launched)); err != nil {
 		return fmt.Errorf("record episodic memories launched: %w", err)
 	}
 
@@ -52,7 +52,7 @@ func (s *CommandService) recordLaunchProgress(
 			continue
 		}
 		key := CounterMoodRecorded(mood)
-		if err := s.achievements.RecordProgress(ctx, scope, tx, key, count); err != nil {
+		if err := tx.RecordProgress(ctx, scope, key, count); err != nil {
 			return fmt.Errorf("record %s: %w", key, err)
 		}
 	}
@@ -112,14 +112,14 @@ func (s *CommandService) recordNeuronSharing(
 		}
 	}
 	if newlyShared > 0 {
-		if err := s.achievements.RecordProgress(ctx, scope, tx, CounterNeuronShared, newlyShared); err != nil {
+		if err := tx.RecordProgress(ctx, scope, CounterNeuronShared, newlyShared); err != nil {
 			return fmt.Errorf("record neurons shared: %w", err)
 		}
 	}
 	// A reach report: the store keeps the high-water mark, so a launch touching only shallow neurons
 	// lowers nothing.
 	if deepest > 0 {
-		if err := s.achievements.RecordProgress(ctx, scope, tx, CounterNeuronShareDepth, deepest); err != nil {
+		if err := tx.RecordProgress(ctx, scope, CounterNeuronShareDepth, deepest); err != nil {
 			return fmt.Errorf("record neuron share depth: %w", err)
 		}
 	}
@@ -143,11 +143,11 @@ func (s *CommandService) recordRecallProgress(
 	if recalledCount <= 0 {
 		return nil
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterRecallPerformed, recalledCount); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterRecallPerformed, recalledCount); err != nil {
 		return fmt.Errorf("record recalls performed: %w", err)
 	}
 	if recoveredCount > 0 {
-		if err := s.achievements.RecordProgress(ctx, scope, tx, CounterDecayRecovered, recoveredCount); err != nil {
+		if err := tx.RecordProgress(ctx, scope, CounterDecayRecovered, recoveredCount); err != nil {
 			return fmt.Errorf("record decay recovered: %w", err)
 		}
 	}
@@ -175,13 +175,13 @@ func (s *CommandService) recordViewSemanticProgress(
 	tx ViewSemanticTx,
 	stage int,
 ) error {
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterGistViewed, 1); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterGistViewed, 1); err != nil {
 		return fmt.Errorf("record gist viewed: %w", err)
 	}
 	if stage <= 0 {
 		return nil
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterSemanticStageDepth, stage); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterSemanticStageDepth, stage); err != nil {
 		return fmt.Errorf("record semantic stage depth: %w", err)
 	}
 	return nil
@@ -198,7 +198,7 @@ func (s *CommandService) recordReleaseProgress(
 	if releasedCount <= 0 {
 		return nil
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterEpisodicMemoryReleased, releasedCount); err != nil {
+	if err := tx.RecordProgress(ctx, scope, CounterEpisodicMemoryReleased, releasedCount); err != nil {
 		return fmt.Errorf("record episodic memories released: %w", err)
 	}
 	return nil

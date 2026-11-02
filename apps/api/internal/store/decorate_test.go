@@ -93,13 +93,12 @@ func newDecorateHarness(t *testing.T) decorateHarness {
 	tx := &fakeDecorateRepo{repo: repo}
 	gate := &fakeSpendGate{}
 	recorder := &fakeRecorder{}
+	repo.spend, repo.recorder = gate, recorder
 	service, err := store.NewService(store.ServiceDeps{
-		Ownerships:   repo,
-		Selections:   repo,
-		Purge:        repo,
-		Decorate:     tx,
-		Spend:        gate,
-		Achievements: recorder,
+		Ownerships: repo,
+		Selections: repo,
+		Purge:      repo,
+		Decorate:   tx,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -390,10 +389,9 @@ func TestDecorateRefusesWithoutScopeOrWiring(t *testing.T) {
 	// A service built for the reads alone refuses to save rather than half-saving.
 	repo := newFakeOrnamentRepo()
 	readOnly, err := store.NewService(store.ServiceDeps{
-		Ownerships:   repo,
-		Selections:   repo,
-		Purge:        repo,
-		Achievements: store.NoAchievementRecorder{},
+		Ownerships: repo,
+		Selections: repo,
+		Purge:      repo,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
