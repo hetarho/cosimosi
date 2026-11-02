@@ -29,7 +29,7 @@ type GetPaidActionReceiptRow struct {
 	Response           []byte
 }
 
-// Paid-action idempotency receipts (A2/A3). Every query is user-scoped ([U1]); the recall/gist-view
+// Paid-action idempotency receipts. Every query is user-scoped ([U1]); the recall/gist-view
 // transaction takes the per-user graph advisory lock (LockGraphMutation) before the lookup, so
 // concurrent duplicates of one operation serialize — the loser reads the winner's committed receipt
 // instead of doing the work twice.
@@ -73,7 +73,7 @@ type InsertPaidActionReceiptParams struct {
 	Response           []byte
 }
 
-// The commit-time receipt write, in the same transaction as the debit + effects (A3). Exactly one
+// The commit-time receipt write, in the same transaction as the debit + effects. Exactly one
 // of episodic_memory_id / diary_id is set (the table CHECK), tying the receipt to its retained
 // target for cascade cleanup. A plain INSERT is safe: the graph lock guarantees single-writer per
 // user, and the lookup above already proved no receipt exists for this operation.

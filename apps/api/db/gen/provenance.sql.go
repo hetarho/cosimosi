@@ -150,7 +150,7 @@ type LoadMemoryProvenanceBaselineRow struct {
 // never writes it — the only INSERT on memory_provenance is the reconsolidation/semanticization append
 // path (reconsolidation.sql). Every statement is scoped to the authenticated user
 // ([U1], §4, lint:persistence).
-// The creation facts the created/original baseline is synthesized from at read ([CC5][I2]): the
+// The creation facts the created/original baseline is synthesized from at read ([I2]): the
 // memory's created_universe_time and the passage it was encoded from — never current_text (which
 // reconsolidation moves), never a stored row. The immutable Diary body comes along as the fallback
 // for memories encoded before per-memory passages existed, whose source_text is NULL. A soft-deleted

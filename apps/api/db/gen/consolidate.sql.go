@@ -56,7 +56,7 @@ type AppendMemoryProvenancesParams struct {
 	SemanticStages    []int16
 }
 
-// A rise's semanticized provenance rows in one batch ([R8a][CC5]). semantic_stage 0 is stored as
+// A rise's semanticized provenance rows in one batch ([R8a]). semantic_stage 0 is stored as
 // NULL: stages start at 1, and only a semanticized row carries one.
 func (q *Queries) AppendMemoryProvenances(ctx context.Context, arg AppendMemoryProvenancesParams) error {
 	_, err := q.db.Exec(ctx, appendMemoryProvenances,

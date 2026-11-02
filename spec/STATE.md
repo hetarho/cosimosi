@@ -104,6 +104,7 @@
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 fix api: regenerate sqlc output whose query comments T199 edited (CI check:gen)
 - 261103 T212 done
 - 261103 T211 done
 - 261103 T210 done
