@@ -173,3 +173,19 @@ SELECT
     id, user_id, kind, payload, status, attempts, next_run_at, created_at,
     lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 FROM inserted_job;
+
+-- name: HasActiveTargetJob :one
+-- Whether a pending or running job of this kind already targets this row at this revision (0 is
+-- stored as NULL, as EnqueueJob writes it). Served by job_targets_user_target_idx.
+SELECT EXISTS (
+    SELECT 1
+    FROM job_targets AS jt
+    JOIN jobs AS j ON j.id = jt.job_id AND j.user_id = jt.user_id
+    WHERE jt.user_id = sqlc.arg(user_id)
+      AND j.user_id = sqlc.arg(user_id)
+      AND jt.target_kind = sqlc.arg(target_kind)
+      AND jt.target_id = sqlc.arg(target_id)
+      AND jt.expected_revision IS NOT DISTINCT FROM NULLIF(sqlc.arg(expected_revision)::bigint, 0)
+      AND j.kind = sqlc.arg(kind)
+      AND j.status IN ('pending', 'running')
+) AS active;

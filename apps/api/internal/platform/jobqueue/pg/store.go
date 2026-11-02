@@ -147,6 +147,21 @@ func (s Store) Complete(ctx context.Context, job jobqueue.Record) error {
 	return ignoreLostLease(err)
 }
 
+// HasActiveTargetJob reports whether a pending or running job of kind already targets the row at
+// the expected revision, so a producer can avoid stacking duplicate work on an unfinished job.
+func (s Store) HasActiveTargetJob(ctx context.Context, scope platform.UserScope, kind jobqueue.Kind, target jobqueue.Target) (bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, err
+	}
+	return s.queries.HasActiveTargetJob(ctx, dbgen.HasActiveTargetJobParams{
+		UserID:           scope.UserID(),
+		TargetKind:       string(target.Kind),
+		TargetID:         target.ID,
+		ExpectedRevision: target.ExpectedRevision,
+		Kind:             string(kind),
+	})
+}
+
 func (s Store) CancelUserJob(
 	ctx context.Context,
 	scope platform.UserScope,

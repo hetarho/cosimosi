@@ -295,6 +295,44 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 	return i, err
 }
 
+const hasActiveTargetJob = `-- name: HasActiveTargetJob :one
+SELECT EXISTS (
+    SELECT 1
+    FROM job_targets AS jt
+    JOIN jobs AS j ON j.id = jt.job_id AND j.user_id = jt.user_id
+    WHERE jt.user_id = $1
+      AND j.user_id = $1
+      AND jt.target_kind = $2
+      AND jt.target_id = $3
+      AND jt.expected_revision IS NOT DISTINCT FROM NULLIF($4::bigint, 0)
+      AND j.kind = $5
+      AND j.status IN ('pending', 'running')
+) AS active
+`
+
+type HasActiveTargetJobParams struct {
+	UserID           string
+	TargetKind       string
+	TargetID         string
+	ExpectedRevision int64
+	Kind             string
+}
+
+// Whether a pending or running job of this kind already targets this row at this revision (0 is
+// stored as NULL, as EnqueueJob writes it). Served by job_targets_user_target_idx.
+func (q *Queries) HasActiveTargetJob(ctx context.Context, arg HasActiveTargetJobParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasActiveTargetJob,
+		arg.UserID,
+		arg.TargetKind,
+		arg.TargetID,
+		arg.ExpectedRevision,
+		arg.Kind,
+	)
+	var active bool
+	err := row.Scan(&active)
+	return active, err
+}
+
 const listJobTargets = `-- name: ListJobTargets :many
 SELECT target_kind, target_id, expected_revision
 FROM job_targets

@@ -75,6 +75,20 @@ func (f *fakeConsolidateTx) EnqueueJob(_ context.Context, _ platform.UserScope, 
 	return job, nil
 }
 
+func (f *fakeConsolidateTx) HasActiveTargetJob(_ context.Context, _ platform.UserScope, kind JobKind, target JobTarget) (bool, error) {
+	for _, job := range f.jobs {
+		if job.Kind != kind || (job.Status != JobStatusPending && job.Status != JobStatusRunning) {
+			continue
+		}
+		for _, candidate := range job.Targets {
+			if candidate == target {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (f *fakeConsolidateTx) LockGraphMutation(context.Context, platform.UserScope) error {
 	return nil
 }
@@ -597,6 +611,41 @@ func TestConsolidateDownscalesSleptSynapsesThroughThePureFn(t *testing.T) {
 	}
 	if len(tx.synapses) != 4 {
 		t.Fatalf("synapse rows = %d, want 4 — downscale never removes an edge", len(tx.synapses))
+	}
+}
+
+func TestRepairPassEnqueuesOnceWhileActive(t *testing.T) {
+	t.Parallel()
+	tx := newFakeConsolidateTx()
+	stuck := plainConsolidateMemory("m1", consolidateDate(0))
+	stuck.SemanticStage = 4
+	stuck.SemanticStages = nil
+	tx.memories = []EpisodicMemory{stuck}
+	tx.memberNeurons["m1"] = []ExistingNeuron{{ID: "n1", Name: "harbor", Type: NeuronTypeSemantic}}
+	semanticizeJobs := func() []int {
+		indexes := []int{}
+		for i, job := range tx.jobs {
+			if job.Kind == JobKindSemanticize {
+				indexes = append(indexes, i)
+			}
+		}
+		return indexes
+	}
+
+	// Two advances while the first regeneration is still pending: one job, not two paid ones.
+	first, second, third := consolidateDate(40), consolidateDate(45), consolidateDate(50)
+	runConsolidator(t, tx, &first, second)
+	runConsolidator(t, tx, &second, third)
+	if jobs := semanticizeJobs(); len(jobs) != 1 {
+		t.Fatalf("semanticize jobs while one is active = %d, want 1", len(jobs))
+	}
+
+	// Once that job has ended with the text still missing, the next advance enqueues again.
+	tx.jobs[semanticizeJobs()[0]].Status = JobStatusFailed
+	fourth := consolidateDate(55)
+	runConsolidator(t, tx, &third, fourth)
+	if jobs := semanticizeJobs(); len(jobs) != 2 {
+		t.Fatalf("semanticize jobs after the active one ended = %d, want 2", len(jobs))
 	}
 }
 

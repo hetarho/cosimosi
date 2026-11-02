@@ -56,6 +56,9 @@ type SynapseStrength struct {
 type ConsolidateTx interface {
 	UniverseClockStore
 	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	// HasActiveTargetJob reports whether a pending or running job of kind already targets the row
+	// at the expected revision.
+	HasActiveTargetJob(ctx context.Context, scope platform.UserScope, kind JobKind, target JobTarget) (bool, error)
 	MemoryProvenanceStore
 	// ConsolidationWatermarkForUpdate returns (locked, nil = never consolidated) the
 	// universe-time this user's consolidation already processed through — the clamp
@@ -340,10 +343,17 @@ func missingStageText(stages *SemanticStages, risenStage int) bool {
 // enqueueSemanticizeRegen re-enqueues the stage-text generation for a memory whose risen
 // stage has no text ([C7], A9): the worker regenerates the set from current_text and keeps
 // the leading already-present texts (a risen gist stage is a thing that happened).
+//
+// A job already pending or running for the same revision will write the same texts, so the pass
+// enqueues nothing more: otherwise every advance during a backlog or provider outage would stack
+// another paid generation per memory. Once that job ends, a still-missing text is enqueued again.
 func (c Consolidator) enqueueSemanticizeRegen(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, episodicMemory *EpisodicMemory) error {
-	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
-		Kind: JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision,
-	})
+	target := JobTarget{Kind: JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}
+	active, err := tx.HasActiveTargetJob(ctx, scope, JobKindSemanticize, target)
+	if err != nil || active {
+		return err
+	}
+	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindSemanticize, SemanticizeJobPayload{}, target)
 }
 
 // fillNewlyReachedDecayStages persists the deterministic word-loss texts for the forgetting
