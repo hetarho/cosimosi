@@ -23,12 +23,15 @@ type fakeWithdrawalStore struct {
 	dependentCalls int
 	userCalls      int
 	statusCalls    int
+	openTx         int
 }
 
 func (f *fakeWithdrawalStore) InWithdrawalTx(
 	_ context.Context,
 	fn func(WithdrawalStore) error,
 ) error {
+	f.openTx++
+	defer func() { f.openTx-- }()
 	return fn(f)
 }
 
@@ -639,5 +642,75 @@ func TestAccountStatusCarriesTheRestoreDeadline(t *testing.T) {
 	if status, err := service.AccountStatus(context.Background(), scope.UserID()); err != nil || status.Withdrawn ||
 		!status.RestoreDeadlineAt.IsZero() {
 		t.Fatalf("AccountStatus after restore = %#v, %v; want live", status, err)
+	}
+}
+
+// txProbe records every leg and credential call made while an account transaction is open.
+type txProbe struct {
+	store      *fakeWithdrawalStore
+	name       string
+	violations *[]string
+}
+
+func (p txProbe) check(call string) {
+	if p.store.openTx > 0 {
+		*p.violations = append(*p.violations, call)
+	}
+}
+
+func (p txProbe) PurgeName() string { return p.name }
+
+func (p txProbe) PurgeUser(context.Context, platform.UserScope) error {
+	p.check("purge " + p.name)
+	return nil
+}
+
+type txProbeCredentials struct{ txProbe }
+
+func (p txProbeCredentials) SetUserBanned(context.Context, string, bool) error {
+	p.check("ban")
+	return nil
+}
+
+func (p txProbeCredentials) DeleteUser(context.Context, string) error {
+	p.check("delete credential")
+	return nil
+}
+
+// A leg or a Supabase Admin call under the users row lock would stretch the lock — and a pooled
+// connection — across every other context's purge and two network round trips.
+func TestWithdrawalSweepHoldsNoTransactionAcrossLegsOrCredentialCalls(t *testing.T) {
+	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
+	store := &fakeWithdrawalStore{found: true, withdrawnAt: now}
+	var violations []string
+	service, err := NewService(ServiceDeps{
+		Store:              &fakeStore{},
+		Directory:          &fakeDirectory{},
+		InviteGranter:      &fakeInviteGranter{},
+		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
+		InviteSigner:       UnavailableInviteSigner{},
+		Withdrawals:        store,
+		Scheduler:          &fakeWithdrawalScheduler{},
+		Purgers: []UserDataPurger{
+			txProbe{store: store, name: "memory", violations: &violations},
+			txProbe{store: store, name: "twinkle", violations: &violations},
+		},
+		Credentials: txProbeCredentials{txProbe{store: store, violations: &violations}},
+		Now:         func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	if err := service.SweepWithdrawnAccount(
+		context.Background(), mustScope(t, "sweep-user"), now.Add(values.AccountWithdrawalRetentionWindow()),
+	); err != nil {
+		t.Fatalf("sweep failed: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("calls made inside an account transaction: %v", violations)
+	}
+	if store.found {
+		t.Fatal("sweep did not remove the completion marker")
 	}
 }

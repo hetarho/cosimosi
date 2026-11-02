@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -21,6 +22,19 @@ var ErrDirectoryUnavailable = errors.New("supabase account directory is unavaila
 // Compatibility fallback for direct platform-package callers. Production composition
 // roots always inject their named deployment timeout explicitly.
 const defaultDirectoryHTTPTimeout = 5 * time.Second
+
+const (
+	// supabaseDirectoryMaxBodyBytes bounds one Admin API response. A user, or a page of users at any
+	// size a consumer reasonably asks for, is far below it, so a larger body is a misbehaving
+	// upstream rather than data, and it fails closed instead of being decoded into memory.
+	supabaseDirectoryMaxBodyBytes = 1 << 20
+	// supabaseDirectoryErrorDrainBytes bounds how much of an unread body is drained so the
+	// connection can be reused; a longer body is abandoned with its connection.
+	supabaseDirectoryErrorDrainBytes = 1 << 10
+)
+
+// ErrDirectoryResponseTooLarge reports an Admin API body past supabaseDirectoryMaxBodyBytes.
+var ErrDirectoryResponseTooLarge = errors.New("supabase admin api response exceeds its byte cap")
 
 // Account is account metadata owned by Supabase Auth. Product profile fields do not cross this
 // platform boundary.
@@ -233,11 +247,25 @@ func (s Directory) get(ctx context.Context, endpoint string, out any) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = response.Body.Close() }()
+	defer closeBody(response.Body)
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return fmt.Errorf("supabase admin api: status %s", strconv.Itoa(response.StatusCode))
 	}
-	return json.NewDecoder(response.Body).Decode(out)
+	raw, err := io.ReadAll(io.LimitReader(response.Body, supabaseDirectoryMaxBodyBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(raw) > supabaseDirectoryMaxBodyBytes {
+		return ErrDirectoryResponseTooLarge
+	}
+	return json.Unmarshal(raw, out)
+}
+
+// closeBody drains a bounded remainder before closing, so a short unread body (an error page, a
+// mutation's echo) leaves its connection reusable without letting a long one be read in full.
+func closeBody(body io.ReadCloser) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(body, supabaseDirectoryErrorDrainBytes))
+	_ = body.Close()
 }
 
 func (s Directory) mutateUser(ctx context.Context, method string, userID string, body []byte) error {
@@ -255,7 +283,7 @@ func (s Directory) mutateUser(ctx context.Context, method string, userID string,
 	if err != nil {
 		return err
 	}
-	defer func() { _ = response.Body.Close() }()
+	defer closeBody(response.Body)
 	if response.StatusCode == http.StatusNotFound {
 		return nil
 	}

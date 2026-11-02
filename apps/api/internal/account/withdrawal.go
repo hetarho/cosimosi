@@ -3,6 +3,7 @@ package account
 import (
 	"container/list"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -257,15 +258,66 @@ func (s *Service) WithdrawnAt(ctx context.Context, userID string) (time.Time, bo
 	}
 }
 
-// SweepWithdrawnAccount is reachable only from the withdrawal_sweep worker handler.
-// The locked User row serializes it with RestoreAccount. Each registered context leg
-// owns and commits its own idempotent transaction; account dependents, credentials, and
-// finally the User completion marker follow in that order.
+// errSweepRestoredMidway is the sweep finding its completion marker cleared after it claimed: only a
+// restore racing the deadline across process clocks can do that.
+var errSweepRestoredMidway = errors.New("account was restored while its withdrawal sweep was running")
+
+// SweepWithdrawnAccount is reachable only from the withdrawal_sweep worker handler. No transaction
+// or row lock is held across a leg or a credential call, so a slow context or a slow Supabase Admin
+// API never extends a lock or pins a pooled connection:
+//
+//  1. claim: due-ness is re-derived from deleted_at under the users row lock, in a transaction that
+//     commits before anything is deleted. A restore is refused from the deadline on, so a claimed
+//     sweep cannot be undone by one;
+//  2. each owning-context leg commits its own idempotent transaction;
+//  3. account dependents commit in a short transaction of their own;
+//  4. the credential is banned and deleted with no transaction open;
+//  5. the users row, the completion marker, is removed last under its lock.
+//
+// Every step is idempotent, so a crash anywhere completes on replay: the marker survives until the
+// last step, and the replay's claim finds it again.
 func (s *Service) SweepWithdrawnAccount(ctx context.Context, scope platform.UserScope, now time.Time) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
+	due, err := s.claimSweep(ctx, scope, now)
+	if err != nil || !due {
+		return err
+	}
+	for _, purger := range s.purgers {
+		if err := purger.PurgeUser(ctx, scope); err != nil {
+			return fmt.Errorf("purge %s user data: %w", purger.PurgeName(), err)
+		}
+	}
+	if err := s.withdrawals.InWithdrawalTx(ctx, func(tx WithdrawalStore) error {
+		return tx.PurgeAccountDependents(ctx, scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.credentials.SetUserBanned(ctx, scope.UserID(), true); err != nil {
+		return err
+	}
+	if err := s.credentials.DeleteUser(ctx, scope.UserID()); err != nil {
+		return err
+	}
 	return s.withdrawals.InWithdrawalTx(ctx, func(tx WithdrawalStore) error {
+		withdrawnAt, found, err := tx.WithdrawalStatusForUpdate(ctx, scope)
+		if err != nil || !found {
+			return err
+		}
+		if withdrawnAt.IsZero() {
+			return errSweepRestoredMidway
+		}
+		_, err = tx.PurgeAccountUser(ctx, scope)
+		return err
+	})
+}
+
+// claimSweep reports whether the sweep should run now: an absent or cleared marker completes as a
+// no-op, an early one retries at the deadline.
+func (s *Service) claimSweep(ctx context.Context, scope platform.UserScope, now time.Time) (bool, error) {
+	due := false
+	err := s.withdrawals.InWithdrawalTx(ctx, func(tx WithdrawalStore) error {
 		withdrawnAt, found, err := tx.WithdrawalStatusForUpdate(ctx, scope)
 		if err != nil || !found || withdrawnAt.IsZero() {
 			return err
@@ -274,29 +326,10 @@ func (s *Service) SweepWithdrawnAccount(ctx context.Context, scope platform.User
 		if now.UTC().Before(deadline) {
 			return withdrawalNotDueError{deadline: deadline}
 		}
-		for _, purger := range s.purgers {
-			if err := purger.PurgeUser(ctx, scope); err != nil {
-				return fmt.Errorf("purge %s user data: %w", purger.PurgeName(), err)
-			}
-		}
-		if err := tx.PurgeAccountDependents(ctx, scope); err != nil {
-			return err
-		}
-		if err := s.credentials.SetUserBanned(ctx, scope.UserID(), true); err != nil {
-			return err
-		}
-		if err := s.credentials.DeleteUser(ctx, scope.UserID()); err != nil {
-			return err
-		}
-		deleted, err := tx.PurgeAccountUser(ctx, scope)
-		if err != nil {
-			return err
-		}
-		if !deleted {
-			return fmt.Errorf("account user completion marker disappeared before purge completed")
-		}
+		due = true
 		return nil
 	})
+	return due, err
 }
 
 type withdrawalNotDueError struct {

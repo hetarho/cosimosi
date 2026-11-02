@@ -222,14 +222,18 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 
 	banned := map[string]bool{}
 	deleted := map[string]bool{}
-	directory := accountDirectoryAdapter{source: platformsupabase.Fake{
-		Accounts: []platformsupabase.Account{{UserID: userID, Email: "withdraw@example.com"}},
-		IdentitiesByUser: map[string][]string{
-			userID: {"password"},
+	credentialCalls := &connectionProbeDirectory{
+		Fake: platformsupabase.Fake{
+			Accounts: []platformsupabase.Account{{UserID: userID, Email: "withdraw@example.com"}},
+			IdentitiesByUser: map[string][]string{
+				userID: {"password"},
+			},
+			BannedUsers:  banned,
+			DeletedUsers: deleted,
 		},
-		BannedUsers:  banned,
-		DeletedUsers: deleted,
-	}}
+		pool: pool,
+	}
+	directory := accountDirectoryAdapter{source: credentialCalls}
 	t.Setenv(envInviteTokenSigningKey, "")
 	_, service, err := accountServiceOption(
 		pool,
@@ -297,6 +301,12 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 	}
 	if !banned[userID] || !deleted[userID] {
 		t.Fatalf("credential sequence = banned %v deleted %v, want both", banned, deleted)
+	}
+	// The Supabase Admin calls run with no transaction open: a slow directory must not hold the
+	// users row lock or a pooled connection.
+	if credentialCalls.calls != 2 || credentialCalls.maxAcquired != 0 {
+		t.Fatalf("credential calls = %d with up to %d pooled connections acquired, want 2 with none",
+			credentialCalls.calls, credentialCalls.maxAcquired)
 	}
 	var anonymousCount int64
 	if err := pool.PgxPool().QueryRow(
@@ -753,4 +763,28 @@ func equalStrings(left []string, right []string) bool {
 		}
 	}
 	return true
+}
+
+// connectionProbeDirectory records how many pooled connections are checked out while the sweep calls
+// the credential directory.
+type connectionProbeDirectory struct {
+	platformsupabase.Fake
+	pool        *platformdb.Pool
+	calls       int
+	maxAcquired int32
+}
+
+func (d *connectionProbeDirectory) observe() {
+	d.calls++
+	d.maxAcquired = max(d.maxAcquired, d.pool.PgxPool().Stat().AcquiredConns())
+}
+
+func (d *connectionProbeDirectory) SetUserBanned(ctx context.Context, userID string, banned bool) error {
+	d.observe()
+	return d.Fake.SetUserBanned(ctx, userID, banned)
+}
+
+func (d *connectionProbeDirectory) DeleteUser(ctx context.Context, userID string) error {
+	d.observe()
+	return d.Fake.DeleteUser(ctx, userID)
 }

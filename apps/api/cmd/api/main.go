@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,40 +34,68 @@ const (
 
 func main() {
 	logger := log.Default()
-	handlerOptions := authHandlerOptions(logger, &http.Client{Timeout: supabaseAuthHTTPTimeout})
-	reporter, err := observability.NewReporterFromEnv()
-	if err != nil {
-		logger.Fatalf("configure observability reporter: %v", err)
-	}
-	handlerOptions = append(handlerOptions, platform.WithObservabilityReporter(reporter))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	domainOptions, closeDomain, err := domainServiceOptions(ctx, logger)
-	if err != nil {
-		logger.Fatalf("wire domain services: %v", err)
-	}
-	defer closeDomain()
-	handlerOptions = append(handlerOptions, domainOptions...)
-	stopWorker, err := maybeStartDevWorker(ctx, logger)
-	if err != nil {
-		logger.Fatalf("start dev memory worker: %v", err)
-	}
-	defer stopWorker()
-	server := platform.NewHTTPServer(":"+port(), logger, handlerOptions...)
-	logger.Printf("api listening on %s", server.Addr)
-	if err := serveHTTPServer(ctx, server, logger); err != nil {
-		reporter.Flush(reporterFlushTimeout)
-		logger.Fatalf("serve api: %v", err)
-	}
-	if ok := reporter.Flush(reporterFlushTimeout); !ok {
-		logger.Print("observability reporter flush timed out")
+	if err := run(ctx, logger); err != nil {
+		stop()
+		logger.Fatalf("api: %v", err)
 	}
 }
 
-func serveHTTPServer(ctx context.Context, server *http.Server, logger *log.Logger) error {
+// run owns every resource the API opens, so each one is released by the time it returns — on a
+// startup failure, a clean shutdown and a shutdown that timed out alike.
+func run(ctx context.Context, logger *log.Logger) error {
+	handlerOptions := authHandlerOptions(logger, &http.Client{Timeout: supabaseAuthHTTPTimeout})
+	reporter, err := observability.NewReporterFromEnv()
+	if err != nil {
+		return fmt.Errorf("configure observability reporter: %w", err)
+	}
+	defer func() {
+		if ok := reporter.Flush(reporterFlushTimeout); !ok {
+			logger.Print("observability reporter flush timed out")
+		}
+	}()
+	handlerOptions = append(handlerOptions, platform.WithObservabilityReporter(reporter))
+	domainOptions, closeDomain, err := domainServiceOptions(ctx, logger)
+	if err != nil {
+		return fmt.Errorf("wire domain services: %w", err)
+	}
+	handlerOptions = append(handlerOptions, domainOptions...)
+	stopWorker, err := maybeStartDevWorker(ctx, logger)
+	if err != nil {
+		closeDomain()
+		return fmt.Errorf("start dev memory worker: %w", err)
+	}
+	// The dev worker stops before the domain pool closes; both run after the server stops.
+	cleanup := func() {
+		stopWorker()
+		closeDomain()
+	}
+	server := platform.NewHTTPServer(":"+port(), logger, handlerOptions...)
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		cleanup()
+		return fmt.Errorf("listen on %s: %w", server.Addr, err)
+	}
+	logger.Printf("api listening on %s", server.Addr)
+	return serveHTTPServer(ctx, server, listener, logger, apiShutdownTimeout, cleanup)
+}
+
+// serveHTTPServer serves until ctx ends, then gives in-flight requests shutdownTimeout and closes
+// whatever is left. A paid action cut off there is receipt-protected: the client retries it with the
+// same operation id. cleanup runs after the server has stopped, on every path.
+func serveHTTPServer(
+	ctx context.Context,
+	server *http.Server,
+	listener net.Listener,
+	logger *log.Logger,
+	shutdownTimeout time.Duration,
+	cleanup func(),
+) error {
+	defer cleanup()
 	errs := make(chan error, 1)
 	go func() {
-		errs <- server.ListenAndServe()
+		errs <- server.Serve(listener)
 	}()
 
 	select {
@@ -77,11 +106,12 @@ func serveHTTPServer(ctx context.Context, server *http.Server, logger *log.Logge
 		return nil
 	case <-ctx.Done():
 		logger.Print("api shutting down")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), apiShutdownTimeout)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			_ = server.Close()
-			return fmt.Errorf("shutdown api server: %w", err)
+			closeErr := server.Close()
+			<-errs
+			return errors.Join(fmt.Errorf("shutdown api server: %w", err), closeErr)
 		}
 		if err := <-errs; err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err

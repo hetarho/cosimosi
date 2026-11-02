@@ -148,3 +148,75 @@ func TestDirectoryBansUnbansAndDeletesUsersThroughAdminAPI(t *testing.T) {
 		t.Fatalf("requests = %#v, want %#v", requests, want)
 	}
 }
+
+// countingBody is an endless response body that counts what the client reads and whether it closed.
+type countingBody struct {
+	read   int
+	closed bool
+	chunk  []byte
+}
+
+func (b *countingBody) Read(p []byte) (int, error) {
+	n := copy(p, b.chunk)
+	b.read += n
+	return n, nil
+}
+
+func (b *countingBody) Close() error {
+	b.closed = true
+	return nil
+}
+
+type bodyTransport struct {
+	status int
+	body   *countingBody
+}
+
+func (t bodyTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: t.status, Body: t.body, Header: http.Header{}, Request: request}, nil
+}
+
+func endlessDirectory(t *testing.T, status int, chunk string) (Directory, *countingBody) {
+	t.Helper()
+	body := &countingBody{chunk: []byte(chunk)}
+	directory, ok := NewDirectory("https://example.supabase.co", "service-role", &http.Client{Transport: bodyTransport{status: status, body: body}})
+	if !ok {
+		t.Fatal("NewDirectory returned ok=false")
+	}
+	return directory, body
+}
+
+// A vendor body past the cap fails closed rather than being decoded into memory.
+func TestDirectoryRefusesAnOversizedResponse(t *testing.T) {
+	t.Parallel()
+	directory, body := endlessDirectory(t, http.StatusOK, `{"users":[`+strings.Repeat(`{"id":"u"},`, 64))
+	if _, err := directory.ListUserPage(context.Background(), 0, 50); !errors.Is(err, ErrDirectoryResponseTooLarge) {
+		t.Fatalf("oversized page err = %v, want ErrDirectoryResponseTooLarge", err)
+	}
+	if body.read > supabaseDirectoryMaxBodyBytes+1+supabaseDirectoryErrorDrainBytes+len(body.chunk) || !body.closed {
+		t.Fatalf("read %d bytes, closed %v; want a bounded read and a closed body", body.read, body.closed)
+	}
+}
+
+// A non-2xx body is drained through a bounded reader, never read in full.
+func TestDirectoryDrainsErrorBodiesBoundedly(t *testing.T) {
+	t.Parallel()
+	for name, call := range map[string]func(Directory) error{
+		"read": func(d Directory) error {
+			_, err := d.EmailFor(context.Background(), "u1")
+			return err
+		},
+		"mutation": func(d Directory) error { return d.DeleteUser(context.Background(), "u1") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			directory, body := endlessDirectory(t, http.StatusBadGateway, "upstream error page ")
+			if err := call(directory); err == nil || !strings.Contains(err.Error(), "502") {
+				t.Fatalf("error body call err = %v, want the status", err)
+			}
+			if body.read == 0 || body.read > supabaseDirectoryErrorDrainBytes+len(body.chunk) || !body.closed {
+				t.Fatalf("read %d bytes, closed %v; want a drain up to the bound and a closed body", body.read, body.closed)
+			}
+		})
+	}
+}
