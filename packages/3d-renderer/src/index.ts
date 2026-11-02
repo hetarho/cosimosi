@@ -4,7 +4,6 @@
 // (UniverseCanvas web here / .native sibling) — everything else is shared verbatim.
 import './jsx-elements.ts'
 
-export * from './shader-art/index.ts'
 // Skins (typed instances) for the one shipped emotion sky.
 export {
   UNIVERSE_SKINS,

@@ -8,7 +8,7 @@ import tseslint from 'typescript-eslint'
 // left the cross-app core — the highest-leverage code in the repo — the least checked code in it.
 // ARCH-42: "a gate's scope is part of the rule."
 //
-// It lives at the repo root rather than per package because 23 packages sharing one rule set is the
+// It lives at the repo root rather than per package because 24 packages sharing one rule set is the
 // point; a per-package `lint` script would also duplicate the root pass (and none exists — see the
 // `lint:packages` script).
 //
@@ -27,9 +27,10 @@ const GENERATED = [
   'packages/config/src/values.gen.ts',
 ]
 
-// Where a React seam actually lives. Package roots are deliberately React-free (a `packages/*` index
-// exports pure logic; the React mirror is a separate `./react` export), so a blanket React config
-// would report hook rules against files that have no hooks and can never grow any.
+// Where a React seam actually lives. Outside the rendering packages a root entry reaches no React —
+// `pnpm lint:package-entries` holds it to that (ARCH-27) — and the React mirror is a separate `./react`
+// export, so a blanket React config would report hook rules against files that have no hooks and can
+// never grow any.
 const REACT_FILES = [
   'packages/**/react.ts',
   'packages/**/react.tsx',
@@ -53,9 +54,9 @@ const REACT_FILES = [
 // scope, on everywhere else.
 const RENDERER_FRAME_MUTATION = { 'react-hooks/immutability': 'off' }
 
-// The two compiler-model rules, off for a NAMED LIST OF FILES rather than for `packages/**`. Fresh
-// Current count: 23 `refs` + 6 `set-state-in-effect` across the twelve files below. Three idioms
-// account for all of them, and the same three carry the app's list in `apps/web/eslint.config.js`:
+// The two compiler-model rules, off for a NAMED LIST OF FILES rather than for `packages/**`. Current
+// count: 18 `refs` + 7 `set-state-in-effect` across the twelve files below. Three idioms account for
+// all of them, and the same three carry the app's list in `apps/web/eslint.config.js`:
 //
 //   latest-ref — `ref.current = latest` during render, read from a callback that must not
 //     re-subscribe when an identity moves. `packages/auth/src/react.ts:29-31` is the clearest case: a

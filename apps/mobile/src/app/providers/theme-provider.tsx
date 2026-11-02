@@ -5,10 +5,9 @@ import { tokens } from '@cosimosi/ui'
 
 /**
  * Design-system seam mount for the native surface. The active theme is static data resolved in
- * `@cosimosi/ui` (`palette.ts` → `tokens`), and the background seam is global, so this provider
- * holds no state; it gives the shell its token-backed surface and is the documented place where
- * future presentation→surface mapping is applied. Feature slices read the background seam through
- * `useBackground`, never by reaching into this provider.
+ * `@cosimosi/ui` (`palette.ts` → `tokens`), so this provider holds no state; it gives the shell its
+ * token-backed surface and is the documented place where future presentation→surface mapping is
+ * applied.
  */
 export function MobileThemeProvider({ children }: { children?: ReactNode }) {
   return <View style={styles.surface}>{children}</View>

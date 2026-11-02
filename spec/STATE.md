@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:14Z | T210 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:24Z | T211 |
 
 ## inbox
+- 261103 decided UI-30 T210: F29 deletes the unused background seam that UI-30 still defined → UI-30 [x] (r2) and the seam, `useBackground` and their exports removed (alt: keep the seam as reserved API | give it a consumer) ← no surface reads it, and ARCH-27 forbids entries publishing what nothing imports
 - 261103 decided CLIENT-11 T207: with the signup-completion leg in account, CLIENT-11's "then auth's own leg" named a leg auth no longer has → CLIENT-11 r3: the app's product legs end with account's `signup-completion`, then `locale`; auth's registry is removed (alt: keep an empty auth registry | let auth import account) ← AUTH-24 keeps auth free of product packages, and the order stays what it was
 - 261103 decided AUTH-3 T206: AUTH-3 said OAuth adds no machine states or events, but F19 moves the facade's flags into the machine → AUTH-3 r3: OAuth adds no statuses; attempt, local/forced sign-out, bootstrap settling and disposal are machine states outside the context (alt: keep the flags and drop the acceptance | encode them as statuses) ← statuses are the public lifecycle; the flags are control state the machine owns
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
@@ -60,7 +61,7 @@
 | ACCT | 4 | 4 | - | 1 |
 | AUTH | 3 | 3 | - | 0 |
 | CLIENT | 3 | 3 | - | 0 |
-| UI | 1 | 1 | - | 2 |
+| UI | 2 | 2 | - | 2 |
 | ERR | 2 | 2 | - | 0 |
 | OBS | 1 | 1 | - | 0 |
 | AI | 2 | 2 | - | 1 |
@@ -92,7 +93,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T210 | Package entries are named, pure and minimal | ARCH | T204 T207 | todo |
 | T211 | Manifests match imports and the workspace uses one TypeScript major | ARCH | T210 | todo |
 | T212 | Universe scene projection and showcase have their own entries; scene assembly is shared | ARCH | T204 | todo |
 | T213 | Color math has one implementation | ARCH | - | todo |
@@ -106,11 +106,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T210 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T211 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T210 done
 - 261103 T209 done
 - 261103 T208 done
 - 261103 T207 done
@@ -130,4 +131,3 @@
 - 261103 T193 done
 - 261103 T192 done
 - 261103 T191 done
-- 261103 T190 done

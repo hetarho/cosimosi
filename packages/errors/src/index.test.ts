@@ -8,9 +8,9 @@ import {
   classifyErrorRecovery,
   isReason,
   isRetriableCode,
-  presentAppError,
   toAppError,
-} from './index.ts'
+} from './core.ts'
+import { presentAppError } from './presentation.ts'
 
 describe('toAppError', () => {
   beforeEach(() => setActiveLocale('en'))

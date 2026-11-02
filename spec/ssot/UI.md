@@ -1,5 +1,5 @@
 # UI 2D UI design
-> r1 | the 2D chrome of web and mobile: the criteria a surface is judged against, the design-review protocol, the design-system mechanism (`@cosimosi/ui`, tokens, primitives, accessibility) and the visual language it carries
+> r2 | the 2D chrome of web and mobile: the criteria a surface is judged against, the design-review protocol, the design-system mechanism (`@cosimosi/ui`, tokens, primitives, accessibility) and the visual language it carries
 
 ## decisions
 - UI-1 [o] the product is a universe you look into: 2D chrome exists to let the user read and act without covering it, under three commitments
@@ -139,7 +139,7 @@
   - Tabs are controlled (`value` + `onValueChange`) so navigation state stays in the app: web `tablist`/`tab`/`tabpanel` with roving focus, wrapping arrows and Home/End; native a horizontally scrolling `tablist` row of pressable `tab`s with selected state
   - reduced motion: `base.css` neutralizes CSS motion; `useReducedMotion` (web `matchMedia`, RN `AccessibilityInfo`) drops JS motion
   - every documented token text pair meets WCAG AA 4.5:1 in every registered theme (`tokens.test.ts` via `a11y/contrast.ts`), so a theme is gated the moment it is added
-- UI-30 [o] the background seam (`packages/ui/src/theme/background-store.ts`) is presentation state only: a tone and an optional palette accent, which can never mutate domain, cache, emotion, strength, recall state or layout →~INV-11
+- UI-30 [x] a background seam (a tone and an optional palette accent store in `packages/ui`) ← no surface ever read it; the theme is static palette data resolved at the composition boundary, so presentation state that nothing reads is drift →~INV-11
   - domain-to-visual mapping (emotion to colour) belongs to the rendering projection, never here →=VIS
   - the colour theme is not in this store: it is static data resolved once at the composition boundary ← a runtime store would give a second, drifting answer to "which theme is active"
 - UI-31 [o] every visual change is expressed inside `packages/ui` (tokens, primitives, `base.css`); app slices consume tokens and primitives only and carry no style escape
@@ -327,4 +327,5 @@
 - every string reaches a primitive through props from `packages/i18n`; no copy lives in `packages/ui` →=CLIENT
 
 ## chg
+- r2 261103 UI-30- the background seam (tone + accent store and `useBackground`), unused by both apps
 - r1 261102 initial

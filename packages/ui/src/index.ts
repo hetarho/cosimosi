@@ -43,16 +43,6 @@ export {
   type ThemePalette,
 } from './palette.ts'
 
-export { useBackground, type UseBackgroundResult } from './theme/use-background.ts'
-export {
-  getBackgroundState,
-  setBackground,
-  resetBackground,
-  subscribeBackground,
-  type BackgroundState,
-  type BackgroundTone,
-} from './theme/background-store.ts'
-
 export type {
   ButtonVariant,
   ButtonColor,
