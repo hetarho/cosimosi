@@ -102,7 +102,7 @@ export function MetaBlock({
     // The star above, what is known about it below. Side by side, the star is a thumbnail beside a
     // table; stacked, it is the subject and the rows are its caption — and the rows get the panel's
     // full width instead of splitting it with a picture.
-    <div className="flex flex-col gap-4">
+    <div className="memory-meta-reading flex flex-col gap-6">
       {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. The frame is
           `aria-hidden` and clips, so the action rides a positioned wrapper OUTSIDE it: a focusable
           control inside a hidden subtree is unreachable, and one inside the clip is cut off. */}

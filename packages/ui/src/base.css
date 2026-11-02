@@ -4,6 +4,106 @@
  * React Native gets the equivalent behavior through accessibility props, not CSS.
  */
 
+/* Reading surfaces share the UI scales and the product's semantic colours. */
+@layer components {
+  .memory-scene-number {
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+  }
+
+  .memory-reading-scene + .memory-reading-scene {
+    padding-top: calc(var(--spacing) * 5);
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+  }
+
+  .reading-disclosure > summary::marker {
+    color: var(--color-text-subtle);
+  }
+}
+
+/* Composed reading recipes override their primitive utilities without !important. */
+@layer utilities {
+  .memory-meta-reading > .relative > [aria-hidden] {
+    height: calc(var(--spacing) * 56);
+    border-color: transparent;
+  }
+
+  .memory-meta-reading dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--spacing) * 5) calc(var(--spacing) * 6);
+    padding-top: calc(var(--spacing) * 2);
+  }
+
+  .memory-meta-reading dl > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(var(--spacing) * 1);
+  }
+
+  .memory-meta-reading dl > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .memory-meta-reading dd {
+    font-size: var(--text-base);
+    line-height: calc(var(--spacing) * 7);
+  }
+
+  .memory-passage-reading {
+    max-width: var(--container-measure);
+    padding: calc(var(--spacing) * 5);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+  }
+
+  .memory-passage-reading > p {
+    font-size: var(--text-base);
+    line-height: calc(var(--spacing) * 7);
+  }
+
+  .diary-reading li > div {
+    border-radius: var(--radius-xl);
+    border-color: transparent;
+    background: var(--color-bg);
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .diary-reading li > div:hover {
+    border-color: var(--color-border);
+  }
+
+  .diary-reading button[aria-haspopup='dialog'] {
+    gap: calc(var(--spacing) * 3);
+    padding: calc(var(--spacing) * 5);
+    border-radius: var(--radius-xl);
+  }
+
+  .diary-reading button[aria-haspopup='dialog']:focus-visible {
+    outline: var(--ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--ring-offset);
+  }
+
+  .diary-reading .line-clamp-1 {
+    -webkit-line-clamp: 3;
+    min-height: calc(var(--spacing) * 21);
+    font-size: var(--text-base);
+    line-height: calc(var(--spacing) * 7);
+    color: var(--color-text);
+  }
+
+  .diary-reading time {
+    color: var(--color-text-muted);
+  }
+
+  @media (forced-colors: active) {
+    .diary-reading li > div {
+      border-color: CanvasText;
+    }
+  }
+}
+
 /* Honor the OS reduced-motion setting for every shared transition/animation. */
 @media (prefers-reduced-motion: reduce) {
   *,

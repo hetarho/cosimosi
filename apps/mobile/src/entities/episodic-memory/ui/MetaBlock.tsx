@@ -13,12 +13,24 @@ import { StarPreview } from '@cosimosi/universe-render'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
-function MetaRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function MetaRow({
+  label,
+  value,
+  hint,
+  reading = false,
+  fullWidth = false,
+}: {
+  label: string
+  value: string
+  hint?: string
+  reading?: boolean
+  fullWidth?: boolean
+}) {
   return (
-    <View style={styles.metaItem}>
-      <View style={styles.row}>
+    <View style={[styles.metaItem, reading && styles.readingItem, fullWidth && styles.fullWidth]}>
+      <View style={[styles.row, reading && styles.readingRow]}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value}</Text>
+        <Text style={[styles.value, reading && styles.readingValue]}>{value}</Text>
       </View>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
@@ -91,24 +103,29 @@ export function MetaBlock({
         </View>
         {previewAction ? <View style={styles.previewAction}>{previewAction}</View> : null}
       </View>
-      <View style={styles.list}>
+      <View style={styles.readingList}>
         <MetaRow
+          reading
           label={m.star_meta_emotion()}
           value={moodLabel(memory.emotion.mood)}
           hint={m.star_meta_hint_emotion()}
         />
         <MetaRow
+          reading
           label={m.star_meta_brightness()}
           value={percent(brightness)}
           hint={m.star_meta_hint_brightness()}
         />
-        <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
+        <MetaRow reading label={m.star_meta_created()} value={memory.createdUniverseTime} />
         <MetaRow
+          reading
           label={m.star_meta_strength()}
           value={strength.toFixed(2)}
           hint={m.star_meta_hint_strength()}
         />
         <MetaRow
+          reading
+          fullWidth
           label={m.star_meta_forgetting_state()}
           value={forgettingStageLabel(stage)}
           hint={m.star_meta_hint_forgetting_state()}
@@ -143,12 +160,20 @@ function percent(value: number): string {
 }
 
 const styles = StyleSheet.create({
+  readingList: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[5] },
+  readingItem: { width: '45%', gap: tokens.spacing[2] },
+  fullWidth: { width: '100%' },
+  readingRow: { flexDirection: 'column', gap: tokens.spacing[1] },
+  readingValue: {
+    fontSize: tokens.fontSize.base,
+    lineHeight: tokens.spacing[6] + tokens.spacing[1],
+  },
   episodic: { gap: tokens.spacing[4] },
   previewFrame: { position: 'relative' },
   previewAction: { position: 'absolute', top: tokens.spacing[2], right: tokens.spacing[2] },
   // Rounded and clipped so the sky the star sits in reads as a window, not a hole.
   preview: {
-    height: 176,
+    height: tokens.spacing[8] * 7,
     overflow: 'hidden',
     borderRadius: tokens.radius.lg,
     borderWidth: 1,

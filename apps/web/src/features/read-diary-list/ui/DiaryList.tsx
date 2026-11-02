@@ -201,7 +201,7 @@ export function DiaryList({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="diary-reading flex flex-col gap-3">
       {/* Only the cards over the viewport (plus the overscan) are mounted, so the DOM stays a
           screenful whatever the archive's length. The <ul> holds the full scroll height and each card
           is placed inside it; the sentinel below therefore still sits at the true end of the list. */}
@@ -248,11 +248,8 @@ export function DiaryList({
                   >
                     {diary.diaryDate}
                   </time>
-                  {/* ONE line, cut with an ellipsis. Every card then stands the same height —
-                      date, preview, footer, each a single line — so a grid of them reads as a grid
-                      rather than as a ragged wall, and the eye can run down a column of dates
-                      without the rows shifting under it. What the preview cannot hold, opening the
-                      entry does. */}
+                  {/* The three-line preview has a fixed reading height to keep
+                      dates and recognition lines aligned while the virtualizer measures the cards. */}
                   <span className="line-clamp-1 text-sm text-text-muted">
                     {renderBodyText ? renderBodyText(preview) : preview}
                   </span>

@@ -1,6 +1,6 @@
 import { StyleSheet, Text } from 'react-native'
 
-import { color, fontSize } from '../native-styles.ts'
+import { color, fontSize, space } from '../native-styles.ts'
 import type { ObscuredTextProps } from './types.ts'
 
 /**
@@ -8,9 +8,9 @@ import type { ObscuredTextProps } from './types.ts'
  * platform can make one: the run's own ink goes transparent and a wide, zero-offset text shadow is
  * left behind it — the glyph's light without the glyph's edges. Same picture, no extra dependency.
  */
-export function ObscuredText({ spans }: ObscuredTextProps) {
+export function ObscuredText({ spans, size = 'small' }: ObscuredTextProps) {
   return (
-    <Text style={styles.body}>
+    <Text style={[styles.body, size === 'body' && styles.reading]}>
       {spans.map((span, index) => (
         // Keyed by position because the runs are a rendering of one immutable string: the same text
         // always yields the same list, so an index is stable for as long as the passage is.
@@ -23,6 +23,7 @@ export function ObscuredText({ spans }: ObscuredTextProps) {
 }
 
 const styles = StyleSheet.create({
+  reading: { fontSize: fontSize.base, lineHeight: space[6] + space[1] },
   body: { color: color.text, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.625 },
   obscured: {
     color: 'transparent',

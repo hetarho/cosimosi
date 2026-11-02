@@ -83,6 +83,7 @@
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2)
 
 ## log
+- 261103 design universe and diary: volumetric light and reading UI on web/mobile; temporary comparisons removed; domain rules unchanged; full verification passed
 - 261103 review-code post-refactor-261102 triaged: user adopted all 38; FE grain criterion → ARCH revision (recommended rule), F22 → freshness read on refocus
 - 261102 review-code post-refactor-261102 review complete; 38 proposals (1 P1, 21 P2, 16 P3) with a six-wave plan await triage
 - 261102 review-code post-refactor-261102 start; deep re-review of the post-T166–T180 code (FSD grain, package cohesion, BE testability, leaks, performance)

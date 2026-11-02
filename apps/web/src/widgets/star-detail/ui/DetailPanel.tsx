@@ -177,10 +177,10 @@ export function DetailPanel({
                 {selection.kind === 'episodic' && (
                   <>
                     <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex justify-end border-t border-border pt-5">
                       <Button
                         color="primary"
-                        size="sm"
+                        size="md"
                         onClick={() => onRecallRequested(selection.memory.id)}
                       >
                         {m.star_detail_recall()}

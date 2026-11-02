@@ -110,6 +110,18 @@ export function WritingFlowSheet() {
         onClose={close}
         title={m.writing_flow_title()}
         closeLabel={m.writing_flow_close()}
+        footer={
+          status === 'reviewing' ? (
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button variant="text" color="neutral" disabled={busy} onClick={back}>
+                {m.writing_flow_back_action()}
+              </Button>
+              <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
+                <LaunchButton pastDated={pastDated} busy={busy} onLaunch={runLaunch} />
+              </SequenceAnchor>
+            </div>
+          ) : undefined
+        }
       >
         {/* Panel rhythm: gap-5 between the phase blocks, tighter steps inside each (§4). */}
         <div className="flex flex-col gap-5">
@@ -161,16 +173,6 @@ export function WritingFlowSheet() {
                   onRevise={runRevise}
                 />
               </SequenceAnchor>
-              {/* Decreasing emphasis left to right, the committing action last and the way out
-                  beside it as text (§4). A hairline separates the group from the edits above it. */}
-              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-                <Button variant="text" color="neutral" disabled={busy} onClick={back}>
-                  {m.writing_flow_back_action()}
-                </Button>
-                <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
-                  <LaunchButton pastDated={pastDated} busy={busy} onLaunch={runLaunch} />
-                </SequenceAnchor>
-              </div>
             </>
           ) : null}
 

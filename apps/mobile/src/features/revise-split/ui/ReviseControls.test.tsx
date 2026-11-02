@@ -45,9 +45,12 @@ describe('ReviseControls editable surface (mobile)', () => {
       />,
     )
 
+    // Review the scene before opening its editor; the original editing boundary stays intact.
+    expect(view.queryByDisplayValue('Morning')).toBeNull()
+    await user.press(view.getByRole('button', { name: m.writing_flow_edit_memory() }))
     // Name is editable text; neuron membership is shown as read-only text.
     expect(view.getByDisplayValue('Morning')).toBeTruthy()
-    expect(view.getByText(/cafe/)).toBeTruthy()
+    expect(view.getByText('cafe')).toBeTruthy()
 
     // Emotion is a *bounded selection* of the fixed mood set. The affordance is a picker now, so the
     // probe follows it through the trigger into its option list — the set has to be provably the whole

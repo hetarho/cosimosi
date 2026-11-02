@@ -15,9 +15,11 @@ export function CurrentMemoryText({ spans }: { spans: readonly DecayTextSpan[] |
     return <p className="text-sm text-text-muted italic">{m.star_detail_text_unavailable()}</p>
   }
   return (
-    <ObscuredText
-      spans={spans.map((span) => ({ text: span.text, obscured: span.lost }))}
-      className="whitespace-pre-wrap"
-    />
+    <div className="memory-passage-reading">
+      <ObscuredText
+        spans={spans.map((span) => ({ text: span.text, obscured: span.lost }))}
+        className="whitespace-pre-wrap"
+      />
+    </div>
   )
 }

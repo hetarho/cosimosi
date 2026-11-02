@@ -2,9 +2,9 @@ import { useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
-import { Button, Select, TextArea, TextField } from '@cosimosi/ui'
+import { Button, Disclosure, Select, TextArea, TextField } from '@cosimosi/ui'
 
-import { MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
+import { MoodChip, MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 // The editable view — only name / mood / source text / neuron membership; there is structurally no
@@ -38,9 +38,7 @@ export interface ReviseControlsProps {
 // replaces the proposal on an NL revise. Merge/split honor the encode 2–5 bound ([E2], surfaced
 // from generated config, never hardcoded).
 //
-// Visual language: one rimmed, unfilled card per memory (§5 — the sheet is glass), the fields in
-// their own well material, and the structural edits as low-emphasis outlined controls so the
-// launch stays the only committing action in the sheet (§6).
+// Read each proposed scene before opening its editing tools; session edits and count bounds are unchanged.
 export function ReviseControls({
   memories,
   onRename,
@@ -57,73 +55,92 @@ export function ReviseControls({
   const canMerge = memories.length > VALUES.encode.minMemoriesAccepted
   const canSplit = memories.length < VALUES.encode.maxMemories
 
+  const editor = (memory: EditableMemoryView, index: number) => (
+    <div className="flex flex-col gap-3">
+      <TextField
+        label={m.writing_flow_name_label()}
+        value={memory.name}
+        onChange={(event) => onRename(index, event.target.value)}
+      />
+      <TextArea
+        label={m.writing_flow_source_text_label()}
+        description={m.writing_flow_source_text_hint()}
+        value={memory.sourceText}
+        rows={4}
+        onChange={(event) => onSetSourceText(index, event.target.value)}
+      />
+      <MoodField mood={memory.mood} disabled={busy} onChange={(mood) => onSetMood(index, mood)} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outlined"
+          color="neutral"
+          size="sm"
+          disabled={busy || !canMerge || index >= memories.length - 1}
+          onClick={() => onMerge(index)}
+        >
+          {m.writing_flow_merge_action()}
+        </Button>
+        <Button
+          variant="outlined"
+          color="neutral"
+          size="sm"
+          disabled={busy || !canSplit}
+          onClick={() => onSplit(index)}
+        >
+          {m.writing_flow_split_memory_action()}
+        </Button>
+      </div>
+    </div>
+  )
+  const revision = (
+    <div className="flex flex-col gap-2">
+      <TextField
+        label={m.writing_flow_revise_action()}
+        placeholder={m.writing_flow_instruction_placeholder()}
+        value={instruction}
+        disabled={busy}
+        onChange={(event) => setInstruction(event.target.value)}
+      />
+      <Button
+        variant="outlined"
+        color="primary"
+        className="self-end"
+        disabled={busy || instruction.trim().length === 0}
+        onClick={() => {
+          onRevise(instruction)
+          setInstruction('')
+        }}
+      >
+        {m.writing_flow_revise_action()}
+      </Button>
+    </div>
+  )
   return (
-    <div className="flex flex-col gap-5">
-      <ul className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
+      <ul className="flex flex-col gap-6">
         {memories.map((memory, index) => (
-          <li key={memory.id} className="flex flex-col gap-3 rounded-xl border border-border p-4">
-            <TextField
-              label={m.writing_flow_name_label()}
-              value={memory.name}
-              onChange={(event) => onRename(index, event.target.value)}
-            />
-            <TextArea
-              label={m.writing_flow_source_text_label()}
-              description={m.writing_flow_source_text_hint()}
-              value={memory.sourceText}
-              rows={4}
-              onChange={(event) => onSetSourceText(index, event.target.value)}
-            />
-            <MoodField
-              mood={memory.mood}
-              disabled={busy}
-              onChange={(mood) => onSetMood(index, mood)}
-            />
-            <NeuronChips neurons={memory.neurons} />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outlined"
-                color="neutral"
-                size="sm"
-                disabled={busy || !canMerge || index >= memories.length - 1}
-                onClick={() => onMerge(index)}
-              >
-                {m.writing_flow_merge_action()}
-              </Button>
-              <Button
-                variant="outlined"
-                color="neutral"
-                size="sm"
-                disabled={busy || !canSplit}
-                onClick={() => onSplit(index)}
-              >
-                {m.writing_flow_split_memory_action()}
-              </Button>
+          <li key={memory.id} className="memory-reading-scene flex gap-3">
+            <span
+              aria-hidden
+              className="memory-scene-number mt-1 flex size-6 shrink-0 items-center justify-center rounded-full text-xs tabular-nums"
+            >
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="break-words text-lg font-semibold">{memory.name}</p>
+                <MoodChip mood={memory.mood} />
+              </div>
+              <p className="max-w-measure whitespace-pre-wrap text-base leading-7 text-text-muted">
+                {memory.sourceText}
+              </p>
+              <NeuronChips neurons={memory.neurons} />
+              <Disclosure label={m.writing_flow_edit_memory()}>{editor(memory, index)}</Disclosure>
             </div>
           </li>
         ))}
       </ul>
-      <div className="flex flex-col gap-2">
-        <TextField
-          label={m.writing_flow_revise_action()}
-          placeholder={m.writing_flow_instruction_placeholder()}
-          value={instruction}
-          disabled={busy}
-          onChange={(event) => setInstruction(event.target.value)}
-        />
-        <Button
-          variant="outlined"
-          color="primary"
-          className="self-end"
-          disabled={busy || instruction.trim().length === 0}
-          onClick={() => {
-            onRevise(instruction)
-            setInstruction('')
-          }}
-        >
-          {m.writing_flow_revise_action()}
-        </Button>
-      </div>
+      <Disclosure label={m.writing_flow_revise_action()}>{revision}</Disclosure>
     </div>
   )
 }

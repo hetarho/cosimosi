@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Pressable, Text } from 'react-native'
 
 import { Menu } from './menu.native.tsx'
+import { Disclosure } from './disclosure.native.tsx'
 import { ObscuredText } from './obscured-text.native.tsx'
 
 vi.mock('react-native', async () => {
@@ -11,6 +12,7 @@ vi.mock('react-native', async () => {
 
   interface NativeProps {
     accessibilityLabel?: string
+    accessibilityElementsHidden?: boolean
     accessibilityRole?: string
     accessibilityState?: { disabled?: boolean; expanded?: boolean }
     children?: ReactNode | ((state: { pressed: boolean }) => ReactNode)
@@ -25,6 +27,8 @@ vi.mock('react-native', async () => {
   const nativeStyle = (style: unknown) => JSON.stringify(style)
 
   return {
+    View: ({ accessibilityElementsHidden, children }: NativeProps) =>
+      createElement('div', { hidden: accessibilityElementsHidden }, contents(children)),
     Modal: ({ visible, children }: NativeProps) =>
       visible ? createElement('div', { 'data-native-modal': true }, contents(children)) : null,
     Pressable: ({
@@ -58,6 +62,37 @@ vi.mock('react-native', async () => {
 })
 
 afterEach(cleanup)
+
+describe('Disclosure (native)', () => {
+  it('hides controls from accessibility without losing their edit state', () => {
+    function Draft() {
+      const [value, setValue] = useState(0)
+      return (
+        <Pressable
+          accessibilityLabel="Change draft"
+          onPress={() => setValue((current) => current + 1)}
+        >
+          <Text>{value}</Text>
+        </Pressable>
+      )
+    }
+    render(
+      <Disclosure label="Edit memory">
+        <Draft />
+      </Disclosure>,
+    )
+    const trigger = screen.getByRole('button', { name: 'Edit memory' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'Change draft' })).toBeNull()
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Change draft' }))
+    fireEvent.click(trigger)
+    expect(screen.queryByRole('button', { name: 'Change draft' })).toBeNull()
+    fireEvent.click(trigger)
+    expect(screen.getByRole('button', { name: 'Change draft' })).toHaveTextContent('1')
+  })
+})
 
 describe('Menu (native)', () => {
   it('clones its trigger, exposes the sheet, and closes after an enabled command', () => {

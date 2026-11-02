@@ -42,6 +42,7 @@ function DialogSurface({
   description,
   ariaLabel,
   closeLabel,
+  footer,
   children,
 }: Omit<DialogProps, 'open'> & { open: boolean; leaving: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -126,6 +127,7 @@ function DialogSurface({
           ) : null}
         </div>
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto text-text">{children}</div>
+        {footer ? <div className="mt-4 shrink-0 border-t border-border pt-4">{footer}</div> : null}
       </div>
     </div>
   )

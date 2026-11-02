@@ -181,7 +181,7 @@ export function DetailPanel({
                 <View style={styles.actions}>
                   <Button
                     color="primary"
-                    size="sm"
+                    size="md"
                     onPress={() => onRecallRequested(selection.memory.id)}
                   >
                     {m.star_detail_recall()}
@@ -299,6 +299,12 @@ const styles = StyleSheet.create({
   },
   title: { flex: 1, color: tokens.color.text, fontSize: tokens.fontSize.lg, fontWeight: '500' },
   body: { gap: tokens.spacing[5] },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: tokens.spacing[5],
+    borderTopWidth: 1,
+    borderTopColor: tokens.color.border,
+  },
   back: { alignItems: 'flex-start' },
 })

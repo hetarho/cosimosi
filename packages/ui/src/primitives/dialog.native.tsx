@@ -12,6 +12,7 @@ export function Dialog({
   description,
   ariaLabel,
   closeLabel,
+  footer,
   children,
 }: DialogProps) {
   return (
@@ -37,6 +38,7 @@ export function Dialog({
           </View>
           {description ? <Text style={styles.description}>{description}</Text> : null}
           <View style={styles.body}>{children}</View>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -44,6 +46,13 @@ export function Dialog({
 }
 
 const styles = StyleSheet.create({
+  footer: {
+    flexShrink: 0,
+    marginTop: space[4],
+    paddingTop: space[4],
+    borderTopWidth: 1,
+    borderTopColor: color.border,
+  },
   backdrop: {
     flex: 1,
     alignItems: 'center',

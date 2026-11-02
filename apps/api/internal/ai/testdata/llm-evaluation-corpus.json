@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "language": "ko",
+  "provenance": "synthetic",
+  "cases": [
+    {
+      "id": "split-two-scenes",
+      "kind": "split",
+      "diary_date": "2026-08-12",
+      "body": "아침에는 집 근처 빵집에 가서 따뜻한 식빵을 샀다. 계산을 기다리며 고소한 냄새가 좋아서 마음이 편안했다. 저녁에는 민수와 한강을 걸었다. 다음 달 여행 이야기를 나누다가 갑자기 비가 와서 둘이 웃으며 정류장까지 뛰었다.",
+      "existing_neurons": [
+        { "id": "n-place-home", "name": "집", "type": "spatial" },
+        { "id": "n-person-minsu", "name": "민수", "type": "entity" },
+        { "id": "n-theme-walk", "name": "산책", "type": "semantic" }
+      ],
+      "review": [
+        "The bakery and riverside scenes remain separate event memories.",
+        "Every source_text is the writer's own Korean and together covers the diary.",
+        "Mood and neuron types stay inside the closed domain sets."
+      ]
+    },
+    {
+      "id": "revise-merge-continuous-scene",
+      "kind": "revise_split",
+      "body": "오후에 도서관 창가에 앉아 발표 자료를 정리했다. 처음에는 막막했지만 표를 다시 만들고 나니 흐름이 보였다. 마지막 문장을 고친 뒤에는 안도감이 들었다.",
+      "instruction": "감정 변화로 나뉜 부분을 하나의 도서관 작업 장면으로 합쳐 주세요.",
+      "prior": {
+        "memories": [
+          {
+            "name": "막막한 발표 준비",
+            "mood": "STRESS",
+            "source_text": "오후에 도서관 창가에 앉아 발표 자료를 정리했다. 처음에는 막막했다.",
+            "neurons": [
+              { "name": "도서관", "type": "spatial" },
+              { "name": "발표", "type": "semantic" }
+            ]
+          },
+          {
+            "name": "마지막 문장의 안도",
+            "mood": "RELIEF",
+            "source_text": "표를 다시 만들고 나니 흐름이 보였다. 마지막 문장을 고친 뒤에는 안도감이 들었다.",
+            "neurons": [
+              { "name": "발표", "type": "semantic" },
+              { "name": "안도", "type": "semantic" }
+            ]
+          }
+        ]
+      },
+      "review": [
+        "The result is one continuous library-work scene despite the mood change.",
+        "The whole corrected split is returned and re-quotes the supplied diary."
+      ]
+    },
+    {
+      "id": "semanticization-four-rungs",
+      "kind": "semanticization",
+      "semantic_memory": {
+        "id": "memory-synthetic-1",
+        "name": "비 오는 한강 산책",
+        "current_text": "민수와 한강을 걷다가 비가 와서 정류장까지 함께 뛰었다.",
+        "mood": "JOY",
+        "neurons": [
+          { "name": "민수", "type": "entity" },
+          { "name": "한강", "type": "spatial" },
+          { "name": "산책", "type": "semantic" }
+        ]
+      },
+      "review": [
+        "Exactly four non-empty stages are returned.",
+        "Later stages become more gist-like without inventing a conflicting event."
+      ]
+    },
+    {
+      "id": "prediction-error-content-change",
+      "kind": "prediction_error",
+      "current_text": "민수와 한강을 걷다가 비가 와서 함께 뛰었다.",
+      "rewrite": "민수 없이 혼자 한강을 걷다가 비가 와서 택시를 탔다.",
+      "expected_differs": true,
+      "review": ["The changed companion and action are treated as a meaningful content difference."]
+    },
+    {
+      "id": "seal-suggestion-offered-only",
+      "kind": "seal_suggestion",
+      "summary": {
+        "name": "끝난 프로젝트의 밤",
+        "current_text": "몇 달 동안 매달렸던 프로젝트가 끝났지만 실패했다는 생각에서 벗어나기 어려웠다.",
+        "mood": "SAD"
+      },
+      "words": "실패했다는 의미는 이제 놓아주고 싶어요. 함께 배운 경험은 남기고 싶어요.",
+      "candidates": [
+        { "neuron_id": "n-failure", "name": "실패" },
+        { "neuron_id": "n-learning", "name": "배움" }
+      ],
+      "review": [
+        "Only offered candidate ids can appear.",
+        "The failure meaning is preferred while learning is preserved."
+      ]
+    }
+  ]
+}

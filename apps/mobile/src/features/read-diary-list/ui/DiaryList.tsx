@@ -119,7 +119,7 @@ export function DiaryList({
               style={styles.header}
             >
               <Text style={styles.date}>{item.diaryDate}</Text>
-              <Text style={styles.preview} numberOfLines={2}>
+              <Text style={styles.preview} numberOfLines={3}>
                 {renderBodyText ? renderBodyText(preview) : preview}
               </Text>
               <DiaryRowFooter memories={item.memories} />
@@ -184,16 +184,19 @@ const styles = StyleSheet.create({
   row: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.surface,
+    borderRadius: tokens.radius.xl,
+    backgroundColor: tokens.color.bg,
   },
   header: {
-    gap: tokens.spacing[1],
-    paddingHorizontal: tokens.spacing[4],
-    paddingVertical: tokens.spacing[3],
+    gap: tokens.spacing[3],
+    padding: tokens.spacing[5],
   },
-  date: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
-  preview: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  date: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm, fontWeight: '500' },
+  preview: {
+    color: tokens.color.text,
+    fontSize: tokens.fontSize.base,
+    lineHeight: tokens.spacing[6] + tokens.spacing[1],
+  },
   dot: { width: 8, height: 8, borderRadius: tokens.radius.sm },
   footerLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[1] },
   count: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },

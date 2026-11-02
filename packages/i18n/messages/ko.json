@@ -258,6 +258,7 @@
   "writing_flow_splitting": "쪼개는 중",
   "writing_flow_revising": "다시 쪼개는 중",
   "writing_flow_review_hint": "이름과 감정을 다듬거나, 말로 바꿔 달라고 해요. 이 손질은 이번 쓰기에서만 남고, 이미 띄운 별은 스스로만 변해요.",
+  "writing_flow_edit_memory": "이 기억 다듬기",
   "writing_flow_name_label": "이름",
   "writing_flow_emotion_label": "감정",
   "writing_flow_neuron_label": "뉴런",

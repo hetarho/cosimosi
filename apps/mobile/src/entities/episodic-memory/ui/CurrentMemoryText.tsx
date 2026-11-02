@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { ObscuredText, tokens } from '@cosimosi/ui'
 import type { DecayTextSpan } from '@cosimosi/universe'
@@ -15,10 +15,22 @@ export function CurrentMemoryText({ spans }: { spans: readonly DecayTextSpan[] |
   if (!spans || spans.length === 0) {
     return <Text style={styles.unavailable}>{m.star_detail_text_unavailable()}</Text>
   }
-  return <ObscuredText spans={spans.map((span) => ({ text: span.text, obscured: span.lost }))} />
+  return (
+    <View style={styles.passage}>
+      <ObscuredText
+        size="body"
+        spans={spans.map((span) => ({ text: span.text, obscured: span.lost }))}
+      />
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
+  passage: {
+    padding: tokens.spacing[5],
+    borderRadius: tokens.radius.lg,
+    backgroundColor: tokens.color.bg,
+  },
   unavailable: {
     color: tokens.color['text-muted'],
     fontSize: tokens.fontSize.sm,

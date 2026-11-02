@@ -8,6 +8,7 @@ import { Badge } from './badge.tsx'
 import { Button } from './button.tsx'
 import { Checkbox } from './checkbox.tsx'
 import { Dialog } from './dialog.tsx'
+import { Disclosure } from './disclosure.tsx'
 import { IconButton } from './icon-button.tsx'
 import { Menu } from './menu.tsx'
 import { ObscuredText } from './obscured-text.tsx'
@@ -25,6 +26,28 @@ import { SHEET_GESTURE } from '../lib/sheet-geometry.ts'
 
 afterEach(cleanup)
 afterEach(() => vi.unstubAllGlobals())
+
+describe('Disclosure', () => {
+  it('keeps edits when hidden and reopened', async () => {
+    const user = userEvent.setup()
+    render(
+      <Disclosure label="Edit memory">
+        <TextField label="Name" defaultValue="Morning" />
+      </Disclosure>,
+    )
+    const trigger = screen.getByText('Edit memory')
+    const input = screen.getByLabelText('Name')
+    expect(input).not.toBeVisible()
+    await user.click(trigger)
+    await user.clear(input)
+    await user.type(input, 'Quiet morning')
+    await user.click(trigger)
+    expect(input).not.toBeVisible()
+    await user.click(trigger)
+    expect(input).toBeVisible()
+    expect(input).toHaveValue('Quiet morning')
+  })
+})
 
 describe('Button', () => {
   it('renders its label and is keyboard-clickable', async () => {

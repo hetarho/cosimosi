@@ -12,9 +12,15 @@ import type { ObscuredTextProps } from './types.ts'
  * reader listening to the passage hears the loss where a reader looking at it sees it; hiding them
  * would hand assistive tech a shorter, tidier sentence than the one on screen.
  */
-export function ObscuredText({ spans, className }: ObscuredTextProps) {
+export function ObscuredText({ spans, className, size = 'small' }: ObscuredTextProps) {
   return (
-    <p className={cx('text-sm leading-relaxed whitespace-pre-wrap text-text', className)}>
+    <p
+      className={cx(
+        'whitespace-pre-wrap text-text',
+        size === 'body' ? 'text-base leading-7' : 'text-sm leading-relaxed',
+        className,
+      )}
+    >
       {spans.map((span, index) =>
         span.obscured ? (
           // Keyed by position because the runs are a rendering of one immutable string: the same

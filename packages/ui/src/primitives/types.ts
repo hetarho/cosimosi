@@ -84,6 +84,13 @@ export interface DialogOwnProps {
   ariaLabel?: string
   /** Accessible name for the close affordance (consumer passes localized copy). */
   closeLabel: string
+  /** Kept visible below the scrolling body. */
+  footer?: ReactNode
+  children?: ReactNode
+}
+
+export interface DisclosureOwnProps {
+  label: ReactNode
   children?: ReactNode
 }
 
@@ -176,6 +183,7 @@ export interface ObscuredTextSpan {
  * ones are gone, and it never announces the loss with a word or a marker.
  */
 export interface ObscuredTextProps {
+  size?: 'small' | 'body'
   spans: readonly ObscuredTextSpan[]
   className?: string
 }

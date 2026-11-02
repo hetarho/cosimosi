@@ -100,6 +100,18 @@ export function WritingFlowSheet() {
         onClose={close}
         title={m.writing_flow_title()}
         closeLabel={m.writing_flow_close()}
+        footer={
+          status === 'reviewing' ? (
+            <View style={styles.footer}>
+              <Button variant="text" color="neutral" disabled={busy} onPress={back}>
+                {m.writing_flow_back_action()}
+              </Button>
+              <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
+                <LaunchButton pastDated={pastDated} busy={busy} onLaunch={runLaunch} />
+              </SequenceAnchor>
+            </View>
+          ) : undefined
+        }
       >
         <ScrollView contentContainerStyle={styles.content}>
           {/* The toast reports the failure once; the inline alert is the record that stays until
@@ -147,16 +159,6 @@ export function WritingFlowSheet() {
                   onRevise={runRevise}
                 />
               </SequenceAnchor>
-              {/* Decreasing emphasis left to right, the committing action last and the way out
-                  beside it as text (§4); a hairline separates the group from the edits above. */}
-              <View style={styles.footer}>
-                <Button variant="text" color="neutral" disabled={busy} onPress={back}>
-                  {m.writing_flow_back_action()}
-                </Button>
-                <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
-                  <LaunchButton pastDated={pastDated} busy={busy} onLaunch={runLaunch} />
-                </SequenceAnchor>
-              </View>
             </>
           ) : null}
 
@@ -190,8 +192,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: tokens.spacing[3],
-    borderTopWidth: 1,
-    borderTopColor: tokens.color.border,
-    paddingTop: tokens.spacing[4],
   },
 })

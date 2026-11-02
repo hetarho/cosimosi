@@ -258,6 +258,7 @@
   "writing_flow_splitting": "Splitting…",
   "writing_flow_revising": "Reworking…",
   "writing_flow_review_hint": "Adjust the names and feelings, or say how to change them. These edits live only in this session — a star you've already sent up changes only on its own.",
+  "writing_flow_edit_memory": "Refine this memory",
   "writing_flow_name_label": "Name",
   "writing_flow_emotion_label": "Feeling",
   "writing_flow_neuron_label": "Neurons",
