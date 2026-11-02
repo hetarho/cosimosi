@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { signUp } from '@cosimosi/api-client'
-import { useSignupProfileController } from '@cosimosi/auth/react/signup'
+import { useSignupProfileController } from '@cosimosi/account/react'
 import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'
 

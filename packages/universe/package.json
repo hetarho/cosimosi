@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@connectrpc/connect": "^2.1.2",
+    "@cosimosi/account": "workspace:*",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/config": "workspace:*",

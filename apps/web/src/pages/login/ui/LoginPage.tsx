@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
-import { signupCredentialMachine } from '@cosimosi/auth'
+import { signupCredentialMachine } from '@cosimosi/account'
 import { BrandMark, Button, Card, TextField } from '@cosimosi/ui'
 
 import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'

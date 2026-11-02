@@ -161,8 +161,8 @@ const forbiddenSynonyms = [
   //
   // `equip` is caught bare (the word appears nowhere in the tree, so the rule has teeth without
   // false positives), while `inventory` is caught only in the game-inventory SENSE: the plain
-  // English "a list of things" is legitimate and in use (USER_STATE_RESET_INVENTORY, the generated
-  // API service inventory), so a bare /inventory/ rule would fire on shipped code and be deleted.
+  // English "a list of things" is legitimate and in use (the user-state reset inventory, the
+  // generated API service inventory), so a bare /inventory/ rule would fire on shipped code and be deleted.
   {
     pattern: /\bequip/i,
     message: 'no equip verb — 꾸미기 is Decorate (a save), and there is no equipped state',

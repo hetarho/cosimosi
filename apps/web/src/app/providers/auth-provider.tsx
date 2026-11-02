@@ -1,12 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 
-import {
-  callbackUrlError,
-  createAuthFacade,
-  bindPendingInviteStorage,
-  type AuthFacade,
-  type PendingInviteStorage,
-} from '@cosimosi/auth'
+import { callbackUrlError, createAuthFacade, type AuthFacade } from '@cosimosi/auth'
+import { bindPendingInviteStorage, type PendingInviteStorage } from '@cosimosi/account'
 import { FakeAuthAdapter } from '@cosimosi/auth/testing'
 import { createSupabaseAuthAdapter, createSupabaseAuthClient } from '@cosimosi/auth/supabase'
 import { AuthProvider, useAuthFacade } from '@cosimosi/auth/react'

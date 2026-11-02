@@ -772,7 +772,7 @@ func TestSignUpHasExactlyFourInputsAndCreatesDirectoryProviderWithoutCrediting(t
 
 func TestNicknameValidationMatchesSharedFixture(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../../../../packages/auth/fixtures/nickname-validation.json")
+	data, err := os.ReadFile("../../../../packages/account/fixtures/nickname-validation.json")
 	if err != nil {
 		t.Fatalf("read shared nickname fixture: %v", err)
 	}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { gateDecision, requiresSignIn, type GateDecision } from './gate-decision.ts'
+import { sessionMachine } from './session-machine.ts'
 import type { SessionStatus } from './session.ts'
 
 describe('gateDecision', () => {
@@ -67,5 +68,32 @@ describe('requiresSignIn', () => {
   it('is true for every decision a signed-out person can reach, and no other', () => {
     const signedOutDecisions = (Object.keys(cases) as GateDecision[]).filter(requiresSignIn)
     expect(signedOutDecisions.sort()).toEqual(['login'])
+  })
+
+  it('signup extends neither the session statuses nor the gate decisions', () => {
+    // The statuses are the session region's states; the other regions are internal control state.
+    const statuses = sessionMachine.root.states.running?.states.session?.states ?? {}
+    expect(Object.keys(statuses)).toEqual([
+      'bootstrapping',
+      'signedOut',
+      'signingIn',
+      'authenticated',
+      'refreshing',
+      'expired',
+      'failed',
+    ])
+    expect(
+      [
+        'bootstrapping',
+        'signedOut',
+        'signingIn',
+        'authenticated',
+        'refreshing',
+        'expired',
+        'failed',
+      ].map((status) => gateDecision(status as Parameters<typeof gateDecision>[0])),
+      // Signup owns no gate arm of its own — it is the door's other mode, not a fourth surface the
+      // session has to resolve between, and that is what this row is here to keep true.
+    ).toEqual(['hold', 'login', 'login', 'universe', 'hold', 'login', 'login'])
   })
 })

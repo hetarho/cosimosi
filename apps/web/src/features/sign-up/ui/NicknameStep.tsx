@@ -3,7 +3,7 @@ import { type FormEvent } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { signUp } from '@cosimosi/api-client'
-import { useSignupProfileController } from '@cosimosi/auth/react/signup'
+import { useSignupProfileController } from '@cosimosi/account/react'
 import { getActiveLocale, m, resolveDeviceTimeZone } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField } from '@cosimosi/ui'
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { ME_TABS, type MeTabId } from '@cosimosi/auth'
+import { ME_TABS, type MeTabId } from '@cosimosi/account'
 import { Button, Tabs, tokens } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 

@@ -5,7 +5,7 @@ import { useMachine } from '@cosimosi/state-machine/react'
 
 import type { Profile } from '@cosimosi/api-client'
 import { validateNickname } from '../nickname.ts'
-import { useCompletionScope } from '../react.ts'
+import { useCompletionScope } from '@cosimosi/auth/react'
 
 export interface ProfileUpdate {
   nickname: string

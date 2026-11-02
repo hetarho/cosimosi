@@ -2,7 +2,8 @@ import { useCallback, useEffect } from 'react'
 
 import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
-import { gateDecision, pendingInvite, requiresSignIn } from '@cosimosi/auth'
+import { gateDecision, requiresSignIn } from '@cosimosi/auth'
+import { pendingInvite } from '@cosimosi/account'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import {
   LocaleBootstrap,

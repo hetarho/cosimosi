@@ -60,12 +60,13 @@ describe('route-level code splitting', () => {
 
   // The lazy boundary above is only half the guarantee: `me-search.ts` is in the entry chunk because
   // `validateSearch` runs before any fetch, so a VALUE import from `pages/me` there would quietly drag
-  // `MePage` and its nine features back in while every assertion above still passed. Only the erased
-  // `import type` is allowed. Read as source because the leak is a property of the import statement,
-  // not of anything observable at runtime.
+  // `MePage` and its nine features back in while every assertion above still passed. Only an erased
+  // `import type` may name a page. Read as source because the leak is a property of the import
+  // statement, not of anything observable at runtime.
   it('keeps the entry-chunk search parsers free of value imports from pages', () => {
-    const pageImports = meSearchSource.match(/^import\s.*from\s+'[^']*\/pages\/[^']*'/gm) ?? []
-    expect(pageImports.length).toBeGreaterThan(0)
-    for (const statement of pageImports) expect(statement).toMatch(/^import type\s/)
+    const imports = meSearchSource.match(/^import\s[^\n]*from\s+'[^']*'/gm) ?? []
+    expect(imports.length).toBeGreaterThan(0)
+    for (const statement of imports.filter((line) => line.includes('/pages/')))
+      expect(statement).toMatch(/^import type\s/)
   })
 })

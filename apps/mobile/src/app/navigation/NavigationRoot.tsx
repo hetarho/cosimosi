@@ -10,7 +10,8 @@ import {
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-import { gateDecision, pendingInvite, requiresSignIn } from '@cosimosi/auth'
+import { gateDecision, requiresSignIn } from '@cosimosi/auth'
+import { pendingInvite } from '@cosimosi/account'
 import { tokens } from '@cosimosi/ui'
 
 import { DesignShowcasePage } from '../../pages/design/index.ts'

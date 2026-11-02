@@ -14,7 +14,7 @@ import {
   StoreService,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
-import { pendingInvite, resetSignupUserState, takeSignupCompletion } from '@cosimosi/auth'
+import { pendingInvite, resetSignupUserState, takeSignupCompletion } from '@cosimosi/account'
 import { VALUES } from '@cosimosi/config'
 import { defaultMoodPalette, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'

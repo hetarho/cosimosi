@@ -1,4 +1,4 @@
-import type { AuthFacade } from './auth-adapter.ts'
+import type { AuthFacade } from '@cosimosi/auth'
 
 type WithdrawalSession = Pick<AuthFacade, 'signOut' | 'forceLocalSignOut'>
 

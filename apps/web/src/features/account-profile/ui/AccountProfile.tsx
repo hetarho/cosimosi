@@ -6,7 +6,7 @@ import {
   createGetProfileQueryOptions,
   updateProfile,
 } from '@cosimosi/api-client'
-import { useAccountProfileController, type ProfileUpdate } from '@cosimosi/auth/react/profile'
+import { useAccountProfileController, type ProfileUpdate } from '@cosimosi/account/react'
 import { VALUES } from '@cosimosi/config'
 import {
   getActiveLocale,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppState, KeyboardAvoidingView, Platform, StyleSheet, Text } from 'react-native'
 
-import { signupCredentialMachine } from '@cosimosi/auth'
+import { signupCredentialMachine } from '@cosimosi/account'
 import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField, tokens } from '@cosimosi/ui'

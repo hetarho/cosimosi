@@ -3,9 +3,9 @@ import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { useMachine } from '@cosimosi/state-machine/react'
 import { validateNickname } from '../nickname.ts'
 import { pendingInvite } from '../pending-invite.ts'
-import { readErrorMessage } from '../error.ts'
 import { recordSignupCompletion } from '../signup-completion.ts'
-import { useCompletionScope } from '../react.ts'
+import { readErrorMessage } from '@cosimosi/auth'
+import { useCompletionScope } from '@cosimosi/auth/react'
 
 export function useSignupProfileController({
   submit,

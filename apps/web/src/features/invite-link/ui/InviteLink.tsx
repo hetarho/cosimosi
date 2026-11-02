@@ -2,7 +2,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetInviteLinkQueryOptions } from '@cosimosi/api-client'
-import { inviteLinkPath } from '@cosimosi/auth'
+import { inviteLinkPath } from '@cosimosi/account'
 import { VALUES } from '@cosimosi/config'
 import { Button, Card } from '@cosimosi/ui'
 

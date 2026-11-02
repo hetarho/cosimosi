@@ -12,7 +12,7 @@ import { ReplayOnboarding } from '../../../features/replay-onboarding/index.ts'
 import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { ME_TABS, type MeTabId } from '@cosimosi/auth'
+import { ME_TABS, type MeTabId } from '@cosimosi/account'
 
 // Every tab body is handed the page's exit callback, and the profile tab's rows are the ones that
 // use it: replaying the onboarding tour means leaving /me for the universe the tour narrates. The

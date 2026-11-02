@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
-import { takeSignupCompletion } from '@cosimosi/auth'
+import { takeSignupCompletion } from '@cosimosi/account'
 import { VALUES } from '@cosimosi/config'
 import {
   ONBOARDING_SCRIPT,

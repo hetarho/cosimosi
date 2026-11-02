@@ -9,7 +9,7 @@ import {
   pendingInvite,
   recordSignupCompletion,
   takeSignupCompletion,
-} from '@cosimosi/auth'
+} from '@cosimosi/account'
 import { useAuthFacade } from '@cosimosi/auth/react'
 import { m } from '../../shared/i18n/index.ts'
 import { Button, Card } from '@cosimosi/ui'

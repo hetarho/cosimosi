@@ -1,3 +1,4 @@
+import { resetSignupUserState } from '@cosimosi/account'
 import { resetMoodPalette } from '@cosimosi/emotion'
 import { resetOnboardingUserState } from '@cosimosi/onboarding'
 import { resetSequenceUserState } from '@cosimosi/sequence'
@@ -15,6 +16,7 @@ export const WEB_USER_STATE_RESETS = [
   { name: 'store', reset: resetStoreUserState },
   { name: 'sequence', reset: resetSequenceUserState },
   { name: 'onboarding', reset: resetOnboardingUserState },
+  { name: 'signup-completion', reset: resetSignupUserState },
 ] as const
 
 // The platform leg runs last, after auth's own: a stored choice, then the browser's languages.

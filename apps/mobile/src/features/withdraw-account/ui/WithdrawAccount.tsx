@@ -5,7 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useMutation } from '@tanstack/react-query'
 
 import { withdraw } from '@cosimosi/api-client'
-import { commitWithdrawalAndEndSession } from '@cosimosi/auth'
+import { commitWithdrawalAndEndSession } from '@cosimosi/account'
 import { useAuthFacade } from '@cosimosi/auth/react'
 import { VALUES } from '@cosimosi/config'
 import { m } from '../../../shared/i18n/index.ts'

@@ -1,5 +1,5 @@
 # CLIENT client platform
-> r2 | the frontend substrate web and mobile share: provider composition, the server-data cache, the user-scope reset, the state-machine foundation, the i18n seam, web routing and the mobile shell
+> r3 | the frontend substrate web and mobile share: provider composition, the server-data cache, the user-scope reset, the state-machine foundation, the i18n seam, web routing and the mobile shell
 
 ## decisions
 - CLIENT-1 [o] each app root composes one provider stack in a fixed order, providers outer and routing inner; feature slices never create long-lived providers →=ARCH
@@ -44,7 +44,7 @@
   - the toast queue sits above auth, so unmounting a feature host alone would leave its queued entry for the next user →=UI
   - an injected QueryClient takes part but stays caller-owned; an owned one is also cleared on unmount
   - persisted data is never deleted; this is the presentation-side complement of server user scoping →=ACCT-1
-- CLIENT-11 [o] every scope change runs one ordered set of reset legs on both platforms: `resetUserState` (`@cosimosi/auth/user-state`) first advances the user-scope generation, then runs the app's product legs, then auth's own leg, then the app's `locale` leg
+- CLIENT-11 [o] every scope change runs one ordered set of reset legs on both platforms: `resetUserState` (`@cosimosi/auth/user-state`) first advances the user-scope generation, then runs the app's product legs, ending with account's `signup-completion`, then the app's `locale` leg
   | leg | clears |
   |---|---|
   | `universe` | read mirrors (episodic memories, neurons, synapses, clock, diaries); released groups; recall, open-diary, pending-fly, spotlight and deletion targets; latent-consumed marks, awaken registry; advance announcement, sweep and sky rate; launched-neuron hand-off; diary, proposal, recall and deletion drafts; a pending time-sync consent, settled as `cancel` |
@@ -186,5 +186,6 @@
 - canonical domain terms are owned by the UL and never become message keys →=UL
 
 ## chg
+- r3 261103 CLIENT-11✎ order "product legs, auth's own leg, locale"→"product legs ending with account's `signup-completion`, locale"; auth holds no leg
 - r2 261103 CLIENT-11✎ generation advance "by the universe leg"→"by `resetUserState` before any leg", signup-completion leg auth→account, +inventory path and store-registration rule ; CLIENT-39+ refocus revision read before the full universe read
 - r1 261102 initial

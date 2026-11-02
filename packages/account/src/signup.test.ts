@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest'
 import { VALUES } from '@cosimosi/config'
 
 import { validateNickname } from './nickname.ts'
-import { gateDecision } from './gate-decision.ts'
 import {
   createMemoryPendingInviteStorage,
   createPendingInviteHolder,
@@ -19,7 +18,6 @@ import {
   takeSignupCompletion,
 } from './signup-completion.ts'
 import { signupCredentialMachine } from './signup.machine.ts'
-import { sessionMachine } from './session-machine.ts'
 
 interface NicknameFixture {
   name: string
@@ -83,32 +81,5 @@ describe('signup shared state', () => {
     expect(actor.getSnapshot().value).toBe('confirmationSent')
     actor.send({ type: 'RESET' })
     expect(actor.getSnapshot().value).toBe('form')
-  })
-
-  it('does not extend the shared session statuses or gate decisions', () => {
-    // The statuses are the session region's states; the other regions are internal control state.
-    const statuses = sessionMachine.root.states.running?.states.session?.states ?? {}
-    expect(Object.keys(statuses)).toEqual([
-      'bootstrapping',
-      'signedOut',
-      'signingIn',
-      'authenticated',
-      'refreshing',
-      'expired',
-      'failed',
-    ])
-    expect(
-      [
-        'bootstrapping',
-        'signedOut',
-        'signingIn',
-        'authenticated',
-        'refreshing',
-        'expired',
-        'failed',
-      ].map((status) => gateDecision(status as Parameters<typeof gateDecision>[0])),
-      // Signup owns no gate arm of its own — it is the door's other mode, not a fourth surface the
-      // session has to resolve between, and that is what this row is here to keep true.
-    ).toEqual(['hold', 'login', 'login', 'universe', 'hold', 'login', 'login'])
   })
 })
