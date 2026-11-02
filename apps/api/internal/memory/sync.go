@@ -24,10 +24,16 @@ func (s *CommandService) SyncToToday(ctx context.Context, scope platform.UserSco
 	if scope.UserID() == "" {
 		return SyncResult{}, ErrScopeRequired
 	}
+	// The zone is not a transactional fact: today is resolved before the transaction opens, so the
+	// transaction never waits on a second pooled connection for it.
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return SyncResult{}, err
+	}
 	var result SyncResult
-	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
+	err = s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
 		// The standalone sync IS the explicit consent action, so it advances unconditionally.
-		r, err := s.syncToToday(ctx, scope, tx, true)
+		r, err := s.syncToToday(ctx, scope, tx, today, true)
 		if err != nil {
 			return err
 		}
@@ -88,8 +94,8 @@ func syncNeedsConsent(guard *time.Time, today time.Time) bool {
 // its own transaction). The surface is ProgressionTx: sync touches only the clock
 // and the progression hook, never a launch write. LaunchTx and RecallTx both
 // satisfy it.
-func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, consent bool) (SyncResult, error) {
-	guard, target, err := s.syncTarget(ctx, scope, tx, consent)
+func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, today time.Time, consent bool) (SyncResult, error) {
+	guard, target, err := s.syncTarget(ctx, scope, tx, today, consent)
 	if err != nil {
 		return SyncResult{}, err
 	}
@@ -101,7 +107,8 @@ func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserSco
 }
 
 // syncTarget validates consent and reads the exact advance target without mutating the clock.
-func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, consent bool) (*time.Time, time.Time, error) {
+// today is the caller's user-zone date, resolved before its transaction opened.
+func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, today time.Time, consent bool) (*time.Time, time.Time, error) {
 	// Serialize against concurrent launches for the whole transaction,
 	// birth window included, exactly as the launch path does ([I10]).
 	if err := tx.LockGraphMutation(ctx, scope); err != nil {
@@ -126,10 +133,6 @@ func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScop
 	// forward, the caller must have consented — decided from the SERVER clock, never a client
 	// Date. Refused before any spend/effect, so nothing is charged and the client can safely
 	// re-consent (the recall's operation id stays reusable — no receipt was written).
-	today, err := s.userToday(ctx, scope)
-	if err != nil {
-		return nil, time.Time{}, err
-	}
 	if !consent && syncNeedsConsent(guard, today) {
 		return nil, time.Time{}, ErrSyncConsentRequired
 	}

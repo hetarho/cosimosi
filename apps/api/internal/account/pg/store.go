@@ -87,35 +87,6 @@ func (s Store) InWithdrawalTx(ctx context.Context, fn func(account.WithdrawalSto
 	return tx.Commit(ctx)
 }
 
-func (s Store) WithInviteSettlementLock(
-	ctx context.Context,
-	inviterScope platform.UserScope,
-	fn func() error,
-) (err error) {
-	if err := s.ready(inviterScope); err != nil {
-		return err
-	}
-	if s.pool == nil {
-		return ErrTransactionPoolRequired
-	}
-	conn, err := s.pool.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-	queries := dbgen.New(conn)
-	if _, err := queries.AcquireInviteSettlementLock(ctx, inviterScope.UserID()); err != nil {
-		return err
-	}
-	defer func() {
-		unlockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_, unlockErr := queries.ReleaseInviteSettlementLock(unlockCtx, inviterScope.UserID())
-		err = errors.Join(err, unlockErr)
-	}()
-	return fn()
-}
-
 func (s Store) ListMoodColors(
 	ctx context.Context,
 	scope platform.UserScope,

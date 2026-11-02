@@ -84,7 +84,9 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
 
 - 스택 `.env` 키: `IMAGE_TAG`(배포가 갱신) · `DATABASE_URL`(**5432 세션 풀러 +
   `?default_query_exec_mode=describe_exec`** — 상주 API는 트랜잭션 풀러(6543)에 붙이지 않는다. §7의
-  함정 참고) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
+  함정 참고. 커넥션 예산은 조립 루트 상수로 정한다: API `apiDBMaxConns` 4 + 워커 `workerDBMaxConns` 3 =
+  스택당 7, 두 스택이 같은 DB를 쓰므로 세션 풀러 클라이언트 14개. URL에 `pool_max_conns`를 적으면 그 값이
+  우선한다) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
   `API_UPSTREAM`(`cosimosi-api-staging`|`cosimosi-api-prod` — edge 네트워크에서의 DNS 별칭) ·
   `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` ·
   `SUPABASE_SERVICE_ROLE_KEY`(**서버 전용**, Auth Admin API와 withdrawal credential purge에 필수; `VITE_*`로

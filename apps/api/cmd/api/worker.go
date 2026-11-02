@@ -38,6 +38,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 	if err != nil {
 		return nil, err
 	}
+	cfg.MaxConns, cfg.MaxConnLifetimeJitter = devWorkerDBMaxConns, dbConnLifetimeJitter
 	pool, err := platformdb.Open(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func newDevWorkerAchievementSettler(
 	accountService *account.Service,
 ) (*achievement.Service, error) {
 	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
-		Ledger:         twinklepg.NewStore(pool.PgxPool()),
+		Ledger:         twinkleLedgerStore(pool),
 		InviteResolver: twinkle.UnavailableInviteResolver{},
 		Signals:        devWorkerNoSpendSignals{},
 		UserZone:       accountTwinkleZone{service: accountService},

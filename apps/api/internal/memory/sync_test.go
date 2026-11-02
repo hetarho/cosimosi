@@ -173,3 +173,14 @@ func TestNoopAdvanceProgressionIsANoop(t *testing.T) {
 		t.Fatalf("NoopAdvanceProgression returned %v, want nil", err)
 	}
 }
+
+func TestCommandsResolveTodayBeforeTheirTransaction(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	fixture.launches.clock = &previous
+	// newFixture's zone reader fails the test when read inside an open transaction.
+	if _, err := fixture.service.SyncToToday(context.Background(), testScope(t)); err != nil {
+		t.Fatalf("SyncToToday failed: %v", err)
+	}
+}

@@ -82,3 +82,31 @@ func openTestPool(t *testing.T) *Pool {
 	}
 	return pool
 }
+
+func TestOpenAppliesDeploymentBudgetUnlessTheURLSetsIt(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// pgxpool connects lazily, so these pools never dial the unreachable address.
+	const address = "postgres://user:secret@127.0.0.1:1/cosimosi"
+
+	budgeted, err := Open(ctx, Config{URL: address, MaxConns: 3, MaxConnLifetimeJitter: time.Minute})
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer budgeted.Close()
+	if got := budgeted.MaxConns(); got != 3 {
+		t.Fatalf("MaxConns = %d, want the root budget 3", got)
+	}
+	if got := budgeted.PgxPool().Config().MaxConnLifetimeJitter; got != time.Minute {
+		t.Fatalf("MaxConnLifetimeJitter = %v, want 1m", got)
+	}
+
+	overridden, err := Open(ctx, Config{URL: address + "?pool_max_conns=7", MaxConns: 3})
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer overridden.Close()
+	if got := overridden.MaxConns(); got != 7 {
+		t.Fatalf("MaxConns = %d, want the URL's 7", got)
+	}
+}

@@ -14,7 +14,13 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T18:25Z | T182 |
+
 ## inbox
+- 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
 - 261103 decided T165 T181 T221: which work the autopilot runs first → T181–T221 first by making T165 depend on T221 (alt: T165 first as the lowest runnable ID | park T165) ← the user asked to implement the post-refactor tasks; T165 carries live-evaluation gates and is not part of that request
 
 ## ssot
@@ -79,7 +85,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T181 | Transactions never borrow a second pooled connection | ARCH | - | todo |
 | T182 | Instanced pick volumes follow their instances | ARCH | - | todo |
 | T183 | Memory graph foreign keys lead with the user | ARCH MEM | - | todo |
 | T184 | The consolidation repair pass enqueues one semanticize job per memory revision | ARCH MEM | - | todo |
@@ -122,11 +127,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T181 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T182 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T181 done
 - 261103 create-task review/post-refactor-261102: T181–T221 (41 tasks, 38 findings); review converted
 - 261103 update-ssot ARCH r3 AUTH r2 ACCT r3 ONB r2 TWINK r2 CLIENT r2 MEM r3 from review/post-refactor-261102 triage decisions (FE grain, account package, entry guard, color package, root wiring, scope generation, universe revision)
 - 261103 design universe and diary: volumetric light and reading UI on web/mobile; temporary comparisons removed; domain rules unchanged; full verification passed

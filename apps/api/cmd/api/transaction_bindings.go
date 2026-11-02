@@ -15,7 +15,6 @@ import (
 	"github.com/cosimosi/api/internal/store"
 	storepg "github.com/cosimosi/api/internal/store/pg"
 	"github.com/cosimosi/api/internal/twinkle"
-	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 // These factories receive the transaction opened by the owning pg adapter. Domain ports expose
@@ -35,13 +34,13 @@ func (t memoryTransaction) SpendMemory(ctx context.Context, scope platform.UserS
 	if t.economy == nil {
 		return errEconomyTxUnusable
 	}
-	return (twinkleSpendGate{service: t.economy}).spendBound(ctx, scope, twinklepg.NewStore(t.tx), spend)
+	return (twinkleSpendGate{service: t.economy}).spendBound(ctx, scope, twinkleLedgerTx(t.tx), spend)
 }
 func (t memoryTransaction) EarnDiary(ctx context.Context, scope platform.UserScope, diaryID string) error {
 	if t.economy == nil {
 		return errEconomyTxUnusable
 	}
-	return t.economy.EarnOnWrite(ctx, scope, twinklepg.NewStore(t.tx), diaryID)
+	return t.economy.EarnOnWrite(ctx, scope, twinkleLedgerTx(t.tx), diaryID)
 }
 func (t memoryTransaction) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
 	return recordTransactionProgress(ctx, scope, t.tx, key, delta)
@@ -60,7 +59,7 @@ func (t storeTransaction) SpendPurchase(ctx context.Context, scope platform.User
 	if t.economy == nil {
 		return errDecorateTxUnusable
 	}
-	err := t.economy.CheckAndSpend(ctx, scope, twinklepg.NewStore(t.tx), twinkle.PurchaseSpendIntent(spend.Amount, spend.DedupKey))
+	err := t.economy.CheckAndSpend(ctx, scope, twinkleLedgerTx(t.tx), twinkle.PurchaseSpendIntent(spend.Amount, spend.DedupKey))
 	return storeSpendRefusal(err)
 }
 func (t storeTransaction) RecordProgress(ctx context.Context, scope platform.UserScope, key string, delta int) error {
@@ -92,7 +91,7 @@ func (t memoryTransaction) CheckMemorySpend(ctx context.Context, scope platform.
 	if err != nil {
 		return err
 	}
-	err = t.economy.CheckCanSpend(ctx, scope, twinklepg.NewStore(t.tx), intent)
+	err = t.economy.CheckCanSpend(ctx, scope, twinkleLedgerTx(t.tx), intent)
 	if errors.Is(err, twinkle.ErrInsufficientTwinkle) {
 		return fmt.Errorf("%w: %w", memory.ErrInsufficientTwinkle, err)
 	}

@@ -20,7 +20,6 @@ import (
 
 type fakeStore struct {
 	mu              sync.Mutex
-	settlementMu    sync.Mutex
 	moodColors      map[string]map[Mood]Color
 	moodColorStats  map[Mood][]MoodColorStatCount
 	profiles        map[string]Profile
@@ -74,16 +73,6 @@ func (f *fakeStore) InSignupTx(ctx context.Context, fn func(Store) error) error 
 		return err
 	}
 	return nil
-}
-
-func (f *fakeStore) WithInviteSettlementLock(
-	_ context.Context,
-	_ platform.UserScope,
-	fn func() error,
-) error {
-	f.settlementMu.Lock()
-	defer f.settlementMu.Unlock()
-	return fn()
 }
 
 func cloneMap[K comparable, V any](source map[K]V) map[K]V {

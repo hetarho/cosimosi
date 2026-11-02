@@ -11,7 +11,6 @@ import (
 // account/pg, and no sqlc type crosses this boundary.
 type Store interface {
 	InSignupTx(ctx context.Context, fn func(Store) error) error
-	WithInviteSettlementLock(ctx context.Context, inviterScope platform.UserScope, fn func() error) error
 	ListMoodColors(ctx context.Context, scope platform.UserScope) ([]MoodColor, error)
 	SetMoodColor(ctx context.Context, scope platform.UserScope, color MoodColor, bucket int32) (MoodColor, error)
 	ListMoodColorStats(ctx context.Context, mood Mood, recommendationCount int32) ([]MoodColorStatCount, error)

@@ -51,6 +51,7 @@ var (
 type Store struct {
 	queries *dbgen.Queries
 	txer    txStarter
+	zones   func(dbgen.DBTX) twinkle.ZoneReader
 }
 
 type txStarter interface {
@@ -65,18 +66,28 @@ func NewStore(db dbgen.DBTX) Store {
 	return store
 }
 
+// WithZoneBinding returns a store whose transactions read the user zone through the composition
+// root's reader bound to the same transaction, never through a second pooled connection.
+func (s Store) WithZoneBinding(bind func(dbgen.DBTX) twinkle.ZoneReader) Store {
+	s.zones = bind
+	return s
+}
+
 // InLedgerTx implements twinkle.LedgerRepo: it runs fn against a store bound to one
 // pgx transaction, so an earn/spend pair — the dedup-keyed log append plus the
 // guarded balance delta — commits wholly or not at all. The RPC-driven earns
 // (invite, charge) and the tx-less gist-view spend run here; a spend joining a
 // memory transaction instead arrives through the composition root's economy seam
 // (NewStore over that transaction's handle).
-func (s Store) InLedgerTx(ctx context.Context, fn func(tx twinkle.LedgerStore) error) error {
+func (s Store) InLedgerTx(ctx context.Context, fn func(tx twinkle.LedgerTx) error) error {
 	if s.queries == nil {
 		return ErrQueriesRequired
 	}
 	if s.txer == nil {
 		return ErrTxStarterRequired
+	}
+	if s.zones == nil {
+		return twinkle.ErrZoneReaderRequired
 	}
 	tx, err := s.txer.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -85,7 +96,7 @@ func (s Store) InLedgerTx(ctx context.Context, fn func(tx twinkle.LedgerStore) e
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx)}); err != nil {
+	if err := fn(twinkle.BindLedgerTx(Store{queries: s.queries.WithTx(tx)}, s.zones(tx))); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

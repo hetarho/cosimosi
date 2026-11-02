@@ -145,6 +145,21 @@ type serviceFixture struct {
 	seeds            []int64
 }
 
+// zoneOutsideTransactions answers UTC and fails the test when read while a fake transaction is open:
+// the zone is not a transactional fact, and reading it through the pool inside a transaction would
+// wait on a second connection (ARCH-9).
+type zoneOutsideTransactions struct {
+	t     *testing.T
+	store *fakeLaunchStore
+}
+
+func (z zoneOutsideTransactions) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
+	if z.store.staging != nil {
+		z.t.Errorf("user zone read inside an open memory transaction")
+	}
+	return time.UTC, nil
+}
+
 func newFixture(t *testing.T) *serviceFixture {
 	t.Helper()
 	launches := &fakeLaunchStore{}
@@ -197,6 +212,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		Diaries:          fixture.diaries,
 		Releases:         fixture.releases,
 		SealSuggester:    fixture.sealSuggester,
+		UserZone:         zoneOutsideTransactions{t: t, store: launches},
 		Now:              func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++

@@ -277,14 +277,20 @@ func (s *Service) GetBalances(ctx context.Context, userIDs []string) (map[string
 	return balances, nil
 }
 
-// zone resolves the scoped user's SMALL reset boundary once per use-case ([G2][U7]). An empty,
-// blank or unknown IANA name resolves to UTC without an error — the [G5] direction: a user whose
-// profile is missing or whose zone the runtime cannot load still gets today's refill. Only a
+// zone resolves the scoped user's SMALL reset boundary through the pool for reads that hold no
+// transaction; code inside a transaction reads it through its LedgerTx instead.
+func (s *Service) zone(ctx context.Context, scope platform.UserScope) (*time.Location, error) {
+	return resolveZone(ctx, s.userZone, scope)
+}
+
+// resolveZone resolves the scoped user's SMALL reset boundary once per use-case ([G2][U7]). An
+// empty, blank or unknown IANA name resolves to UTC without an error — the [G5] direction: a user
+// whose profile is missing or whose zone the runtime cannot load still gets today's refill. Only a
 // genuine port failure (the read itself broke) propagates, because that is a DB error, not an
 // absent zone. time/tzdata is imported by cmd/api and cmd/worker so LoadLocation is hermetic on
 // the distroless image.
-func (s *Service) zone(ctx context.Context, scope platform.UserScope) (*time.Location, error) {
-	name, err := s.userZone.ZoneFor(ctx, scope)
+func resolveZone(ctx context.Context, zones ZoneReader, scope platform.UserScope) (*time.Location, error) {
+	name, err := zones.ZoneFor(ctx, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -300,14 +306,14 @@ func (s *Service) zone(ctx context.Context, scope platform.UserScope) (*time.Loc
 // (the composition-root economy seam) so the spend commits or rolls back with the
 // recall it gates; a nil ledger (the tx-less gist view) runs the spend in its own
 // transaction.
-func (s *Service) CheckAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+func (s *Service) CheckAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerTx, intent SpendIntent) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
 	if ledger != nil {
 		return s.checkAndSpend(ctx, scope, ledger, intent)
 	}
-	return s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+	return s.ledger.InLedgerTx(ctx, func(tx LedgerTx) error {
 		return s.checkAndSpend(ctx, scope, tx, intent)
 	})
 }
@@ -320,7 +326,7 @@ type preparedSpend struct {
 }
 
 // CheckCanSpend performs the same authoritative planning without appending or applying a debit.
-func (s *Service) CheckCanSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+func (s *Service) CheckCanSpend(ctx context.Context, scope platform.UserScope, ledger LedgerTx, intent SpendIntent) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
@@ -330,7 +336,7 @@ func (s *Service) CheckCanSpend(ctx context.Context, scope platform.UserScope, l
 	_, err := s.prepareSpend(ctx, scope, ledger, intent)
 	return err
 }
-func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) (preparedSpend, error) {
+func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, ledger LedgerTx, intent SpendIntent) (preparedSpend, error) {
 	cost, err := spendPrice(intent)
 	if err != nil {
 		return preparedSpend{}, err
@@ -343,7 +349,7 @@ func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, le
 		// CHECKs amount > 0, and a zero row would record a non-event).
 		return preparedSpend{}, nil
 	}
-	zone, err := s.zone(ctx, scope)
+	zone, err := resolveZone(ctx, ledger, scope)
 	if err != nil {
 		return preparedSpend{}, err
 	}
@@ -360,7 +366,7 @@ func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, le
 	return preparedSpend{cost: cost, plan: plan, now: now, zone: zone}, nil
 }
 
-func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
+func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerTx, intent SpendIntent) error {
 	prepared, err := s.prepareSpend(ctx, scope, ledger, intent)
 	if err != nil {
 		return err
@@ -423,7 +429,7 @@ func spendPrice(intent SpendIntent) (int, error) {
 // twice — not per memory, so splitting a diary into more memories inflates nothing.
 // ledger must be the launch's transaction-bound store: the grant lands atomically
 // with the launch or not at all.
-func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, ledger LedgerStore, diaryID string) error {
+func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, ledger LedgerTx, diaryID string) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
@@ -443,7 +449,7 @@ func (s *Service) EarnSignupBonus(ctx context.Context, scope platform.UserScope)
 	if scope.UserID() == "" {
 		return Balance{}, ErrScopeRequired
 	}
-	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerTx) error {
 		_, err := s.earn(ctx, scope, tx, ReasonSignupBonus, values.TwinkleEarnSignupBonus, "signup_bonus:"+scope.UserID())
 		return err
 	})
@@ -466,7 +472,7 @@ func (s *Service) EarnAdminGrant(ctx context.Context, scope platform.UserScope, 
 	if amount <= 0 {
 		return Balance{}, ErrGrantAmountInvalid
 	}
-	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerTx) error {
 		_, err := s.earn(ctx, scope, tx, ReasonAdminGrant, amount, dedupKey)
 		return err
 	})
@@ -494,7 +500,7 @@ func (s *Service) EarnAchievementReward(ctx context.Context, scope platform.User
 	if amount <= 0 {
 		return Balance{}, ErrGrantAmountInvalid
 	}
-	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerTx) error {
 		_, err := s.earn(ctx, scope, tx, ReasonAchievementClaim, amount, "achievement:"+claimID)
 		return err
 	})
@@ -540,7 +546,7 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 	if err != nil {
 		return Balance{}, ErrInviteInputRequired
 	}
-	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+	err = s.ledger.InLedgerTx(ctx, func(tx LedgerTx) error {
 		inviterDedupKey := "invite:" + signupID
 		if err := tx.LockInviteRewardsByInviter(ctx, inviterScope); err != nil {
 			return err
@@ -731,8 +737,8 @@ func decodeLedgerCursor(token string) (LedgerCursor, error) {
 // The zone is resolved for the credited scope, not the caller's: ClaimInvite credits the inviter
 // too, and the anchor this write rolls forward is that user's own calendar date. Passing a UTC date
 // instead would push a UTC−n user's anchor a day ahead and swallow their next refill ([G5]).
-func (s *Service) earn(ctx context.Context, scope platform.UserScope, ledger LedgerStore, reason EntryReason, amount int, dedupKey string) (bool, error) {
-	zone, err := s.zone(ctx, scope)
+func (s *Service) earn(ctx context.Context, scope platform.UserScope, ledger LedgerTx, reason EntryReason, amount int, dedupKey string) (bool, error) {
+	zone, err := resolveZone(ctx, ledger, scope)
 	if err != nil {
 		return false, err
 	}

@@ -302,46 +302,6 @@ func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *
 	}
 }
 
-func TestInviteSettlementLockSerializesSameInviter(t *testing.T) {
-	pool := openAccountTestPool(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	store := NewStore(pool.PgxPool())
-	scope := mustUserScope(t, fmt.Sprintf("test-account-lock-%d", time.Now().UnixNano()))
-	firstEntered := make(chan struct{})
-	releaseFirst := make(chan struct{})
-	firstDone := make(chan error, 1)
-	go func() {
-		firstDone <- store.WithInviteSettlementLock(ctx, scope, func() error {
-			close(firstEntered)
-			<-releaseFirst
-			return nil
-		})
-	}()
-	<-firstEntered
-
-	secondEntered := make(chan struct{})
-	secondDone := make(chan error, 1)
-	go func() {
-		secondDone <- store.WithInviteSettlementLock(ctx, scope, func() error {
-			close(secondEntered)
-			return nil
-		})
-	}()
-	select {
-	case <-secondEntered:
-		t.Fatal("same-inviter settlement lock did not serialize callbacks")
-	case <-time.After(100 * time.Millisecond):
-	}
-	close(releaseFirst)
-	if err := <-firstDone; err != nil {
-		t.Fatalf("first lock failed: %v", err)
-	}
-	if err := <-secondDone; err != nil {
-		t.Fatalf("second lock failed: %v", err)
-	}
-}
-
 func mustUserScope(t *testing.T, userID string) platform.UserScope {
 	t.Helper()
 	scope, err := platform.NewUserScope(userID)

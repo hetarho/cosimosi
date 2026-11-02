@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,8 +16,13 @@ const EnvDatabaseURL = "DATABASE_URL"
 var ErrDatabaseURLRequired = errors.New("database url is required")
 var ErrPoolNotOpen = errors.New("database pool is not open")
 
+// Config opens one pool. MaxConns and MaxConnLifetimeJitter are the composition root's deployment
+// budget; a value the URL already sets (pool_max_conns, pool_max_conn_lifetime_jitter) wins, so an
+// operator can still override a deployment through its DSN.
 type Config struct {
-	URL string
+	URL                   string
+	MaxConns              int32
+	MaxConnLifetimeJitter time.Duration
 }
 
 type Pool struct {
@@ -40,6 +46,12 @@ func Open(ctx context.Context, cfg Config) (*Pool, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.MaxConns > 0 && !strings.Contains(url, "pool_max_conns=") {
+		poolConfig.MaxConns = cfg.MaxConns
+	}
+	if cfg.MaxConnLifetimeJitter > 0 && !strings.Contains(url, "pool_max_conn_lifetime_jitter=") {
+		poolConfig.MaxConnLifetimeJitter = cfg.MaxConnLifetimeJitter
+	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, err
@@ -59,6 +71,15 @@ func (p *Pool) Close() {
 	if p != nil && p.pool != nil {
 		p.pool.Close()
 	}
+}
+
+// MaxConns reports the pool's connection ceiling.
+func (p *Pool) MaxConns() int32 {
+	pool, err := p.ready()
+	if err != nil {
+		return 0
+	}
+	return pool.Config().MaxConns
 }
 
 func (p *Pool) PgxPool() *pgxpool.Pool {

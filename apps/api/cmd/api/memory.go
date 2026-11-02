@@ -37,6 +37,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	if err != nil {
 		return nil, noop, err
 	}
+	cfg.MaxConns, cfg.MaxConnLifetimeJitter = apiDBMaxConns, dbConnLifetimeJitter
 	pool, err := platformdb.Open(ctx, cfg)
 	if err != nil {
 		return nil, noop, err

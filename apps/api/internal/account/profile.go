@@ -78,10 +78,32 @@ func (s *Service) requireSignup(ctx context.Context, scope platform.UserScope) e
 // ZoneFor publishes the IANA name only. Runtime resolution belongs to each consumer's
 // composition-root adapter.
 func (s *ReadService) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	return NewZoneReader(s.store).ZoneFor(ctx, scope)
+}
+
+// ProfileReader is the one profile read a zone lookup needs.
+type ProfileReader interface {
+	GetUserProfile(ctx context.Context, scope platform.UserScope) (Profile, bool, error)
+}
+
+// ZoneReader publishes the profile zone over any profile reader, so a composition root can bind it
+// to an open transaction and read the zone on that transaction's own connection.
+type ZoneReader struct {
+	profiles ProfileReader
+}
+
+func NewZoneReader(profiles ProfileReader) ZoneReader {
+	return ZoneReader{profiles: profiles}
+}
+
+func (r ZoneReader) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
 	if scope.UserID() == "" {
 		return "", ErrScopeRequired
 	}
-	profile, found, err := s.store.GetUserProfile(ctx, scope)
+	if r.profiles == nil {
+		return "", ErrStoreRequired
+	}
+	profile, found, err := r.profiles.GetUserProfile(ctx, scope)
 	if err != nil {
 		return "", err
 	}

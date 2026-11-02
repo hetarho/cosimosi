@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/admin"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 )
@@ -160,4 +161,25 @@ func cleanupAdminTestRows(t *testing.T, pool *platformdb.Pool, base string) {
 			}
 		}
 	})
+}
+
+// A panic inside a transaction body is recovered by the RPC interceptor; the deferred rollback must
+// still hand the connection back, or each such panic shrinks a small pool for good.
+func TestInTxReturnsTheConnectionWhenTheBodyPanics(t *testing.T) {
+	pool := openAdminTestPool(t)
+	store := NewStore(pool.PgxPool())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("the transaction body's panic did not propagate")
+			}
+		}()
+		_ = store.inTx(ctx, func(*dbgen.Queries) error { panic("body failed") })
+	}()
+	if acquired := pool.PgxPool().Stat().AcquiredConns(); acquired != 0 {
+		t.Fatalf("acquired connections after the panic = %d, want 0", acquired)
+	}
 }

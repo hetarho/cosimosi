@@ -17,7 +17,6 @@ import (
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
-	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 // The cross-context economy seam, proven on a real database (the composition root
@@ -167,7 +166,7 @@ func TestPurchaseSpendJoinsAndRollsBackWithTheCallersTransaction(t *testing.T) {
 
 	// Fund GENERAL through a real earn so the purchase has something to draw from.
 	if err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return service.EarnOnWrite(ctx, scope, twinklepg.NewStore(tx), "diary-purchase-seed")
+		return service.EarnOnWrite(ctx, scope, twinkleLedgerTx(tx), "diary-purchase-seed")
 	}); err != nil {
 		t.Fatalf("seed earn failed: %v", err)
 	}
@@ -175,7 +174,7 @@ func TestPurchaseSpendJoinsAndRollsBackWithTheCallersTransaction(t *testing.T) {
 	// A caller transaction that rolls back must take the debit with it.
 	rollback := errors.New("the decorate that caused this failed")
 	err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		if err := service.CheckAndSpend(ctx, scope, twinklepg.NewStore(tx), twinkle.PurchaseSpendIntent(30, "purchase:rolled-back")); err != nil {
+		if err := service.CheckAndSpend(ctx, scope, twinkleLedgerTx(tx), twinkle.PurchaseSpendIntent(30, "purchase:rolled-back")); err != nil {
 			return err
 		}
 		return rollback
@@ -194,7 +193,7 @@ func TestPurchaseSpendJoinsAndRollsBackWithTheCallersTransaction(t *testing.T) {
 
 	// Committed, it lands once: a GENERAL-only spend row and the matching debit.
 	if err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return service.CheckAndSpend(ctx, scope, twinklepg.NewStore(tx), twinkle.PurchaseSpendIntent(30, "purchase:committed"))
+		return service.CheckAndSpend(ctx, scope, twinkleLedgerTx(tx), twinkle.PurchaseSpendIntent(30, "purchase:committed"))
 	}); err != nil {
 		t.Fatalf("committed purchase failed: %v", err)
 	}

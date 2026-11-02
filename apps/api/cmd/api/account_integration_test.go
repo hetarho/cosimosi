@@ -143,14 +143,6 @@ func (s profileZoneStore) InSignupTx(ctx context.Context, fn func(account.Store)
 	return fn(s)
 }
 
-func (profileZoneStore) WithInviteSettlementLock(
-	_ context.Context,
-	_ platform.UserScope,
-	fn func() error,
-) error {
-	return fn()
-}
-
 func (s profileZoneStore) GetUserProfile(context.Context, platform.UserScope) (account.Profile, bool, error) {
 	return s.profile, true, nil
 }

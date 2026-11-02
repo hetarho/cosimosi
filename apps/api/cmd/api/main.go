@@ -27,6 +27,11 @@ const (
 	apiVoyageHTTPTimeout         = 30 * time.Second
 	apiShutdownTimeout           = 5 * time.Second
 	reporterFlushTimeout         = 2 * time.Second
+	// The database budget is shared with the worker and the other stack on one session pooler
+	// (DEPLOY.md). The dev worker's pool is a separate, smaller budget used only in development.
+	apiDBMaxConns        = 4
+	devWorkerDBMaxConns  = 2
+	dbConnLifetimeJitter = 10 * time.Minute
 )
 
 func main() {

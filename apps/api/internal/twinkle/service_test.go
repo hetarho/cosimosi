@@ -27,6 +27,14 @@ type fakeLedger struct {
 	txCount           int
 	writes            int
 	batchReads        int
+	// zones is the zone read bound to the ledger's transaction; open counts transactions in flight
+	// so a pool-side reader can refuse to be called inside one.
+	zones ZoneReader
+	open  int
+}
+
+func (f *fakeLedger) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	return f.zones.ZoneFor(ctx, scope)
 }
 
 func (f *fakeLedger) GetBalanceRecords(_ context.Context, userIDs []string) (map[string]BalanceRecord, error) {
@@ -164,8 +172,10 @@ func (f *fakeLedger) ListLedgerPage(_ context.Context, scope platform.UserScope,
 	return page, nil
 }
 
-func (f *fakeLedger) InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error {
+func (f *fakeLedger) InLedgerTx(ctx context.Context, fn func(tx LedgerTx) error) error {
 	f.txCount++
+	f.open++
+	defer func() { f.open-- }()
 	// All-or-nothing: snapshot, run, restore on error.
 	records := make(map[string]BalanceRecord, len(f.records))
 	for user, record := range f.records {
@@ -316,6 +326,7 @@ func newTwinkleFixture(t *testing.T) *twinkleFixture {
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
+	fixture.ledger.zones = fixture.zones
 	fixture.service = service
 	return fixture
 }
@@ -1413,5 +1424,80 @@ func TestGetLedgerResolvesTheDayInTheUsersZone(t *testing.T) {
 	}
 	if got := page.Entries[0].OccurredOn.Format(time.DateOnly); got != "2026-07-15" {
 		t.Fatalf("occurred_on (Seoul user) = %s, want 2026-07-15", got)
+	}
+}
+
+// poolZoneOutsideTransactions is the service's pool-bound zone reader in this test: it answers
+// only while no ledger transaction is open, because a pool read made inside one would hold that
+// transaction's connection while waiting on a second.
+type poolZoneOutsideTransactions struct {
+	t      *testing.T
+	ledger *fakeLedger
+	zones  *fakeUserZone
+}
+
+func (z poolZoneOutsideTransactions) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	if z.ledger.open > 0 {
+		z.t.Errorf("pool zone read for %s inside an open ledger transaction", scope.UserID())
+	}
+	return z.zones.ZoneFor(ctx, scope)
+}
+
+func (z poolZoneOutsideTransactions) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
+	if z.ledger.open > 0 {
+		z.t.Errorf("pool batch zone read inside an open ledger transaction")
+	}
+	return z.zones.ZonesFor(ctx, userIDs)
+}
+
+func TestTransactionalPathsReadZoneFromTransaction(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	guarded, err := NewService(ServiceDeps{
+		Ledger:         fixture.ledger,
+		InviteResolver: fixture.resolver,
+		Signals:        fixture.signals,
+		UserZone:       poolZoneOutsideTransactions{t: t, ledger: fixture.ledger, zones: fixture.zones},
+		Now:            twinkleNow,
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	ctx := context.Background()
+	scope := twinkleScope(t, "user-zone-1")
+	fixture.zones.names["user-zone-1"] = "Asia/Seoul"
+
+	if _, err := guarded.EarnAdminGrant(ctx, scope, 500, "grant-1"); err != nil {
+		t.Fatalf("EarnAdminGrant failed: %v", err)
+	}
+	if _, err := guarded.EarnSignupBonus(ctx, scope); err != nil {
+		t.Fatalf("EarnSignupBonus failed: %v", err)
+	}
+	if _, err := guarded.EarnAchievementReward(ctx, scope, "claim-1", 10); err != nil {
+		t.Fatalf("EarnAchievementReward failed: %v", err)
+	}
+	if err := guarded.CheckAndSpend(ctx, scope, nil, GistViewSpendIntent(1, "own-tx")); err != nil {
+		t.Fatalf("CheckAndSpend(own transaction) failed: %v", err)
+	}
+
+	// A caller's transaction (a memory launch or recall) is open around these calls.
+	fixture.ledger.open++
+	if err := guarded.EarnOnWrite(ctx, scope, fixture.ledger, "diary-zone-1"); err != nil {
+		t.Fatalf("EarnOnWrite failed: %v", err)
+	}
+	if err := guarded.CheckCanSpend(ctx, scope, fixture.ledger, GistViewSpendIntent(1, "caller-check")); err != nil {
+		t.Fatalf("CheckCanSpend failed: %v", err)
+	}
+	if err := guarded.CheckAndSpend(ctx, scope, fixture.ledger, GistViewSpendIntent(1, "caller-tx")); err != nil {
+		t.Fatalf("CheckAndSpend(caller transaction) failed: %v", err)
+	}
+	fixture.ledger.open--
+
+	invitee := twinkleScope(t, "friend-zone-1")
+	fixture.resolver.claims[inviteResolutionKey("code-zone-1", "friend-zone-1")] = ResolvedSignup{
+		SignupID: "signup-zone-1", InviterUserID: "inviter-zone-1", InviteeUserID: "friend-zone-1",
+	}
+	if _, err := guarded.ClaimInvite(ctx, invitee, "code-zone-1"); err != nil {
+		t.Fatalf("ClaimInvite failed: %v", err)
 	}
 }

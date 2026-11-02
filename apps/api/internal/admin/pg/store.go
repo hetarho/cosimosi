@@ -318,8 +318,11 @@ func (s Store) inTx(ctx context.Context, fn func(q *dbgen.Queries) error) error 
 	if err != nil {
 		return err
 	}
-	if err := fn(s.queries.WithTx(tx)); err != nil {
+	// Deferred so a panic inside fn, recovered by the interceptor, still returns the connection.
+	defer func() {
 		_ = tx.Rollback(ctx)
+	}()
+	if err := fn(s.queries.WithTx(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

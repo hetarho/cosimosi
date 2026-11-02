@@ -242,30 +242,7 @@ func (s *Service) SettleSignup(ctx context.Context, scope platform.UserScope) er
 		if scopeErr != nil {
 			settlementErr = ErrInviteNotEligible
 		} else {
-			settlementErr = s.store.WithInviteSettlementLock(ctx, inviterScope, func() error {
-				// Re-resolve under the inviter lock: concurrent invitees cannot all observe the
-				// same pre-cap count. The private context marker also makes the resolver
-				// unreachable from the legacy ClaimInvite wire method.
-				grantErr := s.inviteGranter.Grant(withSignupSettlement(ctx), scope, invite.Token)
-				if grantErr != nil {
-					if errors.Is(grantErr, ErrInviteNotEligible) {
-						return nil
-					}
-					return grantErr
-				}
-				// The inviter's counter is reported BEFORE rewarded_at is stamped, deliberately:
-				// a report failure then leaves the invite settleable, so the next SettleSignup
-				// heals it (the credit is dedup-keyed and replays as a no-op). Stamping first
-				// would make a failed report unrecoverable, and the only row reading this counter
-				// has a target of one — so a retry counting twice costs nothing, while losing the
-				// count would cost the achievement.
-				if err := s.achievements.RecordProgress(
-					ctx, inviterScope, nil, CounterInviteSettled, 1,
-				); err != nil {
-					return fmt.Errorf("record invite settled: %w", err)
-				}
-				return s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC())
-			})
+			settlementErr = s.settleInvite(ctx, scope, inviterScope, invite)
 		}
 	}
 
@@ -273,4 +250,28 @@ func (s *Service) SettleSignup(ctx context.Context, scope platform.UserScope) er
 	// admitted launch. Its account-scoped dedup key makes the steady-state call a no-op.
 	bonusErr := s.signupBonusGranter.Grant(ctx, scope)
 	return errors.Join(settlementErr, bonusErr)
+}
+
+// settleInvite credits one invite and stamps it rewarded. It holds no lock and no transaction of its
+// own: the inviter's reward cap is enforced inside the grant's ledger transaction, which locks the
+// inviter's rewards and recounts them, so concurrent invitees past the cap are refused there and
+// their invites stay settleable for the next attempt. The private context marker makes the resolver
+// unreachable from the legacy ClaimInvite wire method.
+func (s *Service) settleInvite(ctx context.Context, scope, inviterScope platform.UserScope, invite *SettleableInvite) error {
+	grantErr := s.inviteGranter.Grant(withSignupSettlement(ctx), scope, invite.Token)
+	if grantErr != nil {
+		if errors.Is(grantErr, ErrInviteNotEligible) {
+			return nil
+		}
+		return grantErr
+	}
+	// The inviter's counter is reported BEFORE rewarded_at is stamped, deliberately: a report
+	// failure then leaves the invite settleable, so the next SettleSignup heals it (the credit is
+	// dedup-keyed and replays as a no-op). Stamping first would make a failed report unrecoverable,
+	// and the only row reading this counter has a target of one — so a retry counting twice costs
+	// nothing, while losing the count would cost the achievement.
+	if err := s.achievements.RecordProgress(ctx, inviterScope, nil, CounterInviteSettled, 1); err != nil {
+		return fmt.Errorf("record invite settled: %w", err)
+	}
+	return s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC())
 }

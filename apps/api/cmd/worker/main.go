@@ -49,6 +49,10 @@ const (
 	workerDeepSeekHTTPTimeout  = 60 * time.Second
 	workerVoyageHTTPTimeout    = 30 * time.Second
 	workerDirectoryHTTPTimeout = 5 * time.Second
+	// The database budget is shared with the API and the other stack on one session pooler
+	// (DEPLOY.md).
+	workerDBMaxConns     = 3
+	dbConnLifetimeJitter = 10 * time.Minute
 )
 
 type withdrawalComposition struct {
@@ -96,6 +100,7 @@ func run(ctx context.Context, logger *log.Logger) error {
 	if err != nil {
 		return err
 	}
+	cfg.MaxConns, cfg.MaxConnLifetimeJitter = workerDBMaxConns, dbConnLifetimeJitter
 	pool, err := platformdb.Open(ctx, cfg)
 	if err != nil {
 		return err
@@ -177,6 +182,12 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	return runner, adapters.Mode, nil
 }
 
+// workerZoneReader binds account's published zone read to the ledger transaction, so a reward
+// credit never waits on a second pooled connection (ARCH-9).
+func workerZoneReader(tx dbgen.DBTX) twinkle.ZoneReader {
+	return account.NewZoneReader(accountpg.NewStore(tx))
+}
+
 // newAchievementSettler builds the drain leg this process runs. The worker pays through the SAME
 // published behavior the API does — twinkle's achievement earn and store's ownership grant — so a
 // drained claim and a pressed one credit through one code path and one pair of dedup keys.
@@ -188,7 +199,7 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 	// The independent recorder is ready before the store and the payout settler.
 	binding := &workerAchievementBinding{service: achievement.NewRecorder()}
 	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
-		Ledger:         twinklepg.NewStore(pool.PgxPool()),
+		Ledger:         twinklepg.NewStore(pool.PgxPool()).WithZoneBinding(workerZoneReader),
 		InviteResolver: twinkle.UnavailableInviteResolver{},
 		Signals:        workerNoSpendSignals{},
 		UserZone:       workerTwinkleZone{service: accountService},

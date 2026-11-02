@@ -115,11 +115,17 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 		return RecallResult{}, ErrRecallInputRequired
 	}
 	fingerprint := recallFingerprint(memoryID, rewriteText)
+	// Resolved once, outside both transactions: the zone is not a transactional fact, and a read
+	// through the pool inside a transaction would wait on a second connection.
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return RecallResult{}, err
+	}
 
 	var prepared EpisodicMemory
 	var result RecallResult
 	replayed := false
-	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
+	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
@@ -135,7 +141,7 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 			replayed = true
 			return decodeReceiptResponse(response, &result)
 		}
-		_, target, err := s.syncTarget(ctx, scope, tx, syncConsent)
+		_, target, err := s.syncTarget(ctx, scope, tx, today, syncConsent)
 		if err != nil {
 			return err
 		}
@@ -186,7 +192,7 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 		// 1. Sync the clock to today — recall lands on today's clock ([R1a]). The consent is
 		// server-enforced here: a sync that would advance the clock without consent is refused
 		// before any spend (A1/A5). universeTime below is the post-sync clock.
-		sync, err := s.syncToToday(ctx, scope, tx, syncConsent)
+		sync, err := s.syncToToday(ctx, scope, tx, today, syncConsent)
 		if err != nil {
 			return err
 		}
@@ -274,9 +280,13 @@ func (s *CommandService) RecallDiaryStars(ctx context.Context, scope platform.Us
 		return RecallDiaryStarsResult{}, ErrRecallInputRequired
 	}
 	fingerprint := diaryRecallFingerprint(diaryID)
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return RecallDiaryStarsResult{}, err
+	}
 
 	var result RecallDiaryStarsResult
-	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
+	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
 		// 0. Lock + receipt replay before any work, exactly as single recall (A2/A3).
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
@@ -292,7 +302,7 @@ func (s *CommandService) RecallDiaryStars(ctx context.Context, scope platform.Us
 		if replay {
 			return decodeReceiptResponse(response, &result)
 		}
-		sync, err := s.syncToToday(ctx, scope, tx, syncConsent)
+		sync, err := s.syncToToday(ctx, scope, tx, today, syncConsent)
 		if err != nil {
 			return err
 		}

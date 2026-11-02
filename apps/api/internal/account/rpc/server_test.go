@@ -157,14 +157,6 @@ func (s absentProfileStore) InSignupTx(ctx context.Context, fn func(account.Stor
 	return fn(s)
 }
 
-func (absentProfileStore) WithInviteSettlementLock(
-	_ context.Context,
-	_ platform.UserScope,
-	fn func() error,
-) error {
-	return fn()
-}
-
 func (absentProfileStore) UserTimezones(context.Context, []string) (map[string]string, error) {
 	return nil, nil
 }

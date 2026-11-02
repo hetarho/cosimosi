@@ -37,18 +37,50 @@ type LedgerStore interface {
 type LedgerRepo interface {
 	LedgerStore
 	GetBalanceRecords(ctx context.Context, userIDs []string) (map[string]BalanceRecord, error)
-	InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error
+	InLedgerTx(ctx context.Context, fn func(tx LedgerTx) error) error
 }
 
-// UserZoneReader is the SMALL reset boundary's authority ([G2][U7]): the scoped user's IANA zone
+// ZoneReader is the SMALL reset boundary's authority ([G2][U7]): the scoped user's IANA zone
 // NAME. A scalar deliberately — no account type and no *time.Location crosses the boundary, so this
 // context never imports account and never queries users (§2.2/§2.4); resolving the name to a
 // location is the service's job, and an unresolvable one reads as UTC ([G5]: a missing zone may
 // never deny a refill). The concrete adapter lives at the composition root over account's published
 // profile read.
-type UserZoneReader interface {
+type ZoneReader interface {
 	ZoneFor(ctx context.Context, scope platform.UserScope) (string, error)
+}
+
+// UserZoneReader is the pool-bound zone authority for reads outside a transaction, with the batch
+// form the admin list uses.
+type UserZoneReader interface {
+	ZoneReader
 	ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error)
+}
+
+// LedgerTx is the ledger store of one open transaction together with a zone read on that same
+// connection: an earn or spend inside a transaction already holds a pooled connection, so reading
+// the zone through the pool would wait on a second one and can exhaust the pool (ARCH-9).
+type LedgerTx interface {
+	LedgerStore
+	ZoneReader
+}
+
+// BindLedgerTx pairs a transaction-bound ledger store with the zone reader bound to the same
+// transaction.
+func BindLedgerTx(ledger LedgerStore, zones ZoneReader) LedgerTx {
+	return boundLedgerTx{LedgerStore: ledger, zones: zones}
+}
+
+type boundLedgerTx struct {
+	LedgerStore
+	zones ZoneReader
+}
+
+func (b boundLedgerTx) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	if b.zones == nil {
+		return "", ErrZoneReaderRequired
+	}
+	return b.zones.ZoneFor(ctx, scope)
 }
 
 // SpendSignalReader resolves the authoritative depth signals a quote prices
