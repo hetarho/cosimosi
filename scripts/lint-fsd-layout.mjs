@@ -169,7 +169,7 @@ function normalizedDigest(path) {
 }
 
 export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
-  const problems = findWorkspacePackageCycles(root)
+  const problems = [...findWorkspacePackageCycles(root), ...findSteigerConfigProblems(root)]
 
   for (const app of apps) {
     const srcAbs = join(root, app, 'src')
@@ -290,6 +290,46 @@ export function findWorkspacePackageCycles(root = repoRoot) {
     complete.add(name)
   }
   for (const name of graph.keys()) visit(name, [])
+  return problems
+}
+
+// Steiger's exemptions are a reviewed policy, not a list that outlives its slices: every block in
+// the web config cites the ARCH decision it applies, and every `files` path still matches a file.
+const STEIGER_CONFIG = 'apps/web/steiger.config.js'
+export function findSteigerConfigProblems(root = repoRoot) {
+  const configPath = join(root, STEIGER_CONFIG)
+  if (!existsSync(configPath)) return []
+  const text = readFileSync(configPath, 'utf8')
+  const source = ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true)
+  const problems = []
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.getText(source) === 'defineConfig' &&
+      ts.isArrayLiteralExpression(node.arguments[0])
+    ) {
+      node.arguments[0].elements.filter(ts.isObjectLiteralExpression).forEach((block, index) => {
+        if (!/\/\/[^\n]*\bARCH-\d+/.test(block.getFullText(source)))
+          problems.push(`${STEIGER_CONFIG} — block ${index + 1} cites no ARCH decision`)
+        const files = block.properties.find(
+          (property) =>
+            ts.isPropertyAssignment(property) && property.name.getText(source) === 'files',
+        )
+        if (!files || !ts.isArrayLiteralExpression(files.initializer)) return
+        for (const pattern of files.initializer.elements.filter(ts.isStringLiteralLike)) {
+          const dir = join(
+            root,
+            'apps/web',
+            pattern.text.replace(/^\.\//, '').replace(/\/\*\*$/, ''),
+          )
+          if (!existsSync(dir) || walkFiles(dir).length === 0)
+            problems.push(`${STEIGER_CONFIG} — ${pattern.text} matches no file`)
+        }
+      })
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
   return problems
 }
 

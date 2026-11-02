@@ -294,6 +294,41 @@ test('only tests import the flow drafts test entry', () => {
   assert.ok(problems[0].includes('widgets/recall-flow/ui/Seed.ts'))
 })
 
+test('steiger exemptions must cite ARCH and name slices that exist', () => {
+  const root = fixture()
+  put(root, 'apps/web/src/features/real/index.ts')
+  put(
+    root,
+    'apps/web/steiger.config.js',
+    `import { defineConfig } from 'steiger'
+export default defineConfig([
+  {
+    // ARCH-21: a real slice.
+    files: ['./src/features/real/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // ARCH-21: a slice that was deleted.
+    files: ['./src/features/gone/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // An exemption nobody justified.
+    files: ['./src/features/real/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+])
+`,
+  )
+  const problems = findFsdLayoutProblems(root).filter((problem) =>
+    problem.startsWith('apps/web/steiger.config.js'),
+  )
+  assert.deepEqual(problems, [
+    'apps/web/steiger.config.js — ./src/features/gone/** matches no file',
+    'apps/web/steiger.config.js — block 3 cites no ARCH decision',
+  ])
+})
+
 test('rejects a paid session or paid request in any app ui file', () => {
   const root = fixture()
   put(
