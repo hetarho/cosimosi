@@ -153,16 +153,22 @@ func (s *EncodingService) dedupCandidates(ctx context.Context, scope platform.Us
 	}
 	// The embedding kNN is a best-effort assist by design (a "narrow assist"):
 	// a throttled embedder or an over-long body must not take down the
-	// whole preview — candidates degrade to the name-match set.
+	// whole preview — candidates degrade to the name-match set. The degradation is
+	// logged, so a silently weaker dedup is visible.
 	var nearest []ExistingNeuron
-	if vectors, err := s.embedder.Embed(ctx, []string{body}); err == nil && len(vectors) == 1 {
-		nearest, _ = s.candidates.ListNearestNeuronCandidates(
+	vectors, err := s.embedder.Embed(ctx, []string{body})
+	if err == nil && len(vectors) == 1 {
+		nearest, err = s.candidates.ListNearestNeuronCandidates(
 			ctx,
 			scope,
 			vectors[0],
 			values.EncodeDedupSimilarityThreshold,
 			values.EncodeDedupTopK,
 		)
+	}
+	if err != nil {
+		nearest = nil
+		s.logger.Printf("encode dedup assist degraded to name matches request_id=%s: %v", platform.RequestIDFromContext(ctx), err)
 	}
 	seen := make(map[string]struct{}, len(inBody)+len(nearest))
 	merged := make([]ExistingNeuron, 0, len(inBody)+len(nearest))

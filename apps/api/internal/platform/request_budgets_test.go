@@ -103,16 +103,19 @@ func TestRegisteredProcedureTimeoutOverridesTheDefault(t *testing.T) {
 	))
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
+	start := time.Now()
 	_, err := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL).Ping(ctx, connect.NewRequest(&platformv1.PingRequest{}))
-	// The server-side deadline would answer deadline_exceeded within 10ms; outliving it to the
-	// client's own 100ms cancel proves the registered minute applied instead.
-	if connect.CodeOf(err) != connect.CodeCanceled && connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+	elapsed := time.Since(start)
+	// The default budget would answer within 10ms. Outliving it by an order of magnitude — until the
+	// client's own 200ms deadline, which Connect also propagates to the server — proves the
+	// registered minute applied instead.
+	if connect.CodeOf(err) != connect.CodeDeadlineExceeded && connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("error = %v", err)
 	}
-	if ctx.Err() == nil {
-		t.Fatalf("server answered %v before the client gave up; the default budget applied", err)
+	if elapsed < 100*time.Millisecond {
+		t.Fatalf("server answered %v after %v; the default budget applied", err, elapsed)
 	}
 }
 

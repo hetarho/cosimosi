@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -93,6 +94,7 @@ func (f *fakeExtractor) ReviseSplit(_ context.Context, body string, prior Extrac
 type fakeCandidateRepo struct {
 	inBody       []ExistingNeuron
 	nearest      []ExistingNeuron
+	nearestErr   error
 	gotBody      string
 	gotBodyLimit int32
 	gotVector    []float32
@@ -110,7 +112,7 @@ func (f *fakeCandidateRepo) ListNearestNeuronCandidates(_ context.Context, _ pla
 	f.gotVector = vector
 	f.gotMinSim = minSimilarity
 	f.gotLimit = limit
-	return f.nearest, nil
+	return f.nearest, f.nearestErr
 }
 
 type fakeUniverseReader struct {
@@ -785,5 +787,35 @@ func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	}
 	if _, err := fixture.encoding.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "  "); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("empty instruction err = %v, want ErrEncodeInputRequired", err)
+	}
+}
+
+// A failed nearest-neuron read degrades the candidates to name matches without failing the preview,
+// and is logged with the request id so the weaker dedup is visible.
+func TestDedupAssistFailureIsLoggedWithTheRequestID(t *testing.T) {
+	t.Parallel()
+	var logged strings.Builder
+	candidates := &fakeCandidateRepo{
+		inBody:     []ExistingNeuron{{ID: "n-body", Name: "harbor", Type: NeuronTypeSpatial}},
+		nearest:    []ExistingNeuron{{ID: "n-near", Name: "boats", Type: NeuronTypeSemantic}},
+		nearestErr: errors.New("nearest read failed"),
+	}
+	service, err := NewEncodingService(EncodingDeps{
+		Extractor: &fakeExtractor{}, Embedder: &fakeEmbedder{vectors: [][]float32{{1}}}, Candidates: candidates,
+		Logger: log.New(&logged, "", 0),
+	})
+	if err != nil {
+		t.Fatalf("NewEncodingService failed: %v", err)
+	}
+	ctx := platform.ContextWithRequestID(context.Background(), "req-dedup")
+	merged, err := service.dedupCandidates(ctx, testScope(t), "the harbor at dusk")
+	if err != nil {
+		t.Fatalf("dedupCandidates failed: %v", err)
+	}
+	if len(merged) != 1 || merged[0].ID != "n-body" {
+		t.Fatalf("candidates = %+v, want the name matches only", merged)
+	}
+	if !strings.Contains(logged.String(), "request_id=req-dedup") || !strings.Contains(logged.String(), "nearest read failed") {
+		t.Fatalf("log = %q, want the request id and the cause", logged.String())
 	}
 }

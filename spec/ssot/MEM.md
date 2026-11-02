@@ -1,6 +1,6 @@
 # MEM memory aggregate & persistence
 
-> r3 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
+> r4 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
 
 ## decisions
 - MEM-1 [o] `internal/memory` is the core context that owns the memory aggregate: its tables, its queries under `db/queries/memory/` and its only persistence adapter `internal/memory/pg` →=ARCH
@@ -65,7 +65,7 @@
   - no dynamics deletes a synapse row; weakening lowers `strength` only →=INV-1
 - MEM-9 [o] embeddings exist per neuron only, never per memory or diary: `embeddings.vector` is `vector(N)` with N = `ai.embedding_dim`, keyed by `neuron_id`
   - the migration literal must equal the values key; `memory/pg` converts `[]float32` ↔ the pgvector literal and checks the dimension before every write
-  - index `embeddings_vector_hnsw` (`hnsw`, `vector_cosine_ops`, default parameters) serves the neuron-dedup nearest-neighbour read →=ENC-10
+  - no approximate index: the neuron-dedup nearest-neighbour read is an exact scan of the user's own vectors over `embeddings_user_neuron_idx` →=ENC-10 ← measured 261103 on 100 users × 500 neurons sharing names: the planner never chose a global HNSW index for the per-user read (own-vector recall 100%, p50 4 ms), the index made 50,000 inserts take 57 s instead of 4 s, and a global approximate scan filtered to one user drops that user's neurons when other users share the name
   - a write is a per-neuron upsert: re-embedding replaces the vector; a worker write lands only for a live neuron at its expected revision →!MEM-18
 - MEM-10 [o] a `Diary` row is never updated: no `UPDATE diaries` statement and no `updated_at` column →=INV-2
   - representational change (current text, stage texts, seed) lands on `episodic_memories`, never on the diary
@@ -144,6 +144,7 @@
 
 ## chg
 
+- r4 261103 MEM-9✎ index `embeddings_vector_hnsw` serves the dedup read→no approximate index, exact per-user scan
 - r3 261103 MEM-13✎ purge scope "`universe_state` row"→"`universe_state` and `universe_revisions` rows" ; MEM-14✎ lock statement "lock only"→"lock and advance the universe revision" ; MEM-21+ per-user universe revision
 - r2 261102 MEM-16✎ memory-owned queue→shared infrastructure; MEM-17✎ memory-owned foreign producer policy and lease-token masking→owner schedulers/handlers and explicit registry retry policy, with unchanged persisted identities and fencing
 - r1 261102 initial

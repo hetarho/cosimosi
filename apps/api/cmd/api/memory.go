@@ -99,7 +99,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	encoding, err := memory.NewEncodingService(memory.EncodingDeps{Extractor: adapters.Extractor, Embedder: adapters.Embedder, Candidates: store})
+	encoding, err := memory.NewEncodingService(memory.EncodingDeps{Extractor: adapters.Extractor, Embedder: adapters.Embedder, Candidates: store, Logger: logger})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err

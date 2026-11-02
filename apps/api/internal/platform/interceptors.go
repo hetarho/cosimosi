@@ -17,6 +17,12 @@ type requestIDContextKey struct{}
 
 const maxRequestIDLength = 128
 
+// ContextWithRequestID carries a request id the way RequestIDInterceptor does, for work that starts
+// outside an RPC (and for tests).
+func ContextWithRequestID(ctx context.Context, requestID string) context.Context {
+	return context.WithValue(ctx, requestIDContextKey{}, requestID)
+}
+
 func RequestIDFromContext(ctx context.Context) string {
 	if requestID, ok := ctx.Value(requestIDContextKey{}).(string); ok {
 		return requestID
@@ -43,7 +49,7 @@ func RequestIDInterceptor() connect.UnaryInterceptorFunc {
 			if !ok {
 				requestID = NewID()
 			}
-			ctx = context.WithValue(ctx, requestIDContextKey{}, requestID)
+			ctx = ContextWithRequestID(ctx, requestID)
 
 			resp, err := next(ctx, req)
 			if resp != nil {
