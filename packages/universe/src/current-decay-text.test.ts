@@ -2,7 +2,12 @@ import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { describe, expect, it } from 'vitest'
 
-import { currentDecaySpans, currentDecayStage, currentDecayText } from './current-decay-text.ts'
+import {
+  currentDecaySpans,
+  currentDecayStage,
+  currentDecayText,
+  memoryReadings,
+} from './current-decay-text.ts'
 
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
@@ -23,6 +28,20 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
     ...overrides,
   }
 }
+
+describe('memoryReadings', () => {
+  it('reads the same stage as currentDecayStage and dims as the stage deepens', () => {
+    const fresh = memoryReadings(memory(), '2026-01-01')
+    const later = memoryReadings(memory(), '2027-06-01')
+
+    expect(fresh.stage).toBe(currentDecayStage(memory(), '2026-01-01'))
+    expect(later.stage).toBe(currentDecayStage(memory(), '2027-06-01'))
+    expect(later.brightness).toBeLessThan(fresh.brightness)
+    expect(memoryReadings(memory({ recallCount: 3 }), '2026-01-01').strength).toBeGreaterThan(
+      fresh.strength,
+    )
+  })
+})
 
 describe('currentDecayStage', () => {
   it('is 0 for a freshly-created star and deepens as universe-time passes', () => {

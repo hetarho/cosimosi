@@ -4,7 +4,8 @@ import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
 import { Button, Disclosure, Select, TextArea, TextField } from '@cosimosi/ui'
 
-import { MoodChip, MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
+import { MoodChip, MoodDot } from '../../../entities/emotion/index.ts'
+import { NeuronChips } from '../../../entities/neuron/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 // The editable view — only name / mood / source text / neuron membership; there is structurally no

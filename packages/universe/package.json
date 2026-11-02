@@ -9,6 +9,7 @@
     "./react": "./src/react.ts",
     "./react/flows": "./src/react/flows.ts",
     "./react/exports": "./src/react/use-export.ts",
+    "./i18n": "./src/i18n.ts",
     "./testing": "./src/testing.ts"
   },
   "scripts": {
@@ -24,6 +25,7 @@
     "@cosimosi/emotion": "workspace:*",
     "@cosimosi/errors": "workspace:*",
     "@cosimosi/force-sim": "workspace:*",
+    "@cosimosi/i18n": "workspace:*",
     "@cosimosi/memory": "workspace:*",
     "@cosimosi/memory-logic": "workspace:*",
     "@cosimosi/onboarding": "workspace:*",

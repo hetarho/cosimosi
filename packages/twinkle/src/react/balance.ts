@@ -4,7 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createGetBalanceQueryOptions, createTwinkleServiceQueryKey } from '@cosimosi/api-client'
-import { useTwinkleBalanceStore } from '../twinkle-balance-store.ts'
+import { balanceFigures, useTwinkleBalanceStore } from '../twinkle-balance-store.ts'
 
 // entities/twinkle api: the twinkle.v1 GetBalance read mapped into the shared two-kind
 // balance mirror (§3.4 proto→domain). The HUD reads the store; this hook owns the fetch
@@ -33,4 +33,12 @@ export function useInvalidateTwinkleBalance() {
       .invalidateQueries({ queryKey: createTwinkleServiceQueryKey() })
       .catch(() => undefined)
   }, [queryClient])
+}
+
+/** The balance reading's two figures, each with its placeholder, for every surface that shows them. */
+export function useTwinkleBalanceFigures(): { small: string; general: string } {
+  const small = useTwinkleBalanceStore((state) => state.small)
+  const general = useTwinkleBalanceStore((state) => state.general)
+  const loaded = useTwinkleBalanceStore((state) => state.loaded)
+  return balanceFigures({ small, general, loaded })
 }

@@ -1,8 +1,8 @@
 import { Dialog } from '@cosimosi/ui'
 
-import { ChargeTwinkleAction } from '../../../features/charge-twinkle/index.ts'
+import { ChargeTwinkleAction } from './ChargeTwinkleAction.tsx'
 import { EarnGuideSections } from '../../../features/earn-twinkle/index.ts'
-import { TwinkleBalanceDetail } from '../../../features/twinkle-balance-hud/index.ts'
+import { TwinkleBalance } from '../../../entities/twinkle/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 
 // widgets/stardust ui ([G2][G3]): everything 별가루 is, on one surface — what is held, how to come by
@@ -36,7 +36,7 @@ export function TwinkleDetailSheet({
       <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-3">
           <h3 className="text-sm text-text-muted">{m.twinkle_detail_held_label()}</h3>
-          <TwinkleBalanceDetail />
+          <TwinkleBalance form="list" />
         </section>
 
         <div className="border-t border-border pt-6">

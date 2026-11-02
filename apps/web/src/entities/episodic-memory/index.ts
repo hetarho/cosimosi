@@ -1,5 +1,8 @@
-export { MoodChip } from './ui/MoodChip.tsx'
-export { MoodDot } from './ui/MoodDot.tsx'
-export { NeuronChips } from './ui/NeuronChips.tsx'
 export { CurrentMemoryText } from './ui/CurrentMemoryText.tsx'
-export { MetaBlock } from './ui/MetaBlock.tsx'
+export { EpisodicMemoryMeta } from './ui/EpisodicMemoryMeta.tsx'
+export { ProvenanceList } from './ui/ProvenanceList.tsx'
+export {
+  ProposedMemoryList,
+  type ProposedMemoryListProps,
+  type ProposedMemoryView,
+} from './ui/ProposedMemoryList.tsx'

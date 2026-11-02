@@ -8,11 +8,8 @@ import {
   type SequenceRect,
 } from '@cosimosi/sequence'
 
-import { SequenceSpotlight } from '../../../features/highlight-next-control/index.ts'
-import {
-  CAPTION_BAND_HEIGHT,
-  SequenceCaption,
-} from '../../../features/show-sequence-caption/index.ts'
+import { SequenceSpotlight } from './SequenceSpotlight.tsx'
+import { CAPTION_BAND_HEIGHT, SequenceCaption } from './SequenceCaption.tsx'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
 import { useViewport } from '../lib/use-viewport.ts'
 

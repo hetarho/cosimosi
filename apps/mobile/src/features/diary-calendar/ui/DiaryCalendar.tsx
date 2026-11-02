@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
-import { moodColor } from '@cosimosi/emotion'
 import { Button, tokens } from '@cosimosi/ui'
 import { buildMonthGrid, stepMonth, type DayMark } from '@cosimosi/universe'
 
+import { MoodDot } from '../../../entities/emotion/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DiaryCalendarProps {
@@ -117,7 +117,7 @@ export function DiaryCalendar({
                   >
                     <Text style={styles.day}>{day}</Text>
                     {mark.mood ? (
-                      <View style={[styles.markSlot, { backgroundColor: moodColor(mark.mood) }]} />
+                      <MoodDot mood={mark.mood} size="sm" />
                     ) : (
                       // A written day holding no live mood: a border-token outline, never NEUTRAL's hue —
                       // asserting a colour here would claim a feeling the writer never recorded ([M3][X4]).

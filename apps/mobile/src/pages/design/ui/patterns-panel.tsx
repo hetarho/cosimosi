@@ -3,8 +3,11 @@ import { StyleSheet, Text, View } from 'react-native'
 import { moodColor, type Mood } from '@cosimosi/emotion'
 import { Badge, Button, Card, Skeleton, TextArea, tokens } from '@cosimosi/ui'
 
-import { MoodChip } from '../../../entities/episodic-memory/index.ts'
-import { ProposedMemoryList, type ProposedMemoryView } from '../../../features/split-diary/index.ts'
+import { MoodChip } from '../../../entities/emotion/index.ts'
+import {
+  ProposedMemoryList,
+  type ProposedMemoryView,
+} from '../../../entities/episodic-memory/index.ts'
 import { T } from '../lib/showcase-copy.ts'
 import { Section, Specimen, Stage } from './showcase-shell.tsx'
 

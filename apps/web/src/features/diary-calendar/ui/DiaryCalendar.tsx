@@ -1,8 +1,8 @@
 import { VALUES } from '@cosimosi/config'
-import { moodColor } from '@cosimosi/emotion'
 import { Button } from '@cosimosi/ui'
 import { buildMonthGrid, stepMonth, type DayMark } from '@cosimosi/universe'
 
+import { MoodDot } from '../../../entities/emotion/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DiaryCalendarProps {
@@ -116,11 +116,7 @@ export function DiaryCalendar({
                 >
                   {day}
                   {mark.mood ? (
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: moodColor(mark.mood) }}
-                    />
+                    <MoodDot mood={mark.mood} size="sm" />
                   ) : (
                     // A written day holding no live mood: a border-token outline, never NEUTRAL's hue —
                     // asserting a colour here would claim a feeling the writer never recorded ([M3][X4]).

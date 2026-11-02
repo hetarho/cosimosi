@@ -6,7 +6,7 @@ import type { WritingFlowStatus } from '@cosimosi/universe'
 import { useWritingFlowController } from '@cosimosi/universe/react/flows'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
-import { ProposedMemoryList } from '../../../features/split-diary/index.ts'
+import { ProposedMemoryList } from '../../../entities/episodic-memory/index.ts'
 import { ReviseControls } from '../../../features/revise-split/index.ts'
 import { LaunchButton } from '../../../features/launch-stars/index.ts'
 import { WriteDiaryFields } from '../../../features/write-diary/index.ts'
@@ -50,8 +50,8 @@ function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders
 // wrappers and one effect that reports the phase changes it was already making, and nothing else: the
 // sheet's behaviour is identical with or without a run, because the report takes one id and returns
 // nothing — there is no way from here to learn that a tour exists or to branch on one. A widget is a
-// composition site, not a product slice, so `features/write-diary`, `features/split-diary` and
-// `features/launch-stars` stay untouched beneath the wrappers ([I13]).
+// composition site, not a product slice, so `features/write-diary`, `features/launch-stars` and the
+// proposed-memory list stay untouched beneath the wrappers ([I13]).
 export function WritingFlowSheet() {
   const {
     status,

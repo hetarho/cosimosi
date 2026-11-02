@@ -32,3 +32,13 @@ export const useTwinkleBalanceStore = create<TwinkleBalanceState>()((set) => ({
 export function twinkleTotal(balance: TwinkleBalance): bigint {
   return balance.small + balance.general
 }
+
+// The two figures as a reader shows them: a placeholder rather than a false zero until the first
+// GetBalance settles ([G5]), so a resolved zero and a balance not yet read never look alike.
+export function balanceFigures(state: TwinkleBalance & { readonly loaded: boolean }): {
+  small: string
+  general: string
+} {
+  if (!state.loaded) return { small: '—', general: '—' }
+  return { small: String(state.small), general: String(state.general) }
+}

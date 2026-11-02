@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { useEarnRequestStore } from './earn-request-store.ts'
 import { resetTwinkleUserState } from './index.ts'
-import { twinkleTotal, useTwinkleBalanceStore } from './twinkle-balance-store.ts'
+import { balanceFigures, twinkleTotal, useTwinkleBalanceStore } from './twinkle-balance-store.ts'
 
 describe('twinkle balance mirror', () => {
   beforeEach(() => {
@@ -42,5 +42,16 @@ describe('twinkle balance mirror', () => {
 
     expect(useTwinkleBalanceStore.getState()).toMatchObject({ small: 0n, general: 0n })
     expect(useEarnRequestStore.getState().requested).toBe(false)
+  })
+
+  it('shows a placeholder for each figure until the first read, then the read itself', () => {
+    expect(balanceFigures({ small: 0n, general: 0n, loaded: false })).toEqual({
+      small: '—',
+      general: '—',
+    })
+    expect(balanceFigures({ small: 0n, general: 12n, loaded: true })).toEqual({
+      small: '0',
+      general: '12',
+    })
   })
 })

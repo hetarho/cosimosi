@@ -1,7 +1,10 @@
 import { moodColor, type Mood } from '@cosimosi/emotion'
 import { Badge, Button, Card, IconButton, Skeleton, TextArea, TextField } from '@cosimosi/ui'
 
-import { ProposedMemoryList, type ProposedMemoryView } from '../../../features/split-diary/index.ts'
+import {
+  ProposedMemoryList,
+  type ProposedMemoryView,
+} from '../../../entities/episodic-memory/index.ts'
 import { ChevronIcon, EllipsisIcon, StarIcon } from './showcase-icons.tsx'
 import { T } from '../lib/showcase-copy.ts'
 import { LitBackdrop, Section, Specimen, Stage } from './showcase-shell.tsx'

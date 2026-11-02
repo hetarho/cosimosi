@@ -1101,6 +1101,9 @@ importers:
       '@cosimosi/force-sim':
         specifier: workspace:*
         version: link:../force-sim
+      '@cosimosi/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@cosimosi/memory':
         specifier: workspace:*
         version: link:../memory

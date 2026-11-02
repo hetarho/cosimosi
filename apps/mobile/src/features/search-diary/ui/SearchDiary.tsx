@@ -15,6 +15,7 @@ import {
   tokens,
 } from '@cosimosi/ui'
 
+import { MoodDot } from '../../../entities/emotion/index.ts'
 import { diaryMemoryCountLabel, m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface SearchDiaryProps {
@@ -148,15 +149,7 @@ export function SearchDiary({
                   selected && { borderColor: moodColor(mood) },
                 ]}
               >
-                <View
-                  accessible={false}
-                  importantForAccessibility="no"
-                  style={[
-                    styles.dot,
-                    { backgroundColor: moodColor(mood) },
-                    !selected && styles.dotMuted,
-                  ]}
-                />
+                <MoodDot mood={mood} size="sm" muted={!selected} />
                 <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                   {moodLabel(mood)}
                 </Text>
@@ -190,8 +183,6 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing[1],
   },
   chipSelected: { backgroundColor: tokens.color['surface-raised'] },
-  dot: { height: 8, width: 8, borderRadius: tokens.radius.full },
-  dotMuted: { opacity: 0.4 },
   chipLabel: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs },
   chipLabelSelected: { color: tokens.color.text, fontWeight: '500' },
 })

@@ -37,14 +37,16 @@ export default defineConfig([
     // The writing-flow vertical: four single-action feature slices composed by one widget, and that
     // widget mounted by the universe page. A single reference is the FSD grain here — a feature is
     // one user action (§3.1), not a slice to merge away. The episodic-memory entity holds the
-    // proposal's shared display atoms (mood chip, neuron chips) that the preview and the editor both
-    // render; every consumer sits in a slice this block already exempts, so the rule counts no
-    // references for it — the same shape as the universe-clock entity below. Scoped to these slices
+    // proposal list and the star's readings that the preview, the editor and the star panel render,
+    // and the emotion and neuron entities hold the dots and chips those surfaces and the diary archive
+    // share; every consumer sits in a slice this config already exempts, so the rule counts no
+    // references for them — the same shape as the universe-clock entity below. Scoped to these slices
     // so a genuinely insignificant future slice still gets flagged.
     files: [
       './src/entities/episodic-memory/**',
+      './src/entities/emotion/**',
+      './src/entities/neuron/**',
       './src/features/write-diary/**',
-      './src/features/split-diary/**',
       './src/features/revise-split/**',
       './src/features/launch-stars/**',
       './src/widgets/writing-flow/**',
@@ -89,10 +91,11 @@ export default defineConfig([
   },
   {
     // The star-detail vertical composes passive memory facts and user actions in one panel
-    // widget, mounted by the universe page — the same one-action grain as writing-flow. Facts live in entities and actions live in features; later references arrive as the panel's
-    // hand-offs light up (the recall flow it opens, the gist view a gist selection routes to).
-    // Scoped so a genuinely insignificant future slice still gets flagged.
-    files: ['./src/features/star-provenance/**', './src/widgets/star-detail/**'],
+    // widget, mounted by the universe page — the same one-action grain as writing-flow. Facts live
+    // in entities and actions live in features; later references arrive as the panel's hand-offs
+    // light up (the recall flow it opens, the gist view a gist selection routes to). Scoped so a
+    // genuinely insignificant future slice still gets flagged.
+    files: ['./src/widgets/star-detail/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
@@ -108,20 +111,17 @@ export default defineConfig([
     },
   },
   {
-    // The stardust economy vertical: a persistent balance-HUD feature, the earn guide and the way to
-    // come by more, all composed by the stardust overlay widget (mounted by the universe page) into
-    // the one 별가루 panel that reading opens; a REUSABLE cost-display feature the recall-flow and
-    // star-detail (gist) widgets compose before a spend; and the ledger tab the /me page composes.
-    // Low/single references are the FSD grain here — a feature is one user surface (§3.1), not a
-    // slice to merge away. charge-twinkle is deliberately in the list while it performs nothing:
-    // acquiring 별가루 is its own act with its own future `api`, and folding a placeholder into the
-    // widget now would mean unpicking it the day the path exists. Scoped so a genuinely insignificant
+    // The stardust economy vertical: the earn guide composed by the stardust overlay widget (mounted
+    // by the universe page) into the one 별가루 panel its balance reading opens; a REUSABLE
+    // cost-display feature the recall-flow and star-detail (gist) widgets compose before a spend; and
+    // the ledger tab the /me page composes. The twinkle entity is the one balance reading the overlay,
+    // its panel and the ledger tab all show. Low/single references are the FSD grain here — a feature
+    // is one user surface (§3.1), not a slice to merge away. Scoped so a genuinely insignificant
     // future slice still gets flagged.
     files: [
-      './src/features/twinkle-balance-hud/**',
+      './src/entities/twinkle/**',
       './src/features/spend-cost-display/**',
       './src/features/earn-twinkle/**',
-      './src/features/charge-twinkle/**',
       './src/features/twinkle-ledger/**',
       './src/widgets/stardust/**',
     ],
@@ -217,13 +217,7 @@ export default defineConfig([
     // The two color actions are deliberately thin app-local UI over shared emotion logic:
     // the first-signin chooser is composed once by the profile gate, and the later editor once by
     // /me. Merging either into those hosts would erase the action boundary and web/mobile parity.
-    // The mood-color entity is their one web-only projection for the conic random swatch; both
-    // consumers sit in the exempt feature slices, so Steiger observes no external reference.
-    files: [
-      './src/entities/mood-color/**',
-      './src/features/choose-mood-colors/**',
-      './src/features/change-mood-colors/**',
-    ],
+    files: ['./src/features/choose-mood-colors/**', './src/features/change-mood-colors/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
@@ -258,17 +252,14 @@ export default defineConfig([
     },
   },
   {
-    // The sequence-engine chrome has three slices composed by one guide widget, which
-    // the host page mounts over whatever screen is beneath. Each is a distinct guarantee, not a
-    // component — the highlight is decorative and may render nothing, the caption is the channel that
-    // must never fail, and the skip is the one interactive element the chrome owns and the only slice
-    // a user can press. Merging them would hide exactly the distinction the engine is built around,
-    // and each has one host by design because a run has one chrome. Every model-level artifact is
-    // shared verbatim through @cosimosi/sequence; only these `ui` segments are per-app. Scoped so a
+    // The sequence-engine chrome: the guide widget, which the host page mounts over whatever screen
+    // is beneath, draws the highlight and the caption itself and composes the skip, the one control
+    // a user can press; the anchor is how a host registers the control a step points at. Each action
+    // has one host by design because a run has one chrome. Every model-level artifact is shared
+    // verbatim through @cosimosi/sequence; only these `ui` segments are per-app. Scoped so a
     // genuinely insignificant future slice still gets flagged.
     files: [
       './src/features/highlight-next-control/**',
-      './src/features/show-sequence-caption/**',
       './src/features/skip-sequence/**',
       './src/widgets/sequence-guide/**',
     ],

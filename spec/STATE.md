@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T21:53Z | T208 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:10Z | T209 |
 
 ## inbox
 - 261103 decided CLIENT-11 T207: with the signup-completion leg in account, CLIENT-11's "then auth's own leg" named a leg auth no longer has → CLIENT-11 r3: the app's product legs end with account's `signup-completion`, then `locale`; auth's registry is removed (alt: keep an empty auth registry | let auth import account) ← AUTH-24 keeps auth free of product packages, and the order stays what it was
@@ -92,7 +92,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T208 | Passive displays become entity UI | ARCH TWINK | T207 | todo |
 | T209 | Steiger exemptions match real slices and cite ARCH | ARCH | T208 | todo |
 | T210 | Package entries are named, pure and minimal | ARCH | T204 T207 | todo |
 | T211 | Manifests match imports and the workspace uses one TypeScript major | ARCH | T210 | todo |
@@ -108,11 +107,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T208 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T209 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T208 done
 - 261103 T207 done
 - 261103 T206 done
 - 261103 T205 done
@@ -132,4 +132,3 @@
 - 261103 T191 done
 - 261103 T190 done
 - 261103 T189 done
-- 261103 T188 done

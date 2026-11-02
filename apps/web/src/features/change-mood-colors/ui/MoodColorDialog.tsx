@@ -24,7 +24,7 @@ import {
   moodColorRiskText,
   moodLabel,
 } from '../../../shared/i18n/index.ts'
-import { RANDOM_MOOD_COLOR_SWATCH } from '../../../entities/mood-color/index.ts'
+import { RANDOM_MOOD_COLOR_SWATCH } from '../../../entities/emotion/index.ts'
 import { MoodColorPicker } from './MoodColorPicker.tsx'
 
 export interface MoodColorDialogProps {

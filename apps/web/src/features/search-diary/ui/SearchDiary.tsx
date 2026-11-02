@@ -17,6 +17,7 @@ import {
   Tooltip,
 } from '@cosimosi/ui'
 
+import { MoodDot } from '../../../entities/emotion/index.ts'
 import { m, moodLabel, diaryMemoryCountLabel } from '../../../shared/i18n/index.ts'
 
 export interface SearchDiaryProps {
@@ -199,13 +200,7 @@ export function SearchDiary({
                         : 'border-border text-text-muted hover:text-text'
                     }`}
                   >
-                    <span
-                      aria-hidden
-                      className={
-                        selected ? 'h-2 w-2 rounded-full' : 'h-2 w-2 rounded-full opacity-40'
-                      }
-                      style={{ backgroundColor: moodColor(mood) }}
-                    />
+                    <MoodDot mood={mood} size="sm" muted={!selected} />
                     {moodLabel(mood)}
                   </button>
                 </li>

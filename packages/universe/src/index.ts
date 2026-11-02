@@ -158,6 +158,8 @@ export {
   currentDecayStage,
   currentDecaySpans,
   currentDecayText,
+  memoryReadings,
+  type MemoryReadings,
   type DecayTextSpan,
 } from './current-decay-text.ts'
 export {

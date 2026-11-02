@@ -17,8 +17,8 @@ import {
 
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
-import { MetaBlock } from '../../../entities/episodic-memory/index.ts'
-import { ProvenanceList } from '../../../features/star-provenance/index.ts'
+import { ProvenanceList } from '../../../entities/episodic-memory/index.ts'
+import { StarMeta } from './StarMeta.tsx'
 import { useProvenanceQuery } from '@cosimosi/memory/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
@@ -67,7 +67,7 @@ export function DetailPanel({
   const episodicById = useEpisodicMemoryStore((state) => state.byId)
   const neuronById = useNeuronStore((state) => state.byId)
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
-  // Resolved at the WIDGET, not inside `features/star-meta`: the read features stay provider-free,
+  // Resolved at the WIDGET, not inside the entity readings: they stay provider-free,
   // and the panel's star wears exactly what the sky behind it wears ([P4]).
   const worn = useWornOrnaments()
 
@@ -125,7 +125,7 @@ export function DetailPanel({
           <>
             {phase === 'meta' && (
               <div className="flex flex-col gap-5">
-                <MetaBlock
+                <StarMeta
                   selection={selection}
                   universeTime={universeTime}
                   shape={worn.STAR_SHADER}

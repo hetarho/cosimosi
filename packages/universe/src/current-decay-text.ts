@@ -1,6 +1,7 @@
 import {
   REDACTION_TOKEN,
   decayStage,
+  effectiveBrightness,
   effectiveElapsedDays,
   effectiveStrength,
 } from '@cosimosi/memory-logic'
@@ -26,6 +27,34 @@ export function currentDecayStage(memory: EpisodicMemory, universeTime: string |
     memory.emotion.arousal,
     effectiveStrength(memory.baseStrength, memory.recallCount),
   )
+}
+
+export interface MemoryReadings {
+  readonly strength: number
+  readonly brightness: number
+  readonly stage: number
+}
+
+// memoryReadings is what a memory reads as right now: its strength, its brightness and its forgetting
+// stage. Brightness and stage share the same offset-inclusive elapsed clock, so the forgetting degree
+// a panel shows moves with the star's dimming ([F1][V2]); recall resets the anchors, so the next read
+// reads full and vivid again ([F5]). Every value comes from the shared read-time functions (A2).
+export function memoryReadings(
+  memory: EpisodicMemory,
+  universeTime: string | null,
+): MemoryReadings {
+  const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
+  const elapsed = effectiveElapsedDays(
+    universeTime,
+    memory.lastRecalledUniverseTime,
+    memory.createdUniverseTime,
+    memory.forgettingOffsetDays,
+  )
+  return {
+    strength,
+    brightness: effectiveBrightness(elapsed, memory.emotion.arousal, strength),
+    stage: decayStage(elapsed, memory.emotion.arousal, strength),
+  }
 }
 
 // currentDecayText is the current-memory text as it now reads: the whole text while vivid (stage 0),

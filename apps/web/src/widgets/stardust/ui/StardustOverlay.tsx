@@ -7,7 +7,7 @@ import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/t
 import { useErrorToast } from '@cosimosi/errors/react'
 import { WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '@cosimosi/universe'
-import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
+import { BalanceHud } from './BalanceHud.tsx'
 import { TwinkleDetailSheet } from './TwinkleDetailSheet.tsx'
 
 // widgets/stardust ([G2][G3]): the persistent economy overlay over the running canvas — it composes
@@ -67,7 +67,7 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
           is not the only reason to wonder how 별가루 gathers, and the mark that used to stand beside
           the numbers asking that question put a second, smaller thing in the corner to aim at — while
           the numbers themselves were what the reader was already looking at. */}
-      <TwinkleBalanceHud onOpenDetail={openDetail} />
+      <BalanceHud onOpenDetail={openDetail} />
       {earnShown ? (
         <WriteEarnFeedback
           amount={VALUES.twinkle.earnWrite}

@@ -21,3 +21,4 @@ export {
   moodLabel,
 } from '@cosimosi/emotion/i18n'
 export { diaryMemoryCountLabel } from '@cosimosi/memory/i18n'
+export { forgettingStageLabel, neuronTypeLabel, readingPercent } from '@cosimosi/universe/i18n'

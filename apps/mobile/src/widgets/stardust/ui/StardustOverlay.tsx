@@ -10,7 +10,7 @@ import { IconButton, NoticeIcon, tokens } from '@cosimosi/ui'
 import { useErrorToast } from '@cosimosi/errors/react'
 import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '@cosimosi/universe'
-import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
+import { BalanceHud } from './BalanceHud.tsx'
 import { m } from '../../../shared/i18n/index.ts'
 // widgets/stardust (RN fork, [G2][G3]): the persistent economy overlay over the running canvas — it
 // composes the balance HUD, the earn guide, and the write-earn feedback. It never remounts the
@@ -71,7 +71,7 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
           It stays put while the guide is open: an affordance that vanishes as its own surface opens
           takes the anchor out from under the thing that just appeared, and leaves a hole in the
           reading beside it that fills back in on close. */}
-      <TwinkleBalanceHud
+      <BalanceHud
         action={
           <IconButton
             variant="text"

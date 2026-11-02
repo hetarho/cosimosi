@@ -10,11 +10,8 @@ import {
 } from '@cosimosi/sequence'
 import { SHEET_BREAKPOINT } from '@cosimosi/ui'
 
-import { SequenceSpotlight } from '../../../features/highlight-next-control/index.ts'
-import {
-  CAPTION_BAND_HEIGHT_PX,
-  SequenceCaption,
-} from '../../../features/show-sequence-caption/index.ts'
+import { SequenceSpotlight } from './SequenceSpotlight.tsx'
+import { CAPTION_BAND_HEIGHT_PX, SequenceCaption } from './SequenceCaption.tsx'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
 import { useBottomSurface } from '../lib/use-bottom-surface.ts'
 import { useViewport } from '../lib/use-viewport.ts'
