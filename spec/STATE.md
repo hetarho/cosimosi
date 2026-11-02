@@ -14,6 +14,9 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## inbox
+- 261103 decided T165 T181 T221: which work the autopilot runs first → T181–T221 first by making T165 depend on T221 (alt: T165 first as the lowest runnable ID | park T165) ← the user asked to implement the post-refactor tasks; T165 carries live-evaluation gates and is not part of that request
+
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
@@ -75,7 +78,7 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T165 | Consolidate LLM access through OpenRouter | AI ADMIN | - | todo |
+| T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
 | T181 | Transactions never borrow a second pooled connection | ARCH | - | todo |
 | T182 | Instanced pick volumes follow their instances | ARCH | - | todo |
 | T183 | Memory graph foreign keys lead with the user | ARCH MEM | - | todo |
