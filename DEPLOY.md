@@ -83,7 +83,7 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
 ```
 
 - 스택 `.env` 키: `IMAGE_TAG`(배포가 갱신) · `DATABASE_URL`(**5432 세션 풀러 +
-  `?default_query_exec_mode=describe_exec`** — 상주 API는 트랜잭션 풀러(6543)에 붙이지 않는다. §7의
+  `?default_query_exec_mode=cache_describe`** — 상주 API는 트랜잭션 풀러(6543)에 붙이지 않는다. §7의
   함정 참고. 커넥션 예산은 조립 루트 상수로 정한다: API `apiDBMaxConns` 4 + 워커 `workerDBMaxConns` 3 =
   스택당 7, 두 스택이 같은 DB를 쓰므로 세션 풀러 클라이언트 14개. URL에 `pool_max_conns`를 적으면 그 값이
   우선한다) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
@@ -287,6 +287,9 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 
   세션 풀러(5432)는 클라이언트 연결에 서버 연결을 붙여두므로 두 왕복이 같은 연결에 남고,
   `describe_exec`의 타입 인식도 그대로다. 호스트·유저명은 6543과 동일하고 **포트만** 다르다.
+  그래서 세션 풀러에서는 `cache_describe`를 쓴다: 연결마다 문장 설명을 한 번 받아 캐시하고 이후 실행은
+  unnamed statement 한 왕복이라, 타입 인식은 같고 왕복은 절반이다. 서버 연결이 고정되니 캐시가 어긋날
+  일도 없다(트랜잭션 풀러로 옮기면 다시 성립하지 않는다).
   DDL/마이그레이션도 같은 5432(`DIRECT_DATABASE_URL`).
 
 - **Caddy는 한 마리** — 스택마다 띄우면 두 번째가 `Bind for 0.0.0.0:80 failed`.

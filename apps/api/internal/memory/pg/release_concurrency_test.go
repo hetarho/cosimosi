@@ -149,9 +149,9 @@ func waitForAdvisoryWaiter(t *testing.T, ctx context.Context, pool *platformdb.P
 			  AND mode = 'ExclusiveLock'
 			  AND NOT granted
 			  AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
-			  AND classid::bigint = (hashtext('universe_state')::bigint & 4294967295)
-			  AND objid::bigint = (hashtext($1)::bigint & 4294967295)
-			  AND objsubid = 2
+			  AND classid::bigint = ((hashtextextended('universe_state:' || $1::text, 0) >> 32) & 4294967295)
+			  AND objid::bigint = (hashtextextended('universe_state:' || $1::text, 0) & 4294967295)
+			  AND objsubid = 1
 		`, userID).Scan(&waiting); err != nil {
 			t.Fatalf("poll graph advisory waiter failed: %v", err)
 		}

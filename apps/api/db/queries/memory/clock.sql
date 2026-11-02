@@ -7,11 +7,13 @@ WHERE user_id = $1;
 -- keyed by user_id, held to commit. Unlike GetUniverseClockForUpdate it needs
 -- no existing row, so concurrent first-launches (the unborn-clock window, where
 -- the clock row cannot yet be locked) serialize here instead of racing the
--- monotonic guard against a stale nil clock ([I10]). Namespaced by a constant
--- class key so it never collides with another advisory-lock domain. Taken as
--- the first step of every graph-changing transaction, before release/clock/graph rows.
+-- monotonic guard against a stale nil clock ([I10]). One 64-bit key hashed from a
+-- 'universe_state:' namespace and the user id, so unrelated users practically never share
+-- the lock (a 32-bit hash of the id alone collided) and it never meets another advisory-lock
+-- domain. Taken as the first step of every graph-changing transaction, before
+-- release/clock/graph rows.
 -- name: LockGraphMutation :exec
-SELECT pg_advisory_xact_lock(hashtext('universe_state'), hashtext(sqlc.arg(user_id)));
+SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || sqlc.arg(user_id)::text, 0));
 
 -- The launch guard's read: FOR UPDATE holds the clock row for the rest of the
 -- launch transaction, so a concurrent launch cannot pass the monotonic guard
