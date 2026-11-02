@@ -5,7 +5,7 @@ import { applyMoodColors } from '@cosimosi/emotion/react'
 import { measureAnchor, type SequenceRect } from '@cosimosi/sequence'
 import { useSequenceRun } from '@cosimosi/sequence/react'
 import { VALUES } from '@cosimosi/config'
-import { resetUniverseUserState, type AdvanceInterval } from '@cosimosi/universe'
+import type { AdvanceInterval } from '@cosimosi/universe'
 
 import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
@@ -25,6 +25,7 @@ import {
   useDemoRun,
   type DemoTasteOrnament,
 } from '../model/use-demo-run.ts'
+import { useDemoSandbox } from '../model/use-demo-sandbox.ts'
 import { DemoDecorationSheet } from './DemoDecorationSheet.tsx'
 import { DemoEntryReader } from './DemoEntryReader.tsx'
 import { DemoHud } from './DemoHud.tsx'
@@ -272,24 +273,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     [],
   )
 
-  // Entering starts the tour EVERY time, and a second mount in the same tab replays the awaken:
-  // `useAwakenRegistryStore` is a module-level idempotency registry that survives remounts, so
-  // without this reset a replay would silently skip the birth choreography it exists to show.
-  // `startRun` and the entry are both stable for the life of the mount, so this runs once per entry.
-  useEffect(() => {
-    resetUniverseUserState()
-    startRun(entry.runId)
-  }, [entry.runId, startRun])
-
-  // Nothing carries over. Both stores are module-level and outlive the route, so a tasted palette
-  // would otherwise bleed into the landing page or the next session's first paint.
-  useEffect(
-    () => () => {
-      resetUniverseUserState()
-      resetMoodPalette()
-    },
-    [],
-  )
+  useDemoSandbox(entry.runId, startRun)
 
   const { state, scene, writingDiary } = demo
   const signal = run.signal

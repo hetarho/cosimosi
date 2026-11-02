@@ -1,3 +1,4 @@
+import { invalidateUserScope } from './completion-scope.ts'
 import { resetSignupUserState } from './signup-completion.ts'
 
 interface UserStateResetEntry {
@@ -25,12 +26,17 @@ export function extendUserStateResetInventory(platformLeg: PlatformUserStateRese
 // module-level store, while the toast queue is React context — reachable only from a component. Its
 // drop therefore lives in each app's client-cache provider, in the same `onScopeChange` callback that
 // calls this function. A reader looking for "everything cleared on scope change" needs both halves.
-/** Clears shared user state in one order, then delegates the final platform-specific leg. */
+/**
+ * Advances the user-scope generation, then clears shared user state in one order and delegates the
+ * final platform-specific leg. The generation moves first and here, not in a leg, so an in-flight
+ * completion is fenced whichever product legs an app registers.
+ */
 export function resetUserState(
   nextScopeKey: string,
   platformLeg: PlatformUserStateReset,
   productLegs: readonly PlatformUserStateReset[] = [],
 ): void {
+  invalidateUserScope()
   for (const entry of productLegs) entry.reset(nextScopeKey)
   for (const entry of USER_STATE_RESET_REGISTRY) entry.reset(nextScopeKey)
   platformLeg.reset(nextScopeKey)

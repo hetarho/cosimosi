@@ -15,9 +15,8 @@ import {
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { SESSION_SCOPED_TOAST_OWNERS, useToastQueue } from '@cosimosi/ui'
 
-import { resetWebLocaleUserState } from '../../shared/lib/locale-storage.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
-import { WEB_USER_STATE_RESETS } from './user-state-resets.ts'
+import { WEB_LOCALE_RESET, WEB_USER_STATE_RESETS } from './user-state-resets.ts'
 
 interface WebClientCacheProviderProps {
   children?: ReactNode
@@ -53,14 +52,7 @@ export function WebClientCacheProvider({
       // never on mount — so unlike an effect keyed on the signed-in identity, a development
       // double-effect cannot throw away notices the incoming session has just queued.
       for (const owner of SESSION_SCOPED_TOAST_OWNERS) dropByOwner(owner)
-      resetUserState(
-        nextScopeKey,
-        {
-          name: 'locale',
-          reset: resetWebLocaleUserState,
-        },
-        WEB_USER_STATE_RESETS,
-      )
+      resetUserState(nextScopeKey, WEB_LOCALE_RESET, WEB_USER_STATE_RESETS)
     },
     [dropByOwner, resolvedQueryClient],
   )

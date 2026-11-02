@@ -1,9 +1,3 @@
-import { resetMoodPalette } from '@cosimosi/emotion'
-import { resetOnboardingUserState } from '@cosimosi/onboarding'
-import { resetSequenceUserState } from '@cosimosi/sequence'
-import { resetStoreUserState } from '@cosimosi/store'
-import { resetTwinkleUserState } from '@cosimosi/twinkle'
-import { resetUniverseUserState } from '@cosimosi/universe'
 import {
   createContext,
   useCallback,
@@ -30,8 +24,8 @@ import { useObservabilityFacade } from '@cosimosi/observability/react'
 import { SESSION_SCOPED_TOAST_OWNERS, useToastQueue } from '@cosimosi/ui'
 
 import { resolveMobileApiBaseUrl } from '../../shared/config/index.ts'
-import { resetMobileLocaleUserState } from '../../shared/native/locale-storage.ts'
 import { useAuthFacade } from './auth-provider.tsx'
+import { MOBILE_LOCALE_RESET, MOBILE_USER_STATE_RESETS } from './user-state-resets.ts'
 
 interface MobileApiContextValue {
   transport: ApiTransport
@@ -75,14 +69,7 @@ export function MobileClientCacheProvider({
       // never on mount — so unlike an effect keyed on the signed-in identity, a development
       // double-effect cannot throw away notices the incoming session has just queued.
       for (const owner of SESSION_SCOPED_TOAST_OWNERS) dropByOwner(owner)
-      resetUserState(
-        nextScopeKey,
-        {
-          name: 'locale',
-          reset: resetMobileLocaleUserState,
-        },
-        MOBILE_USER_STATE_RESETS,
-      )
+      resetUserState(nextScopeKey, MOBILE_LOCALE_RESET, MOBILE_USER_STATE_RESETS)
     },
     [dropByOwner, resolvedQueryClient],
   )
@@ -122,13 +109,3 @@ export function useMobileApiTransport(): ApiTransport {
 export function useMobileApiBaseUrl(): string {
   return useMobileApiContext().baseUrl
 }
-
-// Product state belongs to app composition; auth owns only its own session state.
-export const MOBILE_USER_STATE_RESETS = [
-  { name: 'universe', reset: resetUniverseUserState },
-  { name: 'twinkle', reset: resetTwinkleUserState },
-  { name: 'palette', reset: resetMoodPalette },
-  { name: 'store', reset: resetStoreUserState },
-  { name: 'sequence', reset: resetSequenceUserState },
-  { name: 'onboarding', reset: resetOnboardingUserState },
-] as const

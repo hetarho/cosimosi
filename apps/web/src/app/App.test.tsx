@@ -15,9 +15,8 @@ import { defaultLocale, setActiveLocale } from '../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { createTestHarnessFakes } from '../pages/test/index.ts'
-import { resetWebLocaleUserState } from '../shared/lib/locale-storage.ts'
 import App from './App.tsx'
-import { WEB_USER_STATE_RESETS } from './providers/user-state-resets.ts'
+import { WEB_LOCALE_RESET, WEB_USER_STATE_RESETS } from './providers/user-state-resets.ts'
 import { createAppRouter } from './routes/index.ts'
 
 // The router resolves its route asynchronously, so SSR tests build a router at the
@@ -46,7 +45,7 @@ const emptyUniverse = {
 } as unknown as GetUniverseResponse
 
 function seedDefaultColors(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
-  resetUserState(userId, { name: 'locale', reset: resetWebLocaleUserState }, WEB_USER_STATE_RESETS)
+  resetUserState(userId, WEB_LOCALE_RESET, WEB_USER_STATE_RESETS)
   // That reset re-negotiates from the ambient environment (sign-out behavior), so on a host whose
   // navigator.language is not English the store lands on another locale — and `renderToString` runs
   // no effects, so the <App locale> prop cannot correct it. Pin the store to the locale this fixture

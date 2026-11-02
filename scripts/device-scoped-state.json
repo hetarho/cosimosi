@@ -1,0 +1,12 @@
+{
+  "$comment": "Package-level state that deliberately survives a scope change (CLIENT-11). scripts/user-state-registry.test.mjs fails on any package store or module let that no reset seam clears and that is not listed here; each entry says why it outlives an account. `path#*` lists every module value in a generated file.",
+  "state": {
+    "packages/auth/src/pending-invite.ts#activeHolder": "the invite a signed-out visitor arrived with must survive sign-in to be redeemed; the composition root swaps its storage, and redemption consumes it",
+    "packages/i18n/src/gen/runtime.js#*": "generated Paraglide runtime caches; the locale itself is re-negotiated by each app's locale leg",
+    "packages/onboarding/src/signal-channel.ts#nonce": "a monotonic id that tells two identical signals apart; it carries no account data",
+    "packages/ui/src/a11y/use-reduced-motion.ts#reducedMotionQuery": "the device's reduced-motion media query, cached once",
+    "packages/ui/src/theme/background-store.ts#state": "presentation-only background tone; no account data",
+    "packages/universe/src/proposal.ts#memoryIdSeq": "a monotonic React-key counter for proposal drafts; it carries no account data",
+    "packages/universe/src/universe-view-store.ts#useUniverseViewStore": "the pinned or free camera choice belongs to the device and survives account switches"
+  }
+}

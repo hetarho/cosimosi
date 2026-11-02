@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createCompletionScope } from '@cosimosi/auth/scope'
 
 import { useAdvanceAnnouncementStore } from './advance-announcement-store.ts'
 import { useAwakenRegistryStore } from './awaken-registry.ts'
@@ -103,5 +104,15 @@ describe('resetUniverseUserState', () => {
     })
     expect(useTimeSyncConsentStore.getState().pending).toBeNull()
     await expect(pendingConsent).resolves.toBe('cancel')
+  })
+
+  // The generation is resetUserState's, so a sandbox that clears these stores (the demo) leaves a
+  // signed-in visitor's in-flight completions able to land.
+  it('clears without advancing the user-scope generation', () => {
+    const current = createCompletionScope().capture()
+
+    resetUniverseUserState()
+
+    expect(current()).toBe(true)
   })
 })

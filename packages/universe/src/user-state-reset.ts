@@ -19,16 +19,16 @@ import { useSpotlightStore } from './spotlight-store.ts'
 import { useSynapseStore } from './synapse-store.ts'
 import { cancelPendingTimeSyncConsent } from './time-sync-consent-store.ts'
 import { useUniverseClockStore } from './universe-clock-store.ts'
-import { invalidateUserScope } from '@cosimosi/auth/scope'
 
 /**
  * Clears account-owned mirrors, drafts, and cross-route channels while the auth scope boundary
  * withholds consumers. Keep new account-scoped state registered here so account changes cannot carry
  * one person's data into another person's subtree. Device preferences are excluded deliberately;
  * `useUniverseViewStore` documents the view-mode choice it preserves across account switches.
+ * It only clears: `resetUserState` advances the scope generation before any leg, which is what lets
+ * the demo sandbox call this without fencing a signed-in visitor's in-flight completions.
  */
 export function resetUniverseUserState(): void {
-  invalidateUserScope()
   useEpisodicMemoryStore.getState().clear()
   useNeuronStore.getState().clear()
   useSynapseStore.getState().clear()

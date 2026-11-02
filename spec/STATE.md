@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T21:25Z | T205 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T21:33Z | T206 |
 
 ## inbox
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
@@ -90,7 +90,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T205 | The account-scope generation and reset inventory have one owner | ARCH CLIENT | T204 | todo |
 | T206 | Auth facade lifecycle lives in the session machine | ARCH AUTH | T205 | todo |
 | T207 | Account lifecycle moves into `@cosimosi/account` | ARCH AUTH ACCT ONB CLIENT | T206 | todo |
 | T208 | Passive displays become entity UI | ARCH TWINK | T207 | todo |
@@ -109,11 +108,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T205 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T206 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T205 done
 - 261103 T204 done
 - 261103 T203 done
 - 261103 T202 done
@@ -133,4 +133,3 @@
 - 261103 T188 done
 - 261103 T187 done
 - 261103 T186 done
-- 261103 T185 done

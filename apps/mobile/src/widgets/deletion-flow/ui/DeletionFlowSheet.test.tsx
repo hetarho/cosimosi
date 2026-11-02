@@ -5,6 +5,7 @@ import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { MemoryService } from '@cosimosi/api-client'
+import { resetUserState } from '@cosimosi/auth/user-state'
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 import {
   useDeletionTargetStore,
@@ -144,7 +145,9 @@ describe('DeletionFlowSheet — full delete (mobile)', () => {
     fireEvent.press(view.getByText(m.deletion_delete_confirm()))
     await waitFor(() => expect(started).toBe(true))
     view.unmount()
-    resetUniverseUserState()
+    resetUserState('account-b', { name: 'locale', reset: () => {} }, [
+      { name: 'universe', reset: resetUniverseUserState },
+    ])
     useDeletionTargetStore.getState().openFullDelete('account-b')
     await act(async () => {
       finish({
