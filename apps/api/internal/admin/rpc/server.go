@@ -15,11 +15,30 @@ import (
 
 var ErrServiceRequired = errors.New("admin rpc server requires the admin service")
 
-type Server struct {
-	service *admin.Service
+// UseCases is the admin behavior these handlers forward to; tests bind a stub in its place.
+type UseCases interface {
+	ClearProviderKey(ctx context.Context, actor string, provider string) (admin.ProviderKeyInfo, error)
+	GetAIConfig(ctx context.Context) ([]admin.CapabilitySelection, error)
+	GetAIUsage(ctx context.Context) (admin.AIUsage, error)
+	GetAdminSelf(ctx context.Context, userID string) (bool, error)
+	GetJobHealth(ctx context.Context) (admin.JobHealth, error)
+	GrantAdmin(ctx context.Context, actor string, userID string) (bool, error)
+	GrantStardust(ctx context.Context, actor string, userID string, amount int, note string, grantID string) (int, error)
+	ListAdmins(ctx context.Context) ([]admin.AdminEntry, error)
+	ListProviderKeys(ctx context.Context) ([]admin.ProviderKeyInfo, error)
+	ListProviderModels(ctx context.Context, capability admin.AICapability, provider string) ([]admin.ProviderModel, error)
+	ListTwinkleGrants(ctx context.Context, page int, pageSize int) (admin.GrantPage, error)
+	ListUsers(ctx context.Context, page int, pageSize int, query string) (admin.UserPage, error)
+	RevokeAdmin(ctx context.Context, actor string, userID string) (bool, error)
+	SetAIConfig(ctx context.Context, actor string, capability admin.AICapability, provider string, model string) (admin.CapabilitySelection, error)
+	SetProviderKey(ctx context.Context, actor string, provider string, apiKey string) (admin.ProviderKeyInfo, error)
 }
 
-func NewServer(service *admin.Service) (*Server, error) {
+type Server struct {
+	service UseCases
+}
+
+func NewServer(service UseCases) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
@@ -256,12 +275,10 @@ func (s *Server) GetJobHealth(ctx context.Context, _ *connect.Request[adminv1.Ge
 	}), nil
 }
 
+// callerID is the acting operator's id, refused like any unauthenticated call.
 func callerID(ctx context.Context) (string, error) {
-	userID, ok := platform.UserIDFromContext(ctx)
-	if !ok || userID == "" {
-		return "", apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, errors.New("unauthenticated"), nil)
-	}
-	return userID, nil
+	scope, err := platform.RequireUserScope(ctx)
+	return scope.UserID(), err
 }
 
 func providerKeyToProto(p admin.ProviderKeyInfo) *adminv1.ProviderKey {

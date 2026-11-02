@@ -16,11 +16,18 @@ import (
 
 var ErrServiceRequired = errors.New("store rpc server requires the store service")
 
-type Server struct {
-	service *store.Service
+// UseCases is the store behavior these handlers forward to; tests bind a stub in its place.
+type UseCases interface {
+	Catalog(ctx context.Context, scope platform.UserScope) ([]store.CatalogItem, error)
+	Decorate(ctx context.Context, scope platform.UserScope, requested store.Selection) ([]store.OrnamentSelection, int, error)
+	Selection(ctx context.Context, scope platform.UserScope) ([]store.OrnamentSelection, error)
 }
 
-func NewServer(service *store.Service) (*Server, error) {
+type Server struct {
+	service UseCases
+}
+
+func NewServer(service UseCases) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
@@ -31,7 +38,7 @@ func (s *Server) GetCatalog(
 	ctx context.Context,
 	_ *connect.Request[storev1.GetCatalogRequest],
 ) (*connect.Response[storev1.GetCatalogResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +64,7 @@ func (s *Server) GetSelection(
 	ctx context.Context,
 	_ *connect.Request[storev1.GetSelectionRequest],
 ) (*connect.Response[storev1.GetSelectionResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +89,7 @@ func (s *Server) Decorate(
 	ctx context.Context,
 	req *connect.Request[storev1.DecorateRequest],
 ) (*connect.Response[storev1.DecorateResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,10 @@ package platform
 import (
 	"context"
 	"errors"
+
+	"connectrpc.com/connect"
+
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 type UserScope struct {
@@ -26,4 +30,14 @@ func UserScopeFromContext(ctx context.Context) (UserScope, error) {
 
 func (s UserScope) UserID() string {
 	return s.userID
+}
+
+// RequireUserScope is the authenticated caller's scope for an RPC handler, or the canonical
+// Unauthenticated refusal when the auth interceptor attached none.
+func RequireUserScope(ctx context.Context) (UserScope, error) {
+	scope, err := UserScopeFromContext(ctx)
+	if err != nil {
+		return UserScope{}, apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, err, nil)
+	}
+	return scope, nil
 }

@@ -416,3 +416,17 @@ func TestSettleSkipsAnAchievementThatLeftTheCatalog(t *testing.T) {
 		t.Fatal("the payable row is missing from the read")
 	}
 }
+
+func TestClaimRefusesABlankAchievementID(t *testing.T) {
+	t.Parallel()
+	service := newClaimService(t, newFakeStore(), &fakeTwinkleGranter{}, &fakeOrnamentGranter{})
+	scope, err := platform.NewUserScope("blank-claim-user")
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	for _, id := range []string{"", "   "} {
+		if _, err := service.ClaimAchievement(context.Background(), scope, id); !errors.Is(err, ErrClaimInputRequired) {
+			t.Fatalf("ClaimAchievement(%q) err = %v, want ErrClaimInputRequired", id, err)
+		}
+	}
+}

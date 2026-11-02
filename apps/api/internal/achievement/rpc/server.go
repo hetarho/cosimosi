@@ -6,7 +6,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -16,18 +15,19 @@ import (
 	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
-var (
-	ErrServiceRequired = errors.New("achievement rpc server requires the achievement service")
-	// errClaimInputRequired is the handler's own refusal of a blank id — an argument fault, distinct
-	// from the domain's "this id is not published".
-	errClaimInputRequired = errors.New("claim requires an achievement id")
-)
+var ErrServiceRequired = errors.New("achievement rpc server requires the achievement service")
 
-type Server struct {
-	service *achievement.Service
+// UseCases is the achievement behavior these handlers forward to; tests bind a stub in its place.
+type UseCases interface {
+	ClaimAchievement(ctx context.Context, scope platform.UserScope, achievementID string) (achievement.ClaimResult, error)
+	ListAchievements(ctx context.Context, scope platform.UserScope) ([]achievement.Entry, error)
 }
 
-func NewServer(service *achievement.Service) (*Server, error) {
+type Server struct {
+	service UseCases
+}
+
+func NewServer(service UseCases) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
@@ -38,7 +38,7 @@ func (s *Server) ListAchievements(
 	ctx context.Context,
 	_ *connect.Request[achievementv1.ListAchievementsRequest],
 ) (*connect.Response[achievementv1.ListAchievementsResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,15 +70,11 @@ func (s *Server) ClaimAchievement(
 	ctx context.Context,
 	req *connect.Request[achievementv1.ClaimAchievementRequest],
 ) (*connect.Response[achievementv1.ClaimAchievementResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
-	achievementID := strings.TrimSpace(req.Msg.GetAchievementId())
-	if achievementID == "" {
-		return nil, apperr.Domain(connect.CodeInvalidArgument, reasonInputRequired, errClaimInputRequired, nil)
-	}
-	result, err := s.service.ClaimAchievement(ctx, scope, achievementID)
+	result, err := s.service.ClaimAchievement(ctx, scope, req.Msg.GetAchievementId())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -139,6 +135,8 @@ func domainError(err error) error {
 	switch {
 	case errors.Is(err, achievement.ErrScopeRequired):
 		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
+	case errors.Is(err, achievement.ErrClaimInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonInputRequired, err, nil)
 	case errors.Is(err, achievement.ErrUnknownAchievementID):
 		return apperr.Domain(connect.CodeNotFound, reasonNotFound, err, nil)
 	case errors.Is(err, achievement.ErrAchievementNotAchieved):

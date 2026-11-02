@@ -17,21 +17,46 @@ import (
 
 var ErrServiceRequired = errors.New("memory rpc server requires every memory service")
 
+// The handler groups' use cases; tests bind stubs in their place.
+type EncodingUseCases interface {
+	Encode(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time) (memory.ExtractResult, error)
+	ReviseSplit(ctx context.Context, scope platform.UserScope, body string, previous memory.ExtractResult, instruction string) (memory.ExtractResult, error)
+}
+
+type LaunchUseCases interface {
+	PersistEncoded(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time, confirmed []memory.ExtractedMemory) (memory.LaunchResult, error)
+}
+
+type ReleaseUseCases interface {
+	Release(ctx context.Context, scope platform.UserScope, diaryID string) (memory.ReleaseResult, error)
+	Restore(ctx context.Context, scope platform.UserScope, diaryID string) (memory.RestoreResult, error)
+	SuggestLetGo(ctx context.Context, scope platform.UserScope, memoryID string, words string) (memory.SuggestLetGoResult, error)
+	LetGo(ctx context.Context, scope platform.UserScope, memoryID string, approvedNeuronIDs []string) (memory.LetGoResult, error)
+}
+
+type ReadUseCases interface {
+	Universe(ctx context.Context, scope platform.UserScope) (memory.UniverseFacts, *time.Time, error)
+	SyncStatus(ctx context.Context, scope platform.UserScope) (memory.SyncStatus, error)
+	GetProvenance(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.ProvenanceEntry, error)
+	GetDiaries(ctx context.Context, scope platform.UserScope, query memory.DiaryQuery) (memory.DiaryPage, error)
+	GetDiaryCalendar(ctx context.Context, scope platform.UserScope, query memory.DiaryCalendarQuery) (memory.DiaryCalendarPage, error)
+}
+
 // Services are the memory capabilities the handlers forward to, one per use-case group.
 type Services struct {
-	Encoding *memory.EncodingService
-	Launches *memory.LaunchService
+	Encoding EncodingUseCases
+	Launches LaunchUseCases
 	Paid     PaidUseCases
-	Releases *memory.ReleaseService
-	Reads    *memory.ReadService
+	Releases ReleaseUseCases
+	Reads    ReadUseCases
 	Exports  ExportUseCase
 }
 
 type Server struct {
-	encoding *memory.EncodingService
-	launches *memory.LaunchService
-	releases *memory.ReleaseService
-	reads    *memory.ReadService
+	encoding EncodingUseCases
+	launches LaunchUseCases
+	releases ReleaseUseCases
+	reads    ReadUseCases
 	*ExportServer
 	*PaidServer
 }
@@ -59,7 +84,7 @@ func NewServer(services Services) (*Server, error) {
 }
 
 func (s *Server) SplitDiary(ctx context.Context, req *connect.Request[memoryv1.SplitDiaryRequest]) (*connect.Response[memoryv1.SplitDiaryResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +100,7 @@ func (s *Server) SplitDiary(ctx context.Context, req *connect.Request[memoryv1.S
 }
 
 func (s *Server) ReviseSplit(ctx context.Context, req *connect.Request[memoryv1.ReviseSplitRequest]) (*connect.Response[memoryv1.SplitDiaryResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +113,7 @@ func (s *Server) ReviseSplit(ctx context.Context, req *connect.Request[memoryv1.
 }
 
 func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.LaunchStarsRequest]) (*connect.Response[memoryv1.LaunchStarsResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +137,7 @@ func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.
 }
 
 func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.GetUniverseRequest]) (*connect.Response[memoryv1.GetUniverseResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +149,7 @@ func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.Ge
 }
 
 func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.SyncStatusRequest]) (*connect.Response[memoryv1.SyncStatusResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +164,7 @@ func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.Syn
 }
 
 func (s *Server) GetProvenance(ctx context.Context, req *connect.Request[memoryv1.GetProvenanceRequest]) (*connect.Response[memoryv1.GetProvenanceResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +176,7 @@ func (s *Server) GetProvenance(ctx context.Context, req *connect.Request[memoryv
 }
 
 func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.GetDiariesRequest]) (*connect.Response[memoryv1.GetDiariesResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +216,7 @@ func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.G
 }
 
 func (s *Server) GetDiaryCalendar(ctx context.Context, req *connect.Request[memoryv1.GetDiaryCalendarRequest]) (*connect.Response[memoryv1.GetDiaryCalendarResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +240,7 @@ func (s *Server) GetDiaryCalendar(ctx context.Context, req *connect.Request[memo
 }
 
 func (s *Server) Release(ctx context.Context, req *connect.Request[memoryv1.ReleaseRequest]) (*connect.Response[memoryv1.ReleaseResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +256,7 @@ func (s *Server) Release(ctx context.Context, req *connect.Request[memoryv1.Rele
 }
 
 func (s *Server) Restore(ctx context.Context, req *connect.Request[memoryv1.RestoreRequest]) (*connect.Response[memoryv1.RestoreResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +271,7 @@ func (s *Server) Restore(ctx context.Context, req *connect.Request[memoryv1.Rest
 }
 
 func (s *Server) SuggestLetGo(ctx context.Context, req *connect.Request[memoryv1.SuggestLetGoRequest]) (*connect.Response[memoryv1.SuggestLetGoResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +286,7 @@ func (s *Server) SuggestLetGo(ctx context.Context, req *connect.Request[memoryv1
 }
 
 func (s *Server) LetGo(ctx context.Context, req *connect.Request[memoryv1.LetGoRequest]) (*connect.Response[memoryv1.LetGoResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}

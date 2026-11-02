@@ -3,6 +3,7 @@ package achievement
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cosimosi/api/internal/platform"
 )
@@ -43,6 +44,10 @@ func (s *Service) ClaimAchievement(
 ) (ClaimResult, error) {
 	if scope.UserID() == "" {
 		return ClaimResult{}, ErrScopeRequired
+	}
+	achievementID = strings.TrimSpace(achievementID)
+	if achievementID == "" {
+		return ClaimResult{}, ErrClaimInputRequired
 	}
 	row, published := LookupAchievement(achievementID)
 	if !published {

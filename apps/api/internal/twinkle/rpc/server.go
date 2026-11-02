@@ -18,11 +18,18 @@ import (
 
 var ErrServiceRequired = errors.New("twinkle rpc server requires the twinkle service")
 
-type Server struct {
-	service *twinkle.Service
+// UseCases is the twinkle behavior these handlers forward to; tests bind a stub in its place.
+type UseCases interface {
+	GetBalance(ctx context.Context, scope platform.UserScope) (twinkle.Balance, error)
+	GetLedger(ctx context.Context, scope platform.UserScope, pageSize int, pageToken string) (twinkle.LedgerPage, error)
+	QuoteSpend(ctx context.Context, scope platform.UserScope, kind twinkle.SpendKind, targetID string) (twinkle.Quote, error)
 }
 
-func NewServer(service *twinkle.Service) (*Server, error) {
+type Server struct {
+	service UseCases
+}
+
+func NewServer(service UseCases) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
@@ -30,7 +37,7 @@ func NewServer(service *twinkle.Service) (*Server, error) {
 }
 
 func (s *Server) GetBalance(ctx context.Context, _ *connect.Request[twinklev1.GetBalanceRequest]) (*connect.Response[twinklev1.GetBalanceResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +53,7 @@ func (s *Server) GetBalance(ctx context.Context, _ *connect.Request[twinklev1.Ge
 }
 
 func (s *Server) QuoteSpend(ctx context.Context, req *connect.Request[twinklev1.QuoteSpendRequest]) (*connect.Response[twinklev1.QuoteSpendResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +75,7 @@ func (s *Server) QuoteSpend(ctx context.Context, req *connect.Request[twinklev1.
 // GetLedger returns one keyset page of the caller's history ([G7]). Thin: clamp nothing, decide
 // nothing — the use-case owns the page size cap, the cursor and the timezone the dates are resolved in.
 func (s *Server) GetLedger(ctx context.Context, req *connect.Request[twinklev1.GetLedgerRequest]) (*connect.Response[twinklev1.GetLedgerResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}

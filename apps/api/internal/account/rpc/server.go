@@ -17,11 +17,25 @@ import (
 
 var ErrServiceRequired = errors.New("account rpc server requires the account service")
 
-type Server struct {
-	service *account.Service
+// UseCases is the account behavior these handlers forward to; tests bind a stub in its place.
+type UseCases interface {
+	GetInviteLink(ctx context.Context, scope platform.UserScope) (account.InviteLink, error)
+	GetMoodColorStats(ctx context.Context, scope platform.UserScope, mood account.Mood) ([]account.MoodColorStat, error)
+	GetMoodColors(ctx context.Context, scope platform.UserScope) ([]account.MoodColor, error)
+	GetProfile(ctx context.Context, scope platform.UserScope) (*account.ProfileView, error)
+	ListAuthProviders(ctx context.Context, scope platform.UserScope) ([]account.AuthProvider, error)
+	RestoreAccount(ctx context.Context, scope platform.UserScope) (time.Time, error)
+	SetMoodColor(ctx context.Context, scope platform.UserScope, mood account.Mood, color account.Color) (account.MoodColor, error)
+	SignUp(ctx context.Context, scope platform.UserScope, input account.SignUpInput) (account.Profile, bool, error)
+	UpdateProfile(ctx context.Context, scope platform.UserScope, input account.UpdateProfileInput) (account.ProfileView, error)
+	Withdraw(ctx context.Context, scope platform.UserScope) (account.WithdrawalWindow, error)
 }
 
-func NewServer(service *account.Service) (*Server, error) {
+type Server struct {
+	service UseCases
+}
+
+func NewServer(service UseCases) (*Server, error) {
 	if service == nil {
 		return nil, ErrServiceRequired
 	}
@@ -29,7 +43,7 @@ func NewServer(service *account.Service) (*Server, error) {
 }
 
 func (s *Server) SignUp(ctx context.Context, req *connect.Request[accountv1.SignUpRequest]) (*connect.Response[accountv1.SignUpResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +65,7 @@ func (s *Server) SignUp(ctx context.Context, req *connect.Request[accountv1.Sign
 }
 
 func (s *Server) GetProfile(ctx context.Context, _ *connect.Request[accountv1.GetProfileRequest]) (*connect.Response[accountv1.GetProfileResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +81,7 @@ func (s *Server) GetProfile(ctx context.Context, _ *connect.Request[accountv1.Ge
 }
 
 func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[accountv1.UpdateProfileRequest]) (*connect.Response[accountv1.UpdateProfileResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +97,7 @@ func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[account
 }
 
 func (s *Server) ListAuthProviders(ctx context.Context, _ *connect.Request[accountv1.ListAuthProvidersRequest]) (*connect.Response[accountv1.ListAuthProvidersResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +118,7 @@ func (s *Server) ListAuthProviders(ctx context.Context, _ *connect.Request[accou
 }
 
 func (s *Server) GetInviteLink(ctx context.Context, _ *connect.Request[accountv1.GetInviteLinkRequest]) (*connect.Response[accountv1.GetInviteLinkResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +136,7 @@ func (s *Server) GetMoodColors(
 	ctx context.Context,
 	_ *connect.Request[accountv1.GetMoodColorsRequest],
 ) (*connect.Response[accountv1.GetMoodColorsResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +157,7 @@ func (s *Server) SetMoodColor(
 	ctx context.Context,
 	req *connect.Request[accountv1.SetMoodColorRequest],
 ) (*connect.Response[accountv1.MoodColor], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +177,7 @@ func (s *Server) GetMoodColorStats(
 	ctx context.Context,
 	req *connect.Request[accountv1.GetMoodColorStatsRequest],
 ) (*connect.Response[accountv1.GetMoodColorStatsResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +202,7 @@ func (s *Server) Withdraw(
 	ctx context.Context,
 	_ *connect.Request[accountv1.WithdrawRequest],
 ) (*connect.Response[accountv1.WithdrawResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +220,7 @@ func (s *Server) RestoreAccount(
 	ctx context.Context,
 	_ *connect.Request[accountv1.RestoreAccountRequest],
 ) (*connect.Response[accountv1.RestoreAccountResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}

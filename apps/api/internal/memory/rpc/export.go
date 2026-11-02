@@ -28,7 +28,7 @@ func NewExportServer(exporter ExportUseCase) (*ExportServer, error) {
 }
 
 func (s *ExportServer) Export(ctx context.Context, req *connect.Request[memoryv1.ExportRequest]) (*connect.Response[memoryv1.ExportResponse], error) {
-	scope, err := userScope(ctx)
+	scope, err := platform.RequireUserScope(ctx)
 	if err != nil {
 		return nil, err
 	}

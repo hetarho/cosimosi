@@ -25,6 +25,9 @@ var (
 	// sentinel, because both are the same fact and two identical messages would be indistinguishable
 	// in a log.
 	ErrUnknownAchievementID = errors.New("achievement does not publish this achievement id")
+	// ErrClaimInputRequired refuses a claim with a blank id — an argument fault, distinct from "this
+	// id is not published".
+	ErrClaimInputRequired = errors.New("claim requires an achievement id")
 	// ErrGrantersRequired is a wiring fault — the service was built without the reward legs a claim
 	// pays through. Unconditional, in every environment: an achievement that cannot pay is worse
 	// than one that cannot be claimed.
