@@ -133,16 +133,8 @@ func (s *PaidActionService) ViewSemantic(ctx context.Context, scope platform.Use
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
-		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
-		if err != nil {
+		if replayed, err := replayIfReceipted(ctx, scope, tx, PaidActionViewSemantic, operationID, fingerprint, &result); err != nil || replayed {
 			return err
-		}
-		response, replay, err := replayReceipt(receipt, found, PaidActionViewSemantic, fingerprint)
-		if err != nil {
-			return err
-		}
-		if replay {
-			return decodeReceiptResponse(response, &result)
 		}
 		gist, err := tx.EpisodicMemoryGist(ctx, scope, memoryID)
 		if err != nil {

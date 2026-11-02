@@ -18,6 +18,7 @@ type fakeLaunchStore struct {
 	// economy receives the transaction's spend, earn and counter calls (EconomyTx); the fakes it
 	// forwards to record what each path charged, granted and counted.
 	economy        *fakeEconomy
+	lockCalls      int
 	inRecallTx     bool
 	ConsolidateTx  // Unused when tests bind their explicit fakeProgression.
 	clock          *time.Time
@@ -159,6 +160,7 @@ func (f *fakeLaunchStore) LockGraphMutation(_ context.Context, scope platform.Us
 	if scope.UserID() == "" {
 		return errors.New("scope missing")
 	}
+	f.lockCalls++
 	return f.fail("LockGraphMutation")
 }
 

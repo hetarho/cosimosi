@@ -126,3 +126,20 @@ func (s *PaidActionService) writeReceipt(ctx context.Context, scope platform.Use
 func stringPtr(value string) *string {
 	return &value
 }
+
+// replayIfReceipted is the paid actions' replay-before-anything step (A2/A3): a receipt with the same
+// operation id and canonical input replays its stored response into out; a different input under the
+// same id is a conflict. It runs right after the graph lock and BEFORE the consent gate, so a
+// committed action's retry never spuriously demands consent and concurrent duplicates queue on the
+// lock and replay the winner. It reports whether out now holds the replayed response.
+func replayIfReceipted(ctx context.Context, scope platform.UserScope, tx PaidActionReceiptStore, kind PaidActionKind, operationID, fingerprint string, out any) (bool, error) {
+	receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
+	if err != nil {
+		return false, err
+	}
+	response, replay, err := replayReceipt(receipt, found, kind, fingerprint)
+	if err != nil || !replay {
+		return false, err
+	}
+	return true, decodeReceiptResponse(response, out)
+}

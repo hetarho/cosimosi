@@ -594,3 +594,24 @@ func TestRecallCancellationAfterComparisonAppliesNoEffects(t *testing.T) {
 		t.Fatalf("cancellation: %v", err)
 	}
 }
+
+// Each recall transaction takes the graph lock exactly once: the use case owns it, and the sync it
+// composes assumes it rather than locking again.
+func TestRecallCommitLocksGraphOnce(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	previous := recallTestClock()
+	fixture.launches.clock = &previous
+	fixture.seedRecallable("m1",
+		EpisodicMemory{CurrentText: "original account", Seed: seededSeed(7), RecallCount: 2, BaseStrength: 0.5},
+		nil, nil,
+	)
+
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-lock", "m1", "original account, reworded", true); err != nil {
+		t.Fatalf("Recall failed: %v", err)
+	}
+	if fixture.launches.recallTxCount != 2 || fixture.launches.lockCalls != 2 {
+		t.Fatalf("recall transactions = %d, graph locks = %d; want one lock in each of the two transactions",
+			fixture.launches.recallTxCount, fixture.launches.lockCalls)
+	}
+}

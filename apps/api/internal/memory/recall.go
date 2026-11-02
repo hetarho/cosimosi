@@ -115,17 +115,9 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
-		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
-		if err != nil {
+		var err error
+		if replayed, err = replayIfReceipted(ctx, scope, tx, PaidActionRecall, operationID, fingerprint, &result); err != nil || replayed {
 			return err
-		}
-		response, replay, err := replayReceipt(receipt, found, PaidActionRecall, fingerprint)
-		if err != nil {
-			return err
-		}
-		if replay {
-			replayed = true
-			return decodeReceiptResponse(response, &result)
 		}
 		_, target, err := s.syncTarget(ctx, scope, tx, today, syncConsent)
 		if err != nil {
@@ -164,16 +156,8 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
-		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
-		if err != nil {
+		if replayed, err := replayIfReceipted(ctx, scope, tx, PaidActionRecall, operationID, fingerprint, &result); err != nil || replayed {
 			return err
-		}
-		response, replay, err := replayReceipt(receipt, found, PaidActionRecall, fingerprint)
-		if err != nil {
-			return err
-		}
-		if replay {
-			return decodeReceiptResponse(response, &result)
 		}
 		// 1. Sync the clock to today — recall lands on today's clock ([R1a]). The consent is
 		// server-enforced here: a sync that would advance the clock without consent is refused
@@ -277,16 +261,8 @@ func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
-		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
-		if err != nil {
+		if replayed, err := replayIfReceipted(ctx, scope, tx, PaidActionDiaryRecall, operationID, fingerprint, &result); err != nil || replayed {
 			return err
-		}
-		response, replay, err := replayReceipt(receipt, found, PaidActionDiaryRecall, fingerprint)
-		if err != nil {
-			return err
-		}
-		if replay {
-			return decodeReceiptResponse(response, &result)
 		}
 		sync, err := s.syncToToday(ctx, scope, tx, today, syncConsent)
 		if err != nil {

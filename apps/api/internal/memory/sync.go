@@ -32,6 +32,9 @@ func (s *LaunchService) SyncToToday(ctx context.Context, scope platform.UserScop
 	}
 	var result SyncResult
 	err = s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		// The standalone sync IS the explicit consent action, so it advances unconditionally.
 		r, err := s.syncToToday(ctx, scope, tx, today, true)
 		if err != nil {
@@ -99,35 +102,20 @@ func (s *graphClock) syncToToday(ctx context.Context, scope platform.UserScope, 
 	if err != nil {
 		return SyncResult{}, err
 	}
-	var current *time.Time
-	if err := s.advanceAndProgress(ctx, scope, tx, guard, target, &current); err != nil {
+	current, err := s.advanceAndProgress(ctx, scope, tx, guard, target)
+	if err != nil {
 		return SyncResult{}, err
 	}
-	return SyncResult{Previous: guard, Current: *current}, nil
+	return SyncResult{Previous: guard, Current: current}, nil
 }
 
 // syncTarget validates consent and reads the exact advance target without mutating the clock.
-// today is the caller's user-zone date, resolved before its transaction opened.
+// today is the caller's user-zone date, resolved before its transaction opened. The caller already
+// holds the graph lock, which serializes this read against concurrent launches ([I10]).
 func (s *graphClock) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, today time.Time, consent bool) (*time.Time, time.Time, error) {
-	// Serialize against concurrent launches for the whole transaction,
-	// birth window included, exactly as the launch path does ([I10]).
-	if err := tx.LockGraphMutation(ctx, scope); err != nil {
-		return nil, time.Time{}, err
-	}
-	clock, err := tx.UniverseClockForUpdate(ctx, scope)
+	guard, err := effectiveClock(ctx, scope, tx)
 	if err != nil {
 		return nil, time.Time{}, err
-	}
-	// Mirror the launch guard's unborn-clock fallback: a pre-clock universe
-	// shows the latest launched memory as its universe time, so a sync must
-	// advance from that baseline — never birth the clock at today when today
-	// is before it, which would visibly rewind the observable present.
-	guard := clock
-	if guard == nil {
-		guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
-		if err != nil {
-			return nil, time.Time{}, err
-		}
 	}
 	// Server-enforced consent gate ([R1a], A1/A5): if advancing to today would move the clock
 	// forward, the caller must have consented — decided from the SERVER clock, never a client
@@ -139,22 +127,31 @@ func (s *graphClock) syncTarget(ctx context.Context, scope platform.UserScope, t
 	return guard, AdvanceClock(timeOrZero(guard), today), nil
 }
 
-// advanceAndProgress moves the clock to target and fires the progression hook
-// only when the clock actually moved: a held clock (same-day sync, equal-date
-// launch) crosses no interval, so no advance-triggered work may be implied —
-// otherwise every idempotent re-sync would re-fire the interval's handlers.
-func (s *graphClock) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
+// advanceAndProgress moves the clock to target and returns where it landed, firing the progression
+// hook only when the clock actually moved: a held clock (same-day sync, equal-date launch) crosses
+// no interval, so no advance-triggered work may be implied — otherwise every idempotent re-sync
+// would re-fire the interval's handlers.
+func (s *graphClock) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time) (time.Time, error) {
 	advanced, err := tx.AdvanceUniverseClock(ctx, scope, target)
 	if err != nil {
-		return err
-	}
-	if out != nil {
-		*out = &advanced
+		return time.Time{}, err
 	}
 	if from != nil && !advanced.After(*from) {
-		return nil
+		return advanced, nil
 	}
-	return s.progression.OnAdvance(ctx, scope, tx, from, advanced)
+	return advanced, s.progression.OnAdvance(ctx, scope, tx, from, advanced)
+}
+
+// effectiveClock is the clock a graph transaction advances from: the stored clock held FOR UPDATE,
+// or, while its row is unborn (a universe launched before the clock existed), the newest launched
+// memory's universe time — the present the universe read shows — so the clock is never born before
+// it and nothing visibly rewinds. The caller holds the graph lock, which covers the unborn row.
+func effectiveClock(ctx context.Context, scope platform.UserScope, tx UniverseClockStore) (*time.Time, error) {
+	clock, err := tx.UniverseClockForUpdate(ctx, scope)
+	if err != nil || clock != nil {
+		return clock, err
+	}
+	return tx.LatestLaunchedUniverseTime(ctx, scope)
 }
 
 func timeOrZero(value *time.Time) time.Time {

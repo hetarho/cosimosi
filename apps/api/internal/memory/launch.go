@@ -74,20 +74,9 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 		// With the birth window serialized, the guard read reflects any
 		// concurrent launch that already committed: FOR UPDATE holds the row
 		// once it exists, and LockGraphMutation covers the pre-row window.
-		clock, err := tx.UniverseClockForUpdate(ctx, scope)
+		guard, err := effectiveClock(ctx, scope, tx)
 		if err != nil {
 			return err
-		}
-		// While the clock row is unborn (a universe launched before the clock
-		// existed), guard against the newest launched memory instead — the
-		// same fallback the universe read uses — so the clock can never be
-		// born at a date before the universe's present.
-		guard := clock
-		if guard == nil {
-			guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
-			if err != nil {
-				return err
-			}
 		}
 		diary, err := tx.InsertDiary(ctx, scope, Diary{
 			ID:        s.newID(),
@@ -195,7 +184,12 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 		// computes the target (AdvanceClock; the upsert's GREATEST is the SQL
 		// mirror), the clock moves to the diary date, and the progression hook
 		// sees the crossed interval — all atomic with the launch rows.
-		return s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), diaryDate), &result.UniverseTime)
+		advanced, err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), diaryDate))
+		if err != nil {
+			return err
+		}
+		result.UniverseTime = &advanced
+		return nil
 	})
 	if err != nil {
 		return LaunchResult{}, err
