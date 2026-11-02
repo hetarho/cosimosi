@@ -42,9 +42,9 @@ type cleanupQueue[J Job] struct {
 	nextCleanupAt time.Time
 }
 
-func (q *cleanupQueue[J]) ClaimDue(ctx context.Context, now time.Time) (J, error) {
+func (q *cleanupQueue[J]) ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (J, error) {
 	q.cleanupTerminalJobs(ctx, now)
-	return q.Queue.ClaimDue(ctx, now)
+	return q.Queue.ClaimDue(ctx, now, lease)
 }
 
 func (q *cleanupQueue[J]) cleanupTerminalJobs(ctx context.Context, now time.Time) {

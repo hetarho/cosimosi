@@ -16,16 +16,17 @@ import (
 const requestIDHeader = "X-Request-Id"
 
 type handlerConfig struct {
-	budgets          RequestBudgets
-	logger           *log.Logger
-	corsOrigins      []string
-	authVerifier     AuthTokenVerifier
-	publicProcedures []string
-	accountStatus    AccountStatusReader
-	withdrawnExempt  []string
-	platformService  platformv1connect.PlatformServiceHandler
-	observability    observability.Reporter
-	services         []RPCServiceBuilder
+	budgets           RequestBudgets
+	procedureTimeouts map[string]time.Duration
+	logger            *log.Logger
+	corsOrigins       []string
+	authVerifier      AuthTokenVerifier
+	publicProcedures  []string
+	accountStatus     AccountStatusReader
+	withdrawnExempt   []string
+	platformService   platformv1connect.PlatformServiceHandler
+	observability     observability.Reporter
+	services          []RPCServiceBuilder
 }
 
 // RPCServiceBuilder mounts one Connect service: it receives the shared platform
@@ -79,21 +80,24 @@ func WithObservabilityReporter(reporter observability.Reporter) HandlerOption {
 
 // WithRPCService registers an additional Connect service (built at the
 // composition root) on the platform mux, behind the same interceptor chain the
-// platform service uses.
-func WithRPCService(build RPCServiceBuilder) HandlerOption {
+// platform service uses. The owning context passes the deadlines its own slow
+// procedures need; every other procedure gets the default budget.
+func WithRPCService(build RPCServiceBuilder, timeouts ...ProcedureTimeout) HandlerOption {
 	return func(cfg *handlerConfig) {
 		cfg.services = append(cfg.services, build)
+		registerProcedureTimeouts(cfg.procedureTimeouts, timeouts)
 	}
 }
 
 func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	cfg := handlerConfig{
-		budgets:          DefaultRequestBudgets(),
-		logger:           logger,
-		corsOrigins:      defaultCORSOrigins(),
-		publicProcedures: []string{platformv1connect.PlatformServicePingProcedure},
-		platformService:  PlatformService{},
-		observability:    observability.NoopReporter{},
+		budgets:           DefaultRequestBudgets(),
+		procedureTimeouts: map[string]time.Duration{},
+		logger:            logger,
+		corsOrigins:       defaultCORSOrigins(),
+		publicProcedures:  []string{platformv1connect.PlatformServicePingProcedure},
+		platformService:   PlatformService{},
+		observability:     observability.NoopReporter{},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -115,7 +119,7 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 		PanicRecoveryInterceptor(cfg.logger, cfg.observability),
 		RequestIDInterceptor(),
 		StructuredErrorInterceptor(cfg.observability),
-		RequestBudgetInterceptor(cfg.budgets),
+		RequestBudgetInterceptor(cfg.budgets, cfg.procedureTimeouts),
 		LoggingInterceptor(cfg.logger),
 		AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
 	}
@@ -144,7 +148,7 @@ func NewHTTPServer(addr string, logger *log.Logger, opts ...HandlerOption) *http
 		Protocols:         protocols,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      4 * time.Minute,
+		WriteTimeout:      serverWriteTimeout,
 		IdleTimeout:       2 * time.Minute,
 	}
 }

@@ -217,7 +217,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	logger.Print("achievement service registered (catalog + progress read)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
-	})
+	}, memoryrpc.ProcedureTimeouts()...)
 	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption, storeOption, achievementOption}
 	options = append(options, accountOptions...)
 	return options, pool.Close, nil

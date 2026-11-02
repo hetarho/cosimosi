@@ -186,7 +186,7 @@ func TestAdminAndAccountAdaptersTranslateTheSamePlatformDirectory(t *testing.T) 
 	if err != nil || email != "user@example.com" {
 		t.Fatalf("account adapter email = %q, %v", email, err)
 	}
-	accounts, _, err := adminAdapter.ListUsers(context.Background(), 0, 10, "")
+	accounts, err := adminAdapter.ListUserPage(context.Background(), 0, 10)
 	if err != nil || len(accounts) != 1 || accounts[0].SignupAt != createdAt {
 		t.Fatalf("admin adapter accounts = %#v, %v", accounts, err)
 	}

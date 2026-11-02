@@ -45,7 +45,8 @@ const (
 )
 
 type Queue[J Job] interface {
-	ClaimDue(ctx context.Context, now time.Time) (J, error)
+	// ClaimDue leases the next due job until now+lease; a job whose lease lapses is claimable again.
+	ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (J, error)
 	Complete(ctx context.Context, job J) error
 	Retry(ctx context.Context, job J, nextAttempts int32, nextRunAt time.Time) error
 	// Fail ends a job whose retry budget is spent. The runner never calls it for a retry-forever kind.
@@ -92,6 +93,10 @@ func Registrations[J Job](sets ...map[string]Registration[J]) (map[string]Regist
 }
 
 type Config struct {
+	// Lease only has to outlast one handler run — long enough that a healthy worker finishes before
+	// another can re-claim, short enough that a dead worker's job frees up promptly. It is its own
+	// knob, not coupled to the retry backoff.
+	Lease        time.Duration
 	MaxAttempts  int32
 	MaxClaims    int32
 	BackoffBase  time.Duration
@@ -103,6 +108,7 @@ type Config struct {
 type Runner[J Job] struct {
 	queue         Queue[J]
 	registrations map[string]Registration[J]
+	lease         time.Duration
 	maxAttempts   int32
 	maxClaims     int32
 	backoffBase   time.Duration
@@ -114,6 +120,9 @@ type Runner[J Job] struct {
 func NewRunner[J Job](queue Queue[J], registrations map[string]Registration[J], cfg Config) (Runner[J], error) {
 	if queue == nil {
 		return Runner[J]{}, errors.New("job runner requires a queue")
+	}
+	if cfg.Lease <= 0 {
+		return Runner[J]{}, errors.New("job runner requires a positive lease")
 	}
 	if cfg.MaxAttempts <= 0 {
 		return Runner[J]{}, errors.New("job runner requires a positive max attempts")
@@ -136,6 +145,7 @@ func NewRunner[J Job](queue Queue[J], registrations map[string]Registration[J], 
 	return Runner[J]{
 		queue:         queue,
 		registrations: copied,
+		lease:         cfg.Lease,
 		maxAttempts:   cfg.MaxAttempts,
 		maxClaims:     cfg.MaxClaims,
 		backoffBase:   cfg.BackoffBase,
@@ -165,7 +175,7 @@ func (r Runner[J]) Run(ctx context.Context) error {
 }
 
 func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
-	job, err := r.queue.ClaimDue(ctx, r.now())
+	job, err := r.queue.ClaimDue(ctx, r.now(), r.lease)
 	if errors.Is(err, ErrNoJob) {
 		return false, nil
 	}

@@ -7,11 +7,18 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/platform/apperr"
-	"github.com/cosimosi/api/internal/platform/values"
 )
 
+// AccountStatus is the admission gate's view of one account. The account context owns the
+// withdrawal and its restore deadline; the gate only relays them to a refused caller.
+type AccountStatus struct {
+	Withdrawn         bool
+	WithdrawnAt       time.Time
+	RestoreDeadlineAt time.Time
+}
+
 type AccountStatusReader interface {
-	WithdrawnAt(ctx context.Context, userID string) (withdrawnAt time.Time, withdrawn bool, err error)
+	AccountStatus(ctx context.Context, userID string) (AccountStatus, error)
 }
 
 func WithdrawnScopeInterceptor(
@@ -31,22 +38,20 @@ func WithdrawnScopeInterceptor(
 			if reader == nil {
 				return nil, apperr.Internal(errors.New("account status reader unavailable"))
 			}
-			withdrawnAt, withdrawn, err := reader.WithdrawnAt(ctx, userID)
+			status, err := reader.AccountStatus(ctx, userID)
 			if err != nil {
 				return nil, apperr.Internal(err)
 			}
-			if !withdrawn {
+			if !status.Withdrawn {
 				return next(ctx, req)
 			}
-			withdrawnAt = withdrawnAt.UTC()
-			deadline := withdrawnAt.Add(values.AccountWithdrawalRetentionWindow())
 			return nil, apperr.Domain(
 				connect.CodePermissionDenied,
 				apperr.ReasonPlatformAccountWithdrawn,
 				errors.New("account withdrawn"),
 				map[string]string{
-					"withdrawn_at":        withdrawnAt.Format(time.RFC3339),
-					"restore_deadline_at": deadline.Format(time.RFC3339),
+					"withdrawn_at":        status.WithdrawnAt.UTC().Format(time.RFC3339),
+					"restore_deadline_at": status.RestoreDeadlineAt.UTC().Format(time.RFC3339),
 				},
 			)
 		}

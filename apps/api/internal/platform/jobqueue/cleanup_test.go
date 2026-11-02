@@ -28,7 +28,7 @@ func TestCleanupRunsOnceWithinWindowForIdleAndBusyClaims(t *testing.T) {
 			cleaner := &fakeTerminalCleaner{}
 			maintained := WithTerminalCleanup[testJob](queue, cleaner, cleanupPolicy())
 			for _, claimAt := range []time.Time{now, now.Add(10 * time.Minute), now.Add(59 * time.Minute)} {
-				if _, err := maintained.ClaimDue(context.Background(), claimAt); !errors.Is(err, tc.claimErr) {
+				if _, err := maintained.ClaimDue(context.Background(), claimAt, time.Minute); !errors.Is(err, tc.claimErr) {
 					t.Fatalf("ClaimDue(%v) error = %v, want %v", claimAt, err, tc.claimErr)
 				}
 			}
@@ -48,7 +48,7 @@ func TestCleanupDrainsOneFullBatchPerClaim(t *testing.T) {
 	cleaner := &fakeTerminalCleaner{results: []int{2, 2, 1}}
 	maintained := WithTerminalCleanup[testJob](queue, cleaner, cleanupPolicy())
 	for range 4 {
-		if _, err := maintained.ClaimDue(context.Background(), now); !errors.Is(err, ErrNoJob) {
+		if _, err := maintained.ClaimDue(context.Background(), now, time.Minute); !errors.Is(err, ErrNoJob) {
 			t.Fatalf("ClaimDue error = %v, want ErrNoJob", err)
 		}
 	}
@@ -63,7 +63,7 @@ func TestCleanupFailureBacksOffAndClaimsProceed(t *testing.T) {
 	cleaner := &fakeTerminalCleaner{errs: []error{errors.New("cleanup unavailable")}}
 	maintained := WithTerminalCleanup[testJob](queue, cleaner, cleanupPolicy())
 	for _, claimAt := range []time.Time{now, now.Add(time.Minute)} {
-		if _, err := maintained.ClaimDue(context.Background(), claimAt); err != nil {
+		if _, err := maintained.ClaimDue(context.Background(), claimAt, time.Minute); err != nil {
 			t.Fatalf("ClaimDue(%v) error = %v", claimAt, err)
 		}
 	}
@@ -77,7 +77,7 @@ func TestCleanupRunsAgainAcrossClockWindows(t *testing.T) {
 	cleaner := &fakeTerminalCleaner{}
 	maintained := WithTerminalCleanup[testJob](&countingQueue{claimErr: ErrNoJob}, cleaner, cleanupPolicy())
 	for _, claimAt := range []time.Time{now, now.Add(59 * time.Minute), now.Add(time.Hour), now.Add(119 * time.Minute), now.Add(2 * time.Hour)} {
-		_, _ = maintained.ClaimDue(context.Background(), claimAt)
+		_, _ = maintained.ClaimDue(context.Background(), claimAt, time.Minute)
 	}
 	if cleaner.calls != 3 {
 		t.Fatalf("cleanup calls = %d, want one at each of three windows", cleaner.calls)
@@ -95,7 +95,7 @@ func TestCleanupHandsOneWindowToOverlappingClaims(t *testing.T) {
 		claims.Add(1)
 		go func() {
 			defer claims.Done()
-			if _, err := maintained.ClaimDue(context.Background(), now); !errors.Is(err, ErrNoJob) {
+			if _, err := maintained.ClaimDue(context.Background(), now, time.Minute); !errors.Is(err, ErrNoJob) {
 				t.Errorf("ClaimDue error = %v, want ErrNoJob", err)
 			}
 		}()
@@ -104,7 +104,7 @@ func TestCleanupHandsOneWindowToOverlappingClaims(t *testing.T) {
 	if got := cleaner.batches(); got != 1 {
 		t.Fatalf("cleanup batches within one window = %d, want 1", got)
 	}
-	if _, err := maintained.ClaimDue(context.Background(), now.Add(time.Hour)); !errors.Is(err, ErrNoJob) {
+	if _, err := maintained.ClaimDue(context.Background(), now.Add(time.Hour), time.Minute); !errors.Is(err, ErrNoJob) {
 		t.Fatalf("ClaimDue after the window error = %v, want ErrNoJob", err)
 	}
 	if got := cleaner.batches(); got != 2 {
@@ -137,7 +137,7 @@ type countingQueue struct {
 	deadLetters int
 }
 
-func (q *countingQueue) ClaimDue(context.Context, time.Time) (testJob, error) {
+func (q *countingQueue) ClaimDue(context.Context, time.Time, time.Duration) (testJob, error) {
 	q.claims++
 	return testJob{}, q.claimErr
 }
@@ -155,7 +155,9 @@ func (q *countingQueue) DeadLetter(context.Context, testJob, DeadLetterCause) er
 // idleQueue records nothing, so concurrent callers have no shared field to race on.
 type idleQueue struct{}
 
-func (idleQueue) ClaimDue(context.Context, time.Time) (testJob, error)       { return testJob{}, ErrNoJob }
+func (idleQueue) ClaimDue(context.Context, time.Time, time.Duration) (testJob, error) {
+	return testJob{}, ErrNoJob
+}
 func (idleQueue) Complete(context.Context, testJob) error                    { return nil }
 func (idleQueue) Retry(context.Context, testJob, int32, time.Time) error     { return nil }
 func (idleQueue) Fail(context.Context, testJob, int32) error                 { return nil }

@@ -233,7 +233,7 @@ func (s *Service) ListUsers(ctx context.Context, page int, pageSize int, query s
 	if page < 0 {
 		page = 0
 	}
-	accounts, hasMore, err := s.directory.ListUsers(ctx, page, pageSize, strings.TrimSpace(query))
+	accounts, hasMore, err := listDirectoryUsers(ctx, s.directory, page, pageSize, query)
 	if err != nil {
 		return UserPage{}, err
 	}

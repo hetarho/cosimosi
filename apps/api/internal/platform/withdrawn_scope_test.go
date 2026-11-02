@@ -14,8 +14,11 @@ import (
 	memoryv1 "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1"
 	memoryv1connect "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1/memoryv1connect"
 	"github.com/cosimosi/api/internal/platform/apperr"
-	"github.com/cosimosi/api/internal/platform/values"
 )
+
+// fakeRestoreWindow stands in for account's retention window: the gate relays the deadline it is
+// handed and derives nothing.
+const fakeRestoreWindow = 72 * time.Hour
 
 type fakeAccountStatusReader struct {
 	withdrawnAt time.Time
@@ -24,12 +27,16 @@ type fakeAccountStatusReader struct {
 	reads       int
 }
 
-func (f *fakeAccountStatusReader) WithdrawnAt(
-	context.Context,
-	string,
-) (time.Time, bool, error) {
+func (f *fakeAccountStatusReader) AccountStatus(context.Context, string) (AccountStatus, error) {
 	f.reads++
-	return f.withdrawnAt, f.withdrawn, f.err
+	if f.err != nil || !f.withdrawn {
+		return AccountStatus{}, f.err
+	}
+	return AccountStatus{
+		Withdrawn:         true,
+		WithdrawnAt:       f.withdrawnAt,
+		RestoreDeadlineAt: f.withdrawnAt.Add(fakeRestoreWindow),
+	}, nil
 }
 
 type countingMemoryReadService struct {
@@ -59,7 +66,7 @@ func TestWithdrawnScopeRefusesBeforeContextReadWithStableMetadata(t *testing.T) 
 	if !ok {
 		t.Fatalf("ErrorInfo missing from %v", err)
 	}
-	deadline := withdrawnAt.Add(values.AccountWithdrawalRetentionWindow())
+	deadline := withdrawnAt.Add(fakeRestoreWindow)
 	if info.GetReason() != apperr.ReasonPlatformAccountWithdrawn ||
 		info.GetMetadata()["withdrawn_at"] != withdrawnAt.Format(time.RFC3339) ||
 		info.GetMetadata()["restore_deadline_at"] != deadline.Format(time.RFC3339) {

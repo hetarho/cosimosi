@@ -109,19 +109,23 @@ type fakeDirectory struct {
 	accounts map[string]DirectoryAccount
 }
 
-func (d fakeDirectory) ListUsers(context.Context, int, int, string) ([]DirectoryAccount, bool, error) {
+// ListUserPage serves every account on the first page, which is the whole directory in a test.
+func (d fakeDirectory) ListUserPage(_ context.Context, page int, _ int) ([]DirectoryAccount, error) {
+	if page > 0 {
+		return nil, nil
+	}
 	out := make([]DirectoryAccount, 0, len(d.accounts))
 	for _, a := range d.accounts {
 		out = append(out, a)
 	}
-	return out, false, nil
+	return out, nil
 }
 
 type recordingDirectory struct{ pageSize int }
 
-func (d *recordingDirectory) ListUsers(_ context.Context, _ int, pageSize int, _ string) ([]DirectoryAccount, bool, error) {
+func (d *recordingDirectory) ListUserPage(_ context.Context, _ int, pageSize int) ([]DirectoryAccount, error) {
 	d.pageSize = pageSize
-	return nil, false, nil
+	return nil, nil
 }
 
 func (*recordingDirectory) EmailFor(context.Context, string) (string, error) { return "", nil }
@@ -386,8 +390,8 @@ func TestRevokeAdminFailsClosedOnDirectoryError(t *testing.T) {
 
 type failingDirectory struct{}
 
-func (failingDirectory) ListUsers(context.Context, int, int, string) ([]DirectoryAccount, bool, error) {
-	return nil, false, errors.New("directory down")
+func (failingDirectory) ListUserPage(context.Context, int, int) ([]DirectoryAccount, error) {
+	return nil, errors.New("directory down")
 }
 func (failingDirectory) EmailFor(context.Context, string) (string, error) {
 	return "", errors.New("directory down")

@@ -608,3 +608,36 @@ func TestNewServiceRejectsIncompleteWithdrawalBundle(t *testing.T) {
 		})
 	}
 }
+
+// The platform gate relays the restore deadline account derives; a live account carries none.
+func TestAccountStatusCarriesTheRestoreDeadline(t *testing.T) {
+	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
+	withdrawnAt := now.Add(-time.Hour)
+	store := &fakeWithdrawalStore{found: true, withdrawnAt: withdrawnAt}
+	service := newWithdrawalTestService(
+		t,
+		store,
+		&fakeWithdrawalScheduler{},
+		[]UserDataPurger{&fakeUserDataPurger{name: "memory"}},
+		&fakeCredentialDirectory{},
+		now,
+	)
+	scope := mustScope(t, "status-user")
+
+	status, err := service.AccountStatus(context.Background(), scope.UserID())
+	if err != nil {
+		t.Fatalf("AccountStatus failed: %v", err)
+	}
+	if !status.Withdrawn || !status.WithdrawnAt.Equal(withdrawnAt) ||
+		!status.RestoreDeadlineAt.Equal(withdrawnAt.Add(values.AccountWithdrawalRetentionWindow())) {
+		t.Fatalf("AccountStatus = %#v", status)
+	}
+
+	if _, err := service.RestoreAccount(context.Background(), scope); err != nil {
+		t.Fatalf("RestoreAccount failed: %v", err)
+	}
+	if status, err := service.AccountStatus(context.Background(), scope.UserID()); err != nil || status.Withdrawn ||
+		!status.RestoreDeadlineAt.IsZero() {
+		t.Fatalf("AccountStatus after restore = %#v, %v; want live", status, err)
+	}
+}

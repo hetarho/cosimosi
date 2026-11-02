@@ -23,7 +23,7 @@ var ErrProductionDirectoryRequired = errors.New("production account withdrawal r
 // DirectorySource is the platform account directory: account binds its identity and credential
 // reads, admin its user listing, each through its own adapter.
 type DirectorySource interface {
-	ListUsers(ctx context.Context, page int, pageSize int, query string) ([]platformsupabase.Account, bool, error)
+	ListUserPage(ctx context.Context, page int, pageSize int) ([]platformsupabase.Account, error)
 	EmailFor(ctx context.Context, userID string) (string, error)
 	EmailVerifiedAt(ctx context.Context, userID string) (time.Time, error)
 	Identities(ctx context.Context, userID string) ([]string, error)

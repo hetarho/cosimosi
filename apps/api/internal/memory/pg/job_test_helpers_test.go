@@ -10,6 +10,7 @@ import (
 
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"github.com/cosimosi/api/internal/platform/values"
 )
 
 const maxTestJobDrainAttempts = 32
@@ -18,13 +19,16 @@ type singleRunJobRunner interface {
 	RunOnce(context.Context) (bool, error)
 }
 
+// testJobLease is the production lease, so claim and re-claim timing match the deployed worker.
+var testJobLease = time.Duration(values.AiJobLeaseMs) * time.Millisecond
+
 type recordingJobQueue struct {
 	Store
 	claims []jobqueue.Record
 }
 
-func (q *recordingJobQueue) ClaimDue(ctx context.Context, now time.Time) (jobqueue.Record, error) {
-	job, err := q.Store.ClaimDue(ctx, now)
+func (q *recordingJobQueue) ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (jobqueue.Record, error) {
+	job, err := q.Store.ClaimDue(ctx, now, lease)
 	if err == nil {
 		q.claims = append(q.claims, job)
 	}

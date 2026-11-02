@@ -155,7 +155,7 @@ func TestRegistryOwnsDurableClaimPolicyAndStillRejectsUnhandledKinds(t *testing.
 				Handler: func(context.Context, testJob) error { return nil }, RetryForever: true,
 			}
 		}
-		runner, err := NewRunner[testJob](queue, registrations, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Second})
+		runner, err := NewRunner[testJob](queue, registrations, Config{Lease: time.Minute, MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Second})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -225,6 +225,7 @@ func mustRunner(t *testing.T, queue *fakeQueue, handlers map[string]Handler[test
 		registrations[kind] = Registration[testJob]{Handler: handler}
 	}
 	runner, err := NewRunner[testJob](queue, registrations, Config{
+		Lease:        time.Minute,
 		MaxAttempts:  3,
 		MaxClaims:    10,
 		BackoffBase:  time.Minute,
@@ -283,7 +284,7 @@ type fakeQueue struct {
 	deadLetterErr error
 }
 
-func (q *fakeQueue) ClaimDue(context.Context, time.Time) (testJob, error) {
+func (q *fakeQueue) ClaimDue(context.Context, time.Time, time.Duration) (testJob, error) {
 	if q.claimErr != nil {
 		return testJob{}, q.claimErr
 	}
@@ -343,7 +344,7 @@ func TestRetryForeverRequeuesASpentBudgetAndOrdinaryKindsFail(t *testing.T) {
 		queue := &fakeQueue{claim: testJob{id: "spent", userID: "owner", kind: "durable", attempts: 2}}
 		runner, err := NewRunner[testJob](queue, map[string]Registration[testJob]{
 			"durable": {Handler: failing, RetryForever: tc.forever},
-		}, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Minute, Now: func() time.Time { return now }})
+		}, Config{Lease: time.Minute, MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Minute, Now: func() time.Time { return now }})
 		if err != nil {
 			t.Fatal(err)
 		}

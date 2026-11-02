@@ -4,16 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
+
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
-	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"time"
 )
 
-var ErrQueriesRequired = errors.New("job store requires database queries")
+var (
+	ErrQueriesRequired = errors.New("job store requires database queries")
+	ErrLeaseRequired   = errors.New("job claim requires a positive lease")
+)
 var ErrUserScopeRequired = errors.New("job store requires authenticated user scope")
 
 type Store struct{ queries *dbgen.Queries }
@@ -108,13 +111,16 @@ func (s Store) EnqueueJob(ctx context.Context, scope platform.UserScope, job job
 	return mapped, nil
 }
 
-func (s Store) ClaimDue(ctx context.Context, now time.Time) (jobqueue.Record, error) {
+func (s Store) ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (jobqueue.Record, error) {
 	if s.queries == nil {
 		return jobqueue.Record{}, ErrQueriesRequired
 	}
+	if lease <= 0 {
+		return jobqueue.Record{}, ErrLeaseRequired
+	}
 	claimAt := timeOrNow(now)
 	row, err := s.queries.ClaimDueJob(ctx, dbgen.ClaimDueJobParams{
-		LeaseUntil: pgTime(jobLeaseUntil(claimAt)),
+		LeaseUntil: pgTime(claimAt.Add(lease)),
 		NowAt:      pgTime(claimAt),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -236,17 +242,6 @@ func (s Store) PurgeTerminalJobs(ctx context.Context, cutoff time.Time, batchSiz
 		BatchSize: batchSize,
 	})
 	return len(ids), err
-}
-
-func jobLeaseUntil(now time.Time) time.Time {
-	return now.Add(jobLeaseDuration())
-}
-
-// The lease only has to outlast one handler run — long enough that a healthy worker
-// finishes before another can re-claim, short enough that a dead worker's job frees up
-// promptly. It is its own knob, not coupled to the (exponential) retry backoff.
-func jobLeaseDuration() time.Duration {
-	return time.Duration(values.AiJobLeaseMs) * time.Millisecond
 }
 
 func mapJob(row dbgen.Job) jobqueue.Record {

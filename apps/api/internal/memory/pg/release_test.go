@@ -408,7 +408,7 @@ func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue semantic job: %v", err)
 	}
-	claimed, err := store.ClaimDue(ctx, releaseAt)
+	claimed, err := store.ClaimDue(ctx, releaseAt, testJobLease)
 	if err != nil || claimed.ID != job.ID {
 		t.Fatalf("claim semantic job = (%s, %v)", diagnosticValue(claimed), err)
 	}

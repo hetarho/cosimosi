@@ -410,7 +410,7 @@ func TestClaimDueJobsAreDisjointAcrossConcurrentClaimants(t *testing.T) {
 	errs := make(chan error, 2)
 	for i := 0; i < 2; i++ {
 		go func() {
-			job, err := store.ClaimDue(ctx, now)
+			job, err := store.ClaimDue(ctx, now, testJobLease)
 			if err != nil {
 				errs <- err
 				return
@@ -487,19 +487,19 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 		t.Fatalf("EnqueueJob failed: %v", err)
 	}
 
-	claimed, err := store.ClaimDue(ctx, now)
+	claimed, err := store.ClaimDue(ctx, now, testJobLease)
 	if err != nil {
 		t.Fatalf("first ClaimDue failed: %v", err)
 	}
-	if claimed.ID != job.ID || claimed.Status != jobqueue.StatusRunning || !claimed.NextRunAt.Equal(now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond)) {
+	if claimed.ID != job.ID || claimed.Status != jobqueue.StatusRunning || !claimed.NextRunAt.Equal(now.Add(testJobLease)) {
 		t.Fatalf("claimed job = %s", diagnosticValue(claimed))
 	}
 
-	if _, err := store.ClaimDue(ctx, now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond-time.Second)); !errors.Is(err, jobqueue.ErrNoJob) {
+	if _, err := store.ClaimDue(ctx, now.Add(testJobLease-time.Second), testJobLease); !errors.Is(err, jobqueue.ErrNoJob) {
 		t.Fatalf("ClaimDue before lease expiry error = %v, want ErrNoJob", err)
 	}
 
-	reclaimed, err := store.ClaimDue(ctx, now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond+time.Second))
+	reclaimed, err := store.ClaimDue(ctx, now.Add(testJobLease+time.Second), testJobLease)
 	if err != nil {
 		t.Fatalf("reclaim ClaimDue failed: %v", err)
 	}
@@ -602,7 +602,7 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	}
 	// A terminal transition is fenced: it applies only while the caller still holds the
 	// lease it claimed under, so claim before retrying.
-	claimed, err := store.ClaimDue(ctx, now)
+	claimed, err := store.ClaimDue(ctx, now, testJobLease)
 	if err != nil {
 		t.Fatalf("ClaimDue failed: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 
 	// Re-claim (a new lease generation), then prove the stale first lease can no longer
 	// finalize the row — a lease-expired worker's Complete is a silent no-op (R001 fence).
-	reclaimed, err := store.ClaimDue(ctx, retryAt.Add(time.Second))
+	reclaimed, err := store.ClaimDue(ctx, retryAt.Add(time.Second), testJobLease)
 	if err != nil {
 		t.Fatalf("reclaim ClaimDue failed: %v", err)
 	}

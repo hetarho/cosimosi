@@ -88,13 +88,58 @@ func TestRequestBudgetsCancelBlockingDependencyAndAllowNormalCall(t *testing.T) 
 	}
 }
 
-func TestRequestBudgetPolicyAndHTTPTimeouts(t *testing.T) {
-	b := DefaultRequestBudgets()
-	if b.timeout("/x/Recall") != b.AITimeout || b.timeout("/x/Export") != b.ExportTimeout || b.timeout("/x/GetUniverse") != b.DefaultTimeout {
-		t.Fatal("wrong procedure budget")
+// A registered procedure gets its owner's deadline and every other one the default; platform names
+// no procedure itself.
+func TestRegisteredProcedureTimeoutOverridesTheDefault(t *testing.T) {
+	budgets := DefaultRequestBudgets()
+	budgets.DefaultTimeout = 10 * time.Millisecond
+	service := &budgetPing{block: true}
+	slow := ProcedureTimeout{Procedure: platformv1connect.PlatformServicePingProcedure, Timeout: time.Minute}
+	handler := NewHandler(nil, WithPlatformService(service), WithRequestBudgets(budgets), WithRPCService(
+		func(...connect.HandlerOption) (string, http.Handler) {
+			return "/unused.v1.Unused/", http.NotFoundHandler()
+		},
+		slow,
+	))
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL).Ping(ctx, connect.NewRequest(&platformv1.PingRequest{}))
+	// The server-side deadline would answer deadline_exceeded within 10ms; outliving it to the
+	// client's own 100ms cancel proves the registered minute applied instead.
+	if connect.CodeOf(err) != connect.CodeCanceled && connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+		t.Fatalf("error = %v", err)
 	}
+	if ctx.Err() == nil {
+		t.Fatalf("server answered %v before the client gave up; the default budget applied", err)
+	}
+}
+
+func TestProcedureTimeoutsAreRefusedAtComposition(t *testing.T) {
+	build := func(...connect.HandlerOption) (string, http.Handler) {
+		return "/unused.v1.Unused/", http.NotFoundHandler()
+	}
+	for name, timeouts := range map[string][]ProcedureTimeout{
+		"unnamed":            {{Timeout: time.Second}},
+		"non-positive":       {{Procedure: "/x.v1.X/A"}},
+		"past write timeout": {{Procedure: "/x.v1.X/A", Timeout: serverWriteTimeout}},
+		"registered twice":   {{Procedure: "/x.v1.X/A", Timeout: time.Second}, {Procedure: "/x.v1.X/A", Timeout: time.Minute}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("unusable procedure timeout was accepted")
+				}
+			}()
+			NewHandler(nil, WithRPCService(build, timeouts...))
+		})
+	}
+}
+
+func TestHTTPServerTimeoutsAreBounded(t *testing.T) {
 	s := NewHTTPServer(":0", nil)
-	if s.ReadHeaderTimeout <= 0 || s.ReadTimeout <= 0 || s.WriteTimeout <= b.AITimeout || s.IdleTimeout <= 0 {
+	if s.ReadHeaderTimeout <= 0 || s.ReadTimeout <= 0 || s.WriteTimeout != serverWriteTimeout || s.IdleTimeout <= 0 {
 		t.Fatal("unbounded HTTP lifetime")
 	}
 }

@@ -14,16 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/cosimosi/api/internal/platform/values"
 )
 
 var ErrDirectoryUnavailable = errors.New("supabase account directory is unavailable")
-
-// ErrSearchScanTruncated reports that a prefix search would have walked more of the provider
-// directory than values.AdminSearchScanMaxAccounts allows. Returned instead of a partial page: the
-// consumer can say the search could not complete, which a short list cannot.
-var ErrSearchScanTruncated = errors.New("supabase directory prefix search exceeded its scan bound")
 
 // Compatibility fallback for direct platform-package callers. Production composition
 // roots always inject their named deployment timeout explicitly.
@@ -47,35 +40,17 @@ type Fake struct {
 	DeletedUsers     map[string]bool
 }
 
-func (f Fake) ListUsers(_ context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
-	if page < 0 {
-		page = 0
-	}
-	if pageSize <= 0 {
-		return nil, false, nil
-	}
-	if pageSize > values.AdminUserListPageSize {
-		pageSize = values.AdminUserListPageSize
-	}
-	filtered := f.Accounts
-	if q := strings.ToLower(strings.TrimSpace(query)); q != "" {
-		filtered = nil
-		for _, account := range f.Accounts {
-			if accountHasPrefix(account.Email, account.UserID, q) {
-				filtered = append(filtered, account)
-			}
-		}
+// ListUserPage serves one 0-based page of the fake's accounts in their stored order.
+func (f Fake) ListUserPage(_ context.Context, page int, pageSize int) ([]Account, error) {
+	if page < 0 || pageSize <= 0 {
+		return nil, nil
 	}
 	start := page * pageSize
-	if start >= len(filtered) {
-		return nil, false, nil
+	if start >= len(f.Accounts) {
+		return nil, nil
 	}
-	end := start + pageSize
-	hasMore := end < len(filtered)
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-	return append([]Account(nil), filtered[start:end]...), hasMore, nil
+	end := min(start+pageSize, len(f.Accounts))
+	return append([]Account(nil), f.Accounts[start:end]...), nil
 }
 
 func (f Fake) EmailFor(_ context.Context, userID string) (string, error) {
@@ -168,94 +143,18 @@ type supabaseListResponse struct {
 	Users []supabaseUser `json:"users"`
 }
 
-// ListUsers exposes search-result pagination over GoTrue's raw provider pages. GoTrue has no
-// portable prefix filter, so a search starts at the provider's first page, skips matches belonging
-// to earlier search pages, and scans until it has this page plus one lookahead match or reaches the
-// provider's terminal short page. An unfiltered full page also peeks at the next provider page so
-// an exactly-full final page never advertises a phantom continuation.
-//
-// A search's cost therefore tracks the DIRECTORY size, not the query: the rarer the prefix, the
-// further it walks, and a prefix matching nothing walks every account. So the scan is capped at
-// values.AdminSearchScanMaxAccounts and a request that would pass the cap fails with
-// ErrSearchScanTruncated rather than returning a page that silently omits later matches — an admin
-// list quietly missing a user reads as "this account does not exist". Wall-clock is already bounded
-// from the other side: every page honours the caller's context, so a client deadline stops the walk.
-func (s Directory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
-	if page < 0 {
-		page = 0
+// ListUserPage reads one raw GoTrue page (0-based here, 1-based on the wire) in the provider's
+// order. It neither searches nor clamps: those are the consumer's policy.
+func (s Directory) ListUserPage(ctx context.Context, page int, pageSize int) ([]Account, error) {
+	if page < 0 || pageSize <= 0 {
+		return nil, nil
 	}
-	if pageSize <= 0 {
-		return nil, false, nil
-	}
-	if pageSize > values.AdminUserListPageSize {
-		pageSize = values.AdminUserListPageSize
-	}
-	q := strings.ToLower(strings.TrimSpace(query))
-	if q == "" {
-		users, err := s.listUserProviderPage(ctx, page+1, pageSize)
-		if err != nil {
-			return nil, false, err
-		}
-		accounts := mapAccounts(users)
-		if len(users) < pageSize {
-			return accounts, false, nil
-		}
-		lookahead, err := s.listUserProviderPage(ctx, page+2, pageSize)
-		if err != nil {
-			return nil, false, err
-		}
-		return accounts, len(lookahead) > 0, nil
-	}
-
-	// Keep only this search page plus one match. Provider pages remain fixed at pageSize, so the
-	// raw page offsets are stable while the search stream is reconstructed.
-	matchOffset := page * pageSize
-	matches := make([]Account, 0, pageSize+1)
-	seenMatches := 0
-	scanned := 0
-	for providerPage := 1; ; providerPage++ {
-		if err := ctx.Err(); err != nil {
-			return nil, false, err
-		}
-		users, err := s.listUserProviderPage(ctx, providerPage, pageSize)
-		if err != nil {
-			return nil, false, err
-		}
-		for _, user := range users {
-			if !accountHasPrefix(user.Email, user.ID, q) {
-				continue
-			}
-			if seenMatches >= matchOffset {
-				matches = append(matches, mapAccount(user))
-				if len(matches) == pageSize+1 {
-					return matches[:pageSize], true, nil
-				}
-			}
-			seenMatches++
-		}
-		if len(users) < pageSize {
-			return matches, false, nil
-		}
-		// Checked after the short-page exit, and on `>` rather than `>=`, so a directory whose last
-		// full page lands exactly on the bound still gets the one page that reveals its end. The
-		// breaker is for a walk that would keep going, not for one that just finished.
-		scanned += len(users)
-		if scanned > values.AdminSearchScanMaxAccounts {
-			return nil, false, fmt.Errorf(
-				"%w: scanned %d accounts for prefix search without resolving page %d",
-				ErrSearchScanTruncated, scanned, page,
-			)
-		}
-	}
-}
-
-func (s Directory) listUserProviderPage(ctx context.Context, page int, pageSize int) ([]supabaseUser, error) {
-	endpoint := fmt.Sprintf("%s/auth/v1/admin/users?page=%d&per_page=%d", s.baseURL, page, pageSize)
+	endpoint := fmt.Sprintf("%s/auth/v1/admin/users?page=%d&per_page=%d", s.baseURL, page+1, pageSize)
 	var body supabaseListResponse
 	if err := s.get(ctx, endpoint, &body); err != nil {
 		return nil, err
 	}
-	return body.Users, nil
+	return mapAccounts(body.Users), nil
 }
 
 func mapAccounts(users []supabaseUser) []Account {
@@ -264,11 +163,6 @@ func mapAccounts(users []supabaseUser) []Account {
 		accounts = append(accounts, mapAccount(user))
 	}
 	return accounts
-}
-
-func accountHasPrefix(email string, userID string, normalizedQuery string) bool {
-	return strings.HasPrefix(strings.ToLower(email), normalizedQuery) ||
-		strings.HasPrefix(strings.ToLower(userID), normalizedQuery)
 }
 
 func (s Directory) EmailFor(ctx context.Context, userID string) (string, error) {

@@ -215,7 +215,22 @@ func (s *Service) RestoreAccount(ctx context.Context, scope platform.UserScope) 
 	return now, nil
 }
 
-// WithdrawnAt publishes the one account-status fact the platform admission gate consumes.
+// AccountStatus publishes the account-status facts the platform admission gate relays: whether the
+// account is withdrawn and, if so, when it can last be restored.
+func (s *Service) AccountStatus(ctx context.Context, userID string) (platform.AccountStatus, error) {
+	withdrawnAt, withdrawn, err := s.WithdrawnAt(ctx, userID)
+	if err != nil || !withdrawn {
+		return platform.AccountStatus{}, err
+	}
+	withdrawnAt = withdrawnAt.UTC()
+	return platform.AccountStatus{
+		Withdrawn:         true,
+		WithdrawnAt:       withdrawnAt,
+		RestoreDeadlineAt: withdrawnAt.Add(withdrawalRetentionWindow()),
+	}, nil
+}
+
+// WithdrawnAt reads the withdrawal status behind AccountStatus.
 // An absent User row and a live row are both not-withdrawn; persistence failures propagate.
 func (s *Service) WithdrawnAt(ctx context.Context, userID string) (time.Time, bool, error) {
 	if s.withdrawals == nil {

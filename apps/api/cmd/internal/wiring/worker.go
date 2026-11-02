@@ -111,6 +111,7 @@ func newRunner(
 		Logger:    logger,
 	})
 	return jobqueue.NewRunner(cleaned, registrations, jobqueue.Config{
+		Lease:        time.Duration(values.AiJobLeaseMs) * time.Millisecond,
 		MaxAttempts:  int32(values.AiJobMaxAttempts),
 		MaxClaims:    int32(values.AiJobMaxClaims),
 		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,

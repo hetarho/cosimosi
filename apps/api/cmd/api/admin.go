@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/secretbox"
-	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
 )
@@ -92,15 +90,10 @@ type adminAccountDirectory struct {
 	source wiring.DirectorySource
 }
 
-func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]admin.DirectoryAccount, bool, error) {
-	accounts, hasMore, err := a.source.ListUsers(ctx, page, pageSize, query)
+func (a adminAccountDirectory) ListUserPage(ctx context.Context, page int, pageSize int) ([]admin.DirectoryAccount, error) {
+	accounts, err := a.source.ListUserPage(ctx, page, pageSize)
 	if err != nil {
-		// The provider's scan bound is a platform fact; admin owns how the console reads it. Only
-		// this adapter knows both vocabularies, so the translation lives here.
-		if errors.Is(err, platformsupabase.ErrSearchScanTruncated) {
-			return nil, false, fmt.Errorf("%w: %w", admin.ErrUserSearchTooBroad, err)
-		}
-		return nil, false, err
+		return nil, err
 	}
 	result := make([]admin.DirectoryAccount, 0, len(accounts))
 	for _, account := range accounts {
@@ -110,7 +103,7 @@ func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize
 			SignupAt: account.SignupAt,
 		})
 	}
-	return result, hasMore, nil
+	return result, nil
 }
 
 func (a adminAccountDirectory) EmailFor(ctx context.Context, userID string) (string, error) {

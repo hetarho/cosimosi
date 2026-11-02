@@ -118,6 +118,7 @@ func newTestJobRunner(t *testing.T, queue *recordingJobQueue, store Store, now f
 		t.Fatalf("JobRegistrations failed: %v", err)
 	}
 	runner, err := jobqueue.NewRunner[jobqueue.Record](queue, registrations, jobqueue.Config{
+		Lease:        testJobLease,
 		MaxAttempts:  int32(values.AiJobMaxAttempts),
 		MaxClaims:    maxClaims,
 		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,

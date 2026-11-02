@@ -55,8 +55,9 @@ type Store interface {
 // Supabase Auth Admin API (a keyless fake in tests/dev). It exposes only account metadata; it
 // never reaches memory content ([I2]).
 type AccountDirectory interface {
-	// ListUsers enumerates accounts (id, email, signup) with prefix search + pagination.
-	ListUsers(ctx context.Context, page int, pageSize int, query string) ([]DirectoryAccount, bool, error)
+	// ListUserPage reads one raw directory page (0-based) in the provider's order. The directory
+	// only pages: the page clamp and the prefix search are admin's (user_search.go).
+	ListUserPage(ctx context.Context, page int, pageSize int) ([]DirectoryAccount, error)
 	// EmailFor resolves one account's email — used only to match email-based ADMIN_USER_IDS
 	// seed entries against the authenticated caller (whose context carries the id, not the email).
 	EmailFor(ctx context.Context, userID string) (string, error)
