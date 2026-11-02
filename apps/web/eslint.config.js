@@ -60,8 +60,7 @@ export default defineConfig([
     // over every source. Three idioms account for every entry:
     //
     //   latest-ref — `ref.current = latestProps` during render, read from a timer/observer callback
-    //     that must not re-subscribe when a callback identity changes (`AccelerateTime`,
-    //     `DemoTimePassing`, `UniverseTimeOverlay`).
+    //     that must not re-subscribe when a callback identity changes (`DemoTimePassing`).
     //   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`, where a
     //     `useState` initializer would run twice under StrictMode and orphan a live paid-action
     //     session or a query client (`RecallFlowSheet`, `query-provider`). This is the
@@ -76,7 +75,6 @@ export default defineConfig([
     files: [
       'src/app/providers/decoration-bootstrap.tsx',
       'src/app/providers/query-provider.tsx',
-      'src/features/accelerate-time/ui/AccelerateTime.tsx',
       'src/features/account-profile/ui/AccountProfile.tsx',
       'src/pages/demo/ui/DemoPage.tsx',
       'src/pages/demo/ui/DemoTimePassing.tsx',
@@ -86,7 +84,6 @@ export default defineConfig([
       'src/widgets/recall-flow/ui/RecallFlowSheet.tsx',
       'src/widgets/star-detail/ui/DetailPanel.tsx',
       'src/widgets/stardust/ui/StardustOverlay.tsx',
-      'src/widgets/universe-time/ui/UniverseTimeOverlay.tsx',
     ],
     rules: {
       'react-hooks/refs': 'off',

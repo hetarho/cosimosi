@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, test } from 'node:test'
 
-import { findFsdLayoutProblems, findWorkspacePackageCycles } from './lint-fsd-layout.mjs'
+import {
+  compareDuplicationBaseline,
+  findFsdLayoutProblems,
+  findWorkspacePackageCycles,
+  measureSharedUiLogic,
+} from './lint-fsd-layout.mjs'
 
 const roots = []
 
@@ -285,4 +290,45 @@ test('rejects a paid session or paid request in any app ui file', () => {
   )
   assert.equal(paid.length, 2)
   assert.ok(paid.some((problem) => problem.includes('star-detail/ui/GistViewSheet.tsx')))
+})
+
+test('a copy that differs only in braces, parentheses, semicolons and commas is still a duplicate', () => {
+  const root = fixture()
+  put(
+    root,
+    'apps/web/src/features/probe/model/guard.ts',
+    'export function guard(value: number) {\n  if (value > 1) return [value, value];\n  return (value)\n}\n',
+  )
+  put(
+    root,
+    'apps/mobile/src/features/probe/model/guard.ts',
+    'export function guard(value: number) {\n  if (value > 1) {\n    return [value, value,]\n  }\n  return value;\n}\n',
+  )
+  const problems = findFsdLayoutProblems(root)
+  assert.ok(
+    problems.some((problem) =>
+      problem.includes('features/probe/model/guard.ts — normalized-equivalent'),
+    ),
+    problems.join('\n'),
+  )
+})
+
+test('the shared-logic ratchet counts identical logic lines in forked ui files and refuses growth', () => {
+  const root = fixture()
+  const controller = (marker, view) =>
+    `${marker}\nimport { useState } from 'react'\nexport function Panel() {\n  const [open, setOpen] = useState(false)\n  const toggle = () => setOpen(!open)\n  if (!open) {\n    return null\n  }\n  return ${view}\n}\n`
+  put(
+    root,
+    'apps/web/src/widgets/probe/ui/Panel.tsx',
+    controller("import { createPortal } from 'react-dom'", '<div onClick={toggle} />'),
+  )
+  put(
+    root,
+    'apps/mobile/src/widgets/probe/ui/Panel.tsx',
+    controller("import { View } from 'react-native'", '<View onTouchEnd={toggle} />'),
+  )
+  const measured = measureSharedUiLogic(root)
+  assert.ok(measured.files['widgets/probe/ui/Panel.tsx'] >= 4)
+  assert.equal(compareDuplicationBaseline(measured, { total: measured.total, files: {} }).length, 0)
+  assert.equal(compareDuplicationBaseline(measured, { total: 0, files: {} }).length, 1)
 })

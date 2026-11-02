@@ -1,14 +1,6 @@
-import { useEffect, useRef } from 'react'
-
 import { useReducedMotion } from '@cosimosi/ui'
-import {
-  advanceSkyRate,
-  advanceSkyRateFor,
-  advanceSweepFrame,
-  resetAdvanceSkyRate,
-  useAdvanceSweepStore,
-  type AdvanceInterval,
-} from '@cosimosi/universe'
+import type { AdvanceInterval } from '@cosimosi/universe'
+import { useAdvanceSweep } from '@cosimosi/universe/react'
 
 export interface AccelerateTimeProps {
   interval: AdvanceInterval
@@ -36,53 +28,6 @@ export interface AccelerateTimeProps {
 // refs, never React state (§3.2); `onTick` fires only when the sampled date changes (≤ maxDateSteps
 // re-renders per sweep).
 export function AccelerateTime({ interval, onTick, onDone }: AccelerateTimeProps) {
-  const reducedMotion = useReducedMotion()
-  const callbacksRef = useRef({ onTick, onDone })
-  callbacksRef.current = { onTick, onDone }
-
-  useEffect(() => {
-    const sweep = useAdvanceSweepStore.getState()
-    // Under reduced motion the transition is skipped, not slowed: land on the final clock and let the
-    // scene read the committed one. Nothing is lost, because the sweep carried no information the
-    // settled frame does not already hold.
-    if (reducedMotion) {
-      callbacksRef.current.onTick(interval.current)
-      callbacksRef.current.onDone()
-      return
-    }
-
-    // The scene starts where the viewer last saw it — the clock before the advance — so walking the
-    // sampled date forward never jumps a star's brightness backwards on the first frame.
-    sweep.begin(interval.previous)
-    let frame = 0
-    let start: number | null = null
-    let lastShown: string | null = null
-    const step = (now: number) => {
-      if (start === null) start = now
-      const elapsed = now - start
-      const { universeTime, envelope, done } = advanceSweepFrame(interval, elapsed)
-      advanceSkyRate.current = advanceSkyRateFor(envelope)
-      if (universeTime !== lastShown) {
-        lastShown = universeTime
-        sweep.tick(universeTime)
-        callbacksRef.current.onTick(universeTime)
-      }
-      if (done) {
-        resetAdvanceSkyRate()
-        sweep.end()
-        callbacksRef.current.onDone()
-        return
-      }
-      frame = requestAnimationFrame(step)
-    }
-    frame = requestAnimationFrame(step)
-    return () => {
-      cancelAnimationFrame(frame)
-      // An unmount mid-sweep must not leave the sky racing or the scene stuck on a sampled clock.
-      resetAdvanceSkyRate()
-      useAdvanceSweepStore.getState().end()
-    }
-  }, [interval, reducedMotion])
-
+  useAdvanceSweep({ interval, reducedMotion: useReducedMotion(), onTick, onDone })
   return null
 }

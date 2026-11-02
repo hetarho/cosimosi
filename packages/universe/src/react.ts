@@ -1,5 +1,7 @@
 export { useDiaryArchive, type DiaryArchive } from './react/use-diary-archive.ts'
 export { useDiaryCalendar, type DiaryCalendarMonth } from './react/use-diary-calendar.ts'
+export { useTimeAdvanceOverlay } from './react/use-time-advance-overlay.ts'
+export { useAdvanceSweep, type AdvanceSweepInput } from './react/use-advance-sweep.ts'
 export {
   useUniverseScreen,
   onboardingReportAction,

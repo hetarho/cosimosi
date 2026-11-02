@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { ME_TABS } from './tabs.ts'
+import { ME_TABS } from './me-tabs.ts'
 
-describe('me tabs', () => {
+describe('ME_TABS', () => {
   it('keeps the fixed five-tab order', () => {
     expect(ME_TABS).toEqual(['profile', 'mood-colors', 'stardust', 'achievements', 'diary'])
   })

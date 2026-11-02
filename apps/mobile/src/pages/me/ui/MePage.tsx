@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import { ME_TABS, type MeTabId } from '@cosimosi/auth'
 import { Button, Tabs, tokens } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 
@@ -14,12 +15,6 @@ import { ReplayOnboarding } from '../../../features/replay-onboarding/index.ts'
 import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
-
-// The five tabs of the account home mirror the web. 계정 is NOT one of them: the identity,
-// the linked ways in, sign-out and withdrawal are facts about the same person the profile tab is
-// already about, and they sit at the FOOT of it instead.
-const meTabs = ['profile', 'mood-colors', 'stardust', 'achievements', 'diary'] as const
-export type MeTabId = (typeof meTabs)[number]
 
 // Every tab body is handed the screen's back callback, and the profile tab's last row is the one that
 // uses it: replaying the onboarding tour means leaving /me for the universe the tour narrates. The page
@@ -89,7 +84,7 @@ export function MePage({
         onValueChange={(value) => {
           if (isMeTab(value)) setActiveTab(value)
         }}
-        items={meTabs.map((id) => ({
+        items={ME_TABS.map((id) => ({
           value: id,
           label: tabViews[id].title(),
           panelId: `me-${id}-panel`,
@@ -103,7 +98,7 @@ export function MePage({
 }
 
 function isMeTab(value: string): value is MeTabId {
-  return (meTabs as readonly string[]).includes(value)
+  return (ME_TABS as readonly string[]).includes(value)
 }
 
 // Everything true of the person rather than of their universe, and then — at the foot, behind a

@@ -1,14 +1,6 @@
-import { useEffect, useRef } from 'react'
-
 import { useReducedMotion } from '@cosimosi/ui'
-import {
-  advanceSkyRate,
-  advanceSkyRateFor,
-  advanceSweepFrame,
-  resetAdvanceSkyRate,
-  useAdvanceSweepStore,
-  type AdvanceInterval,
-} from '@cosimosi/universe'
+import type { AdvanceInterval } from '@cosimosi/universe'
+import { useAdvanceSweep } from '@cosimosi/universe/react'
 
 export interface AccelerateTimeProps {
   interval: AdvanceInterval
@@ -28,50 +20,6 @@ export interface AccelerateTimeProps {
 // animation left to keep off the JS thread, and the values it writes are read inside the canvas's own
 // frame loop rather than by React.
 export function AccelerateTime({ interval, onTick, onDone }: AccelerateTimeProps) {
-  const reducedMotion = useReducedMotion()
-  const callbacksRef = useRef({ onTick, onDone })
-  callbacksRef.current = { onTick, onDone }
-
-  useEffect(() => {
-    const sweep = useAdvanceSweepStore.getState()
-    if (reducedMotion) {
-      callbacksRef.current.onTick(interval.current)
-      callbacksRef.current.onDone()
-      return
-    }
-
-    // The scene starts where the viewer last saw it, so no star's brightness jumps backwards.
-    sweep.begin(interval.previous)
-    let frame = 0
-    let start: number | null = null
-    let lastShown: string | null = null
-    const step = (now: number) => {
-      if (start === null) {
-        start = now
-      }
-      const { universeTime, envelope, done } = advanceSweepFrame(interval, now - start)
-      advanceSkyRate.current = advanceSkyRateFor(envelope)
-      if (universeTime !== lastShown) {
-        lastShown = universeTime
-        sweep.tick(universeTime)
-        callbacksRef.current.onTick(universeTime)
-      }
-      if (done) {
-        resetAdvanceSkyRate()
-        sweep.end()
-        callbacksRef.current.onDone()
-        return
-      }
-      frame = requestAnimationFrame(step)
-    }
-    frame = requestAnimationFrame(step)
-    return () => {
-      cancelAnimationFrame(frame)
-      // An unmount mid-sweep must not leave the sky racing or the scene stuck on a sampled clock.
-      resetAdvanceSkyRate()
-      useAdvanceSweepStore.getState().end()
-    }
-  }, [interval, reducedMotion])
-
+  useAdvanceSweep({ interval, reducedMotion: useReducedMotion(), onTick, onDone })
   return null
 }

@@ -137,6 +137,18 @@ function digest(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
 
+// Punctuation a formatter adds or drops without changing what the code does. ARCH-28 says format churn
+// must not let a copy evade the comparison, so braces around a one-line body, wrapping parentheses,
+// statement semicolons and trailing commas are not part of a module's identity.
+const FORMAT_TOKENS = new Set([
+  ts.SyntaxKind.OpenBraceToken,
+  ts.SyntaxKind.CloseBraceToken,
+  ts.SyntaxKind.OpenParenToken,
+  ts.SyntaxKind.CloseParenToken,
+  ts.SyntaxKind.SemicolonToken,
+  ts.SyntaxKind.CommaToken,
+])
+
 function normalizedDigest(path) {
   const source = readFileSync(path, 'utf8')
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.JSX, source)
@@ -144,6 +156,7 @@ function normalizedDigest(path) {
   const hash = createHash('sha256')
 
   for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    if (FORMAT_TOKENS.has(token)) continue
     if (token === ts.SyntaxKind.Identifier || token === ts.SyntaxKind.PrivateIdentifier) {
       const identifier = scanner.getTokenText()
       if (!identifiers.has(identifier)) identifiers.set(identifier, identifiers.size)
@@ -412,6 +425,89 @@ export function findSliceBoundaryProblems(srcAbs, root = repoRoot) {
   return problems
 }
 
+// Shared-logic ratchet. A `ui` file that carries a platform marker is a legitimate fork and R4 does not
+// compare it — which is also where a copied controller hides. This counts, for every same-path pair of
+// web/mobile `ui` files, the logic lines both share: non-comment, non-JSX, non-import lines, compared as
+// format-insensitive token sequences. The total may only fall below the recorded baseline.
+export const DUPLICATION_BASELINE = 'scripts/fsd-duplication-baseline.json'
+
+function logicLines(path) {
+  const source = readFileSync(path, 'utf8')
+  const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const excluded = new Set()
+  const exclude = (node) => {
+    const first = file.getLineAndCharacterOfPosition(node.getStart(file)).line
+    const last = file.getLineAndCharacterOfPosition(node.getEnd()).line
+    for (let line = first; line <= last; line += 1) excluded.add(line)
+  }
+  const visit = (node) => {
+    if (
+      ts.isJsxElement(node) ||
+      ts.isJsxSelfClosingElement(node) ||
+      ts.isJsxFragment(node) ||
+      ts.isImportDeclaration(node) ||
+      (ts.isExportDeclaration(node) && node.moduleSpecifier)
+    ) {
+      exclude(node)
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.JSX, source)
+  const lines = new Map()
+  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    if (FORMAT_TOKENS.has(token)) continue
+    const line = file.getLineAndCharacterOfPosition(scanner.getTokenStart()).line
+    if (excluded.has(line)) continue
+    lines.set(line, `${lines.get(line) ?? ''} ${scanner.getTokenText()}`)
+  }
+  return [...lines.values()].map((line) => line.trim()).filter((line) => line.length > 0)
+}
+
+function sharedLineCount(webPath, mobilePath) {
+  const remaining = new Map()
+  for (const line of logicLines(mobilePath)) remaining.set(line, (remaining.get(line) ?? 0) + 1)
+  let shared = 0
+  for (const line of logicLines(webPath)) {
+    const left = remaining.get(line) ?? 0
+    if (left === 0) continue
+    remaining.set(line, left - 1)
+    shared += 1
+  }
+  return shared
+}
+
+export function measureSharedUiLogic(root = repoRoot) {
+  const webSrc = join(root, 'apps/web/src')
+  const mobileSrc = join(root, 'apps/mobile/src')
+  const mobileFiles = new Map(
+    walkFiles(mobileSrc).map((path) => [portableRelative(mobileSrc, path), path]),
+  )
+  const files = {}
+  for (const webPath of walkFiles(webSrc)) {
+    const modulePath = portableRelative(webSrc, webPath)
+    const mobilePath = mobileFiles.get(modulePath)
+    if (!mobilePath || !UI_SEGMENT.test(modulePath) || !/\.tsx?$/.test(modulePath)) continue
+    if (/\.(test|spec)\./.test(modulePath)) continue
+    const shared = sharedLineCount(webPath, mobilePath)
+    if (shared > 0) files[modulePath] = shared
+  }
+  const total = Object.values(files).reduce((sum, count) => sum + count, 0)
+  return { total, files }
+}
+
+export function compareDuplicationBaseline(measured, baseline) {
+  if (measured.total <= baseline.total) return []
+  const grown = Object.entries(measured.files)
+    .filter(([path, count]) => count > (baseline.files?.[path] ?? 0))
+    .map(([path, count]) => `${path} (${baseline.files?.[path] ?? 0} → ${count})`)
+  return [
+    `shared web/mobile ui logic grew to ${measured.total} lines (baseline ${baseline.total}): ${grown.join(', ')}. ` +
+      `Lift the shared controller into its owning package instead of copying it.`,
+  ]
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   section('FSD structural layout (ARCHITECTURE §3.1)')
@@ -426,6 +522,16 @@ if (isMain) {
   }
 
   const problems = findFsdLayoutProblems()
+  const measured = measureSharedUiLogic()
+  const baselinePath = join(repoRoot, DUPLICATION_BASELINE)
+  const baseline = existsSync(baselinePath)
+    ? JSON.parse(readFileSync(baselinePath, 'utf8'))
+    : { total: 0, files: {} }
+  problems.push(...compareDuplicationBaseline(measured, baseline))
+  if (measured.total < baseline.total)
+    note(
+      `shared ui logic is down to ${measured.total} lines (baseline ${baseline.total}); lower ${DUPLICATION_BASELINE}`,
+    )
   if (problems.length) {
     for (const problem of problems) console.error(`  \x1b[31m✗\x1b[0m ${problem}`)
     fail(

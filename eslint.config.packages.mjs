@@ -54,7 +54,7 @@ const REACT_FILES = [
 const RENDERER_FRAME_MUTATION = { 'react-hooks/immutability': 'off' }
 
 // The two compiler-model rules, off for a NAMED LIST OF FILES rather than for `packages/**`. Fresh
-// Current count: 23 `refs` + 5 `set-state-in-effect` across the eleven files below. Three idioms
+// Current count: 23 `refs` + 6 `set-state-in-effect` across the twelve files below. Three idioms
 // account for all of them, and the same three carry the app's list in `apps/web/eslint.config.js`:
 //
 //   latest-ref — `ref.current = latest` during render, read from a callback that must not
@@ -66,7 +66,8 @@ const RENDERER_FRAME_MUTATION = { 'react-hooks/immutability': 'off' }
 //   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`.
 //   commit-and-fire effects — presence/exit animation (`packages/ui`'s `usePresence`) and effects that
 //     must notify and commit in one pass (`SessionScopeBoundary`, the sequence runner, the diary
-//     archive's deep-link consumption and opened-entry eviction, moved here from the web reader).
+//     archive's deep-link consumption and opened-entry eviction, and the time overlay consuming an
+//     announced advance — both moved here from the web views).
 //
 // A file list, not a blanket off: a NEW file reaching for either idiom fails the gate, and the list can
 // only shrink. Every other rule in the set is on and the tree is green against them.
@@ -82,6 +83,7 @@ const COMPILER_MODEL_FILES = [
   'packages/ui/src/primitives/toast.native.tsx',
   'packages/ui/src/primitives/toast.tsx',
   'packages/universe/src/react/use-diary-archive-navigation.ts',
+  'packages/universe/src/react/use-time-advance-overlay.ts',
 ]
 
 const COMPILER_MODEL_DEFERRED = {

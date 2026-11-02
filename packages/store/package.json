@@ -16,10 +16,11 @@
   "dependencies": {
     "@connectrpc/connect": "^2.1.2",
     "@cosimosi/api-client": "workspace:*",
-    "zustand": "^5.0.14",
-    "xstate": "^5.32.2",
+    "@cosimosi/auth": "workspace:*",
     "@cosimosi/i18n": "workspace:*",
-    "@cosimosi/auth": "workspace:*"
+    "@cosimosi/state-machine": "workspace:*",
+    "xstate": "^5.32.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@connectrpc/connect-query": "^2.2.0",

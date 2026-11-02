@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,6 +11,9 @@ import {
   createGetSelectionQueryOptions,
 } from '@cosimosi/api-client'
 import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
+import { useActorRef, useSelector } from '@cosimosi/state-machine/react'
+import { decorationMachine } from './decoration.machine.ts'
+import { useDecorationRequestStore } from './decoration-request-store.ts'
 
 import { requestDecorate } from './decorate.ts'
 import {
@@ -158,4 +161,81 @@ export function useSaveDecoration(): () => Promise<SaveOutcome> {
       return { saved: false, reason: error instanceof Error ? error.message : String(error) }
     }
   }, [transport, queryClient, facade, userId])
+}
+
+// useDecorationPanelController is the decoration panel's controller, shared by both apps: it opens on a
+// request, installs and reverts the preview through the machine's transient phases, and saves through
+// the Decorate RPC. Every exit from an open panel goes through `reverting` or `committing`, so no exit
+// can skip the revert.
+export function useDecorationPanelController({
+  active = true,
+  invalidateAchievements,
+}: {
+  // Whether the panel's screen is focused (mobile tabs stay mounted); web is always active.
+  active?: boolean
+  // A save records three counters, so the achievement read is refreshed on resolution.
+  invalidateAchievements: () => void
+}) {
+  const requested = useDecorationRequestStore((state) => state.requested)
+  const clearRequest = useDecorationRequestStore((state) => state.clear)
+  const actorRef = useActorRef(decorationMachine)
+  const phase = useSelector(actorRef, (snapshot) => snapshot.value)
+  const failureReason = useSelector(actorRef, (snapshot) => snapshot.context.failureReason)
+  const openPreview = useOrnamentPreviewStore((state) => state.open)
+  const revertPreview = useOrnamentPreviewStore((state) => state.revert)
+  const { catalog } = useOrnamentCatalog()
+  const save = useSaveDecoration()
+
+  useEffect(() => {
+    if (!active || !requested) return
+    openPreview()
+    actorRef.send({ type: 'OPEN' })
+    clearRequest()
+  }, [active, requested, openPreview, actorRef, clearRequest])
+
+  // Leaving the screen is an exit like any other: the preview goes back rather than following the user
+  // to another tab. `phase` is a dependency because a save in flight refuses CLOSE — when it settles
+  // back to `browsing` off-screen, this has to ask again rather than leave a hidden panel to revive.
+  useEffect(() => {
+    if (!active) actorRef.send({ type: 'CLOSE' })
+  }, [active, phase, actorRef])
+
+  // The two transient phases are where the preview is actually put back or let stand. Doing it here
+  // rather than inside a transition action is what makes "no exit skips it" checkable in the machine.
+  useEffect(() => {
+    if (phase === 'reverting') {
+      revertPreview()
+      actorRef.send({ type: 'SETTLED' })
+    }
+    if (phase === 'committing') actorRef.send({ type: 'SETTLED' })
+  }, [phase, revertPreview, actorRef])
+
+  // Leaving the route unmounts the panel without any CLOSE, so the revert has to happen here too:
+  // otherwise a preview would outlive the surface that installed it. After a commit this is a no-op —
+  // `confirmed` is already the new selection.
+  useEffect(() => () => revertPreview(), [revertPreview])
+
+  const saveSelection = useCallback(async () => {
+    actorRef.send({ type: 'SAVE' })
+    // Only the send that actually MOVED the machine may start a request: a second press while one is
+    // in flight is refused by the machine, and must not fire a second Decorate behind its back.
+    if (actorRef.getSnapshot().value !== 'saving') return
+    const { saved, reason } = await save()
+    if (saved) {
+      invalidateAchievements()
+      actorRef.send({ type: 'SAVED' })
+    } else {
+      actorRef.send({ type: 'FAILED', reason: reason ?? '' })
+    }
+  }, [actorRef, save, invalidateAchievements])
+
+  return {
+    // The sheet stays mounted past a close so it can slide back out; `open` drives that.
+    open: phase === 'browsing' || phase === 'saving',
+    saving: phase === 'saving',
+    failureReason,
+    catalog,
+    save: saveSelection,
+    close: useCallback(() => actorRef.send({ type: 'CLOSE' }), [actorRef]),
+  }
 }
