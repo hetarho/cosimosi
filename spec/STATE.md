@@ -53,6 +53,7 @@
 ## review
 | id | st |
 | ------------------------------------- | ---------------- |
+| post-refactor-261102                  | ready@261103     |
 | all-261102                            | converted@261102 |
 | architecture-261102                   | converted@261102 |
 | frontend-rendering-experience-260726 | open@260726 |
@@ -77,11 +78,14 @@
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | - | todo |
 
 ## next
+- create-task review/post-refactor-261102: all 38 adopted, six waves; first create-architecture (FE grain criterion → ARCH) and update-ssot (TWINK-39 balance slice, CLIENT refocus freshness read) before F20/F22/F28
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2)
-- T166–T180 are archived; compatible protocol/window and device follow-ups are recorded in reports/261102-refactor.md
 
 ## log
+- 261103 review-code post-refactor-261102 triaged: user adopted all 38; FE grain criterion → ARCH revision (recommended rule), F22 → freshness read on refocus
+- 261102 review-code post-refactor-261102 review complete; 38 proposals (1 P1, 21 P2, 16 P3) with a six-wave plan await triage
+- 261102 review-code post-refactor-261102 start; deep re-review of the post-T166–T180 code (FSD grain, package cohesion, BE testability, leaks, performance)
 - 261102 T166–T180 done: shared frontend capabilities, owned lifetimes, enforced boundaries, typed atomic backend effects, unlocked provider comparison, bounded graph/export persistence, producer-owned jobs and isolated DB tests
 - 261102 legacy spec migration done: 32 SSOTs in ssot/, 164 done tasks + T165 in tasks/, 15 code reviews in review/; legacy docs removed (FORMAT maps legacy [<L>n] and ARCHITECTURE §n citations)
 - 261102 user adopted both reviews; T166–T180 created, implementation and main push authorized; preserve unrelated migration/AI work
