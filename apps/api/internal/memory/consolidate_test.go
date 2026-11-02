@@ -188,10 +188,6 @@ func consolidationProjection(episodicMemory EpisodicMemory) ConsolidationMemory 
 	return projection
 }
 
-func (f *fakeConsolidateTx) RecallMemberNeurons(_ context.Context, _ platform.UserScope, memoryID string) ([]ExistingNeuron, error) {
-	return f.memberNeurons[memoryID], nil
-}
-
 func (f *fakeConsolidateTx) ApplyStageAdvances(_ context.Context, _ platform.UserScope, advances []StageAdvance) error {
 	f.advances = append(f.advances, advances...)
 	return nil
@@ -962,5 +958,28 @@ func TestConsolidationReadsTextsOnlyForCrossingMemories(t *testing.T) {
 	}
 	if len(tx.provenance) == 0 {
 		t.Fatal("the crossing memory published no gist stage")
+	}
+}
+
+func TestReachedStageIsTheHighestOfEveryStageSource(t *testing.T) {
+	t.Parallel()
+	stage := func(value int16) *int16 { return &value }
+	for _, tc := range []struct {
+		name            string
+		visible         int16
+		recordedPending *int16
+		advance         *StageAdvance
+		pending         *PendingGistRise
+		want            int
+	}{
+		{name: "visible only", visible: 2, want: 2},
+		{name: "recorded pending above visible", visible: 1, recordedPending: stage(3), want: 3},
+		{name: "advance published higher", visible: 1, advance: &StageAdvance{Stage: 2}, want: 2},
+		{name: "new pending target highest", visible: 1, advance: &StageAdvance{Stage: 2}, pending: &PendingGistRise{Stage: 4}, want: 4},
+		{name: "anchor-only advance keeps the recorded pending", visible: 2, recordedPending: stage(3), advance: &StageAdvance{Stage: 2}, want: 3},
+	} {
+		if got := reachedStage(tc.visible, tc.recordedPending, tc.advance, tc.pending); got != tc.want {
+			t.Errorf("%s: reachedStage = %d, want %d", tc.name, got, tc.want)
+		}
 	}
 }

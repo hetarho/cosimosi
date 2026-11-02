@@ -23,7 +23,7 @@ import (
 // StageAdvance is one memory's gist rise over the advance interval: the risen stage and the
 // consumed timer anchor. Persisting the consumed anchor is what makes Consolidate convergent —
 // the next advance counts only the residual days, so an already-consolidated interval implies
-// zero further units (A10). The anchor only ever moves forward ([I10]). Stage may equal the
+// zero further units. The anchor only ever moves forward ([I10]). Stage may equal the
 // memory's current stage when only the anchor moves (a crossing whose ladder text is missing
 // consumes its units but defers the visible rise to the pending record below).
 type StageAdvance struct {
@@ -107,7 +107,7 @@ type ConsolidateTx interface {
 	AppendMemoryProvenances(ctx context.Context, scope platform.UserScope, entries []MemoryProvenance) error
 	// ConsolidationWatermarkForUpdate returns (locked, nil = never consolidated) the
 	// universe-time this user's consolidation already processed through — the clamp
-	// that makes a duplicate or overlapping invocation exactly-once (A4/A10).
+	// that makes a duplicate or overlapping invocation exactly-once.
 	ConsolidationWatermarkForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	// SetConsolidationWatermark moves the marker to the processed interval's end, after
 	// every interval effect succeeded in this same transaction. Monotone ([I10]).
@@ -184,7 +184,7 @@ func (c Consolidator) OnAdvance(ctx context.Context, scope platform.UserScope, t
 }
 
 func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, from time.Time, to time.Time) error {
-	// Exactly-once over the interval (A4/A10): clamp to the unprocessed suffix. A duplicate
+	// Exactly-once over the interval: clamp to the unprocessed suffix. A duplicate
 	// invocation of a processed interval is a total no-op; an overlapping one consolidates
 	// (and downscales) only the days the watermark has not covered yet.
 	watermark, err := tx.ConsolidationWatermarkForUpdate(ctx, scope)
@@ -209,76 +209,28 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 		return err
 	}
 
-	advances := make([]StageAdvance, 0)
-	pendings := make([]PendingGistRise, 0)
-	provenance := make([]MemoryProvenance, 0)
-	fills := make([]DecayStageFill, 0)
-	regenTargets := make([]jobqueue.Target, 0)
-	risenMemoryIDs := make([]string, 0)
-	for i := range memories {
-		episodicMemory := &memories[i]
-		memoryTexts := texts[episodicMemory.ID]
-		strength := EffectiveStrength(episodicMemory.BaseStrength, episodicMemory.RecallCount)
-
-		advance, pending, published := c.advanceGistStage(episodicMemory, memoryTexts, strength, to)
-		provenance = append(provenance, published...)
-		// The repair horizon spans the visible stage AND any recorded pending rise: a
-		// pending memory must keep re-enqueueing regeneration on every advance until
-		// its completion lands, or a dead job would leave the rise deferred forever.
-		reachedStage := int(episodicMemory.SemanticStage)
-		if episodicMemory.PendingSemanticStage != nil && int(*episodicMemory.PendingSemanticStage) > reachedStage {
-			reachedStage = int(*episodicMemory.PendingSemanticStage)
-		}
-		if advance != nil {
-			advances = append(advances, *advance)
-			if int(advance.Stage) > reachedStage {
-				reachedStage = int(advance.Stage)
-			}
-		}
-		if pending != nil {
-			pendings = append(pendings, *pending)
-			if int(pending.Stage) > reachedStage {
-				reachedStage = int(pending.Stage)
-			}
-		}
-		// The interval touched this memory's gist axis — visibly or as pending work.
-		if advance != nil && int(advance.Stage) > int(episodicMemory.SemanticStage) || pending != nil {
-			risenMemoryIDs = append(risenMemoryIDs, episodicMemory.ID)
-		}
-		// Repair pass ([C7], A9): a reached stage whose pregenerated text never landed (a
-		// dead semanticize job, or a rise deferred as pending) would otherwise stay
-		// unviewable forever — a memory at the ceiling crosses no further boundary, so
-		// the check cannot live on the rise alone.
-		if reachedStage >= 1 && missingStageText(episodicMemory, memoryTexts, reachedStage) {
-			regenTargets = append(regenTargets, jobqueue.Target{
-				Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision,
-			})
-		}
-		if fill, ok := newlyReachedDecayFill(episodicMemory, memoryTexts, strength, from, to); ok {
-			fills = append(fills, fill)
-		}
-	}
-	if len(provenance) > 0 {
-		if err := tx.AppendMemoryProvenances(ctx, scope, provenance); err != nil {
+	plan := c.planInterval(memories, texts, from, to)
+	if len(plan.provenance) > 0 {
+		if err := tx.AppendMemoryProvenances(ctx, scope, plan.provenance); err != nil {
 			return err
 		}
 	}
-	if len(advances) > 0 {
-		if err := tx.ApplyStageAdvances(ctx, scope, advances); err != nil {
+	if len(plan.advances) > 0 {
+		if err := tx.ApplyStageAdvances(ctx, scope, plan.advances); err != nil {
 			return err
 		}
 	}
-	if len(pendings) > 0 {
-		if err := tx.RecordPendingGistRises(ctx, scope, pendings); err != nil {
+	if len(plan.pendings) > 0 {
+		if err := tx.RecordPendingGistRises(ctx, scope, plan.pendings); err != nil {
 			return err
 		}
 	}
-	if len(fills) > 0 {
-		if err := tx.FillDecayStages(ctx, scope, fills); err != nil {
+	if len(plan.fills) > 0 {
+		if err := tx.FillDecayStages(ctx, scope, plan.fills); err != nil {
 			return err
 		}
 	}
-	if err := c.enqueueSemanticizeRegens(ctx, scope, tx, regenTargets); err != nil {
+	if err := c.enqueueSemanticizeRegens(ctx, scope, tx, plan.regenTargets); err != nil {
 		return err
 	}
 
@@ -289,7 +241,7 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 		return err
 	}
 
-	replayNeurons, err := c.markReplaySet(ctx, scope, tx, risenMemoryIDs, to)
+	replayNeurons, err := c.markReplaySet(ctx, scope, tx, plan.risenMemoryIDs, to)
 	if err != nil {
 		return err
 	}
@@ -303,8 +255,56 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 	}
 
 	// The marker moves last, atomically with every effect above — a rolled-back attempt
-	// leaves it untouched and the interval retryable (A4).
+	// leaves it untouched and the interval retryable.
 	return tx.SetConsolidationWatermark(ctx, scope, to)
+}
+
+// consolidationPlan is everything one interval writes, decided from the projections and the fetched
+// texts before any write is issued.
+type consolidationPlan struct {
+	advances       []StageAdvance
+	pendings       []PendingGistRise
+	provenance     []MemoryProvenance
+	fills          []DecayStageFill
+	regenTargets   []jobqueue.Target
+	risenMemoryIDs []string
+}
+
+// planInterval decides each memory's gist rise, repair re-enqueue and decay fill over (from, to].
+func (c Consolidator) planInterval(memories []ConsolidationMemory, texts map[string]*ConsolidationTexts, from time.Time, to time.Time) consolidationPlan {
+	var plan consolidationPlan
+	for i := range memories {
+		episodicMemory := &memories[i]
+		memoryTexts := texts[episodicMemory.ID]
+		strength := EffectiveStrength(episodicMemory.BaseStrength, episodicMemory.RecallCount)
+
+		advance, pending, published := c.advanceGistStage(episodicMemory, memoryTexts, strength, to)
+		plan.provenance = append(plan.provenance, published...)
+		if advance != nil {
+			plan.advances = append(plan.advances, *advance)
+		}
+		if pending != nil {
+			plan.pendings = append(plan.pendings, *pending)
+		}
+		reached := reachedStage(episodicMemory.SemanticStage, episodicMemory.PendingSemanticStage, advance, pending)
+		// The interval touched this memory's gist axis — visibly or as pending work.
+		if advance != nil && int(advance.Stage) > int(episodicMemory.SemanticStage) || pending != nil {
+			plan.risenMemoryIDs = append(plan.risenMemoryIDs, episodicMemory.ID)
+		}
+		// Repair pass ([C7]): a reached stage whose pregenerated text never landed (a
+		// dead semanticize job, or a rise deferred as pending) would otherwise stay
+		// unviewable forever — a memory at the ceiling crosses no further boundary, so
+		// the check cannot live on the rise alone.
+		if reached >= 1 && missingStageText(episodicMemory, memoryTexts, reached) {
+			plan.regenTargets = append(plan.regenTargets, jobqueue.Target{
+				Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision,
+			})
+		}
+		if fill, ok := newlyReachedDecayFill(episodicMemory, memoryTexts, strength, from, to); ok {
+			plan.fills = append(plan.fills, fill)
+		}
+	}
+	return plan
 }
 
 // crossingTexts fetches, in one read, the texts of the memories whose interval needs them: a rise
@@ -331,6 +331,24 @@ func (c Consolidator) crossingTexts(ctx context.Context, scope platform.UserScop
 		texts[rows[i].MemoryID] = &rows[i]
 	}
 	return texts, nil
+}
+
+// reachedStage is the repair horizon after an advance: the highest of the visible stage, a recorded
+// pending rise, this advance's published stage and its new pending target. It spans the pending
+// rise because a pending memory must keep re-enqueueing regeneration on every advance until its
+// completion lands, or a dead job would leave the rise deferred forever.
+func reachedStage(visible int16, recordedPending *int16, advance *StageAdvance, pending *PendingGistRise) int {
+	reached := int(visible)
+	if recordedPending != nil {
+		reached = max(reached, int(*recordedPending))
+	}
+	if advance != nil {
+		reached = max(reached, int(advance.Stage))
+	}
+	if pending != nil {
+		reached = max(reached, int(pending.Stage))
+	}
+	return reached
 }
 
 // gistTarget is the stage a memory's gist timer reached by `to`, with the anchor and units the rise
@@ -374,7 +392,7 @@ func stagePresent(present uint32, stage int) bool {
 // advanceGistStage rises one memory's gist stage by the whole units its timer crossed by `to`
 // ([C1][C6]). Only stages whose pregenerated text exists are published: each gets one
 // semanticized/system provenance row carrying that text and its stage identity, so 변천사
-// stays continuous across a large jump (CC5, [R8a]) and never blank. A crossing
+// stays continuous across a large jump ([R8a]) and never blank. A crossing
 // beyond the readable prefix is returned as a PendingGistRise — the visible stage stays put
 // and the semanticize completion materializes it later. The crossed units are consumed from
 // the anchor either way (the rise HAPPENED; only its publication waits for text), so rise
@@ -463,7 +481,7 @@ func missingStageText(episodicMemory *ConsolidationMemory, texts *ConsolidationT
 }
 
 // enqueueSemanticizeRegens re-enqueues the stage-text generation for memories whose risen stage has
-// no text ([C7], A9): the worker regenerates the set from current_text and keeps the leading
+// no text ([C7]): the worker regenerates the set from current_text and keeps the leading
 // already-present texts (a risen gist stage is a thing that happened).
 //
 // A job already pending or running for the same revision will write the same texts, so the pass
@@ -525,7 +543,7 @@ func needsDecayFill(episodicMemory *ConsolidationMemory, strength float64, from 
 
 // newlyReachedDecayFill builds the deterministic word-loss texts for the forgetting stages the
 // interval crossed ([F1][R8a]), so stored stage texts and the read-time stage always agree.
-// Brightness and the current stage remain read-time derived — nothing here stores a tick (A4).
+// Brightness and the current stage remain read-time derived — nothing here stores a tick.
 // Every missing slot up to the target is filled (an empty placeholder would render as an empty
 // text on the client), and existing strings are never overwritten, which also keeps re-runs
 // byte-identical after a reconsolidation changed current_text.
@@ -611,7 +629,7 @@ func (c Consolidator) markReplaySet(ctx context.Context, scope platform.UserScop
 // linked in this very launch transaction, or otherwise activated at the advance target,
 // did not sleep — leaving it in would weaken a synapse the interval never contained),
 // renormalize in the domain, write the changed rows. Nothing is inserted or deleted, and
-// edges the floor already holds are skipped (A6).
+// edges the floor already holds are skipped.
 func (c Consolidator) downscaleSynapses(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, to time.Time) error {
 	strengths, err := tx.ListSynapseStrengths(ctx, scope, to)
 	if err != nil {
@@ -639,7 +657,7 @@ func (c Consolidator) enqueueConsolidateJob(ctx context.Context, scope platform.
 	for _, neuron := range neurons {
 		targets = append(targets, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
 	}
-	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindConsolidate, ConsolidateJobPayload{}, targets...)
+	return enqueueJob(ctx, tx, scope, jobSpec{ID: c.newID(), Kind: JobKindConsolidate, Payload: ConsolidateJobPayload{}, Targets: targets})
 }
 
 func neuronIDsOf(neurons []ExistingNeuron) []string {

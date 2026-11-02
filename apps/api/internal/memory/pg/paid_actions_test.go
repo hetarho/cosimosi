@@ -32,7 +32,7 @@ func TestRecallReceiptReplayIsIdempotentEndToEnd(t *testing.T) {
 	service := newRecallService(t, store)
 
 	op := base + "-op-1"
-	first, err := service.Recall(ctx, scope, op, base+"-m1", "a wholly different account", true)
+	first, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: op, MemoryID: base + "-m1", RewriteText: "a wholly different account", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("first recall failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestRecallReceiptReplayIsIdempotentEndToEnd(t *testing.T) {
 
 	// Response-loss retry: same operation id + same input replays the committed result and does no
 	// second recall — recall_count and provenance are unchanged (A2/A3).
-	second, err := service.Recall(ctx, scope, op, base+"-m1", "a wholly different account", true)
+	second, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: op, MemoryID: base + "-m1", RewriteText: "a wholly different account", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("replay recall failed: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestRecallReceiptReplayIsIdempotentEndToEnd(t *testing.T) {
 	}
 
 	// Same operation id, different input → conflict, not a wrong-result hit.
-	if _, err := service.Recall(ctx, scope, op, base+"-m1", "a THIRD different account", true); !errors.Is(err, memory.ErrOperationConflict) {
+	if _, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: op, MemoryID: base + "-m1", RewriteText: "a THIRD different account", SyncConsent: true}); !errors.Is(err, memory.ErrOperationConflict) {
 		t.Fatalf("mismatched-input replay err = %v, want ErrOperationConflict", err)
 	}
 }
@@ -115,7 +115,7 @@ func TestConcurrentRecallDuplicateCommitsOneEffectEndToEnd(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			<-start
-			_, callErr := service.Recall(ctx, scope, base+"-op", base+"-m1", "one concurrent rewrite", true)
+			_, callErr := service.Recall(ctx, scope, memory.RecallCommand{OperationID: base + "-op", MemoryID: base + "-m1", RewriteText: "one concurrent rewrite", SyncConsent: true})
 			errs <- callErr
 		}()
 	}
@@ -177,11 +177,11 @@ func TestGistAndDiaryReceiptsReplayAgainstRealStore(t *testing.T) {
 		t.Fatalf("replayed view = %s, want %s", diagnosticValue(replayedView), diagnosticValue(firstView))
 	}
 
-	firstDiary, err := service.RecallDiaryStars(ctx, scope, base+"-diary-op", base+"-diary", true)
+	firstDiary, err := service.RecallDiaryStars(ctx, scope, memory.RecallDiaryStarsCommand{OperationID: base + "-diary-op", DiaryID: base + "-diary", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("first diary recall failed: %v", err)
 	}
-	replayedDiary, err := service.RecallDiaryStars(ctx, scope, base+"-diary-op", base+"-diary", true)
+	replayedDiary, err := service.RecallDiaryStars(ctx, scope, memory.RecallDiaryStarsCommand{OperationID: base + "-diary-op", DiaryID: base + "-diary", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("replayed diary recall failed: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestRecallRefusesUnconsentedSyncEndToEnd(t *testing.T) {
 	seedRecallGraph(t, ctx, store, scope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
 	service := newRecallService(t, store)
 
-	if _, err := service.Recall(ctx, scope, base+"-op-1", base+"-m1", "reworded", false); !errors.Is(err, memory.ErrSyncConsentRequired) {
+	if _, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: base + "-op-1", MemoryID: base + "-m1", RewriteText: "reworded", SyncConsent: false}); !errors.Is(err, memory.ErrSyncConsentRequired) {
 		t.Fatalf("unconsented recall err = %v, want ErrSyncConsentRequired", err)
 	}
 	// Nothing committed: no receipt, recall_count still zero, clock unborn.
@@ -241,7 +241,7 @@ func TestRecallRefusesUnconsentedSyncEndToEnd(t *testing.T) {
 	}
 
 	// With consent the same operation id proceeds (no blind receipt was written by the refusal).
-	if _, err := service.Recall(ctx, scope, base+"-op-1", base+"-m1", "reworded", true); err != nil {
+	if _, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: base + "-op-1", MemoryID: base + "-m1", RewriteText: "reworded", SyncConsent: true}); err != nil {
 		t.Fatalf("consented recall failed: %v", err)
 	}
 }

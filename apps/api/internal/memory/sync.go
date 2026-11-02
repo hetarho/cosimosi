@@ -49,7 +49,7 @@ func (s *LaunchService) SyncToToday(ctx context.Context, scope platform.UserScop
 	return result, nil
 }
 
-// SyncStatus is the server-authoritative sync-status read ([R1a], A1): the user's "today" a
+// SyncStatus is the server-authoritative sync-status read ([R1a]): the user's "today" a
 // recall/whole-diary recall would sync to and whether the clock currently lags it, computed from
 // the same guard baseline (clock, or the latest launched memory while the clock is unborn) and the
 // same zoned `now` the recall sync uses — so the client drives the consent decision from the server
@@ -117,7 +117,7 @@ func (s *graphClock) syncTarget(ctx context.Context, scope platform.UserScope, t
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	// Server-enforced consent gate ([R1a], A1/A5): if advancing to today would move the clock
+	// Server-enforced consent gate ([R1a]): if advancing to today would move the clock
 	// forward, the caller must have consented — decided from the SERVER clock, never a client
 	// Date. Refused before any spend/effect, so nothing is charged and the client can safely
 	// re-consent (the recall's operation id stays reusable — no receipt was written).

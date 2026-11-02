@@ -23,7 +23,7 @@ const redactionToken = "xxxx"
 // EffectiveElapsedDays is the offset-inclusive recency clock both EffectiveBrightness and DecayStage
 // consume, so brightness and stage move together ([F1]). Universe-days elapse from the last recall,
 // or from creation when a memory has never been recalled (a never-recalled memory still forgets). The
-// signed neighbor forgetting_offset_days (CC4, written on a *neighbor's* recall by reconsolidation)
+// signed neighbor forgetting_offset_days (written on a *neighbor's* recall by reconsolidation)
 // shifts that age and is floored at 0 so an offset can never make a memory younger than new ([I10]).
 func EffectiveElapsedDays(now time.Time, lastRecalled *time.Time, created time.Time, offsetDays float64) float64 {
 	anchor := created
@@ -31,7 +31,7 @@ func EffectiveElapsedDays(now time.Time, lastRecalled *time.Time, created time.T
 		anchor = *lastRecalled
 	}
 	// Universe times are date-only ([T5]); truncate to the UTC day so elapsed is whole universe-days
-	// exactly as the TS mirror (which parses date-only strings) computes it — golden-parity ([A10]).
+	// exactly as the TS mirror (which parses date-only strings) computes it — golden-parity.
 	elapsed := math.Max(0, utcDate(now).Sub(utcDate(anchor)).Hours()/24)
 	return math.Max(0, elapsed+offsetDays)
 }
@@ -192,7 +192,7 @@ func seededRemovalOrder(words []string, removable []int, seed int64) []int {
 
 // seededRank is a deterministic uint32 hash of (seed, index) — a splitmix32-style finalizer using
 // only uint32 wraparound arithmetic so the Go and TS mirrors (Math.imul + >>> 0) produce identical
-// ranks. This is the whole source of "randomness"; there is no ambient RNG (purity, [A11]).
+// ranks. This is the whole source of "randomness"; there is no ambient RNG (purity).
 func seededRank(seed int64, index int) uint32 {
 	x := uint32(seed) + uint32(index)*0x9e3779b1
 	x ^= x >> 16

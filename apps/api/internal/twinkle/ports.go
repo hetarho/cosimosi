@@ -12,13 +12,13 @@ import (
 // their transactions from, the depth-signal reads a quote prices, the SMALL day
 // boundary ([U7]), and the trusted invite/signup resolver ([G6]). Domain-shaped in
 // and out — no proto, sqlc, pgx, or SDK type crosses any of them, and no memory
-// type either: depth signals arrive as scalars (§2.2, CC8).
+// type either: depth signals arrive as scalars (§2.2).
 
 // LedgerStore is the ledger repository surface one earn/spend composes: the balance
 // facts read, the guarded balance delta, and the append-only log write. The concrete
 // is twinkle/pg's Store — bound to the pool for reads, to a transaction inside
 // InLedgerTx, or (via the composition root's economy seam) to a memory transaction
-// so a spend/earn joins the recall/launch it belongs to ([CC2]).
+// so a spend/earn joins the recall/launch it belongs to.
 type LedgerStore interface {
 	GetBalanceRecord(ctx context.Context, scope platform.UserScope) (*BalanceRecord, error)
 	ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, resetWindow time.Time, generalDelta int, smallSpentDelta int) (BalanceRecord, error)
@@ -86,7 +86,7 @@ func (b boundLedgerTx) ZoneFor(ctx context.Context, scope platform.UserScope) (s
 // SpendSignalReader resolves the authoritative depth signals a quote prices
 // ([G4]): memory facts by target id, as scalars only. The concrete is a
 // composition-root adapter over the memory context's published reads — this
-// context never imports memory (CC8).
+// context never imports memory.
 type SpendSignalReader interface {
 	// RecallAccessibility is one memory's accessibility cost weight ([F4]) — the
 	// recall quote's signal.

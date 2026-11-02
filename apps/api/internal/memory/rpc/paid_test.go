@@ -21,13 +21,15 @@ type paidStub struct {
 	err                               error
 }
 
-func (s *paidStub) Recall(_ context.Context, scope platform.UserScope, operation, target, rewrite string, consent bool) (memory.RecallResult, error) {
+func (s *paidStub) Recall(_ context.Context, scope platform.UserScope, cmd memory.RecallCommand) (memory.RecallResult, error) {
+	operation, target, rewrite, consent := cmd.OperationID, cmd.MemoryID, cmd.RewriteText, cmd.SyncConsent
 	s.calls++
 	s.scope, s.operation, s.target, s.rewrite, s.consent = scope.UserID(), operation, target, rewrite, consent
 	return memory.RecallResult{CurrentText: "recalled", Seed: 9007199254740993, Sync: memory.SyncResult{Current: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}}, s.err
 }
 
-func (s *paidStub) RecallDiaryStars(_ context.Context, scope platform.UserScope, operation, target string, consent bool) (memory.RecallDiaryStarsResult, error) {
+func (s *paidStub) RecallDiaryStars(_ context.Context, scope platform.UserScope, cmd memory.RecallDiaryStarsCommand) (memory.RecallDiaryStarsResult, error) {
+	operation, target, consent := cmd.OperationID, cmd.DiaryID, cmd.SyncConsent
 	s.calls++
 	s.scope, s.operation, s.target, s.consent = scope.UserID(), operation, target, consent
 	return memory.RecallDiaryStarsResult{DiaryID: target, EpisodicMemoryIDs: []string{"memory"}}, s.err

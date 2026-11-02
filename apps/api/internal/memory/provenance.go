@@ -12,7 +12,7 @@ import (
 // synthesized created/original baseline first, then every appended representational event in
 // universe-time order. It is the read half of the trace-vs-record contrast ([D4]): the history records
 // only the representation's evolution, while the objective Diary is reached only through Export and the
-// reader ([I2]). Read-only — it advances no clock ([T3]), appends no row ([CC5]), and spends no stardust
+// reader ([I2]). Read-only — it advances no clock ([T3]), appends no row, and spends no stardust
 // (metadata tier [R1][G1]); it carries no spend.
 
 var (
@@ -37,7 +37,7 @@ type ProvenanceEntry struct {
 // MemoryOrigin holds the creation facts the created/original baseline is synthesized from: the
 // passage this memory was encoded from and its creation universe-time. It is never current_text
 // (reconsolidation moves that, and the baseline must still read true afterwards) and never a
-// stored memory_provenance row ([CC5][A2]). DiaryBody is the immutable objective record via
+// stored memory_provenance row ([A2]). DiaryBody is the immutable objective record via
 // diary_id ([I2][D4]), carried as the fallback for memories encoded before per-memory passages.
 type MemoryOrigin struct {
 	SourceText          string
@@ -70,7 +70,7 @@ type ProvenanceReader interface {
 // GetProvenance returns one memory's variant history: load the creation facts (per-user scoped) →
 // synthesize the created/original baseline from the immutable Diary body → prepend it to the appended
 // rows (already universe-time ordered). The baseline is the earliest event ([T]), so prepending it is
-// the time order the panel renders ([R8a], A1). No write, no clock, no spend (A6).
+// the time order the panel renders ([R8a]). No write, no clock, no spend.
 func (s *ReadService) GetProvenance(ctx context.Context, scope platform.UserScope, memoryID string) ([]ProvenanceEntry, error) {
 	if scope.UserID() == "" {
 		return nil, ErrScopeRequired

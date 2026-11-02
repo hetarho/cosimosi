@@ -23,7 +23,7 @@ type UseCases interface {
 	GetAdminSelf(ctx context.Context, userID string) (bool, error)
 	GetJobHealth(ctx context.Context) (admin.JobHealth, error)
 	GrantAdmin(ctx context.Context, actor string, userID string) (bool, error)
-	GrantStardust(ctx context.Context, actor string, userID string, amount int, note string, grantID string) (int, error)
+	GrantStardust(ctx context.Context, actor string, input admin.GrantInput) (int, error)
 	ListAdmins(ctx context.Context) ([]admin.AdminEntry, error)
 	ListProviderKeys(ctx context.Context) ([]admin.ProviderKeyInfo, error)
 	ListProviderModels(ctx context.Context, capability admin.AICapability, provider string) ([]admin.ProviderModel, error)
@@ -130,7 +130,9 @@ func (s *Server) GrantStardust(ctx context.Context, req *connect.Request[adminv1
 	if err != nil {
 		return nil, err
 	}
-	total, err := s.service.GrantStardust(ctx, caller, req.Msg.GetUserId(), int(req.Msg.GetAmount()), req.Msg.GetNote(), req.Msg.GetGrantId())
+	total, err := s.service.GrantStardust(ctx, caller, admin.GrantInput{
+		UserID: req.Msg.GetUserId(), Amount: int(req.Msg.GetAmount()), Note: req.Msg.GetNote(), GrantID: req.Msg.GetGrantId(),
+	})
 	if err != nil {
 		return nil, domainError(err)
 	}

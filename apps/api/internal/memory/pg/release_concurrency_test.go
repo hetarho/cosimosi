@@ -220,7 +220,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		}
 
 		go func() {
-			result, err := recallService.RecallDiaryStars(ctx, scope, "op-a-diary-recall", g.d1, true)
+			result, err := recallService.RecallDiaryStars(ctx, scope, memory.RecallDiaryStarsCommand{OperationID: "op-a-diary-recall", DiaryID: g.d1, SyncConsent: true})
 			recallDone <- recallOutcome{result: result, err: err}
 		}()
 		waitForAdvisoryWaiter(t, ctx, pool, userID)
@@ -236,7 +236,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 
 		otherCtx, otherCancel := context.WithTimeout(ctx, 5*time.Second)
 		defer otherCancel()
-		otherResult, err := otherService.RecallDiaryStars(otherCtx, otherScope, "op-b-diary-recall", otherGraph.d1, true)
+		otherResult, err := otherService.RecallDiaryStars(otherCtx, otherScope, memory.RecallDiaryStarsCommand{OperationID: "op-b-diary-recall", DiaryID: otherGraph.d1, SyncConsent: true})
 		if err != nil {
 			t.Fatalf("user B RecallDiaryStars blocked on user A graph lock: %v", err)
 		}
@@ -304,7 +304,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		releaseErr := make(chan error, 1)
 
 		go func() {
-			_, err := recallService.RecallDiaryStars(ctx, scope, "op-a-diary-recall-2", g.d1, true)
+			_, err := recallService.RecallDiaryStars(ctx, scope, memory.RecallDiaryStarsCommand{OperationID: "op-a-diary-recall-2", DiaryID: g.d1, SyncConsent: true})
 			recallErr <- err
 		}()
 		select {

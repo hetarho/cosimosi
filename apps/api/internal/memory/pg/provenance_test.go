@@ -236,19 +236,20 @@ func TestExportReadsAreScopedAndHonorTheExclusion(t *testing.T) {
 		t.Fatalf("InsertDiary (other) failed: %v", err)
 	}
 
-	diaries, err := store.DiariesForExport(ctx, scope)
-	if err != nil {
-		t.Fatalf("DiariesForExport failed: %v", err)
+	var diaries []memory.ExportDiary
+	var memories []memory.ExportMemory
+	if err := store.WalkExport(ctx, scope, func(diary memory.ExportDiary, members []memory.ExportMemory) error {
+		diaries = append(diaries, diary)
+		memories = append(memories, members...)
+		return nil
+	}); err != nil {
+		t.Fatalf("WalkExport failed: %v", err)
 	}
 	// A8: both the memory-bearing and the memory-less diary are exported; the other user's is absent (A10).
 	if len(diaries) != 2 {
 		t.Fatalf("diaries = %d, want 2 (memory-bearing + memory-less), other user excluded", len(diaries))
 	}
 
-	memories, err := store.LiveMemoriesForExport(ctx, scope)
-	if err != nil {
-		t.Fatalf("LiveMemoriesForExport failed: %v", err)
-	}
 	// A8: the soft-deleted memory is excluded; only the live one is handed out.
 	if len(memories) != 1 || memories[0].DiaryID != diaryID {
 		t.Fatalf("live memories = %s, want only the one live memory", diagnosticValue(memories))

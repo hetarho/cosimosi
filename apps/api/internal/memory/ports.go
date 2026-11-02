@@ -15,7 +15,8 @@ type UserZone interface {
 	ZoneFor(ctx context.Context, scope platform.UserScope) (*time.Location, error)
 }
 
-// UTCUserZone preserves the pre-profile behavior for tests and minimal composition roots.
+// UTCUserZone resolves every user's day in UTC: the binding for tests and for roots without
+// account profiles.
 type UTCUserZone struct{}
 
 func (UTCUserZone) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
@@ -193,7 +194,7 @@ type SpendSignalRepo interface {
 
 // Linker is the in-transaction Link seam: PersistEncoded invokes it as
 // the last step of its transaction so synapse writes land atomically with the
-// launch. A nil Linker skips linking (no synapse is created at launch).
+// launch.
 type Linker interface {
 	// coActivations are the launched neurons' memory memberships read once after the launch's
 	// activations landed; the launch shares the same read with its achievement report.

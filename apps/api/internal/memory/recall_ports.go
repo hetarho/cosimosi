@@ -15,14 +15,14 @@ import (
 // Domain-shaped in and out: no proto, sqlc, pgx, or SDK type crosses any of them.
 
 // ErrInsufficientTwinkle is the canonical denial EconomyTx.SpendMemory returns when the caller
-// cannot afford the action ([G1], §CC2). Recall/RecallDiaryStars surface it verbatim
+// cannot afford the action ([G1]). Recall/RecallDiaryStars surface it verbatim
 // so the transport maps one code and the UI shows one message; the no-op gate never
 // returns it (it charges nothing), the real economy gate does.
 var ErrInsufficientTwinkle = errors.New("insufficient twinkle for this action")
 
 // SpendKind names WHICH metered action a SpendIntent is for. It is a depth/kind
 // SIGNAL, never a price: the gate maps a kind (+ its target and depth signal) to a
-// cost via the cost curve, so no price literal ever lives in this context (§CC2).
+// cost via the cost curve, so no price literal ever lives in this context.
 // recall = 회고하기; view_gist = 요지 열람 (the paired gist-view consumer).
 type SpendKind string
 
@@ -36,9 +36,9 @@ const (
 // server-derived accessibility cost weight ([F4], computed at spend time by the recall
 // use-case), a gist view carries the viewed stage ([R8][G4]). It carries NO price: this
 // context supplies only the signals and the gate prices them and decides whether the balance
-// allows the action (§CC2/CC3). Stage is unused (0) for a recall; AccessibilityCost is unused
+// allows the action. Stage is unused (0) for a recall; AccessibilityCost is unused
 // (0) for a gist view. OperationID + MemoryID derive the spend's per-action/per-member dedup
-// key at the economy seam, so a duplicate spend applies no second balance delta (A3).
+// key at the economy seam, so a duplicate spend applies no second balance delta.
 type SpendIntent struct {
 	Kind              SpendKind
 	MemoryID          string
@@ -49,7 +49,7 @@ type SpendIntent struct {
 
 // RecallSpendIntent is the recall action's intent — the target memory plus its
 // spend-time accessibility cost weight ([F4]), never a price. operationID carries the
-// paid-action identity the economy seam derives the dedup key from (A3); in a whole-diary
+// paid-action identity the economy seam derives the dedup key from; in a whole-diary
 // recall every member shares the operation id but differs by memory id, so each member's
 // spend dedup key is distinct.
 func RecallSpendIntent(operationID string, memoryID string, accessibilityCost float64) SpendIntent {
@@ -125,9 +125,6 @@ type RecallTx interface {
 	// semantic_stages for the remaining-stage selection ([C7]). Returns
 	// ErrRecallMemoryNotFound when no such row is the caller's.
 	EpisodicMemoryForRecall(ctx context.Context, scope platform.UserScope, memoryID string) (EpisodicMemory, error)
-	// RecallMemberNeurons returns the recalled memory's live member neurons (id, name,
-	// type) — the semanticize inputs the reconsolidation regen job carries.
-	RecallMemberNeurons(ctx context.Context, scope platform.UserScope, memoryID string) ([]ExistingNeuron, error)
 	// RecallMemberSynapses returns every synapse whose BOTH endpoints are the recalled
 	// memory's member neurons — the co-activated edges Reinforce batch-LTPs ([R3]). Only
 	// neuron↔neuron edges exist, so no memory↔memory edge can be returned ([I4][I6]).

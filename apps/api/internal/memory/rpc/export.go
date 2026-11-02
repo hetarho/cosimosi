@@ -10,7 +10,7 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
-// The transport consumes only the export behavior, not the memory command facade.
+// The transport consumes only the export behavior.
 type ExportUseCase interface {
 	Export(context.Context, platform.UserScope, memory.ExportFormat) (memory.ExportResult, error)
 }

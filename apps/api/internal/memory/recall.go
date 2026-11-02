@@ -18,7 +18,7 @@ import (
 // Reconsolidates it (rewrite current_text, reshape the seed, regenerate the remaining
 // stage texts). Recall writes ANCHORS, not pixels: the visible brightness/decay/gist
 // recovery is produced by the forgetting/consolidation read-time functions that read these
-// anchors (§CC1). The Diary is never written ([I2][R7]).
+// anchors. The Diary is never written ([I2][R7]).
 
 var (
 	// ErrRecallInputRequired rejects an empty memory/diary id or (for Recall) an empty
@@ -40,7 +40,7 @@ var (
 // the recall SpendIntent carries: the same read-time forgetting chain the render
 // path uses (offset-inclusive elapsed → decay depth → convex weight), evaluated at
 // the post-sync universe time — so the gate prices exactly the decay state the user
-// is recalling out of. A signal, never a price ([CC3]: pricing lives in the economy).
+// is recalling out of. A signal, never a price (: pricing lives in the economy).
 func recallAccessibilitySignal(anchor DiaryRecallAnchor, universeTime time.Time) float64 {
 	elapsed := EffectiveElapsedDays(universeTime, anchor.LastRecalledUniverseTime,
 		anchor.CreatedUniverseTime, anchor.ForgettingOffsetDays)
@@ -83,14 +83,30 @@ type RecallDiaryStarsResult struct {
 	Sync              SyncResult
 }
 
-// Recall is the 회고하기 orchestration. The whole sequence is ONE transaction so sync +
-// spend + anchors + reinforce + (reconsolidate) + provenance land wholly or not at all;
-// the Diary is never in that write set ([I2][R7]).
-//
-// A short preparation transaction verifies scope, receipt, consent, target and affordability.
-// Provider comparison runs after that transaction releases its graph lock. The commit transaction
-// repeats the receipt/consent/spend checks and rejects a changed source before applying any effect.
-func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
+// RecallCommand is one 회고하기 request: the client's operation id (the replay key), the target
+// memory, the rewritten text and the user's consent to sync the universe clock first.
+type RecallCommand struct {
+	OperationID string
+	MemoryID    string
+	RewriteText string
+	SyncConsent bool
+}
+
+// RecallDiaryStarsCommand is one whole-diary recall request.
+type RecallDiaryStarsCommand struct {
+	OperationID string
+	DiaryID     string
+	SyncConsent bool
+}
+
+// Recall is the 회고하기 orchestration, in two transactions around the provider call. A short
+// preparation transaction verifies scope, receipt, consent, target and affordability; the provider
+// comparison runs after it releases its graph lock; the commit transaction repeats the
+// receipt/consent/spend checks, rejects a changed source, and applies sync + spend + anchors +
+// reinforce + (reconsolidate) + provenance wholly or not at all. The Diary is never in that write
+// set ([I2][R7]).
+func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope, cmd RecallCommand) (RecallResult, error) {
+	operationID, memoryID, rewriteText := cmd.OperationID, cmd.MemoryID, cmd.RewriteText
 	if scope.UserID() == "" {
 		return RecallResult{}, ErrScopeRequired
 	}
@@ -101,6 +117,7 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 	if memoryID == "" || rewriteText == "" {
 		return RecallResult{}, ErrRecallInputRequired
 	}
+	cmd.RewriteText = rewriteText
 	fingerprint := recallFingerprint(memoryID, rewriteText)
 	// Resolved once, outside both transactions: the zone is not a transactional fact, and a read
 	// through the pool inside a transaction would wait on a second connection.
@@ -109,10 +126,29 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		return RecallResult{}, err
 	}
 
+	prepared, replay, err := s.prepareRecall(ctx, scope, cmd, fingerprint, today)
+	if err != nil || replay != nil {
+		return valueOr(replay), err
+	}
+	differs, err := s.predictionError.Differs(ctx, prepared.CurrentText, rewriteText)
+	if err != nil {
+		return RecallResult{}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return RecallResult{}, err
+	}
+	return s.commitRecall(ctx, scope, cmd, fingerprint, today, prepared, differs)
+}
+
+// prepareRecall is the short first transaction: under the graph lock it replays a committed receipt
+// (returned as replay) or checks consent, the target and affordability, and returns the memory the
+// provider comparison runs against once the lock is released.
+func (s *PaidActionService) prepareRecall(ctx context.Context, scope platform.UserScope, cmd RecallCommand, fingerprint string, today time.Time) (EpisodicMemory, *RecallResult, error) {
+	operationID, memoryID, syncConsent := cmd.OperationID, cmd.MemoryID, cmd.SyncConsent
 	var prepared EpisodicMemory
 	var result RecallResult
 	replayed := false
-	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
+	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
@@ -134,23 +170,24 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		return tx.CheckMemorySpend(ctx, scope, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(prepared), target)))
 	})
 	if err != nil {
-		return RecallResult{}, err
+		return EpisodicMemory{}, nil, err
 	}
 	if replayed {
-		return result, nil
+		return EpisodicMemory{}, &result, nil
 	}
-	differs, err := s.predictionError.Differs(ctx, prepared.CurrentText, rewriteText)
-	if err != nil {
-		return RecallResult{}, err
-	}
-	if err := ctx.Err(); err != nil {
-		return RecallResult{}, err
-	}
+	return prepared, nil, nil
+}
 
-	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
+// commitRecall is the commit transaction: it repeats the receipt, consent and spend checks, refuses a
+// source that changed since preparation, and applies sync + spend + reinforce + (reconsolidate) +
+// provenance + the receipt wholly or not at all.
+func (s *PaidActionService) commitRecall(ctx context.Context, scope platform.UserScope, cmd RecallCommand, fingerprint string, today time.Time, prepared EpisodicMemory, differs bool) (RecallResult, error) {
+	operationID, memoryID, rewriteText, syncConsent := cmd.OperationID, cmd.MemoryID, cmd.RewriteText, cmd.SyncConsent
+	var result RecallResult
+	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
 		// 0. Serialize this user's paid actions and look up a matching receipt BEFORE any
 		// work: concurrent duplicates queue on the lock, so the loser reads the winner's
-		// committed receipt and replays it — no second spend, no second recall (A2/A3). A
+		// committed receipt and replays it — no second spend, no second recall. A
 		// same-id/different-input receipt is a conflict; an exact match replays the stored
 		// response verbatim (before the consent gate, so a committed recall's retry never
 		// spuriously demands consent).
@@ -162,7 +199,7 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		}
 		// 1. Sync the clock to today — recall lands on today's clock ([R1a]). The consent is
 		// server-enforced here: a sync that would advance the clock without consent is refused
-		// before any spend (A1/A5). universeTime below is the post-sync clock.
+		// before any spend. universeTime below is the post-sync clock.
 		sync, err := s.syncToToday(ctx, scope, tx, today, syncConsent)
 		if err != nil {
 			return err
@@ -183,7 +220,7 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 
 		// 3. Spend Twinkle for the recall: the intent carries the post-sync accessibility
 		// signal + the operation id (its dedup key) and joins this transaction, so a denial
-		// aborts the whole recall, resetting and charging nothing (§CC2).
+		// aborts the whole recall, resetting and charging nothing.
 		// One pre-recall snapshot serves both the price and the 망각·회복 judgement, taken before
 		// the reinforce below resets the anchors.
 		anchor := recallAnchorOf(memory)
@@ -221,7 +258,7 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 		if err := s.recordRecallProgress(ctx, scope, tx, 1, recovered); err != nil {
 			return err
 		}
-		// 8. Commit the receipt in the SAME transaction as the debit + effects (A3): a
+		// 8. Commit the receipt in the SAME transaction as the debit + effects: a
 		// response-loss retry of this operation id now replays `result` without redoing work.
 		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{
 			OperationID:        operationID,
@@ -240,7 +277,8 @@ func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope
 // spend the recall of each still-live memory born from the diary, and Reinforce each — in
 // ONE transaction. It never calls PredictionError or Reconsolidate, writes no current_text,
 // and changes no seed ([R4][R6][I8]).
-func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
+func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, cmd RecallDiaryStarsCommand) (RecallDiaryStarsResult, error) {
+	operationID, diaryID, syncConsent := cmd.OperationID, cmd.DiaryID, cmd.SyncConsent
 	if scope.UserID() == "" {
 		return RecallDiaryStarsResult{}, ErrScopeRequired
 	}
@@ -258,7 +296,7 @@ func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform
 
 	var result RecallDiaryStarsResult
 	err = s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
-		// 0. Lock + receipt replay before any work, exactly as single recall (A2/A3).
+		// 0. Lock + receipt replay before any work, exactly as single recall.
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
@@ -286,7 +324,7 @@ func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform
 		// so the diary's cost is the sum of the per-memory recalls ([D3]) — priced exactly as
 		// the diary quote priced it (a reinforce nudges neighbor offsets, so pricing after
 		// reinforcing a sibling would drift from the quote). Each spend's dedup key is
-		// operation-id + member-id, so a replayed diary recall re-charges no member (A3). A
+		// operation-id + member-id, so a replayed diary recall re-charges no member. A
 		// denial aborts the whole transaction — atomic, resets nothing.
 		ids := make([]string, 0, len(anchors))
 		// The 망각·회복 judgement rides along the pricing pass, on the same pre-recall snapshot:
@@ -420,7 +458,7 @@ func (s *PaidActionService) reconsolidate(ctx context.Context, scope platform.Us
 	}
 
 	// Append the append-only 변천사 row ([R8a]): the new representation text at this
-	// universe-time. The created/original baseline is synthesized at read (§CC5).
+	// universe-time. The created/original baseline is synthesized at read.
 	if err := tx.AppendMemoryProvenance(ctx, scope, MemoryProvenance{
 		ID:               s.newID(),
 		EpisodicMemoryID: memory.ID,
@@ -439,4 +477,12 @@ func seedOrZero(seed *int64) int64 {
 		return 0
 	}
 	return *seed
+}
+
+// valueOr returns the replayed result, or the zero result when there is none.
+func valueOr(replay *RecallResult) RecallResult {
+	if replay == nil {
+		return RecallResult{}
+	}
+	return *replay
 }

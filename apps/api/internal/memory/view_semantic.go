@@ -14,7 +14,7 @@ import (
 // already-abstracted string and writes NOTHING — no current_text/seed, no
 // recall_count/brightness, no gist timer, no provenance, no clock advance, no LLM
 // ([I2][I8][I10], [C7]). The only side effect is the Twinkle spend, and that belongs
-// to the economy, not this unit (§CC2).
+// to the economy, not this unit.
 
 var (
 	// ErrViewSemanticInputRequired rejects an empty memory id. The caller names only a memory;
@@ -49,7 +49,7 @@ type GistReader interface {
 }
 
 // ViewSemanticRepo runs the gist-view transaction: the target read, the receipt lookup, the
-// Twinkle spend, and the receipt insert commit together (A3), so a paid view is idempotent and
+// Twinkle spend, and the receipt insert commit together, so a paid view is idempotent and
 // atomic — while the surface (ViewSemanticTx) exposes no clock/LLM/reconsolidation/provenance/
 // representation write, keeping the view structurally read-only ([R8][I2][I10]).
 type ViewSemanticRepo interface {
@@ -72,7 +72,7 @@ type ViewSemanticTx interface {
 // monotone "how abstracted" measure). The stage is DERIVED from the memory before this is built,
 // never taken from a request, so a client cannot name the depth it is priced at. It carries no
 // price: the cost curve that maps a deeper signal to a cheaper view lives in the gate, never here
-// ([R8][G4], §CC2/CC3).
+// ([R8][G4]).
 func GistViewSpendIntent(operationID string, memoryID string, stage int) SpendIntent {
 	return SpendIntent{Kind: SpendKindViewGist, MemoryID: memoryID, OperationID: operationID, Stage: int16(stage)}
 }
@@ -129,7 +129,7 @@ func (s *PaidActionService) ViewSemantic(ctx context.Context, scope platform.Use
 	var result ViewSemanticResult
 	err := s.viewSemantics.InViewSemanticTx(ctx, func(tx ViewSemanticTx) error {
 		// Lock + receipt replay before any work: a response-loss retry replays the committed
-		// gist text without a second debit, and concurrent duplicates serialize (A2/A3).
+		// gist text without a second debit, and concurrent duplicates serialize.
 		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}

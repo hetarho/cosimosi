@@ -7,7 +7,7 @@ import (
 
 // The admin use-cases' consumer-owned ports (§2.4/§2.9#6). Declared HERE because the admin
 // service is the consumer. Domain-shaped in and out — no proto, sqlc, pgx, or SDK type crosses
-// any of them, and no other context's internal types either (CC8): cross-context facts arrive as
+// any of them, and no other context's internal types either: cross-context facts arrive as
 // scalars/DTOs owned by this package.
 
 // Store is admin/pg's persistence surface: the DB-promoted admin roles, the grant + audit

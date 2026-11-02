@@ -52,7 +52,7 @@ func resolveUserToday(ctx context.Context, zones UserZone, now time.Time, scope 
 }
 
 func (s *graphClock) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind jobqueue.Kind, payload any, targets ...jobqueue.Target) error {
-	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload, targets...)
+	return enqueueJob(ctx, tx, scope, jobSpec{ID: s.newID(), Kind: kind, RunAt: s.now(), Payload: payload, Targets: targets})
 }
 
 func seedOrRandom(newSeed func() int64) func() int64 {

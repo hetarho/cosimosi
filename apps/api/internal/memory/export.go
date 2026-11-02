@@ -86,7 +86,7 @@ func NewExportService(reader ExportReader) (*ExportService, error) {
 
 // Export reads the retained diaries + still-live memories (per-user scoped), groups the memories under
 // their diary, and serializes the chosen format. The grouping and serialization are pure domain; the
-// reader is the only IO. No write, no clock, no spend (A6).
+// reader is the only IO. No write, no clock, no spend.
 func (s *ExportService) Export(ctx context.Context, scope platform.UserScope, format ExportFormat) (ExportResult, error) {
 	if scope.UserID() == "" {
 		return ExportResult{}, ErrScopeRequired

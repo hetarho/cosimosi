@@ -10,7 +10,7 @@ import (
 
 // Published spend-signal reads (§2.2) — the depth signals the Twinkle economy's
 // server quote prices ([G4]): this context alone knows how decayed or how gistified
-// a memory is; the economy alone knows what that costs ([CC3]). Each read is
+// a memory is; the economy alone knows what that costs. Each read is
 // standalone and write-free (a quote must not advance anything), evaluated at the
 // universe time a real recall would land on — the sync-to-today target — so a quote
 // and the authoritative spend price the same decay state.

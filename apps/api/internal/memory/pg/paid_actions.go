@@ -13,7 +13,7 @@ import (
 // InViewSemanticTx implements memory.ViewSemanticRepo: it runs fn against a store bound to one pgx
 // transaction, so a paid gist view — the graph lock, the receipt lookup, the gist read, the
 // Twinkle spend (joined via the store's DB() handle), and the receipt insert — commits wholly or
-// not at all (A3). Same transaction mechanics as InRecallTx; the narrow ViewSemanticTx surface
+// not at all. Same transaction mechanics as InRecallTx; the narrow ViewSemanticTx surface
 // keeps a view structurally read-only (no anchor/clock/provenance write leaks in, [R8][I2]).
 func (s Store) InViewSemanticTx(ctx context.Context, fn func(tx memory.ViewSemanticTx) error) error {
 	if s.queries == nil {
@@ -35,7 +35,7 @@ func (s Store) InViewSemanticTx(ctx context.Context, fn func(tx memory.ViewSeman
 	return tx.Commit(ctx)
 }
 
-// GetPaidActionReceipt reads the receipt for a client operation id, per-user scoped (A2). Absent →
+// GetPaidActionReceipt reads the receipt for a client operation id, per-user scoped. Absent →
 // found=false (no prior commit; the use-case does the work). The target ids are not read back —
 // the use-case matches only on kind + fingerprint and replays the stored response.
 func (s Store) GetPaidActionReceipt(ctx context.Context, scope platform.UserScope, operationID string) (memory.PaidActionReceipt, bool, error) {
@@ -60,7 +60,7 @@ func (s Store) GetPaidActionReceipt(ctx context.Context, scope platform.UserScop
 	}, true, nil
 }
 
-// InsertPaidActionReceipt writes the commit-time receipt in the caller's transaction (A3). The
+// InsertPaidActionReceipt writes the commit-time receipt in the caller's transaction. The
 // table CHECK enforces exactly one target id; the FK cascade ties the receipt's lifetime to that
 // retained target.
 func (s Store) InsertPaidActionReceipt(ctx context.Context, scope platform.UserScope, receipt memory.PaidActionReceipt) error {

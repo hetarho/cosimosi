@@ -196,56 +196,6 @@ func (q *Queries) LoadEpisodicMemoryForRecall(ctx context.Context, arg LoadEpiso
 	return i, err
 }
 
-const loadRecallMemberNeurons = `-- name: LoadRecallMemberNeurons :many
-SELECT n.id, n.name, n.neuron_type, n.representation_revision
-FROM neuron_activations AS na
-JOIN neurons AS n
-  ON n.user_id = na.user_id
- AND n.id = na.neuron_id
- AND n.sealed_at IS NULL
-WHERE na.user_id = $1
-  AND na.episodic_memory_id = $2
-ORDER BY n.id
-`
-
-type LoadRecallMemberNeuronsParams struct {
-	UserID   string
-	MemoryID string
-}
-
-type LoadRecallMemberNeuronsRow struct {
-	ID                     string
-	Name                   pgtype.Text
-	NeuronType             string
-	RepresentationRevision int64
-}
-
-// The recalled memory's live member neurons (the reconsolidation regen's semanticize inputs).
-func (q *Queries) LoadRecallMemberNeurons(ctx context.Context, arg LoadRecallMemberNeuronsParams) ([]LoadRecallMemberNeuronsRow, error) {
-	rows, err := q.db.Query(ctx, loadRecallMemberNeurons, arg.UserID, arg.MemoryID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []LoadRecallMemberNeuronsRow
-	for rows.Next() {
-		var i LoadRecallMemberNeuronsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.NeuronType,
-			&i.RepresentationRevision,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const loadRecallMemberSynapses = `-- name: LoadRecallMemberSynapses :many
 SELECT
     s.id,

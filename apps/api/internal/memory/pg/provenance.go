@@ -11,7 +11,7 @@ import (
 )
 
 // MemoryOrigin implements memory.ProvenanceReader: the creation facts the created/original baseline is
-// synthesized from ([CC5][I2]) — the memory's created_universe_time and its immutable Diary body.
+// synthesized from ([I2]) — the memory's created_universe_time and its immutable Diary body.
 // Per-user scoped; a missing, other-user, or soft-deleted memory is the canonical not-found (§4).
 func (s Store) MemoryOrigin(ctx context.Context, scope platform.UserScope, memoryID string) (memory.MemoryOrigin, error) {
 	if err := s.ready(scope); err != nil {

@@ -1350,7 +1350,7 @@ func TestScopeRequired(t *testing.T) {
 
 func TestShippedLocalesMatchFixture(t *testing.T) {
 	t.Parallel()
-	assertStringFixture(t, "testdata/locales.json", ShippedLocales())
+	assertStringFixture(t, "testdata/locales.json", shippedLocales)
 }
 
 func assertStringFixture(t *testing.T, path string, actual []string) {

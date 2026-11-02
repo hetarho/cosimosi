@@ -36,13 +36,7 @@ type RPCServiceBuilder func(opts ...connect.HandlerOption) (string, http.Handler
 
 type HandlerOption func(*handlerConfig)
 
-func WithCORSOrigins(origins []string) HandlerOption {
-	return func(cfg *handlerConfig) {
-		cfg.corsOrigins = append([]string(nil), origins...)
-	}
-}
-
-func WithPlatformService(service platformv1connect.PlatformServiceHandler) HandlerOption {
+func withPlatformService(service platformv1connect.PlatformServiceHandler) HandlerOption {
 	return func(cfg *handlerConfig) {
 		cfg.platformService = service
 	}
@@ -54,7 +48,7 @@ func WithAuthVerifier(verifier AuthTokenVerifier) HandlerOption {
 	}
 }
 
-func WithPublicProcedures(procedures []string) HandlerOption {
+func withPublicProcedures(procedures []string) HandlerOption {
 	return func(cfg *handlerConfig) {
 		cfg.publicProcedures = append([]string(nil), procedures...)
 	}

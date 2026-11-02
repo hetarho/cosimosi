@@ -37,7 +37,7 @@ func TestRequestBudgetsLimitRawAndDecompressedMessagesBeforeDispatch(t *testing.
 			service := &budgetPing{}
 			budgets := DefaultRequestBudgets()
 			budgets.MaxMessageBytes = 256
-			handler := NewHandler(log.New(io.Discard, "", 0), WithPlatformService(service), WithRequestBudgets(budgets))
+			handler := NewHandler(log.New(io.Discard, "", 0), withPlatformService(service), withRequestBudgets(budgets))
 			payload := []byte(`{"ignored":"` + strings.Repeat("a", 4096) + `"}`)
 			if compressed {
 				var buffer bytes.Buffer
@@ -73,7 +73,7 @@ func TestRequestBudgetsCancelBlockingDependencyAndAllowNormalCall(t *testing.T) 
 	budgets := DefaultRequestBudgets()
 	budgets.DefaultTimeout = 10 * time.Millisecond
 	service := &budgetPing{block: true}
-	server := httptest.NewServer(NewHandler(nil, WithPlatformService(service), WithRequestBudgets(budgets)))
+	server := httptest.NewServer(NewHandler(nil, withPlatformService(service), withRequestBudgets(budgets)))
 	t.Cleanup(server.Close)
 	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
 	_, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{}))
@@ -95,7 +95,7 @@ func TestRegisteredProcedureTimeoutOverridesTheDefault(t *testing.T) {
 	budgets.DefaultTimeout = 10 * time.Millisecond
 	service := &budgetPing{block: true}
 	slow := ProcedureTimeout{Procedure: platformv1connect.PlatformServicePingProcedure, Timeout: time.Minute}
-	handler := NewHandler(nil, WithPlatformService(service), WithRequestBudgets(budgets), WithRPCService(
+	handler := NewHandler(nil, withPlatformService(service), withRequestBudgets(budgets), WithRPCService(
 		func(...connect.HandlerOption) (string, http.Handler) {
 			return "/unused.v1.Unused/", http.NotFoundHandler()
 		},

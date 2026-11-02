@@ -53,24 +53,6 @@ func (s Store) EpisodicMemoryForRecall(ctx context.Context, scope platform.UserS
 	return mapRecallMemory(row), nil
 }
 
-func (s Store) RecallMemberNeurons(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.ExistingNeuron, error) {
-	if err := s.ready(scope); err != nil {
-		return nil, err
-	}
-	rows, err := s.queries.LoadRecallMemberNeurons(ctx, dbgen.LoadRecallMemberNeuronsParams{
-		UserID:   scope.UserID(),
-		MemoryID: memoryID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	neurons := make([]memory.ExistingNeuron, 0, len(rows))
-	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
-	}
-	return neurons, nil
-}
-
 func (s Store) RecallMemberSynapses(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.Synapse, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err

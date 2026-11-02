@@ -8,13 +8,6 @@ import (
 
 type Level string
 
-const (
-	LevelInfo    Level = "info"
-	LevelWarning Level = "warning"
-	LevelError   Level = "error"
-	LevelFatal   Level = "fatal"
-)
-
 type Reporter interface {
 	CaptureException(ctx context.Context, err error, attrs Attributes)
 	CaptureMessage(ctx context.Context, message string, level Level, attrs Attributes)

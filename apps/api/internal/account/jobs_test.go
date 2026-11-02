@@ -106,7 +106,7 @@ func (f *fakeWithdrawalSweeper) SweepWithdrawnAccount(
 	scope platform.UserScope,
 	now time.Time,
 ) error {
-	f.jobID, _ = WithdrawalSweepJobID(ctx)
+	f.jobID, _ = withdrawalSweepJobID(ctx)
 	f.userID = scope.UserID()
 	f.now = now
 	return nil

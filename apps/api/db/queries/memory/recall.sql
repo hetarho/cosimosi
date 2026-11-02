@@ -34,18 +34,6 @@ FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
   AND id = sqlc.arg(memory_id);
 
--- The recalled memory's live member neurons (the reconsolidation regen's semanticize inputs).
--- name: LoadRecallMemberNeurons :many
-SELECT n.id, n.name, n.neuron_type, n.representation_revision
-FROM neuron_activations AS na
-JOIN neurons AS n
-  ON n.user_id = na.user_id
- AND n.id = na.neuron_id
- AND n.sealed_at IS NULL
-WHERE na.user_id = sqlc.arg(user_id)
-  AND na.episodic_memory_id = sqlc.arg(memory_id)
-ORDER BY n.id;
-
 -- Every synapse whose BOTH endpoints are the recalled memory's member neurons — the
 -- co-activated edges Reinforce batch-LTPs ([R3]). Only neuron↔neuron edges exist ([I4][I6]).
 -- name: LoadRecallMemberSynapses :many

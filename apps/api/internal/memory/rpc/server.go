@@ -396,7 +396,7 @@ func domainError(err error) error {
 	case errors.Is(err, memory.ErrOperationIDRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonOperationIDRequired, err, nil)
 	case errors.Is(err, memory.ErrOperationConflict):
-		// Same client operation id, different canonical input (A2): replaying the receipt
+		// Same client operation id, different canonical input: replaying the receipt
 		// would return the wrong result, so the client must mint a fresh id.
 		return apperr.Domain(connect.CodeAlreadyExists, reasonOperationConflict, err, nil)
 	case errors.Is(err, memory.ErrRecallMemoryNotFound):
@@ -426,7 +426,7 @@ func domainError(err error) error {
 	case errors.Is(err, memory.ErrRestoreWindowExpired):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonRestoreWindowExpired, err, nil)
 	case errors.Is(err, memory.ErrSyncConsentRequired):
-		// Consent-required is a pre-spend precondition failure (A1/A5): nothing was charged, so
+		// Consent-required is a pre-spend precondition failure: nothing was charged, so
 		// the client can show the consent modal and retry under a fresh operation id.
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonSyncConsentRequired, err, nil)
 	case errors.Is(err, memory.ErrInsufficientTwinkle):

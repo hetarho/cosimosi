@@ -36,7 +36,7 @@ type ProcedureTimeout struct {
 	Timeout   time.Duration
 }
 
-func WithRequestBudgets(b RequestBudgets) HandlerOption {
+func withRequestBudgets(b RequestBudgets) HandlerOption {
 	if b.MaxMessageBytes <= 0 || b.DefaultTimeout <= 0 || b.DefaultTimeout >= serverWriteTimeout {
 		panic("request budgets must be positive and inside the server write deadline")
 	}

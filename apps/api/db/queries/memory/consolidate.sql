@@ -119,7 +119,7 @@ WHERE user_id = sqlc.arg(user_id)
   AND id = ANY(sqlc.arg(memory_ids)::text[])
   AND deleted_at IS NULL;
 
--- A rise's semanticized provenance rows in one batch ([R8a][CC5]). semantic_stage 0 is stored as
+-- A rise's semanticized provenance rows in one batch ([R8a]). semantic_stage 0 is stored as
 -- NULL: stages start at 1, and only a semanticized row carries one.
 -- name: AppendMemoryProvenances :exec
 INSERT INTO memory_provenance (

@@ -3,7 +3,7 @@
 -- path (reconsolidation.sql). Every statement is scoped to the authenticated user
 -- ([U1], §4, lint:persistence).
 
--- The creation facts the created/original baseline is synthesized from at read ([CC5][I2]): the
+-- The creation facts the created/original baseline is synthesized from at read ([I2]): the
 -- memory's created_universe_time and the passage it was encoded from — never current_text (which
 -- reconsolidation moves), never a stored row. The immutable Diary body comes along as the fallback
 -- for memories encoded before per-memory passages existed, whose source_text is NULL. A soft-deleted
@@ -39,33 +39,6 @@ FROM memory_provenance
 WHERE user_id = sqlc.arg(user_id)
   AND episodic_memory_id = sqlc.arg(episodic_memory_id)
 ORDER BY universe_time, created_at, id;
-
--- The whole-account export's diaries ([W6][D4]): the user's retained immutable objective records,
--- diary-date ordered. diaries has no deleted_at — the Diary is never soft-deleted ([I2]); a
--- saved-but-past-dated diary whose memory was never launched is still here (A8).
--- name: ListDiariesForExport :many
-SELECT
-    id,
-    body,
-    diary_date
-FROM diaries
-WHERE user_id = sqlc.arg(user_id)
-ORDER BY diary_date, id;
-
--- The still-live episodic memories launched from those diaries ([W6]): deleted_at IS NULL honors the
--- letting-go exclusion in what is handed out ([I1][X3]); no neuron content is read, so sealing is
--- honored structurally (A8). Only the legible structure (name, mood, created universe-time) — never
--- current_text or stage texts, which are the mutable trace, not the record ([D4]).
--- name: ListEpisodicMemoriesForExport :many
-SELECT
-    diary_id,
-    name,
-    mood,
-    created_universe_time
-FROM episodic_memories
-WHERE user_id = sqlc.arg(user_id)
-  AND deleted_at IS NULL
-ORDER BY diary_id, created_universe_time, id;
 
 -- The export walks retained diaries in bounded keyset batches, including released diaries.
 -- name: ListDiariesForExportPage :many

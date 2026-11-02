@@ -13,7 +13,7 @@ type PlatformService struct {
 	now func() time.Time
 }
 
-func NewPlatformService(now func() time.Time) PlatformService {
+func newPlatformService(now func() time.Time) PlatformService {
 	return PlatformService{now: now}
 }
 

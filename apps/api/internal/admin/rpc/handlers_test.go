@@ -49,9 +49,9 @@ func (s *stubUseCases) ListUsers(_ context.Context, _ int, _ int, query string) 
 	s.note = query
 	return admin.UserPage{}, s.err
 }
-func (s *stubUseCases) GrantStardust(_ context.Context, actor string, userID string, amount int, note string, grantID string) (int, error) {
+func (s *stubUseCases) GrantStardust(_ context.Context, actor string, input admin.GrantInput) (int, error) {
 	s.act("GrantStardust", actor)
-	s.target, s.amount, s.note, s.grant = userID, amount, note, grantID
+	s.target, s.amount, s.note, s.grant = input.UserID, input.Amount, input.Note, input.GrantID
 	return 0, s.err
 }
 func (s *stubUseCases) ListTwinkleGrants(context.Context, int, int) (admin.GrantPage, error) {

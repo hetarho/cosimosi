@@ -78,8 +78,50 @@ const NARRATION = [
 // frontend carry ~200 such refs from earlier batches; enforcing them tree-wide is a dedicated
 // cleanup, not this guard. Here we hold the two contexts that were cleaned (the AI + admin
 // backend) Ax-free. Bracketed requirement anchors ([A11]) stay allow-listed via the lookbehind.
+//
+// The backend cites rules only in forms spec/FORMAT.md can resolve: a decision ID, a legacy
+// `[<L><n>]` inside that letter's range (or a listed sub-lettered ID), or a mapped `§n`. Anything
+// else in its comments — a multi-letter bracket (`[CC3]`), a lettered section (`§CC2`), a
+// parenthesised acceptance label (`(A2/A3)`) or a legacy letter past its range (`[A11]`) — points at
+// nothing a reader can open.
+const LEGACY_RANGES = {
+  I: [1, 13],
+  U: [1, 11],
+  W: [1, 6],
+  E: [1, 11],
+  L: [1, 10],
+  T: [1, 6],
+  R: [1, 8],
+  F: [1, 9],
+  C: [1, 8],
+  M: [1, 7],
+  X: [1, 7],
+  D: [1, 12],
+  P: [1, 11],
+  S: [1, 2],
+  G: [1, 7],
+  A: [1, 6],
+  K: [1, 6],
+  Z: [1, 8],
+  O: [1, 5],
+  V: [0, 10],
+}
+const LEGACY_SUBLETTERED = new Set(['A1a', 'C6a', 'E7a', 'E8a', 'G2a', 'R1a', 'R8a', 'W2a', 'W4a'])
+const unresolvableLegacy = {
+  source: 'legacy [<L><n>] outside the FORMAT map',
+  test: (line) =>
+    [...line.matchAll(/\[([A-Z])(\d+)([a-z]?)\]/g)].some(([, letter, number, sub]) => {
+      if (sub) return !LEGACY_SUBLETTERED.has(`${letter}${number}${sub}`)
+      const range = LEGACY_RANGES[letter]
+      return !range || Number(number) < range[0] || Number(number) > range[1]
+    }),
+}
 const SCOPED_NARRATION = [
   { re: /(?<!\[)\bA\d+\b/, paths: ['apps/api/internal/ai/', 'apps/api/internal/admin/'] },
+  { re: /\[[A-Z]{2,}\d+[a-z]?\]/, paths: ['apps/api/'] },
+  { re: /§[A-Z]{2,}\d/, paths: ['apps/api/'] },
+  { re: /\(A\d+(?:\/A?\d+)*\)/, paths: ['apps/api/'] },
+  { re: unresolvableLegacy, paths: ['apps/api/'] },
 ]
 
 const scopedHit = (line, file) =>
@@ -172,6 +214,11 @@ if (process.argv.includes('--probe')) {
     // the acceptance-criteria form, scoped to the AI/admin backend contexts
     ['// fails here, never at row-insert time (A7)', 'apps/api/internal/ai/voyage/client.go'],
     ['// no vendor error escapes (A5)', 'apps/api/internal/admin/service.go'],
+    // unresolvable citations anywhere in the backend
+    ['// prices exist on neither side ([CC3])', 'apps/api/internal/memory/probe.go'],
+    ['// the economy seam (§CC2)', 'apps/api/cmd/api/twinkle.go'],
+    ['// exactly-once over the interval (A4/A10)', 'apps/api/internal/memory/consolidate.go'],
+    ['// Link only strengthens [A11]', 'apps/api/internal/admin/service.go'],
   ]
   const mustAllow = [
     ['// keeps the Diary immutable [I2]', ''],
@@ -180,14 +227,14 @@ if (process.argv.includes('--probe')) {
     ['// atomically with the launch (§2.6)', ''],
     ['// bump the counter', ''], // no marker of any kind
     ['// a past-dated diary leaves the universe clock unchanged', ''],
-    // the same Ax form OUTSIDE the scoped contexts is left to the earlier-epic convention
-    ['// exactly-once over the interval (A4/A10)', 'apps/api/internal/memory/consolidate.go'],
+    // the same Ax form OUTSIDE the backend is left to the earlier-epic convention
     [
       '// non-dismissible while recalling (A4)',
       'apps/web/src/widgets/recall-flow/ui/RecallFlowSheet.tsx',
     ],
-    // a bracketed requirement anchor is a rule reference, allowed even in the scoped contexts
-    ['// Link only strengthens [A11]', 'apps/api/internal/admin/service.go'],
+    // a legacy anchor inside its FORMAT range is a rule reference, allowed in the backend
+    ['// Link only strengthens [L5]', 'apps/api/internal/memory/link.go'],
+    ['// the stage text ([R8a]) and the clock [T4]', 'apps/api/internal/memory/consolidate.go'],
   ]
   const missed = mustCatch.filter(([l, f]) => !narrates(l, f))
   const falsePos = mustAllow.filter(([l, f]) => narrates(l, f))

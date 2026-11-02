@@ -130,18 +130,15 @@ func (s *ReleaseService) Release(ctx context.Context, scope platform.UserScope, 
 		if err := tx.CancelReleaseMemoryJobs(ctx, scope, releaseID, memoryIDs, deletedAt); err != nil {
 			return err
 		}
-		if err := enqueueScheduledJob(
-			ctx,
-			tx,
-			scope,
-			s.newID(),
-			deletedAt.Add(retentionWindow()),
-			deletedAt,
-			JobKindRetention,
-			releaseID,
-			RetentionSweepJobPayload{},
-			jobqueue.Target{Kind: jobqueue.TargetRelease, ID: releaseID},
-		); err != nil {
+		if err := enqueueJob(ctx, tx, scope, jobSpec{
+			ID:        s.newID(),
+			Kind:      JobKindRetention,
+			RunAt:     deletedAt.Add(retentionWindow()),
+			CreatedAt: deletedAt,
+			DedupKey:  releaseID,
+			Payload:   RetentionSweepJobPayload{},
+			Targets:   []jobqueue.Target{{Kind: jobqueue.TargetRelease, ID: releaseID}},
+		}); err != nil {
 			return err
 		}
 
@@ -212,7 +209,9 @@ func (s *ReleaseService) Restore(ctx context.Context, scope platform.UserScope, 
 			return err
 		}
 		if len(reembedTargets) > 0 {
-			if err := enqueueJob(ctx, tx, scope, s.newID(), restoreAt, JobKindEmbed, EmbedJobPayload{}, reembedTargets...); err != nil {
+			if err := enqueueJob(ctx, tx, scope, jobSpec{
+				ID: s.newID(), Kind: JobKindEmbed, RunAt: restoreAt, Payload: EmbedJobPayload{}, Targets: reembedTargets,
+			}); err != nil {
 				return err
 			}
 		}

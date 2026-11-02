@@ -29,7 +29,7 @@ func TestPingReturnsPlatformMetadata(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
 	handler := NewHandler(
 		logger,
-		WithPlatformService(NewPlatformService(func() time.Time {
+		withPlatformService(newPlatformService(func() time.Time {
 			return time.Date(2026, 6, 27, 1, 2, 3, 0, time.UTC)
 		})),
 	)
@@ -137,7 +137,7 @@ func TestAuthInterceptorRejectsProtectedPingWithoutToken(t *testing.T) {
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPublicProcedures(nil),
+		withPublicProcedures(nil),
 		WithAuthVerifier(fakeAuthVerifier{userID: "user-1"}),
 	))
 	t.Cleanup(server.Close)
@@ -164,7 +164,7 @@ func TestAuthInterceptorRejectsInvalidOrExpiredTokens(t *testing.T) {
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPublicProcedures(nil),
+		withPublicProcedures(nil),
 		WithAuthVerifier(fakeAuthVerifier{err: errors.New("token expired")}),
 	))
 	t.Cleanup(server.Close)
@@ -193,7 +193,7 @@ func TestAuthInterceptorReturnsUnavailableWhenVerifierUnavailable(t *testing.T) 
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPublicProcedures(nil),
+		withPublicProcedures(nil),
 		WithAuthVerifier(fakeAuthVerifier{err: ErrAuthVerifierUnavailable}),
 	))
 	t.Cleanup(server.Close)
@@ -222,9 +222,9 @@ func TestAuthInterceptorExtractsUserIDForProtectedCalls(t *testing.T) {
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPublicProcedures(nil),
+		withPublicProcedures(nil),
 		WithAuthVerifier(fakeAuthVerifier{userID: "supabase-user-1"}),
-		WithPlatformService(authContextPlatformService{}),
+		withPlatformService(authContextPlatformService{}),
 	))
 	t.Cleanup(server.Close)
 
@@ -261,7 +261,7 @@ func TestPanicRecoveryReturnsInternalAndReportsUnexpectedFailure(t *testing.T) {
 	reporter := observability.NewInMemoryReporter()
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPlatformService(panicPlatformService{}),
+		withPlatformService(panicPlatformService{}),
 		WithObservabilityReporter(reporter),
 	))
 	t.Cleanup(server.Close)
@@ -305,7 +305,7 @@ func TestStructuredInternalErrorsAreStableAndReported(t *testing.T) {
 	var logs bytes.Buffer
 	server := httptest.NewServer(NewHandler(
 		log.New(&logs, "", 0),
-		WithPlatformService(internalErrorPlatformService{}),
+		withPlatformService(internalErrorPlatformService{}),
 		WithObservabilityReporter(reporter),
 	))
 	t.Cleanup(server.Close)
@@ -364,7 +364,7 @@ func TestReportedDomainErrorsAreReportedWithoutBeingMasked(t *testing.T) {
 	reporter := observability.NewInMemoryReporter()
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPlatformService(reportedDomainErrorPlatformService{}),
+		withPlatformService(reportedDomainErrorPlatformService{}),
 		WithObservabilityReporter(reporter),
 	))
 	t.Cleanup(server.Close)
@@ -409,7 +409,7 @@ func TestUnmappedCauseBecomesMaskedInternalOnTheWire(t *testing.T) {
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPlatformService(rawErrorPlatformService{}),
+		withPlatformService(rawErrorPlatformService{}),
 		WithObservabilityReporter(observability.NewInMemoryReporter()),
 	))
 	t.Cleanup(server.Close)
@@ -457,7 +457,7 @@ func TestProductionSignalHardGatesDebugDetail(t *testing.T) {
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPlatformService(internalErrorPlatformService{}),
+		withPlatformService(internalErrorPlatformService{}),
 	))
 	t.Cleanup(server.Close)
 
@@ -483,7 +483,7 @@ func TestStructuredInternalErrorsExposeDebugDetailOnlyWhenEnabled(t *testing.T) 
 
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
-		WithPlatformService(internalErrorPlatformService{}),
+		withPlatformService(internalErrorPlatformService{}),
 	))
 	t.Cleanup(server.Close)
 
@@ -510,7 +510,7 @@ func TestRepresentativeReadFailuresExposeTheServerJoinKey(t *testing.T) {
 	reporter := observability.NewInMemoryReporter()
 	handler := NewHandler(
 		log.New(&logs, "", 0),
-		WithPublicProcedures([]string{
+		withPublicProcedures([]string{
 			twinklev1connect.TwinkleServiceGetBalanceProcedure,
 			memoryv1connect.MemoryServiceSyncStatusProcedure,
 		}),
@@ -623,7 +623,7 @@ func TestAuthRejectedRequestsAreLogged(t *testing.T) {
 	var logs bytes.Buffer
 	server := httptest.NewServer(NewHandler(
 		log.New(&logs, "", 0),
-		WithPublicProcedures(nil),
+		withPublicProcedures(nil),
 		WithAuthVerifier(fakeAuthVerifier{userID: "user-1"}),
 	))
 	t.Cleanup(server.Close)

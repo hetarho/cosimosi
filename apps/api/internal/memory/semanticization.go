@@ -31,7 +31,7 @@ const semanticMaxStage = len(SemanticStages{})
 // cross MULTIPLE stages (unitsElapsed > 1) — it adds all whole units and clamps; the consolidation
 // use-case appends one memory_provenance row (kind=semanticized, source=system, the risen stage's
 // pregenerated text, the advance universe_time) per crossed stage so 변천사 stays continuous across a
-// large clock jump (CC5, [R8a]). This unit performs no IO — it only computes the risen stage.
+// large clock jump ([R8a]). This unit performs no IO — it only computes the risen stage.
 func Semanticize(currentStage int, unitsElapsed int) int {
 	if unitsElapsed < 0 {
 		unitsElapsed = 0

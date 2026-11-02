@@ -403,21 +403,21 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	svc := newTestService(t, store, func(d *ServiceDeps) { d.Twinkle = granter })
 	ctx := context.Background()
 
-	if _, err := svc.GrantStardust(ctx, "actor", "u1", 0, "", ""); !errors.Is(err, ErrGrantAmountRange) {
+	if _, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: 0, Note: "", GrantID: ""}); !errors.Is(err, ErrGrantAmountRange) {
 		t.Fatalf("zero amount err = %v, want ErrGrantAmountRange", err)
 	}
-	if _, err := svc.GrantStardust(ctx, "actor", "u1", values.TwinkleAdminGrantMax+1, "", ""); !errors.Is(err, ErrGrantAmountRange) {
+	if _, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: values.TwinkleAdminGrantMax + 1, Note: "", GrantID: ""}); !errors.Is(err, ErrGrantAmountRange) {
 		t.Fatalf("over-cap amount err = %v, want ErrGrantAmountRange", err)
 	}
 	// An empty grant id is refused, never auto-minted: the money-path idempotency is
 	// server-enforced, and no credit happens on the refused call.
-	if _, err := svc.GrantStardust(ctx, "actor", "u1", 50, "", "  "); !errors.Is(err, ErrGrantIDRequired) {
+	if _, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: 50, Note: "", GrantID: "  "}); !errors.Is(err, ErrGrantIDRequired) {
 		t.Fatalf("empty grant id err = %v, want ErrGrantIDRequired", err)
 	}
 	if granter.calls != 0 {
 		t.Fatalf("granter called %d times before a valid grant id, want 0", granter.calls)
 	}
-	total, err := svc.GrantStardust(ctx, "actor", "u1", 50, "gift", "grant-1")
+	total, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: 50, Note: "gift", GrantID: "grant-1"})
 	if err != nil {
 		t.Fatalf("GrantStardust: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 		t.Errorf("total = %d, want 50", total)
 	}
 	// A replay with the same grant id records no second grant row AND credits nothing twice.
-	replayTotal, err := svc.GrantStardust(ctx, "actor", "u1", 50, "gift", "grant-1")
+	replayTotal, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: 50, Note: "gift", GrantID: "grant-1"})
 	if err != nil {
 		t.Fatalf("replay: %v", err)
 	}
@@ -441,10 +441,10 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	// The same grant id for a DIFFERENT grant (other user or amount) is refused before any
 	// credit — the id is the idempotency key of one logical grant, never reusable.
 	callsBefore := granter.calls
-	if _, err := svc.GrantStardust(ctx, "actor", "u2", 50, "", "grant-1"); !errors.Is(err, ErrGrantIDConflict) {
+	if _, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u2", Amount: 50, Note: "", GrantID: "grant-1"}); !errors.Is(err, ErrGrantIDConflict) {
 		t.Fatalf("cross-user id reuse err = %v, want ErrGrantIDConflict", err)
 	}
-	if _, err := svc.GrantStardust(ctx, "actor", "u1", 60, "", "grant-1"); !errors.Is(err, ErrGrantIDConflict) {
+	if _, err := svc.GrantStardust(ctx, "actor", GrantInput{UserID: "u1", Amount: 60, Note: "", GrantID: "grant-1"}); !errors.Is(err, ErrGrantIDConflict) {
 		t.Fatalf("changed-amount id reuse err = %v, want ErrGrantIDConflict", err)
 	}
 	if granter.calls != callsBefore || granter.granted["u2"] != 0 {

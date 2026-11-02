@@ -186,7 +186,7 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 		t.Fatal("shared neuron must remain visible")
 	}
 	// A2: a recall of a released memory is rejected.
-	if _, err := service.Recall(ctx, scope, "op-released-recall", g.m1, "rewrite", true); !errors.Is(err, memory.ErrRecallMemoryUnavailable) {
+	if _, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: "op-released-recall", MemoryID: g.m1, RewriteText: "rewrite", SyncConsent: true}); !errors.Is(err, memory.ErrRecallMemoryUnavailable) {
 		t.Fatalf("Recall of released memory err = %v, want ErrRecallMemoryUnavailable", err)
 	}
 

@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T20:26Z | T199 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T20:43Z | T200 |
 
 ## inbox
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
@@ -25,6 +25,7 @@
 - 261103 decided ACCT-12 ACCT-21 T195: `users.signup_settled_at` contradicted ACCT-12's closed column list, and a refused invite cannot say whether the transient email condition failed → amended ACCT-12/21 (r4): stamp only after the bonus and no settleable or a credited invite (alt: keep re-running settlement every launch | stamp after any refusal, losing late email verification) ← the transient condition must still be judged at the next launch
 - 261103 decided T195 T198: migration numbering after T195 ran before T198 → T195 takes `00030_signup_settled_at`, T198 moves to `00031` (alt: leave a gap at 00030) ← goose refuses an out-of-order version once a later one is applied
 - 261103 decided MEM-9 T196: the explore's measurement showed the global HNSW index unused by the per-user dedup read and costly on writes → dropped it (migration 00031) and amended MEM-9 to an exact per-user scan (alt: keep the index | SET LOCAL hnsw.iterative_scan) ← recall stays 100% and latency unchanged, which the exit criterion requires; T198 moves to 00032
+- 261103 parked T198: both stacks' production `.env` need `DATABASE_URL=…?default_query_exec_mode=cache_describe` (session pooler 5432, DEPLOY.md §3) — an operator change on the VPS outside the repository
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -88,7 +89,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T199 | Backend readability sweep: inputs, long functions, dead code and comments | ARCH | T190 T193 T194 T195 | todo |
 | T200 | Shared paid-flow controllers are tested in their package | ARCH CLIENT RECALL | - | todo |
 | T201 | The gist-view paid flow has one controller in the package | ARCH CLIENT | T200 | todo |
 | T202 | Diary archive navigation and the universe screen have shared controllers | ARCH | T201 | todo |
@@ -113,11 +113,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T199 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T200 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T199 done
 - 261103 T198 done
 - 261103 T197 done
 - 261103 T196 done
@@ -137,4 +138,3 @@
 - 261103 T182 done
 - 261103 T181 done
 - 261103 create-task review/post-refactor-261102: T181–T221 (41 tasks, 38 findings); review converted
-- 261103 update-ssot ARCH r3 AUTH r2 ACCT r3 ONB r2 TWINK r2 CLIENT r2 MEM r3 from review/post-refactor-261102 triage decisions (FE grain, account package, entry guard, color package, root wiring, scope generation, universe revision)

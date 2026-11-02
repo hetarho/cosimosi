@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 	"time"
+
 	// The golden zone cases resolve real IANA names, so the test binary embeds the zone database
 	// exactly as cmd/api and cmd/worker do — LoadLocation must not depend on the host image.
 	_ "time/tzdata"

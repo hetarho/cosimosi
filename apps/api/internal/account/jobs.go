@@ -37,7 +37,7 @@ func (s WithdrawalJobScheduler) Cancel(ctx context.Context, scope platform.UserS
 	return s.queue.Cancel(ctx, scope, identity)
 }
 
-func WithdrawalSweepJobID(ctx context.Context) (string, bool) { return jobqueue.CurrentJobID(ctx) }
+func withdrawalSweepJobID(ctx context.Context) (string, bool) { return jobqueue.CurrentJobID(ctx) }
 
 type DueWithdrawalSweeper interface {
 	SweepWithdrawnAccount(context.Context, platform.UserScope, time.Time) error

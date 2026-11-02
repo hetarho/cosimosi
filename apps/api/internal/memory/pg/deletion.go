@@ -82,7 +82,7 @@ func (s Store) SealNeurons(ctx context.Context, scope platform.UserScope, neuron
 }
 
 // WeakenSharedContributions Depresses the removed memories' contribution to the shared neurons'
-// synapses ([X1][I6], A3): read the affected edges (both endpoints in the removal set, ≥1 shared), lower
+// synapses ([X1][I6]): read the affected edges (both endpoints in the removal set, ≥1 shared), lower
 // each strength by one LTD step via the pure Depress, and write them back. The edge is never deleted;
 // its base strength is lowered so the edge weakens. Per-user scoped; a no-op when nothing is affected.
 func (s Store) WeakenSharedContributions(ctx context.Context, scope platform.UserScope, removalNeuronIDs, sharedNeuronIDs []string, amount float64) error {

@@ -234,32 +234,43 @@ func validateJob(job jobqueue.Record, targetKind jobqueue.TargetKind, exactlyOne
 	return nil
 }
 
-// enqueueJob marshals an allowlisted control payload and stores it with the
-// authoritative target identities/revisions. A zero timestamp keeps the store's
-// run-now default.
-func enqueueJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, at time.Time, kind jobqueue.Kind, payload any, targets ...jobqueue.Target) error {
-	return enqueueJobRecord(ctx, tx, scope, id, at, at, kind, nil, payload, targets)
+// jobSpec is one job memory enqueues. A zero RunAt keeps the store's run-now default, a zero
+// CreatedAt is RunAt, and an empty DedupKey stores none.
+type jobSpec struct {
+	ID        string
+	Kind      jobqueue.Kind
+	RunAt     time.Time
+	CreatedAt time.Time
+	DedupKey  string
+	Payload   any
+	Targets   []jobqueue.Target
 }
 
-func enqueueScheduledJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind jobqueue.Kind, dedupKey string, payload any, targets ...jobqueue.Target) error {
-	return enqueueJobRecord(ctx, tx, scope, id, nextRunAt, createdAt, kind, &dedupKey, payload, targets)
-}
-
-func enqueueJobRecord(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind jobqueue.Kind, dedupKey *string, payload any, targets []jobqueue.Target) error {
-	raw, err := json.Marshal(payload)
+// enqueueJob marshals the allowlisted control payload and stores it with the authoritative target
+// identities/revisions.
+func enqueueJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, spec jobSpec) error {
+	raw, err := json.Marshal(spec.Payload)
 	if err != nil {
 		return err
 	}
+	createdAt := spec.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = spec.RunAt
+	}
+	var dedupKey *string
+	if spec.DedupKey != "" {
+		dedupKey = &spec.DedupKey
+	}
 	_, err = tx.EnqueueJob(ctx, scope, jobqueue.Record{
-		ID:        id,
+		ID:        spec.ID,
 		UserID:    scope.UserID(),
-		Kind:      kind,
+		Kind:      spec.Kind,
 		Payload:   raw,
 		Status:    jobqueue.StatusPending,
-		NextRunAt: nextRunAt,
+		NextRunAt: spec.RunAt,
 		CreatedAt: createdAt,
 		DedupKey:  dedupKey,
-		Targets:   targets,
+		Targets:   spec.Targets,
 	})
 	return err
 }

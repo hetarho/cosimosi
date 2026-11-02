@@ -2,7 +2,7 @@
 // use-cases behind the web-only /admin surface. It is a distinct core context that orchestrates
 // ACROSS the others — accounts, the Twinkle economy, memory stats, AI provider config, metering,
 // and the job queue — strictly through consumer-owned ports wired at the composition root. It
-// imports NO other context's internals (the twinkle-never-imports-memory rule, CC8).
+// imports NO other context's internals (the twinkle-never-imports-memory rule).
 //
 // Two invariants shape it. Privacy ([I2]): the console is metadata-only — no port or use-case
 // here reads a user's diary text, emotion, episodic memory meaning, or position; the MemoryStats port returns

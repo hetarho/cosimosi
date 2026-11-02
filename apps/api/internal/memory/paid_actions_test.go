@@ -27,7 +27,7 @@ func TestRecallReplaysCommittedReceiptWithoutRedoingWork(t *testing.T) {
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 	fixture.launches.recallMemberNeurons["m1"] = []ExistingNeuron{{ID: "a", Name: "market", Type: NeuronTypeSpatial}}
 
-	first, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "a different memory", true)
+	first, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "a different memory", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("first recall failed: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestRecallReplaysCommittedReceiptWithoutRedoingWork(t *testing.T) {
 
 	// Replay: same operation id + same input replays the committed result verbatim — no second
 	// compare, no second spend, no second provenance row (A2/A3).
-	second, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "a different memory", true)
+	second, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "a different memory", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("replay recall failed: %v", err)
 	}
@@ -72,12 +72,12 @@ func TestRecallSameOperationDifferentInputConflicts(t *testing.T) {
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 	fixture.launches.recallMemberNeurons["m1"] = []ExistingNeuron{{ID: "a", Name: "market", Type: NeuronTypeSpatial}}
 
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "first text", true); err != nil {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "first text", SyncConsent: true}); err != nil {
 		t.Fatalf("first recall failed: %v", err)
 	}
 	// The same operation id with a different rewrite is a conflict (A2), never a hit that would
 	// return the wrong committed result.
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "different text", true); !errors.Is(err, ErrOperationConflict) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "different text", SyncConsent: true}); !errors.Is(err, ErrOperationConflict) {
 		t.Fatalf("mismatched-input replay err = %v, want ErrOperationConflict", err)
 	}
 }
@@ -89,7 +89,7 @@ func TestRecallRefusesUnconsentedSyncBeforeSpend(t *testing.T) {
 	fixture.launches.clock = &previous
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 
-	_, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", false)
+	_, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: false})
 	if !errors.Is(err, ErrSyncConsentRequired) {
 		t.Fatalf("unconsented recall err = %v, want ErrSyncConsentRequired", err)
 	}
@@ -104,7 +104,7 @@ func TestRecallRefusesUnconsentedSyncBeforeSpend(t *testing.T) {
 		t.Fatalf("receipts = %d, want 0 on a pre-spend refusal", len(fixture.launches.receipts))
 	}
 	// The same operation id can be retried once consent is given (no blind receipt was written).
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true); err != nil {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true}); err != nil {
 		t.Fatalf("consented retry failed: %v", err)
 	}
 }
@@ -116,7 +116,7 @@ func TestRecallAllowsUnconsentedWhenClockAlreadyAtToday(t *testing.T) {
 	fixture.launches.clock = &today
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", false); err != nil {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: false}); err != nil {
 		t.Fatalf("recall on an already-synced clock should not require consent, got %v", err)
 	}
 	if len(fixture.spendGate.intents) != 1 {
@@ -132,7 +132,7 @@ func TestRecallDeniedSpendWritesNoReceipt(t *testing.T) {
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true); !errors.Is(err, ErrInsufficientTwinkle) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true}); !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("denied recall err = %v, want ErrInsufficientTwinkle", err)
 	}
 	if len(fixture.launches.receipts) != 0 {
@@ -140,7 +140,7 @@ func TestRecallDeniedSpendWritesNoReceipt(t *testing.T) {
 	}
 	// The same operation id now does fresh work (the earlier attempt left no receipt to replay).
 	fixture.spendGate.denyErr = nil
-	result, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true)
+	result, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("retry after a rolled-back spend failed: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestDiaryRecallReplaysAndCarriesOperationIDPerMember(t *testing.T) {
 	fixture.seedRecallable("m2", EpisodicMemory{CurrentText: "b", Seed: seededSeed(2), BaseStrength: 0.6}, nil, nil)
 	fixture.launches.diaryMemories = map[string][]string{"d1": {"m1", "m2"}}
 
-	first, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true)
+	first, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), RecallDiaryStarsCommand{OperationID: "op-1", DiaryID: "d1", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("diary recall failed: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestDiaryRecallReplaysAndCarriesOperationIDPerMember(t *testing.T) {
 		}
 	}
 	// Replay: same operation id replays without re-spending any member.
-	second, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true)
+	second, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), RecallDiaryStarsCommand{OperationID: "op-1", DiaryID: "d1", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("diary recall replay failed: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestDiaryRecallRejectsNoLiveMemories(t *testing.T) {
 	// this caller. Must be refused before spend/effects/receipt, and must not advance the clock.
 	fixture.launches.diaryMemories = map[string][]string{}
 
-	if _, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true); !errors.Is(err, ErrRecallNoLiveMemories) {
+	if _, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), RecallDiaryStarsCommand{OperationID: "op-1", DiaryID: "d1", SyncConsent: true}); !errors.Is(err, ErrRecallNoLiveMemories) {
 		t.Fatalf("empty/foreign diary recall err = %v, want ErrRecallNoLiveMemories", err)
 	}
 	if len(fixture.spendGate.intents) != 0 {

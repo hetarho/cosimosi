@@ -11,23 +11,23 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
-// Paid-action idempotency (A2/A3) — the receipt layer that makes a paid action's client retry
+// Paid-action idempotency — the receipt layer that makes a paid action's client retry
 // safe. A client mints one operation id per intent; a paid use-case looks up a matching receipt
 // (under the per-user graph lock) before doing any work, so a response-loss retry — same id, same
 // canonical input — replays the original committed response WITHOUT a second spend or a second
 // recall, while a different input under the same id is refused. The receipt, the Twinkle debit,
-// and the effects all land in ONE transaction (A3), so a receipt exists iff its effects committed.
+// and the effects all land in ONE transaction, so a receipt exists iff its effects committed.
 
 var (
-	// ErrOperationIDRequired rejects a paid action with no client operation id (A2) — a contract
+	// ErrOperationIDRequired rejects a paid action with no client operation id — a contract
 	// fault surfaced as invalid input.
 	ErrOperationIDRequired = errors.New("paid action requires a client operation id")
-	// ErrOperationConflict is the same-id/different-input refusal (A2): the operation id already
+	// ErrOperationConflict is the same-id/different-input refusal: the operation id already
 	// committed a DIFFERENT canonical request, so replaying its receipt would return the wrong
 	// result. The client must mint a fresh id.
 	ErrOperationConflict = errors.New("paid action operation id was used for a different request")
 	// ErrSyncConsentRequired is the pre-spend refusal when a recall/whole-diary recall would advance
-	// the universe clock but the request did not consent (A1/A5). Raised before any spend or effect,
+	// the universe clock but the request did not consent. Raised before any spend or effect,
 	// so nothing is charged; the client refreshes sync-status and shows the consent modal.
 	ErrSyncConsentRequired = errors.New("recall requires explicit consent to advance the universe clock")
 )
@@ -42,7 +42,7 @@ const (
 	PaidActionViewSemantic PaidActionKind = "view_semantic"
 )
 
-// PaidActionReceipt is one committed paid action's idempotency record (A2/A3): the client
+// PaidActionReceipt is one committed paid action's idempotency record: the client
 // operation id, the action kind + canonical request fingerprint a retry is matched against, the
 // retained target it cascades with (exactly one of the two ids is set), and the original typed
 // response encoded as domain JSON — proto never enters the domain (§2.4). Response is opaque to
@@ -112,7 +112,7 @@ func actionFingerprint(parts ...string) string {
 }
 
 // writeReceipt encodes a use-case's committed result and inserts its receipt in the same
-// transaction as the effects (A3). Called once, last, so a receipt is written iff the whole paid
+// transaction as the effects. Called once, last, so a receipt is written iff the whole paid
 // action commits.
 func (s *PaidActionService) writeReceipt(ctx context.Context, scope platform.UserScope, store PaidActionReceiptStore, receipt PaidActionReceipt, result any) error {
 	response, err := encodeReceiptResponse(result)
@@ -127,7 +127,7 @@ func stringPtr(value string) *string {
 	return &value
 }
 
-// replayIfReceipted is the paid actions' replay-before-anything step (A2/A3): a receipt with the same
+// replayIfReceipted is the paid actions' replay-before-anything step: a receipt with the same
 // operation id and canonical input replays its stored response into out; a different input under the
 // same id is a conflict. It runs right after the graph lock and BEFORE the consent gate, so a
 // committed action's retry never spuriously demands consent and concurrent duplicates queue on the

@@ -11,45 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listDiariesForExport = `-- name: ListDiariesForExport :many
-SELECT
-    id,
-    body,
-    diary_date
-FROM diaries
-WHERE user_id = $1
-ORDER BY diary_date, id
-`
-
-type ListDiariesForExportRow struct {
-	ID        string
-	Body      string
-	DiaryDate pgtype.Date
-}
-
-// The whole-account export's diaries ([W6][D4]): the user's retained immutable objective records,
-// diary-date ordered. diaries has no deleted_at — the Diary is never soft-deleted ([I2]); a
-// saved-but-past-dated diary whose memory was never launched is still here (A8).
-func (q *Queries) ListDiariesForExport(ctx context.Context, userID string) ([]ListDiariesForExportRow, error) {
-	rows, err := q.db.Query(ctx, listDiariesForExport, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListDiariesForExportRow
-	for rows.Next() {
-		var i ListDiariesForExportRow
-		if err := rows.Scan(&i.ID, &i.Body, &i.DiaryDate); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listDiariesForExportPage = `-- name: ListDiariesForExportPage :many
 SELECT id, body, diary_date
 FROM diaries
@@ -89,54 +50,6 @@ func (q *Queries) ListDiariesForExportPage(ctx context.Context, arg ListDiariesF
 	for rows.Next() {
 		var i ListDiariesForExportPageRow
 		if err := rows.Scan(&i.ID, &i.Body, &i.DiaryDate); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listEpisodicMemoriesForExport = `-- name: ListEpisodicMemoriesForExport :many
-SELECT
-    diary_id,
-    name,
-    mood,
-    created_universe_time
-FROM episodic_memories
-WHERE user_id = $1
-  AND deleted_at IS NULL
-ORDER BY diary_id, created_universe_time, id
-`
-
-type ListEpisodicMemoriesForExportRow struct {
-	DiaryID             string
-	Name                string
-	Mood                string
-	CreatedUniverseTime pgtype.Date
-}
-
-// The still-live episodic memories launched from those diaries ([W6]): deleted_at IS NULL honors the
-// letting-go exclusion in what is handed out ([I1][X3]); no neuron content is read, so sealing is
-// honored structurally (A8). Only the legible structure (name, mood, created universe-time) — never
-// current_text or stage texts, which are the mutable trace, not the record ([D4]).
-func (q *Queries) ListEpisodicMemoriesForExport(ctx context.Context, userID string) ([]ListEpisodicMemoriesForExportRow, error) {
-	rows, err := q.db.Query(ctx, listEpisodicMemoriesForExport, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListEpisodicMemoriesForExportRow
-	for rows.Next() {
-		var i ListEpisodicMemoriesForExportRow
-		if err := rows.Scan(
-			&i.DiaryID,
-			&i.Name,
-			&i.Mood,
-			&i.CreatedUniverseTime,
-		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

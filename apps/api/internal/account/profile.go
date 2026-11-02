@@ -14,12 +14,6 @@ const DefaultTimezone = "UTC"
 
 var shippedLocales = []string{"en", "ko"}
 
-func ShippedLocales() []string {
-	locales := make([]string, len(shippedLocales))
-	copy(locales, shippedLocales)
-	return locales
-}
-
 func (s *Service) GetProfile(ctx context.Context, scope platform.UserScope) (*ProfileView, error) {
 	if scope.UserID() == "" {
 		return nil, ErrScopeRequired

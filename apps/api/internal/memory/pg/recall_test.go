@@ -44,7 +44,7 @@ func TestRecallReconsolidatesAndReinforcesEndToEnd(t *testing.T) {
 	seedRecallGraph(t, ctx, store, scope, base, day)
 
 	service := newRecallService(t, store)
-	result, err := service.Recall(ctx, scope, base+"-op-1", base+"-m1", "a wholly different afternoon fishing trip", true)
+	result, err := service.Recall(ctx, scope, memory.RecallCommand{OperationID: base + "-op-1", MemoryID: base + "-m1", RewriteText: "a wholly different afternoon fishing trip", SyncConsent: true})
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestRecallIsUserScoped(t *testing.T) {
 	seedRecallGraph(t, ctx, store, ownerScope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
 
 	service := newRecallService(t, store)
-	if _, err := service.Recall(ctx, intruderScope, base+"-op-1", base+"-m1", "a different memory", true); err == nil {
+	if _, err := service.Recall(ctx, intruderScope, memory.RecallCommand{OperationID: base + "-op-1", MemoryID: base + "-m1", RewriteText: "a different memory", SyncConsent: true}); err == nil {
 		t.Fatal("recalling another user's memory must be rejected")
 	}
 }

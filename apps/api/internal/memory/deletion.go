@@ -13,11 +13,11 @@ package memory
 //     memory is NOT soft-deleted and its emotion columns + seed are untouched, so it persists as a
 //     content-less silent engram; spatial/entity/emotion/color are out of reach ([X4][I11]).
 //
-// This unit is server-authoritative, not FE↔BE golden-parity (A9): a removal reaches the client only by
+// This unit is server-authoritative, not FE↔BE golden-parity: a removal reaches the client only by
 // facts disappearing from GetUniverse. It declares no ports and no orchestration — the Release/LetGo
 // use-cases own the transaction and the consumer-owned interfaces the memory/pg concretes satisfy.
 //
-// # The canonical alive-predicate ([X3], A6)
+// # The canonical alive-predicate ([X3])
 //
 // One "is this fact alive?" test, reused at every read and every compute so a sealed/soft-deleted fact
 // exerts no force, decays for nobody, consolidates into nothing, and never renders — no ghost that pulls
@@ -27,24 +27,12 @@ package memory
 //   - a neuron is alive iff sealed_at IS NULL;
 //   - a synapse is alive iff BOTH endpoint neurons are alive;
 //   - an activation is alive iff its memory AND its neuron are alive — exclusion is TRANSITIVE through
-//     deleted_at / sealed_at, so neuron_activations needs no column of its own (A10).
+// deleted_at / sealed_at, so neuron_activations needs no column of its own.
 //
 // The predicate lives as `deleted_at IS NULL` / `sealed_at IS NULL` JOIN/WHERE clauses in memory/pg's
 // queries (the only sqlc/pgx seam); this comment is its single source of intent. Deletion weakening uses
 // Depress (LTD, associative/local) and NEVER Downscale (SHY, sleep-time homeostatic renormalization) — a
-// distinct mechanism ([I9], A8).
-
-// NeuronClass is the seal-vs-keep decision for one neuron in a removal.
-type NeuronClass string
-
-const (
-	// NeuronClassOrphan — no retained memory outside the removal set still activates the neuron, so it is
-	// sealed; its edges then leave every dynamic via the alive-predicate.
-	NeuronClassOrphan NeuronClass = "orphan"
-	// NeuronClassShared — at least one retained memory outside the removal set still activates the neuron, so
-	// it is kept; only the removed memories' contribution to its synapses is Depressed.
-	NeuronClassShared NeuronClass = "shared"
-)
+// distinct mechanism ([I9]).
 
 // NeuronActivationFact is one retained (neuron, memory) activation edge supplied by memory/pg for
 // classification. A row exists for both a live memory and a soft-deleted memory still awaiting its
@@ -115,7 +103,7 @@ func ReclassifyRetainedNeuronSeals(facts []NeuronSealFact) NeuronSealReclassific
 }
 
 // ClassifyNeurons partitions a removal set's neurons into orphan (seal) and shared (keep + weaken),
-// evaluated as-of removal (A1). A neuron is shared iff at least one retained activation ties it to a
+// evaluated as-of removal. A neuron is shared iff at least one retained activation ties it to a
 // memory outside the removal set; soft-deleted rows remain owners until Sweep removes their activation.
 // Otherwise it is an orphan. Deterministic and IO-free — the retained-owner facts come from memory/pg,
 // the decision is domain math. The result preserves input order and never allocates a neuron twice.

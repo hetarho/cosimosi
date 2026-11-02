@@ -6,7 +6,7 @@
 // recall budget. The context also owns the spend order (SMALL first for a recall) and the two price
 // curves (recall rises with decay-depth, gist view falls with gist-depth). It is standalone — it
 // never imports internal/memory; memory reaches its spend through a consumer-owned SpendGate port
-// wired at the composition root (CC2/CC8). Every function here is pure and IO-free, mirrored TS↔Go
+// wired at the composition root. Every function here is pure and IO-free, mirrored TS↔Go
 // in packages/twinkle-logic and pinned by testdata/stardust-ledger-golden.json, so the FE prices a
 // recall pre-spend while the balance itself stays server-authoritative (twinkle/pg).
 package twinkle
@@ -287,7 +287,7 @@ func ShortfallFor(smallRemaining int, general int, cost int, kind SpendKind) int
 }
 
 // RecallCost prices a 회고 (recall) from the accessibility/cost weight the forgetting unit
-// computes ([F4][G4]) — CC3: D computes "how decayed → how inaccessible", this context alone
+// computes ([F4][G4]): D computes "how decayed → how inaccessible", this context alone
 // computes "how inaccessible → how many Twinkle"; no decay math and no price constant cross
 // that line. Non-decreasing in the weight (deeper decay never costs less) and clamped to
 // twinkle.recall_max_cost so a silent engram stays recallable within a plausible balance

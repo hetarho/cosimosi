@@ -25,7 +25,7 @@ import (
 // graph) is the reserved async `link` job's concern (§2.8) and is not run
 // here. Every edge is neuron↔neuron ([L6][I6]); there is never a memory↔memory
 // edge, and memory clusters stay emergent ([I5][L7]). All strength math delegates to
-// the plasticity functions [A11]; Link only inserts or strengthens [I1].
+// the plasticity functions; Link only inserts or strengthens [I1].
 type LinkService struct {
 	now   func() time.Time
 	newID func() string
@@ -177,7 +177,7 @@ func dedupIDs(ids []string) []string {
 }
 
 // computeLinkStrength folds one launch's co-firings of a same-memory pair into the
-// stored base, delegating every step to the plasticity functions [A11]: a first-time pair starts at
+// stored base, delegating every step to the plasticity functions: a first-time pair starts at
 // the same-memory initial [L1][L10]; each further co-firing potentiates toward the
 // cap [L8][L9]; the temporal bonus is added once for this launch when its co-firing
 // is in window [L4]. It re-implements no strength arithmetic of its own.

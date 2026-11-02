@@ -106,84 +106,7 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 			return err
 		}
 
-		neuronIDByKey, newNeurons, err := s.resolveNeurons(ctx, scope, tx, confirmed)
-		if err != nil {
-			return err
-		}
-		for _, neuron := range newNeurons {
-			result.NewNeuronIDs = append(result.NewNeuronIDs, neuron.ID)
-		}
-
-		launched := make([]LaunchedMemory, 0, len(confirmed))
-		activations := make([]NeuronActivation, 0)
-		for _, confirmedMemory := range confirmed {
-			emotion, ok := NewEmotion(confirmedMemory.Mood)
-			if !ok {
-				return fmt.Errorf("%w: mood %q", ErrLaunchInvalidMemories, confirmedMemory.Mood)
-			}
-			seed := s.newSeed()
-			episodicMemory, err := tx.InsertEpisodicMemory(ctx, scope, EpisodicMemory{
-				ID:      s.newID(),
-				DiaryID: diary.ID,
-				Name:    strings.TrimSpace(confirmedMemory.Name),
-				// One EpisodicMemory, one scene: it is born holding its own passage of
-				// the diary, in the writer's words. The same value lands twice on purpose —
-				// current_text is the living representation that recall/reconsolidation
-				// rewrites, source_text is the birth record that must still read true
-				// afterwards, which is what 변천사의 created/original entry shows
-				// ([R8a][I2]).
-				SourceText:          strings.TrimSpace(confirmedMemory.SourceText),
-				CurrentText:         strings.TrimSpace(confirmedMemory.SourceText),
-				Seed:                &seed,
-				Emotion:             emotion,
-				BaseStrength:        ArousalToInitialStrength(emotion.Arousal),
-				CreatedUniverseTime: diaryDate,
-			})
-			if err != nil {
-				return err
-			}
-			result.MemoryIDs = append(result.MemoryIDs, episodicMemory.ID)
-
-			neuronIDs := make([]string, 0, len(confirmedMemory.Neurons))
-			activated := make(map[string]struct{}, len(confirmedMemory.Neurons))
-			for _, neuron := range confirmedMemory.Neurons {
-				neuronID := neuronIDByKey[neuronKey(neuron.Name, neuron.Type)]
-				if _, ok := activated[neuronID]; ok {
-					continue
-				}
-				activated[neuronID] = struct{}{}
-				// The schema-forced extractor output carries no weight by [W4a]
-				// design and the column is NOT NULL, so the launch writes the
-				// tuned uniform weight ([E8] differentiation is a later epic).
-				activations = append(activations, NeuronActivation{
-					EpisodicMemoryID: episodicMemory.ID,
-					NeuronID:         neuronID,
-					Weight:           float32(values.EncodeActivationWeight),
-				})
-				neuronIDs = append(neuronIDs, neuronID)
-			}
-			launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
-		}
-		if err := tx.InsertNeuronActivations(ctx, scope, activations); err != nil {
-			return err
-		}
-		// One membership read, after the activations landed, serves both Link's temporal bonus and
-		// the sharing report: the counts are a property of the graph this launch just made ([A6]).
-		coActivations, err := tx.CoActivations(ctx, scope, launchedNeuronIDs(launched))
-		if err != nil {
-			return err
-		}
-
-		// Link runs before the async enqueue: synapses land atomically
-		// with the launch.
-		if err := s.linker.LinkLaunched(ctx, scope, tx, launched, coActivations); err != nil {
-			return err
-		}
-		// The counter facts ride the same transaction, so a rollback here leaves no counter advanced.
-		if err := s.recordLaunchProgress(ctx, scope, tx, diary.ID, launched, coActivations); err != nil {
-			return err
-		}
-		if err := s.enqueueAsyncJobs(ctx, scope, tx, launched, newNeurons); err != nil {
+		if err := s.growGraph(ctx, scope, tx, diary.ID, diaryDate, confirmed, &result); err != nil {
 			return err
 		}
 
@@ -210,11 +133,126 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 	return result, nil
 }
 
+// growGraph is the launch's graph write, on the launch transaction: resolve or create the neurons,
+// persist the memories and their activations, link them, report the counters and enqueue the async
+// work. It fills the result's memory and new-neuron ids.
+func (s *LaunchService) growGraph(
+	ctx context.Context,
+	scope platform.UserScope,
+	tx LaunchTx,
+	diaryID string,
+	diaryDate time.Time,
+	confirmed []ExtractedMemory,
+	result *LaunchResult,
+) error {
+	neuronIDByKey, newNeurons, err := s.resolveNeurons(ctx, scope, tx, confirmed)
+	if err != nil {
+		return err
+	}
+	for _, neuron := range newNeurons {
+		result.NewNeuronIDs = append(result.NewNeuronIDs, neuron.ID)
+	}
+
+	launched, err := s.persistLaunchedMemories(ctx, scope, tx, diaryID, diaryDate, confirmed, neuronIDByKey)
+	if err != nil {
+		return err
+	}
+	for _, launchedMemory := range launched {
+		result.MemoryIDs = append(result.MemoryIDs, launchedMemory.ID)
+	}
+	// One membership read, after the activations landed, serves both Link's temporal bonus and
+	// the sharing report: the counts are a property of the graph this launch just made ([A6]).
+	coActivations, err := tx.CoActivations(ctx, scope, launchedNeuronIDs(launched))
+	if err != nil {
+		return err
+	}
+
+	// Link runs before the async enqueue: synapses land atomically
+	// with the launch.
+	if err := s.linker.LinkLaunched(ctx, scope, tx, launched, coActivations); err != nil {
+		return err
+	}
+	// The counter facts ride the same transaction, so a rollback here leaves no counter advanced.
+	if err := s.recordLaunchProgress(ctx, scope, tx, diaryID, launched, coActivations); err != nil {
+		return err
+	}
+	if err := s.enqueueAsyncJobs(ctx, scope, tx, launched, newNeurons); err != nil {
+		return err
+	}
+	return nil
+}
+
+// persistLaunchedMemories writes the confirmed split's memories under the diary — each born holding
+// its own passage — and their activations onto the resolved neurons, as one activation batch.
+func (s *LaunchService) persistLaunchedMemories(
+	ctx context.Context,
+	scope platform.UserScope,
+	tx LaunchTx,
+	diaryID string,
+	diaryDate time.Time,
+	confirmed []ExtractedMemory,
+	neuronIDByKey map[string]string,
+) ([]LaunchedMemory, error) {
+	launched := make([]LaunchedMemory, 0, len(confirmed))
+	activations := make([]NeuronActivation, 0)
+	for _, confirmedMemory := range confirmed {
+		emotion, ok := NewEmotion(confirmedMemory.Mood)
+		if !ok {
+			return nil, fmt.Errorf("%w: mood %q", ErrLaunchInvalidMemories, confirmedMemory.Mood)
+		}
+		seed := s.newSeed()
+		episodicMemory, err := tx.InsertEpisodicMemory(ctx, scope, EpisodicMemory{
+			ID:      s.newID(),
+			DiaryID: diaryID,
+			Name:    strings.TrimSpace(confirmedMemory.Name),
+			// One EpisodicMemory, one scene: it is born holding its own passage of
+			// the diary, in the writer's words. The same value lands twice on purpose —
+			// current_text is the living representation that recall/reconsolidation
+			// rewrites, source_text is the birth record that must still read true
+			// afterwards, which is what 변천사의 created/original entry shows
+			// ([R8a][I2]).
+			SourceText:          strings.TrimSpace(confirmedMemory.SourceText),
+			CurrentText:         strings.TrimSpace(confirmedMemory.SourceText),
+			Seed:                &seed,
+			Emotion:             emotion,
+			BaseStrength:        ArousalToInitialStrength(emotion.Arousal),
+			CreatedUniverseTime: diaryDate,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		neuronIDs := make([]string, 0, len(confirmedMemory.Neurons))
+		activated := make(map[string]struct{}, len(confirmedMemory.Neurons))
+		for _, neuron := range confirmedMemory.Neurons {
+			neuronID := neuronIDByKey[neuronKey(neuron.Name, neuron.Type)]
+			if _, ok := activated[neuronID]; ok {
+				continue
+			}
+			activated[neuronID] = struct{}{}
+			// The schema-forced extractor output carries no weight by [W4a]
+			// design and the column is NOT NULL, so the launch writes the
+			// tuned uniform weight ([E8] differentiation is a later epic).
+			activations = append(activations, NeuronActivation{
+				EpisodicMemoryID: episodicMemory.ID,
+				NeuronID:         neuronID,
+				Weight:           float32(values.EncodeActivationWeight),
+			})
+			neuronIDs = append(neuronIDs, neuronID)
+		}
+		launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
+	}
+	if err := tx.InsertNeuronActivations(ctx, scope, activations); err != nil {
+		return nil, err
+	}
+	return launched, nil
+}
+
 // Universe returns the stored universe facts plus the universe time from the
-// authoritative universe_state clock ([T5]). One-release fallback: a universe
-// whose clock row has not been born yet (launched before the clock existed)
-// still reads the latest launched memory's created_universe_time from the same
-// snapshot, so no universe visibly resets; an empty universe reads nil.
+// authoritative universe_state clock ([T5]). A universe whose clock row was never
+// born (launched before the clock existed) reads the latest launched memory's
+// created_universe_time from the same snapshot, so no universe visibly resets; an
+// empty universe reads nil.
 // Reading never advances the clock ([T3]).
 func (s *ReadService) Universe(ctx context.Context, scope platform.UserScope) (UniverseFacts, *time.Time, error) {
 	if scope.UserID() == "" {

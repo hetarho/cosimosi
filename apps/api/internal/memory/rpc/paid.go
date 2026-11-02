@@ -12,9 +12,9 @@ import (
 
 // PaidUseCases is the transport's paid-action capability, independent of encoding and archive reads.
 type PaidUseCases interface {
-	Recall(context.Context, platform.UserScope, string, string, string, bool) (memory.RecallResult, error)
-	RecallDiaryStars(context.Context, platform.UserScope, string, string, bool) (memory.RecallDiaryStarsResult, error)
-	ViewSemantic(context.Context, platform.UserScope, string, string) (memory.ViewSemanticResult, error)
+	Recall(ctx context.Context, scope platform.UserScope, cmd memory.RecallCommand) (memory.RecallResult, error)
+	RecallDiaryStars(ctx context.Context, scope platform.UserScope, cmd memory.RecallDiaryStarsCommand) (memory.RecallDiaryStarsResult, error)
+	ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (memory.ViewSemanticResult, error)
 }
 type PaidServer struct {
 	memoryv1connect.UnimplementedMemoryServiceHandler
@@ -33,7 +33,7 @@ func (s *PaidServer) Recall(ctx context.Context, req *connect.Request[memoryv1.R
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.paid.Recall(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetMemoryId(), req.Msg.GetRewriteText(), req.Msg.GetSyncConsent())
+	result, err := s.paid.Recall(ctx, scope, memory.RecallCommand{OperationID: req.Msg.GetOperationId(), MemoryID: req.Msg.GetMemoryId(), RewriteText: req.Msg.GetRewriteText(), SyncConsent: req.Msg.GetSyncConsent()})
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -53,7 +53,7 @@ func (s *PaidServer) RecallDiaryStars(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.paid.RecallDiaryStars(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetDiaryId(), req.Msg.GetSyncConsent())
+	result, err := s.paid.RecallDiaryStars(ctx, scope, memory.RecallDiaryStarsCommand{OperationID: req.Msg.GetOperationId(), DiaryID: req.Msg.GetDiaryId(), SyncConsent: req.Msg.GetSyncConsent()})
 	if err != nil {
 		return nil, domainError(err)
 	}
