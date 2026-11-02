@@ -57,11 +57,11 @@ func TestPastDatedDiaryReportsNoProgress(t *testing.T) {
 	fixture := newFixture(t)
 	scope := testScope(t)
 	// The first launch moves the clock forward; the second is dated before it and launches nothing.
-	if _, err := fixture.service.PersistEncoded(context.Background(), scope, testDiaryBody, testDiaryDate(), confirmedFixture()); err != nil {
+	if _, err := fixture.launch.PersistEncoded(context.Background(), scope, testDiaryBody, testDiaryDate(), confirmedFixture()); err != nil {
 		t.Fatalf("first launch failed: %v", err)
 	}
 	fixture.achievements.reports = nil
-	result, err := fixture.service.PersistEncoded(
+	result, err := fixture.launch.PersistEncoded(
 		context.Background(),
 		scope,
 		testDiaryBody,
@@ -84,7 +84,7 @@ func TestPastDatedDiaryReportsNoProgress(t *testing.T) {
 func TestLaunchReportsItsCounterFacts(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	if _, err := fixture.service.PersistEncoded(
+	if _, err := fixture.launch.PersistEncoded(
 		context.Background(),
 		testScope(t),
 		testDiaryBody,
@@ -120,7 +120,7 @@ func TestARecorderFailureRollsBackTheLaunch(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	fixture.achievements.failOn = CounterDiaryWritten
-	if _, err := fixture.service.PersistEncoded(
+	if _, err := fixture.launch.PersistEncoded(
 		context.Background(),
 		testScope(t),
 		testDiaryBody,

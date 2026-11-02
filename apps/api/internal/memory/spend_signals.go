@@ -42,24 +42,7 @@ func NewSpendSignalService(signals SpendSignalRepo, gists GistReader, zone UserZ
 }
 
 func (s *SpendSignalService) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
-	zone, err := s.userZone.ZoneFor(ctx, scope)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return dateInLocation(s.now(), zone), nil
-}
-
-func (s *Service) RecallAccessibility(ctx context.Context, scope platform.UserScope, id string) (float64, error) {
-	return s.spendSignals().RecallAccessibility(ctx, scope, id)
-}
-func (s *Service) DiaryRecallAccessibilities(ctx context.Context, scope platform.UserScope, id string) ([]float64, error) {
-	return s.spendSignals().DiaryRecallAccessibilities(ctx, scope, id)
-}
-func (s *Service) ViewableGistStage(ctx context.Context, scope platform.UserScope, id string) (int, error) {
-	return s.spendSignals().ViewableGistStage(ctx, scope, id)
-}
-func (s *Service) spendSignals() *SpendSignalService {
-	return &SpendSignalService{signals: s.signals, gists: s.gists, userZone: s.userZone, now: s.now}
+	return resolveUserToday(ctx, s.userZone, s.now(), scope)
 }
 
 // RecallAccessibility returns one memory's spend-time accessibility cost weight

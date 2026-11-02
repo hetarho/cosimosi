@@ -89,7 +89,7 @@ type RecallDiaryStarsResult struct {
 // A short preparation transaction verifies scope, receipt, consent, target and affordability.
 // Provider comparison runs after that transaction releases its graph lock. The commit transaction
 // repeats the receipt/consent/spend checks and rejects a changed source before applying any effect.
-func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
+func (s *PaidActionService) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
 	if scope.UserID() == "" {
 		return RecallResult{}, ErrScopeRequired
 	}
@@ -255,7 +255,7 @@ func (s *CommandService) Recall(ctx context.Context, scope platform.UserScope, o
 // spend the recall of each still-live memory born from the diary, and Reinforce each — in
 // ONE transaction. It never calls PredictionError or Reconsolidate, writes no current_text,
 // and changes no seed ([R4][R6][I8]).
-func (s *CommandService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
+func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
 	if scope.UserID() == "" {
 		return RecallDiaryStarsResult{}, ErrScopeRequired
 	}
@@ -363,7 +363,7 @@ type reinforceEffects struct {
 // event (one pass over the edge set; a rolled-back attempt leaves no trace), and touches no
 // memory↔memory edge — only neuron↔neuron synapses ([I4][I6][I9]). The recalled memory takes
 // no self-offset; it recovers wholly ([F5]).
-func (s *CommandService) reinforce(ctx context.Context, scope platform.UserScope, tx RecallTx, memoryID string, universeTime time.Time) (reinforceEffects, error) {
+func (s *PaidActionService) reinforce(ctx context.Context, scope platform.UserScope, tx RecallTx, memoryID string, universeTime time.Time) (reinforceEffects, error) {
 	anchors, err := tx.ResetRecallAnchors(ctx, scope, memoryID, universeTime)
 	if err != nil {
 		return reinforceEffects{}, err
@@ -424,7 +424,7 @@ func (s *CommandService) reinforce(ctx context.Context, scope platform.UserScope
 // stage texts on the new basis (keeping already-risen gist stages, [C7]), and append the
 // reconsolidated/user provenance row. The anchors, LTP, strength bump, and neighbor ± have
 // already run in reinforce. The Diary is untouched ([I2]). Returns the new seed.
-func (s *CommandService) reconsolidate(ctx context.Context, scope platform.UserScope, tx RecallTx, memory EpisodicMemory, rewriteText string, universeTime time.Time) (int64, error) {
+func (s *PaidActionService) reconsolidate(ctx context.Context, scope platform.UserScope, tx RecallTx, memory EpisodicMemory, rewriteText string, universeTime time.Time) (int64, error) {
 	// The use-case owns randomness so the domain stays pure: it mints the fresh entropy
 	// and Reshape guarantees the returned seed differs from the current one ([V5]).
 	newSeed := Reshape(seedOrZero(memory.Seed), s.newSeed())

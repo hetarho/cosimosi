@@ -20,7 +20,7 @@ type SyncResult struct {
 // caller. Idempotent within a day (the GREATEST upsert holds today), it
 // mutates no Diary ([I2]) and fires the progression hook over the crossed
 // interval inside the same transaction, exactly like the launch advance ([T4]).
-func (s *CommandService) SyncToToday(ctx context.Context, scope platform.UserScope) (SyncResult, error) {
+func (s *LaunchService) SyncToToday(ctx context.Context, scope platform.UserScope) (SyncResult, error) {
 	if scope.UserID() == "" {
 		return SyncResult{}, ErrScopeRequired
 	}
@@ -51,21 +51,21 @@ func (s *CommandService) SyncToToday(ctx context.Context, scope platform.UserSco
 // the same guard baseline (clock, or the latest launched memory while the clock is unborn) and the
 // same zoned `now` the recall sync uses — so the client drives the consent decision from the server
 // clock, never a local Date. A pure read: no lock, no advance, no Twinkle.
-func (s *Service) SyncStatus(ctx context.Context, scope platform.UserScope) (SyncStatus, error) {
+func (s *ReadService) SyncStatus(ctx context.Context, scope platform.UserScope) (SyncStatus, error) {
 	if scope.UserID() == "" {
 		return SyncStatus{}, ErrScopeRequired
 	}
-	guard, err := s.signals.UniverseClock(ctx, scope)
+	guard, err := s.clock.UniverseClock(ctx, scope)
 	if err != nil {
 		return SyncStatus{}, err
 	}
 	if guard == nil {
-		guard, err = s.signals.LatestLaunchedUniverseTime(ctx, scope)
+		guard, err = s.clock.LatestLaunchedUniverseTime(ctx, scope)
 		if err != nil {
 			return SyncStatus{}, err
 		}
 	}
-	today, err := s.userToday(ctx, scope)
+	today, err := resolveUserToday(ctx, s.userZone, s.now(), scope)
 	if err != nil {
 		return SyncStatus{}, err
 	}
@@ -94,7 +94,7 @@ func syncNeedsConsent(guard *time.Time, today time.Time) bool {
 // its own transaction). The surface is ProgressionTx: sync touches only the clock
 // and the progression hook, never a launch write. LaunchTx and RecallTx both
 // satisfy it.
-func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, today time.Time, consent bool) (SyncResult, error) {
+func (s *graphClock) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, today time.Time, consent bool) (SyncResult, error) {
 	guard, target, err := s.syncTarget(ctx, scope, tx, today, consent)
 	if err != nil {
 		return SyncResult{}, err
@@ -108,7 +108,7 @@ func (s *CommandService) syncToToday(ctx context.Context, scope platform.UserSco
 
 // syncTarget validates consent and reads the exact advance target without mutating the clock.
 // today is the caller's user-zone date, resolved before its transaction opened.
-func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, today time.Time, consent bool) (*time.Time, time.Time, error) {
+func (s *graphClock) syncTarget(ctx context.Context, scope platform.UserScope, tx UniverseClockStore, today time.Time, consent bool) (*time.Time, time.Time, error) {
 	// Serialize against concurrent launches for the whole transaction,
 	// birth window included, exactly as the launch path does ([I10]).
 	if err := tx.LockGraphMutation(ctx, scope); err != nil {
@@ -143,7 +143,7 @@ func (s *CommandService) syncTarget(ctx context.Context, scope platform.UserScop
 // only when the clock actually moved: a held clock (same-day sync, equal-date
 // launch) crosses no interval, so no advance-triggered work may be implied —
 // otherwise every idempotent re-sync would re-fire the interval's handlers.
-func (s *CommandService) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
+func (s *graphClock) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
 	advanced, err := tx.AdvanceUniverseClock(ctx, scope, target)
 	if err != nil {
 		return err

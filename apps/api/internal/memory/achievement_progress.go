@@ -16,7 +16,7 @@ import (
 // recordLaunchProgress reports what a launch made true. It is called only after the monotonic launch
 // guard admitted the diary, at the same point as the write-earn grant: a past-dated diary is saved
 // and counts nothing ([I10][T1]).
-func (s *CommandService) recordLaunchProgress(
+func (s *LaunchService) recordLaunchProgress(
 	ctx context.Context,
 	scope platform.UserScope,
 	tx LaunchTx,
@@ -72,7 +72,7 @@ func (s *CommandService) recordLaunchProgress(
 // A released memory can lower a membership below two and a later launch can raise it back, which
 // counts a second time — the fact did happen twice, and the only row reading this counter is the
 // first-shared-neuron achievement, already earned by then.
-func (s *CommandService) recordNeuronSharing(
+func (s *LaunchService) recordNeuronSharing(
 	ctx context.Context,
 	scope platform.UserScope,
 	tx LaunchTx,
@@ -133,7 +133,7 @@ const sharedNeuronThreshold = 2
 // recordRecallProgress reports one recall pass. `recoveredCount` is already reduced: the caller
 // compared each memory's PRE-recall decay stage against the configured minimum from the same anchor
 // snapshot the spend was priced from, so no stage crosses the port and no second read is needed.
-func (s *CommandService) recordRecallProgress(
+func (s *PaidActionService) recordRecallProgress(
 	ctx context.Context,
 	scope platform.UserScope,
 	tx RecallTx,
@@ -169,7 +169,7 @@ func recallRecoversDecay(anchor DiaryRecallAnchor, universeTime time.Time) bool 
 // recordViewSemanticProgress reports one 요지 별 열람 and the depth it reached. The [A2] 요지화-도달
 // axis is observed at the VIEW moment rather than when a stage rises in the worker: the reported
 // value is the stage actually served, and the store's reach mode keeps the high-water mark.
-func (s *CommandService) recordViewSemanticProgress(
+func (s *PaidActionService) recordViewSemanticProgress(
 	ctx context.Context,
 	scope platform.UserScope,
 	tx ViewSemanticTx,
@@ -189,7 +189,7 @@ func (s *CommandService) recordViewSemanticProgress(
 
 // recordReleaseProgress reports 놓아주기 — the soft-delete path. LetGo seals neurons and releases
 // nothing, so it reports nothing.
-func (s *CommandService) recordReleaseProgress(
+func (s *ReleaseService) recordReleaseProgress(
 	ctx context.Context,
 	scope platform.UserScope,
 	tx ReleaseTx,

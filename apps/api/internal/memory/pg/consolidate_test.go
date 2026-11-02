@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 )
@@ -14,39 +13,14 @@ import (
 // deterministic right edge.
 func consolidateServiceDay() time.Time { return time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC) }
 
-func newConsolidateService(t *testing.T, store Store) *memory.Service {
+func newConsolidateService(t *testing.T, store Store) *graphServices {
 	t.Helper()
-	store = withEconomy(store, memory.NoEconomy{})
-	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
-	if err != nil {
-		t.Fatalf("NewAdapters failed: %v", err)
-	}
-	service, err := memory.NewService(memory.ServiceDeps{
-		Extractor:  adapters.Extractor,
-		Embedder:   adapters.Embedder,
-		Candidates: store,
-		Launches:   store,
-		Universe:   store,
-		Linker:     memory.NewLinkService(memory.LinkDeps{}),
-		// The real Epic-E binding under test: the advance consolidates ([T4]).
-		Progression:      memory.NewConsolidator(nil),
-		Recalls:          store,
-		SignupSettlement: memory.NoSignupSettlement{},
-		PredictionError:  adapters.PredictionError,
-		Gists:            store,
-		ViewSemantics:    store,
-		Signals:          store,
-		Provenance:       store,
-		Exports:          store,
-		Diaries:          store,
-		Releases:         store,
-		SealSuggester:    adapters.SealSuggester,
-		Now:              consolidateServiceDay,
+	// The real consolidation binding under test: the advance consolidates ([T4]).
+	return newGraphServices(t, graphServiceDeps{
+		store:       withEconomy(store, memory.NoEconomy{}),
+		progression: memory.NewConsolidator(nil),
+		now:         consolidateServiceDay,
 	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-	return service
 }
 
 // TestSyncConsolidatesEndToEnd drives a real sync-to-today advance with the Consolidator

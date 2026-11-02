@@ -15,38 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func newReleaseService(t *testing.T, store Store, now func() time.Time) *memory.Service {
+func newReleaseService(t *testing.T, store Store, now func() time.Time) *graphServices {
 	t.Helper()
-	store = withEconomy(store, memory.NoEconomy{})
-	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
-	if err != nil {
-		t.Fatalf("NewAdapters failed: %v", err)
-	}
-	service, err := memory.NewService(memory.ServiceDeps{
-		Extractor:        adapters.Extractor,
-		Embedder:         adapters.Embedder,
-		Candidates:       store,
-		Launches:         store,
-		Universe:         store,
-		Linker:           memory.NewLinkService(memory.LinkDeps{}),
-		Progression:      memory.NoopAdvanceProgression{},
-		Recalls:          store,
-		SignupSettlement: memory.NoSignupSettlement{},
-		PredictionError:  adapters.PredictionError,
-		Gists:            store,
-		ViewSemantics:    store,
-		Signals:          store,
-		Provenance:       store,
-		Exports:          store,
-		Diaries:          store,
-		Releases:         store,
-		SealSuggester:    adapters.SealSuggester,
-		Now:              now,
-	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-	return service
+	return newGraphServices(t, graphServiceDeps{store: withEconomy(store, memory.NoEconomy{}), now: now})
 }
 
 // releaseGraph seeds a two-diary universe: d1's memory m1 activates an orphan semantic neuron (m1 only)

@@ -93,29 +93,42 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	commands, err := memory.NewCommandService(memory.CommandDeps{
+	zone := accountUserZone{service: accountService}
+	// Launch and the paid actions advance the same clock through the same consolidation hook.
+	progression := memory.NewConsolidator(nil)
+	launches, err := memory.NewLaunchService(memory.LaunchDeps{
 		Launches:         store,
 		Linker:           memory.NewLinkService(memory.LinkDeps{}),
-		Progression:      memory.NewConsolidator(nil),
-		Recalls:          store,
+		Progression:      progression,
 		SignupSettlement: accountSignupSettlement{service: accountService, logger: logger},
-		PredictionError:  adapters.PredictionError,
-		ViewSemantics:    store,
-		Releases:         store,
-		SealSuggester:    adapters.SealSuggester,
-		UserZone:         accountUserZone{service: accountService},
+		UserZone:         zone,
 	})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
-	service, err := memory.NewServiceWithCapabilities(encoding, commands, memory.ReadServiceDeps{
+	paid, err := memory.NewPaidActionService(memory.PaidActionDeps{
+		Recalls:         store,
+		ViewSemantics:   store,
+		PredictionError: adapters.PredictionError,
+		Progression:     progression,
+		UserZone:        zone,
+	})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	releases, err := memory.NewReleaseService(memory.ReleaseDeps{Releases: store, SealSuggester: adapters.SealSuggester})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	reads, err := memory.NewReadService(memory.ReadDeps{
 		Universe:   store,
-		Gists:      store,
-		Signals:    store,
 		Provenance: store,
-		Exports:    store,
 		Diaries:    store,
+		Clock:      store,
+		UserZone:   zone,
 	})
 	if err != nil {
 		pool.Close()
@@ -126,7 +139,14 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	server, err := memoryrpc.NewServer(service, exports)
+	server, err := memoryrpc.NewServer(memoryrpc.Services{
+		Encoding: encoding,
+		Launches: launches,
+		Paid:     paid,
+		Releases: releases,
+		Reads:    reads,
+		Exports:  exports,
+	})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err

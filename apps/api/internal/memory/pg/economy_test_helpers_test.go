@@ -1,7 +1,11 @@
 package pg
 
 import (
+	"testing"
+	"time"
+
 	dbgen "github.com/cosimosi/api/db/gen"
+	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 )
 
@@ -10,4 +14,77 @@ import (
 // inside its spend or earn binds a barrier.
 func withEconomy(store Store, economy memory.EconomyTx) Store {
 	return store.WithEconomyBinding(func(dbgen.DBTX) memory.EconomyTx { return economy })
+}
+
+// graphServices is the pg suites' set of memory services over one store, so a test drives launch,
+// paid actions, release and reads against the same database state.
+type graphServices struct {
+	*memory.EncodingService
+	*memory.LaunchService
+	*memory.PaidActionService
+	*memory.ReleaseService
+	*memory.ReadService
+}
+
+type graphServiceDeps struct {
+	store       Store
+	releases    memory.ReleaseRepo
+	progression memory.AdvanceProgression
+	now         func() time.Time
+	newSeed     func() int64
+}
+
+func newGraphServices(t *testing.T, deps graphServiceDeps) *graphServices {
+	t.Helper()
+	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
+	if err != nil {
+		t.Fatalf("NewAdapters failed: %v", err)
+	}
+	store := deps.store
+	releases := deps.releases
+	if releases == nil {
+		releases = store
+	}
+	progression := deps.progression
+	if progression == nil {
+		progression = memory.NoopAdvanceProgression{}
+	}
+	services := &graphServices{}
+	fail := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatalf("memory service construction failed: %v", err)
+		}
+	}
+	services.EncodingService, err = memory.NewEncodingService(memory.EncodingDeps{
+		Extractor: adapters.Extractor, Embedder: adapters.Embedder, Candidates: store,
+	})
+	fail(err)
+	services.LaunchService, err = memory.NewLaunchService(memory.LaunchDeps{
+		Launches:         store,
+		Linker:           memory.NewLinkService(memory.LinkDeps{}),
+		Progression:      progression,
+		SignupSettlement: memory.NoSignupSettlement{},
+		Now:              deps.now,
+		NewSeed:          deps.newSeed,
+	})
+	fail(err)
+	services.PaidActionService, err = memory.NewPaidActionService(memory.PaidActionDeps{
+		Recalls:         store,
+		ViewSemantics:   store,
+		PredictionError: adapters.PredictionError,
+		Progression:     progression,
+		Now:             deps.now,
+		NewSeed:         deps.newSeed,
+	})
+	fail(err)
+	services.ReleaseService, err = memory.NewReleaseService(memory.ReleaseDeps{
+		Releases: releases, SealSuggester: adapters.SealSuggester, Now: deps.now,
+	})
+	fail(err)
+	services.ReadService, err = memory.NewReadService(memory.ReadDeps{
+		Universe: store, Provenance: store, Diaries: store, Clock: store, Now: deps.now,
+	})
+	fail(err)
+	return services
 }

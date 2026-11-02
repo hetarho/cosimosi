@@ -44,7 +44,7 @@ type DiaryCalendarPage struct {
 	NextPageToken string
 }
 
-func (s *Service) GetDiaryCalendar(ctx context.Context, scope platform.UserScope, query DiaryCalendarQuery) (DiaryCalendarPage, error) {
+func (s *ReadService) GetDiaryCalendar(ctx context.Context, scope platform.UserScope, query DiaryCalendarQuery) (DiaryCalendarPage, error) {
 	if scope.UserID() == "" {
 		return DiaryCalendarPage{}, ErrScopeRequired
 	}

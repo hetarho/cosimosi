@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
@@ -111,7 +110,7 @@ func newGraphConcurrencyService(
 	releases memory.ReleaseRepo,
 	economy memory.EconomyTx,
 	now func() time.Time,
-) *memory.Service {
+) *graphServices {
 	t.Helper()
 	return newGraphConcurrencyServiceWith(t, store, releases, memory.NoopAdvanceProgression{}, economy, now)
 }
@@ -125,38 +124,14 @@ func newGraphConcurrencyServiceWith(
 	progression memory.AdvanceProgression,
 	economy memory.EconomyTx,
 	now func() time.Time,
-) *memory.Service {
+) *graphServices {
 	t.Helper()
-	store = withEconomy(store, economy)
-	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
-	if err != nil {
-		t.Fatalf("NewAdapters failed: %v", err)
-	}
-	service, err := memory.NewService(memory.ServiceDeps{
-		Extractor:        adapters.Extractor,
-		Embedder:         adapters.Embedder,
-		Candidates:       store,
-		Launches:         store,
-		Universe:         store,
-		Linker:           memory.NewLinkService(memory.LinkDeps{}),
-		Progression:      progression,
-		Recalls:          store,
-		SignupSettlement: memory.NoSignupSettlement{},
-		PredictionError:  adapters.PredictionError,
-		Gists:            store,
-		ViewSemantics:    store,
-		Signals:          store,
-		Provenance:       store,
-		Exports:          store,
-		Diaries:          store,
-		Releases:         releases,
-		SealSuggester:    adapters.SealSuggester,
-		Now:              now,
+	return newGraphServices(t, graphServiceDeps{
+		store:       withEconomy(store, economy),
+		releases:    releases,
+		progression: progression,
+		now:         now,
 	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-	return service
 }
 
 func waitForAdvisoryWaiter(t *testing.T, ctx context.Context, pool *platformdb.Pool, userID string) {

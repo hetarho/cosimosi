@@ -264,7 +264,7 @@ func TestRecallNoErrorBranchReinforcesOnly(t *testing.T) {
 		[]NeighborSharedSemanticCount{{NeighborID: "n2", SharedSemanticCount: 1}, {NeighborID: "n3", SharedSemanticCount: 2}},
 	)
 
-	result, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "original account, reworded", true)
+	result, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "original account, reworded", true)
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestRecallErrorBranchReconsolidates(t *testing.T) {
 	)
 	fixture.launches.recallMemberNeurons["m1"] = []ExistingNeuron{{ID: "a", Name: "market", Type: NeuronTypeSpatial}}
 
-	result, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "a genuinely different memory", true)
+	result, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "a genuinely different memory", true)
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestRecallNeighborSelectionByCount(t *testing.T) {
 		},
 	)
 
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true); err != nil {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true); err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
 	// count 0 → no offset; count 1 → slow; count >= 2 → speed. The recalled memory gets no
@@ -436,7 +436,7 @@ func TestRecallSpendDenialResetsNothing(t *testing.T) {
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 	fixture.seedRecallable("m1", EpisodicMemory{CurrentText: "x", Seed: seededSeed(1), BaseStrength: 0.5}, nil, nil)
 
-	_, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true)
+	_, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true)
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle", err)
 	}
@@ -460,10 +460,10 @@ func TestRecallRejectsDeletedAndMissingTargets(t *testing.T) {
 	fixture.launches.clock = seededTimePtr(recallTestClock())
 	fixture.seedRecallable("gone", EpisodicMemory{CurrentText: "x", Seed: seededSeed(1), DeletedAt: &deletedAt}, nil, nil)
 
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "gone", "reworded", true); !errors.Is(err, ErrRecallMemoryUnavailable) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "gone", "reworded", true); !errors.Is(err, ErrRecallMemoryUnavailable) {
 		t.Fatalf("deleted target err = %v, want ErrRecallMemoryUnavailable", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-2", "never", "reworded", true); !errors.Is(err, ErrRecallMemoryNotFound) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-2", "never", "reworded", true); !errors.Is(err, ErrRecallMemoryNotFound) {
 		t.Fatalf("missing target err = %v, want ErrRecallMemoryNotFound", err)
 	}
 }
@@ -485,7 +485,7 @@ func TestRecallDiaryStarsReinforcesEveryLiveMemory(t *testing.T) {
 	)
 	fixture.launches.diaryMemories = map[string][]string{"d1": {"m1", "m2"}}
 
-	result, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true)
+	result, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true)
 	if err != nil {
 		t.Fatalf("RecallDiaryStars failed: %v", err)
 	}
@@ -513,22 +513,22 @@ func TestRecallDiaryStarsReinforcesEveryLiveMemory(t *testing.T) {
 func TestRecallRequiresScopeAndInput(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	if _, err := fixture.service.Recall(context.Background(), platform.UserScope{}, "op-1", "m1", "x", true); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.paid.Recall(context.Background(), platform.UserScope{}, "op-1", "m1", "x", true); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("scopeless recall err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "", "m1", "x", true); !errors.Is(err, ErrOperationIDRequired) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "", "m1", "x", true); !errors.Is(err, ErrOperationIDRequired) {
 		t.Fatalf("operationless recall err = %v, want ErrOperationIDRequired", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "  ", true); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "m1", "  ", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty rewrite err = %v, want ErrRecallInputRequired", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "", "rewrite", true); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), "op-1", "", "rewrite", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty memory id err = %v, want ErrRecallInputRequired", err)
 	}
-	if _, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "", "d1", true); !errors.Is(err, ErrOperationIDRequired) {
+	if _, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "", "d1", true); !errors.Is(err, ErrOperationIDRequired) {
 		t.Fatalf("operationless diary recall err = %v, want ErrOperationIDRequired", err)
 	}
-	if _, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "op-1", "", true); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.paid.RecallDiaryStars(context.Background(), testScope(t), "op-1", "", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty diary id err = %v, want ErrRecallInputRequired", err)
 	}
 	if fixture.launches.recallTxCount != 0 {
@@ -574,7 +574,7 @@ func TestRecallComparesOutsideTransactionAndRejectsChangedSourceWithoutSpending(
 		current.RepresentationRevision++
 		fixture.launches.recallStars["m1"] = current
 	}
-	_, err := fixture.service.Recall(context.Background(), testScope(t), "intent", "m1", "my rewrite", true)
+	_, err := fixture.paid.Recall(context.Background(), testScope(t), "intent", "m1", "my rewrite", true)
 	if !errors.Is(err, ErrRecallSourceChanged) {
 		t.Fatalf("stale source: %v", err)
 	}
@@ -589,7 +589,7 @@ func TestRecallCancellationAfterComparisonAppliesNoEffects(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	fixture.predictionError.beforeCompare = cancel
-	_, err := fixture.service.Recall(ctx, testScope(t), "intent", "m1", "my rewrite", true)
+	_, err := fixture.paid.Recall(ctx, testScope(t), "intent", "m1", "my rewrite", true)
 	if !errors.Is(err, context.Canceled) || len(fixture.spendGate.intents) != 0 || len(fixture.launches.receipts) != 0 {
 		t.Fatalf("cancellation: %v", err)
 	}

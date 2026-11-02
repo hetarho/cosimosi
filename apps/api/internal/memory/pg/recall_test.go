@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 )
@@ -14,40 +13,14 @@ import (
 // anchors are deterministic against the wall clock.
 func recallServiceDay() time.Time { return time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC) }
 
-func newRecallService(t *testing.T, store Store) *memory.Service {
+func newRecallService(t *testing.T, store Store) *graphServices {
 	t.Helper()
-	store = withEconomy(store, memory.NoEconomy{})
-	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
-	if err != nil {
-		t.Fatalf("NewAdapters failed: %v", err)
-	}
 	seed := int64(9001)
-	service, err := memory.NewService(memory.ServiceDeps{
-		Extractor:        adapters.Extractor,
-		Embedder:         adapters.Embedder,
-		Candidates:       store,
-		Launches:         store,
-		Universe:         store,
-		Linker:           memory.NewLinkService(memory.LinkDeps{}),
-		Progression:      memory.NoopAdvanceProgression{},
-		Recalls:          store,
-		SignupSettlement: memory.NoSignupSettlement{},
-		PredictionError:  adapters.PredictionError,
-		Gists:            store,
-		ViewSemantics:    store,
-		Signals:          store,
-		Provenance:       store,
-		Exports:          store,
-		Diaries:          store,
-		Releases:         store,
-		SealSuggester:    adapters.SealSuggester,
-		Now:              recallServiceDay,
-		NewSeed:          func() int64 { return seed },
+	return newGraphServices(t, graphServiceDeps{
+		store:   withEconomy(store, memory.NoEconomy{}),
+		now:     recallServiceDay,
+		newSeed: func() int64 { return seed },
 	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-	return service
 }
 
 // TestRecallReconsolidatesAndReinforcesEndToEnd drives the full Recall use-case against a

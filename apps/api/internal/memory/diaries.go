@@ -112,7 +112,7 @@ type DiaryReader interface {
 // refs of the page's diaries in one read, group them under each diary, and mint the next cursor. The
 // page size is clamped to the configured maximum so a client cannot request an unbounded page. Free
 // read — no clock, no spend (A5).
-func (s *Service) GetDiaries(ctx context.Context, scope platform.UserScope, query DiaryQuery) (DiaryPage, error) {
+func (s *ReadService) GetDiaries(ctx context.Context, scope platform.UserScope, query DiaryQuery) (DiaryPage, error) {
 	if scope.UserID() == "" {
 		return DiaryPage{}, ErrScopeRequired
 	}

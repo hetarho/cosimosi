@@ -15,34 +15,47 @@ import (
 	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
-var ErrServiceRequired = errors.New("memory rpc server requires the memory service")
+var ErrServiceRequired = errors.New("memory rpc server requires every memory service")
+
+// Services are the memory capabilities the handlers forward to, one per use-case group.
+type Services struct {
+	Encoding *memory.EncodingService
+	Launches *memory.LaunchService
+	Paid     PaidUseCases
+	Releases *memory.ReleaseService
+	Reads    *memory.ReadService
+	Exports  ExportUseCase
+}
 
 type Server struct {
-	service *memory.Service
+	encoding *memory.EncodingService
+	launches *memory.LaunchService
+	releases *memory.ReleaseService
+	reads    *memory.ReadService
 	*ExportServer
 	*PaidServer
 }
 
-func NewServer(service *memory.Service, exports ...ExportUseCase) (*Server, error) {
-	if service == nil {
+func NewServer(services Services) (*Server, error) {
+	if services.Encoding == nil || services.Launches == nil || services.Releases == nil || services.Reads == nil {
 		return nil, ErrServiceRequired
 	}
-	exporter := ExportUseCase(service)
-	if len(exports) > 1 {
-		return nil, ErrServiceRequired
-	}
-	if len(exports) == 1 {
-		exporter = exports[0]
-	}
-	read, err := NewExportServer(exporter)
+	read, err := NewExportServer(services.Exports)
 	if err != nil {
 		return nil, err
 	}
-	paid, err := NewPaidServer(service.CommandService)
+	paid, err := NewPaidServer(services.Paid)
 	if err != nil {
 		return nil, err
 	}
-	return &Server{service: service, ExportServer: read, PaidServer: paid}, nil
+	return &Server{
+		encoding:     services.Encoding,
+		launches:     services.Launches,
+		releases:     services.Releases,
+		reads:        services.Reads,
+		ExportServer: read,
+		PaidServer:   paid,
+	}, nil
 }
 
 func (s *Server) SplitDiary(ctx context.Context, req *connect.Request[memoryv1.SplitDiaryRequest]) (*connect.Response[memoryv1.SplitDiaryResponse], error) {
@@ -54,7 +67,7 @@ func (s *Server) SplitDiary(ctx context.Context, req *connect.Request[memoryv1.S
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.Encode(ctx, scope, req.Msg.GetBody(), diaryDate)
+	result, err := s.encoding.Encode(ctx, scope, req.Msg.GetBody(), diaryDate)
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -67,7 +80,7 @@ func (s *Server) ReviseSplit(ctx context.Context, req *connect.Request[memoryv1.
 		return nil, err
 	}
 	previous := memory.ExtractResult{Memories: domainMemories(req.Msg.GetPrevious().GetMemories())}
-	result, err := s.service.ReviseSplit(ctx, scope, req.Msg.GetBody(), previous, req.Msg.GetInstruction())
+	result, err := s.encoding.ReviseSplit(ctx, scope, req.Msg.GetBody(), previous, req.Msg.GetInstruction())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -84,7 +97,7 @@ func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.
 		return nil, err
 	}
 	confirmed := domainMemories(req.Msg.GetMemories())
-	result, err := s.service.PersistEncoded(ctx, scope, req.Msg.GetBody(), diaryDate, confirmed)
+	result, err := s.launches.PersistEncoded(ctx, scope, req.Msg.GetBody(), diaryDate, confirmed)
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -103,7 +116,7 @@ func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.Ge
 	if err != nil {
 		return nil, err
 	}
-	facts, universeTime, err := s.service.Universe(ctx, scope)
+	facts, universeTime, err := s.reads.Universe(ctx, scope)
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -115,7 +128,7 @@ func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.Syn
 	if err != nil {
 		return nil, err
 	}
-	status, err := s.service.SyncStatus(ctx, scope)
+	status, err := s.reads.SyncStatus(ctx, scope)
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -130,7 +143,7 @@ func (s *Server) GetProvenance(ctx context.Context, req *connect.Request[memoryv
 	if err != nil {
 		return nil, err
 	}
-	entries, err := s.service.GetProvenance(ctx, scope, req.Msg.GetEpisodicMemoryId())
+	entries, err := s.reads.GetProvenance(ctx, scope, req.Msg.GetEpisodicMemoryId())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -158,7 +171,7 @@ func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.G
 	for i, mood := range req.Msg.GetMoods() {
 		moods[i] = memory.Mood(mood)
 	}
-	page, err := s.service.GetDiaries(ctx, scope, memory.DiaryQuery{
+	page, err := s.reads.GetDiaries(ctx, scope, memory.DiaryQuery{
 		Filter: memory.DiaryFilter{
 			Keyword:     req.Msg.GetQuery(),
 			Moods:       moods,
@@ -190,7 +203,7 @@ func (s *Server) GetDiaryCalendar(ctx context.Context, req *connect.Request[memo
 	if err != nil {
 		return nil, domainError(err)
 	}
-	page, err := s.service.GetDiaryCalendar(ctx, scope, memory.DiaryCalendarQuery{
+	page, err := s.reads.GetDiaryCalendar(ctx, scope, memory.DiaryCalendarQuery{
 		From:      from,
 		To:        to,
 		PageToken: req.Msg.GetPageToken(),
@@ -206,7 +219,7 @@ func (s *Server) Release(ctx context.Context, req *connect.Request[memoryv1.Rele
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.Release(ctx, scope, req.Msg.GetDiaryId())
+	result, err := s.releases.Release(ctx, scope, req.Msg.GetDiaryId())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -222,7 +235,7 @@ func (s *Server) Restore(ctx context.Context, req *connect.Request[memoryv1.Rest
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.Restore(ctx, scope, req.Msg.GetDiaryId())
+	result, err := s.releases.Restore(ctx, scope, req.Msg.GetDiaryId())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -237,7 +250,7 @@ func (s *Server) SuggestLetGo(ctx context.Context, req *connect.Request[memoryv1
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.SuggestLetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetWords())
+	result, err := s.releases.SuggestLetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetWords())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -252,7 +265,7 @@ func (s *Server) LetGo(ctx context.Context, req *connect.Request[memoryv1.LetGoR
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.LetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetApprovedNeuronIds())
+	result, err := s.releases.LetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetApprovedNeuronIds())
 	if err != nil {
 		return nil, domainError(err)
 	}

@@ -114,7 +114,7 @@ func actionFingerprint(parts ...string) string {
 // writeReceipt encodes a use-case's committed result and inserts its receipt in the same
 // transaction as the effects (A3). Called once, last, so a receipt is written iff the whole paid
 // action commits.
-func (s *CommandService) writeReceipt(ctx context.Context, scope platform.UserScope, store PaidActionReceiptStore, receipt PaidActionReceipt, result any) error {
+func (s *PaidActionService) writeReceipt(ctx context.Context, scope platform.UserScope, store PaidActionReceiptStore, receipt PaidActionReceipt, result any) error {
 	response, err := encodeReceiptResponse(result)
 	if err != nil {
 		return err

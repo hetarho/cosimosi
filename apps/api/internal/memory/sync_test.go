@@ -32,28 +32,30 @@ func TestRealClockDayBoundariesUseTheUsersZoneAtAllFourSites(t *testing.T) {
 	seoulToday := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 
 	launchFixture := newFixture(t)
-	launchFixture.service.now = func() time.Time { return now }
-	launchFixture.service.userZone = fixedUserZone{location: seoul}
-	if _, err := launchFixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, seoulToday, confirmedFixture()); err != nil {
+	launchFixture.launch.now = func() time.Time { return now }
+	launchFixture.launch.userZone = fixedUserZone{location: seoul}
+	if _, err := launchFixture.launch.PersistEncoded(context.Background(), testScope(t), testDiaryBody, seoulToday, confirmedFixture()); err != nil {
 		t.Fatalf("launch rejected the user's current day: %v", err)
 	}
 
 	statusFixture := newFixture(t)
-	statusFixture.service.now = func() time.Time { return now }
-	statusFixture.service.userZone = fixedUserZone{location: seoul}
-	status, err := statusFixture.service.SyncStatus(context.Background(), testScope(t))
+	statusFixture.reads.now = func() time.Time { return now }
+	statusFixture.reads.userZone = fixedUserZone{location: seoul}
+	statusFixture.launch.now = func() time.Time { return now }
+	statusFixture.launch.userZone = fixedUserZone{location: seoul}
+	status, err := statusFixture.reads.SyncStatus(context.Background(), testScope(t))
 	if err != nil || !status.Today.Equal(seoulToday) {
 		t.Fatalf("SyncStatus = %#v, %v; want Seoul today %v", status, err, seoulToday)
 	}
-	synced, err := statusFixture.service.SyncToToday(context.Background(), testScope(t))
+	synced, err := statusFixture.launch.SyncToToday(context.Background(), testScope(t))
 	if err != nil || !synced.Current.Equal(seoulToday) {
 		t.Fatalf("SyncToToday = %#v, %v; want Seoul today %v", synced, err, seoulToday)
 	}
 
 	signalFixture := newFixture(t)
-	signalFixture.service.now = func() time.Time { return now }
-	signalFixture.service.userZone = fixedUserZone{location: seoul}
-	signalToday, err := signalFixture.service.spendSignals().signalUniverseTime(context.Background(), testScope(t))
+	signalFixture.signals.now = func() time.Time { return now }
+	signalFixture.signals.userZone = fixedUserZone{location: seoul}
+	signalToday, err := signalFixture.signals.signalUniverseTime(context.Background(), testScope(t))
 	if err != nil || !signalToday.Equal(seoulToday) {
 		t.Fatalf("signalUniverseTime = %v, %v; want Seoul today %v", signalToday, err, seoulToday)
 	}
@@ -73,7 +75,7 @@ func TestSyncToTodayAdvancesClockAndReturnsInterval(t *testing.T) {
 	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	fixture.launches.clock = &previous
 
-	result, err := fixture.service.SyncToToday(context.Background(), testScope(t))
+	result, err := fixture.launch.SyncToToday(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("SyncToToday failed: %v", err)
 	}
@@ -106,7 +108,7 @@ func TestSyncToTodayIsIdempotentWithinADay(t *testing.T) {
 	today := fixtureToday()
 	fixture.launches.clock = &today
 
-	result, err := fixture.service.SyncToToday(context.Background(), testScope(t))
+	result, err := fixture.launch.SyncToToday(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("SyncToToday failed: %v", err)
 	}
@@ -127,7 +129,7 @@ func TestSyncToTodayBirthsClockWithNilPrevious(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 
-	result, err := fixture.service.SyncToToday(context.Background(), testScope(t))
+	result, err := fixture.launch.SyncToToday(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("SyncToToday failed: %v", err)
 	}
@@ -142,7 +144,7 @@ func TestSyncToTodayBirthsClockWithNilPrevious(t *testing.T) {
 func TestSyncToTodayRequiresScope(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	if _, err := fixture.service.SyncToToday(context.Background(), platform.UserScope{}); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.launch.SyncToToday(context.Background(), platform.UserScope{}); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("missing scope err = %v, want ErrScopeRequired", err)
 	}
 	if fixture.launches.txCount != 0 {
@@ -157,7 +159,7 @@ func TestSyncToTodayProgressionFailureRollsBack(t *testing.T) {
 	fixture.launches.clock = &previous
 	fixture.progression.err = errors.New("progression handler failed")
 
-	if _, err := fixture.service.SyncToToday(context.Background(), testScope(t)); err == nil {
+	if _, err := fixture.launch.SyncToToday(context.Background(), testScope(t)); err == nil {
 		t.Fatal("a progression failure inside the transaction must fail the sync")
 	}
 	if fixture.launches.clock == nil || !fixture.launches.clock.Equal(previous) {
@@ -180,7 +182,7 @@ func TestCommandsResolveTodayBeforeTheirTransaction(t *testing.T) {
 	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	fixture.launches.clock = &previous
 	// newFixture's zone reader fails the test when read inside an open transaction.
-	if _, err := fixture.service.SyncToToday(context.Background(), testScope(t)); err != nil {
+	if _, err := fixture.launch.SyncToToday(context.Background(), testScope(t)); err != nil {
 		t.Fatalf("SyncToToday failed: %v", err)
 	}
 }

@@ -57,7 +57,7 @@ var (
 // the diary, seal the removal set's orphan neurons, weaken the shared neurons' contribution (LTD), and
 // record the release-effect ledger plus its exact-deadline retention job so Restore can reverse it
 // exactly. No hard delete, no Diary UPDATE, no spend (deletion is never priced).
-func (s *CommandService) Release(ctx context.Context, scope platform.UserScope, diaryID string) (ReleaseResult, error) {
+func (s *ReleaseService) Release(ctx context.Context, scope platform.UserScope, diaryID string) (ReleaseResult, error) {
 	if scope.UserID() == "" {
 		return ReleaseResult{}, ErrScopeRequired
 	}
@@ -164,7 +164,7 @@ func (s *CommandService) Release(ctx context.Context, scope platform.UserScope, 
 // shared contribution synapse (clamped), and retires the release group — returning every released memory
 // to full participation. It refuses once the release is absent (swept / never released) or older than the
 // window. Letting-go has no restore path.
-func (s *CommandService) Restore(ctx context.Context, scope platform.UserScope, diaryID string) (RestoreResult, error) {
+func (s *ReleaseService) Restore(ctx context.Context, scope platform.UserScope, diaryID string) (RestoreResult, error) {
 	if scope.UserID() == "" {
 		return RestoreResult{}, ErrScopeRequired
 	}
@@ -236,7 +236,7 @@ func (s *CommandService) Restore(ctx context.Context, scope platform.UserScope, 
 // this-memory-only semantic neurons IN THE USE-CASE, and let the SealSuggester rank within that
 // already-safe set. It persists nothing (a metered LLM read), intersects the AI's references back with
 // the offered set as defence-in-depth, and returns the candidates plus the [X7] heavy-state hint.
-func (s *CommandService) SuggestLetGo(ctx context.Context, scope platform.UserScope, memoryID string, words string) (SuggestLetGoResult, error) {
+func (s *ReleaseService) SuggestLetGo(ctx context.Context, scope platform.UserScope, memoryID string, words string) (SuggestLetGoResult, error) {
 	if scope.UserID() == "" {
 		return SuggestLetGoResult{}, ErrScopeRequired
 	}
@@ -271,7 +271,7 @@ func (s *CommandService) SuggestLetGo(ctx context.Context, scope platform.UserSc
 // id is a this-memory-only semantic neuron (a shared/foreign/non-semantic id is rejected with nothing
 // sealed), then seal exactly those neurons via the shared deletion rules. Permanent — no deleted_at, no timer, no
 // ledger. The memory's emotion/color/seed and its spatial/entity/time neurons are untouched.
-func (s *CommandService) LetGo(ctx context.Context, scope platform.UserScope, memoryID string, approvedNeuronIDs []string) (LetGoResult, error) {
+func (s *ReleaseService) LetGo(ctx context.Context, scope platform.UserScope, memoryID string, approvedNeuronIDs []string) (LetGoResult, error) {
 	if scope.UserID() == "" {
 		return LetGoResult{}, ErrScopeRequired
 	}
@@ -341,7 +341,7 @@ func (s *CommandService) LetGo(ctx context.Context, scope platform.UserScope, me
 // orphan neurons no other memory references (with their embeddings + edges), and the original Diary
 // row/body — in FK-safe order, per-user scoped. It never touches a live (deleted_at IS NULL) row and never
 // a shared neuron. Returns how many release groups were swept.
-func (s *CommandService) Sweep(ctx context.Context, scope platform.UserScope, now time.Time) (int, error) {
+func (s *ReleaseService) Sweep(ctx context.Context, scope platform.UserScope, now time.Time) (int, error) {
 	if scope.UserID() == "" {
 		return 0, ErrScopeRequired
 	}

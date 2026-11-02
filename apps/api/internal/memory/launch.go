@@ -38,7 +38,7 @@ type LaunchResult struct {
 // PersistEncoded atomically commits the user-confirmed split at launch: Diary +
 // EpisodicMemory + Neuron (deduped) + NeuronActivation in one transaction, then
 // the Link seam and the async embed/semanticize enqueue. Invoked by LaunchStars.
-func (s *CommandService) PersistEncoded(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time, confirmed []ExtractedMemory) (LaunchResult, error) {
+func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserScope, body string, diaryDate time.Time, confirmed []ExtractedMemory) (LaunchResult, error) {
 	if scope.UserID() == "" {
 		return LaunchResult{}, ErrScopeRequired
 	}
@@ -215,7 +215,7 @@ func (s *CommandService) PersistEncoded(ctx context.Context, scope platform.User
 // still reads the latest launched memory's created_universe_time from the same
 // snapshot, so no universe visibly resets; an empty universe reads nil.
 // Reading never advances the clock ([T3]).
-func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (UniverseFacts, *time.Time, error) {
+func (s *ReadService) Universe(ctx context.Context, scope platform.UserScope) (UniverseFacts, *time.Time, error) {
 	if scope.UserID() == "" {
 		return UniverseFacts{}, nil, ErrScopeRequired
 	}
@@ -239,7 +239,7 @@ func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (Unive
 // neuron whose (name, type) canonicalized onto an existing neuron references that
 // id; a genuinely new (name, type) is created once and shared across this
 // launch's memories. Neurons are never deleted [I1].
-func (s *CommandService) resolveNeurons(ctx context.Context, scope platform.UserScope, tx LaunchTx, confirmed []ExtractedMemory) (map[string]string, []Neuron, error) {
+func (s *LaunchService) resolveNeurons(ctx context.Context, scope platform.UserScope, tx LaunchTx, confirmed []ExtractedMemory) (map[string]string, []Neuron, error) {
 	keys := make([]string, 0)
 	names := make([]string, 0)
 	byKey := make(map[string]ExtractedNeuron)
@@ -288,7 +288,7 @@ func (s *CommandService) resolveNeurons(ctx context.Context, scope platform.User
 
 // enqueueAsyncJobs hands the slow work to the worker (§2.8): one embed job for
 // the genuinely new neurons and one semanticize job per launched memory.
-func (s *CommandService) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
+func (s *LaunchService) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
 	if len(newNeurons) > 0 {
 		targets := make([]JobTarget, 0, len(newNeurons))
 		for _, neuron := range newNeurons {
@@ -306,10 +306,6 @@ func (s *CommandService) enqueueAsyncJobs(ctx context.Context, scope platform.Us
 		}
 	}
 	return nil
-}
-
-func (s *CommandService) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any, targets ...JobTarget) error {
-	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload, targets...)
 }
 
 // validateConfirmedSplit re-applies the encode invariants to the user-confirmed
@@ -359,12 +355,4 @@ func dateInLocation(value time.Time, location *time.Location) time.Time {
 	}
 	local := value.In(location)
 	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func (s *CommandService) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
-	location, err := s.userZone.ZoneFor(ctx, scope)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return dateInLocation(s.now(), location), nil
 }

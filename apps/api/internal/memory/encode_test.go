@@ -141,7 +141,13 @@ type serviceFixture struct {
 	diaries          *fakeDiaryReader
 	releases         *fakeReleaseRepo
 	sealSuggester    *fakeSealSuggester
-	service          *Service
+	encoding         *EncodingService
+	launch           *LaunchService
+	paid             *PaidActionService
+	release          *ReleaseService
+	reads            *ReadService
+	signals          *SpendSignalService
+	exportService    *ExportService
 	seeds            []int64
 }
 
@@ -193,70 +199,78 @@ func newFixture(t *testing.T) *serviceFixture {
 	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
 	// reshape entropy is deterministic in tests.
 	seedCalls := 0
-	service, err := NewService(ServiceDeps{
-		Extractor:        fixture.extractor,
-		Embedder:         fixture.embedder,
-		Candidates:       fixture.candidates,
+	zone := zoneOutsideTransactions{t: t, store: launches}
+	now := func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) }
+	newID := func() string {
+		ids++
+		return fmt.Sprintf("id-%d", ids)
+	}
+	newSeed := func() int64 {
+		seedCalls++
+		if seedCalls <= len(fixture.seeds) {
+			return fixture.seeds[seedCalls-1]
+		}
+		return 42
+	}
+	var err error
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatalf("memory service construction failed: %v", err)
+		}
+	}
+	fixture.encoding, err = NewEncodingService(EncodingDeps{Extractor: fixture.extractor, Embedder: fixture.embedder, Candidates: fixture.candidates})
+	must(err)
+	fixture.launch, err = NewLaunchService(LaunchDeps{
 		Launches:         fixture.launches,
-		Universe:         fixture.universe,
 		Linker:           fixture.linker,
 		Progression:      fixture.progression,
-		Recalls:          fixture.launches,
 		SignupSettlement: fixture.signupSettlement,
-		PredictionError:  fixture.predictionError,
-		Gists:            fixture.gists,
-		ViewSemantics:    fixture.launches,
-		Signals:          fixture.launches,
-		Provenance:       fixture.provenance,
-		Exports:          fixture.exports,
-		Diaries:          fixture.diaries,
-		Releases:         fixture.releases,
-		SealSuggester:    fixture.sealSuggester,
-		UserZone:         zoneOutsideTransactions{t: t, store: launches},
-		Now:              func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
-		NewID: func() string {
-			ids++
-			return fmt.Sprintf("id-%d", ids)
-		},
-		NewSeed: func() int64 {
-			seedCalls++
-			if seedCalls <= len(fixture.seeds) {
-				return fixture.seeds[seedCalls-1]
-			}
-			return 42
-		},
+		UserZone:         zone,
+		Now:              now,
+		NewID:            newID,
+		NewSeed:          newSeed,
 	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-	fixture.service = service
+	must(err)
+	fixture.paid, err = NewPaidActionService(PaidActionDeps{
+		Recalls:         fixture.launches,
+		ViewSemantics:   fixture.launches,
+		PredictionError: fixture.predictionError,
+		Progression:     fixture.progression,
+		UserZone:        zone,
+		Now:             now,
+		NewID:           newID,
+		NewSeed:         newSeed,
+	})
+	must(err)
+	fixture.release, err = NewReleaseService(ReleaseDeps{Releases: fixture.releases, SealSuggester: fixture.sealSuggester, Now: now, NewID: newID})
+	must(err)
+	fixture.reads, err = NewReadService(ReadDeps{
+		Universe:   fixture.universe,
+		Provenance: fixture.provenance,
+		Diaries:    fixture.diaries,
+		Clock:      fixture.launches,
+		UserZone:   zone,
+		Now:        now,
+	})
+	must(err)
+	fixture.signals, err = NewSpendSignalService(fixture.launches, fixture.gists, zone, now)
+	must(err)
+	fixture.exportService, err = NewExportService(fixture.exports)
+	must(err)
 	return fixture
 }
 
-func TestNewServiceRejectsUnboundSignupSettlement(t *testing.T) {
+func TestNewLaunchServiceRejectsUnboundSignupSettlement(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	_, err := NewService(ServiceDeps{
-		Extractor:       fixture.extractor,
-		Embedder:        fixture.embedder,
-		Candidates:      fixture.candidates,
-		Launches:        fixture.launches,
-		Universe:        fixture.universe,
-		Linker:          fixture.linker,
-		Progression:     fixture.progression,
-		Recalls:         fixture.launches,
-		PredictionError: fixture.predictionError,
-		Gists:           fixture.gists,
-		ViewSemantics:   fixture.launches,
-		Signals:         fixture.launches,
-		Provenance:      fixture.provenance,
-		Exports:         fixture.exports,
-		Diaries:         fixture.diaries,
-		Releases:        fixture.releases,
-		SealSuggester:   fixture.sealSuggester,
+	_, err := NewLaunchService(LaunchDeps{
+		Launches:    fixture.launches,
+		Linker:      fixture.linker,
+		Progression: fixture.progression,
 	})
 	if !errors.Is(err, ErrSignupSettlementRequired) {
-		t.Fatalf("NewService without signup settlement err = %v, want ErrSignupSettlementRequired", err)
+		t.Fatalf("NewLaunchService without signup settlement err = %v, want ErrSignupSettlementRequired", err)
 	}
 }
 
@@ -264,14 +278,14 @@ type encodingFixture struct {
 	extractor  *fakeExtractor
 	embedder   *fakeEmbedder
 	candidates *fakeCandidateRepo
-	service    *EncodingService
+	encoding   *EncodingService
 }
 
 func newEncodingFixture(t *testing.T) *encodingFixture {
 	t.Helper()
 	fixture := &encodingFixture{extractor: &fakeExtractor{splitResult: validSplit()}, embedder: &fakeEmbedder{}, candidates: &fakeCandidateRepo{}}
 	var err error
-	fixture.service, err = NewEncodingService(EncodingDeps{Extractor: fixture.extractor, Embedder: fixture.embedder, Candidates: fixture.candidates})
+	fixture.encoding, err = NewEncodingService(EncodingDeps{Extractor: fixture.extractor, Embedder: fixture.embedder, Candidates: fixture.candidates})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +302,7 @@ func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 	}
 	fixture.embedder.vectors = [][]float32{{0.5, 0.5}}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	result, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -331,7 +345,7 @@ func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
 	fixture.extractor.splitResult = tooMany
 	fixture.extractor.reviseQueue = []ExtractResult{validSplit()}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	result, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -356,7 +370,7 @@ func TestEncodeMissingSemanticNeuronIsRepairedNeverPlaceholder(t *testing.T) {
 	repaired := validSplit()
 	fixture.extractor.reviseQueue = []ExtractResult{repaired}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	result, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -388,7 +402,7 @@ func TestEncodeAcceptsASingleSceneSplitAfterOneNudge(t *testing.T) {
 	fixture.extractor.splitResult = single
 	fixture.extractor.reviseQueue = []ExtractResult{single}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	result, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode refused a single-scene diary: %v", err)
 	}
@@ -442,7 +456,7 @@ func TestEncodeStillEnforcesTheOtherInvariantsOnAnAcceptedCount(t *testing.T) {
 			fixture := newEncodingFixture(t)
 			fixture.extractor.splitResult = testCase.result
 
-			_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+			_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 			var exhausted *EncodeRetryExhausted
 			if !errors.As(err, &exhausted) || exhausted.Kind != testCase.want {
 				t.Fatalf("err = %v, want the %q give-up", err, testCase.want)
@@ -465,7 +479,7 @@ func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 	invented.Memories[1].SourceText = "Lunch with Mina, catching up. Then I flew to the moon."
 	fixture.extractor.splitResult = invented
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeRetryExhausted) {
 		t.Fatalf("err = %v, want ErrEncodeRetryExhausted", err)
 	}
@@ -499,7 +513,7 @@ func TestEncodeCountGiveUpCarriesTheObservedCount(t *testing.T) {
 	}
 	fixture.extractor.splitResult = tooMany
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	var exhausted *EncodeRetryExhausted
 	if !errors.As(err, &exhausted) {
 		t.Fatalf("err = %v, want EncodeRetryExhausted", err)
@@ -534,7 +548,7 @@ func TestEncodeRefusesADiaryTooLongToQuoteBeforeCallingTheExtractor(t *testing.T
 	// Korean runes count one token each in the estimate, so the budget is reached in runes.
 	tooLong := strings.Repeat("오늘은 아주 긴 하루였다. ", values.EncodeMaxOutputTokens)
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), tooLong, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), tooLong, testDiaryDate())
 	if !errors.Is(err, ErrEncodeBodyTooLong) {
 		t.Fatalf("err = %v, want ErrEncodeBodyTooLong", err)
 	}
@@ -543,7 +557,7 @@ func TestEncodeRefusesADiaryTooLongToQuoteBeforeCallingTheExtractor(t *testing.T
 	}
 
 	// The same guard covers the revise entry point, which re-quotes from the same body.
-	_, err = fixture.service.ReviseSplit(context.Background(), testScope(t), tooLong, validSplit(), "merge them")
+	_, err = fixture.encoding.ReviseSplit(context.Background(), testScope(t), tooLong, validSplit(), "merge them")
 	if !errors.Is(err, ErrEncodeBodyTooLong) {
 		t.Fatalf("revise err = %v, want ErrEncodeBodyTooLong", err)
 	}
@@ -641,7 +655,7 @@ func TestEncodeRefusesABodyNoLegalSplitCouldFit(t *testing.T) {
 		t.Skip("no trap band at the current tuning — the structural reservation is smaller than one rune")
 	}
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), body, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), body, testDiaryDate())
 	if !errors.Is(err, ErrEncodeBodyTooLong) {
 		t.Fatalf("err = %v, want ErrEncodeBodyTooLong", err)
 	}
@@ -664,7 +678,7 @@ func TestEncodeRejectsInvalidNeuronTypeWithoutRetry(t *testing.T) {
 	invalid.Memories[0].Neurons[0].Type = NeuronType("temporal")
 	fixture.extractor.splitResult = invalid
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeInvalidSplit) {
 		t.Fatalf("err = %v, want ErrEncodeInvalidSplit", err)
 	}
@@ -680,7 +694,7 @@ func TestEncodeRejectsUnknownMood(t *testing.T) {
 	invalid.Memories[0].Mood = Mood("EUPHORIA")
 	fixture.extractor.splitResult = invalid
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeInvalidSplit) {
 		t.Fatalf("err = %v, want ErrEncodeInvalidSplit", err)
 	}
@@ -693,7 +707,7 @@ func TestEncodeOversizedResultIsRepairable(t *testing.T) {
 	oversized.Memories[0].Name = strings.Repeat("경험", values.EncodeMaxOutputTokens)
 	fixture.extractor.splitResult = oversized
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
+	_, err := fixture.encoding.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeRetryExhausted) {
 		t.Fatalf("err = %v, want ErrEncodeRetryExhausted after size repairs", err)
 	}
@@ -705,13 +719,13 @@ func TestEncodeOversizedResultIsRepairable(t *testing.T) {
 func TestEncodeRequiresInputAndScope(t *testing.T) {
 	t.Parallel()
 	fixture := newEncodingFixture(t)
-	if _, err := fixture.service.Encode(context.Background(), testScope(t), "  ", testDiaryDate()); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.encoding.Encode(context.Background(), testScope(t), "  ", testDiaryDate()); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("empty body err = %v, want ErrEncodeInputRequired", err)
 	}
-	if _, err := fixture.service.Encode(context.Background(), testScope(t), "body", time.Time{}); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.encoding.Encode(context.Background(), testScope(t), "body", time.Time{}); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("zero date err = %v, want ErrEncodeInputRequired", err)
 	}
-	if _, err := fixture.service.Encode(context.Background(), platform.UserScope{}, "body", testDiaryDate()); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.encoding.Encode(context.Background(), platform.UserScope{}, "body", testDiaryDate()); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("missing scope err = %v, want ErrScopeRequired", err)
 	}
 }
@@ -750,13 +764,13 @@ func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	fixture := newEncodingFixture(t)
 	invalidPrevious := validSplit()
 	invalidPrevious.Memories[0].Neurons[0].Type = NeuronType("time")
-	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, invalidPrevious, "merge them"); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.encoding.ReviseSplit(context.Background(), testScope(t), testDiaryBody, invalidPrevious, "merge them"); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("invalid previous err = %v, want ErrEncodeInputRequired", err)
 	}
 
 	fixture = newEncodingFixture(t)
 	fixture.extractor.reviseQueue = []ExtractResult{validSplit()}
-	result, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "merge the meeting and lunch")
+	result, err := fixture.encoding.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "merge the meeting and lunch")
 	if err != nil {
 		t.Fatalf("ReviseSplit failed: %v", err)
 	}
@@ -769,7 +783,7 @@ func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	if fixture.extractor.splitCalls != 0 {
 		t.Fatal("revise must reuse the revise variant, not re-split")
 	}
-	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "  "); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.encoding.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "  "); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("empty instruction err = %v, want ErrEncodeInputRequired", err)
 	}
 }

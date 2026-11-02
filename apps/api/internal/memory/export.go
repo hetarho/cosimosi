@@ -84,11 +84,6 @@ func NewExportService(reader ExportReader) (*ExportService, error) {
 	return &ExportService{exports: reader}, nil
 }
 
-// Export preserves the command facade while callers migrate to the independent read capability.
-func (s *Service) Export(ctx context.Context, scope platform.UserScope, format ExportFormat) (ExportResult, error) {
-	return (&ExportService{exports: s.exports}).Export(ctx, scope, format)
-}
-
 // Export reads the retained diaries + still-live memories (per-user scoped), groups the memories under
 // their diary, and serializes the chosen format. The grouping and serialization are pure domain; the
 // reader is the only IO. No write, no clock, no spend (A6).

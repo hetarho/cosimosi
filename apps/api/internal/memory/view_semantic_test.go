@@ -45,7 +45,7 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 	fixture.launches.clock = &previous
 	fixture.seedGist("m1", 3, fourStages())
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+	result, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestViewSemanticRefusesUnrisenOrUnpregeneratedStages(t *testing.T) {
 		{"nothing has risen (stage 0 is the concrete memory)", "unrisen"},
 	}
 	for _, tc := range cases {
-		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", tc.memoryID); !errors.Is(err, ErrViewSemanticStageNotRisen) {
+		if _, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", tc.memoryID); !errors.Is(err, ErrViewSemanticStageNotRisen) {
 			t.Fatalf("%s: err = %v, want ErrViewSemanticStageNotRisen", tc.name, err)
 		}
 	}
@@ -120,7 +120,7 @@ func TestViewSemanticServesTheMemorysCurrentRung(t *testing.T) {
 		fixture := newFixture(t)
 		fixture.seedGist("m1", stage, fourStages())
 
-		result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+		result, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 		if err != nil {
 			t.Fatalf("stage %d: ViewSemantic failed: %v", stage, err)
 		}
@@ -140,7 +140,7 @@ func TestViewSemanticClampsAStageAboveTheLadder(t *testing.T) {
 	// serves the deepest real rung rather than indexing past the end.
 	fixture.seedGist("m1", 9, fourStages())
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+	result, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
@@ -159,13 +159,13 @@ func TestViewSemanticValidatesInput(t *testing.T) {
 
 	// The only bad input left is an empty id — there is no client stage to be out of range.
 	// None of these may reach the gist read or the gate.
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", ""); !errors.Is(err, ErrViewSemanticInputRequired) {
+	if _, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", ""); !errors.Is(err, ErrViewSemanticInputRequired) {
 		t.Fatalf("empty id err = %v, want ErrViewSemanticInputRequired", err)
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "", "m1"); !errors.Is(err, ErrOperationIDRequired) {
+	if _, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "", "m1"); !errors.Is(err, ErrOperationIDRequired) {
 		t.Fatalf("empty operation id err = %v, want ErrOperationIDRequired", err)
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), platform.UserScope{}, "op-1", "m1"); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.paid.ViewSemantic(context.Background(), platform.UserScope{}, "op-1", "m1"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("missing scope err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.gists.calls) != 0 || len(fixture.spendGate.intents) != 0 {
@@ -179,7 +179,7 @@ func TestViewSemanticMemoryNotFoundIsCanonical(t *testing.T) {
 
 	// A9 at the unit level: the reader returns the canonical not-found for a row that
 	// is not the caller's (the per-user WHERE is the pg integration test's proof).
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "someone-elses"); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
+	if _, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", "someone-elses"); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 	if len(fixture.spendGate.intents) != 0 {
@@ -193,7 +193,7 @@ func TestViewSemanticSpendIsAPreconditionOfTheRead(t *testing.T) {
 	fixture.seedGist("m1", 4, fourStages())
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
+	result, err := fixture.paid.ViewSemantic(context.Background(), testScope(t), "op-1", "m1")
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle surfaced verbatim", err)
 	}

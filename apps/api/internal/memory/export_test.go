@@ -202,7 +202,7 @@ func TestExportIsReadOnly(t *testing.T) {
 	fixture.launches.clock = &before
 	fixture.exports.diaries = []ExportDiary{{ID: "d1", Body: "body", DiaryDate: exportDate(1)}}
 
-	if _, err := fixture.service.Export(context.Background(), testScope(t), ExportFormatCSV); err != nil {
+	if _, err := fixture.exportService.Export(context.Background(), testScope(t), ExportFormatCSV); err != nil {
 		t.Fatalf("Export failed: %v", err)
 	}
 	// A6: no spend, no transaction, no clock advance — the export is a pure read (archive tier, free).

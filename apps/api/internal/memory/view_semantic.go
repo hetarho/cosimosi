@@ -111,7 +111,7 @@ type ViewSemanticResult struct {
 // concrete, not a gist), so stage k's text is SemanticStages[k-1]; the depth served is the risen
 // semantic_stage clamped to the DERIVED stage-array length, never a declared count and never a
 // client's number. The load precedes the spend so a not-found or unrisen memory never charges.
-func (s *CommandService) ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (ViewSemanticResult, error) {
+func (s *PaidActionService) ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (ViewSemanticResult, error) {
 	if scope.UserID() == "" {
 		return ViewSemanticResult{}, ErrScopeRequired
 	}

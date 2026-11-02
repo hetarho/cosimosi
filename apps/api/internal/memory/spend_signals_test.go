@@ -21,14 +21,14 @@ func TestRecallAccessibilityDerivesTheSpendTimeWeight(t *testing.T) {
 	fixture.seedRecallable("fresh", EpisodicMemory{CreatedUniverseTime: fixtureToday(), BaseStrength: 0.5}, nil, nil)
 	fixture.seedRecallable("silent", EpisodicMemory{CreatedUniverseTime: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), BaseStrength: 0.5}, nil, nil)
 
-	freshWeight, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), "fresh")
+	freshWeight, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), "fresh")
 	if err != nil {
 		t.Fatalf("RecallAccessibility(fresh) failed: %v", err)
 	}
 	if freshWeight != float64(values.ForgettingCostWeightFloor) {
 		t.Fatalf("fresh weight = %v, want the floor %v", freshWeight, values.ForgettingCostWeightFloor)
 	}
-	silentWeight, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), "silent")
+	silentWeight, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), "silent")
 	if err != nil {
 		t.Fatalf("RecallAccessibility(silent) failed: %v", err)
 	}
@@ -48,16 +48,16 @@ func TestRecallAccessibilityRefusesDeletedAndMissingTargets(t *testing.T) {
 	fixture.launches.clock = seededTimePtr(recallTestClock())
 	fixture.seedRecallable("gone", EpisodicMemory{CreatedUniverseTime: fixtureToday(), DeletedAt: &deletedAt}, nil, nil)
 
-	if _, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), "gone"); !errors.Is(err, ErrRecallMemoryUnavailable) {
+	if _, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), "gone"); !errors.Is(err, ErrRecallMemoryUnavailable) {
 		t.Fatalf("deleted err = %v, want ErrRecallMemoryUnavailable", err)
 	}
-	if _, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), "never"); !errors.Is(err, ErrRecallMemoryNotFound) {
+	if _, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), "never"); !errors.Is(err, ErrRecallMemoryNotFound) {
 		t.Fatalf("missing err = %v, want ErrRecallMemoryNotFound", err)
 	}
-	if _, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), ""); !errors.Is(err, ErrSpendSignalInputRequired) {
+	if _, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), ""); !errors.Is(err, ErrSpendSignalInputRequired) {
 		t.Fatalf("empty id err = %v, want ErrSpendSignalInputRequired", err)
 	}
-	if _, err := fixture.service.RecallAccessibility(context.Background(), platform.UserScope{}, "gone"); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.signals.RecallAccessibility(context.Background(), platform.UserScope{}, "gone"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("scopeless err = %v, want ErrScopeRequired", err)
 	}
 }
@@ -70,7 +70,7 @@ func TestDiaryRecallAccessibilitiesListsPerStarWeights(t *testing.T) {
 	fixture.seedRecallable("m2", EpisodicMemory{CreatedUniverseTime: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), BaseStrength: 0.5}, nil, nil)
 	fixture.launches.diaryMemories = map[string][]string{"d1": {"m1", "m2"}}
 
-	weights, err := fixture.service.DiaryRecallAccessibilities(context.Background(), testScope(t), "d1")
+	weights, err := fixture.signals.DiaryRecallAccessibilities(context.Background(), testScope(t), "d1")
 	if err != nil {
 		t.Fatalf("DiaryRecallAccessibilities failed: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestDiaryRecallAccessibilitiesListsPerStarWeights(t *testing.T) {
 		t.Fatalf("weights = %v, want [floor cap] per memory", weights)
 	}
 	// A diary with nothing live prices as an empty list, mirroring RecallDiaryStars.
-	empty, err := fixture.service.DiaryRecallAccessibilities(context.Background(), testScope(t), "unknown")
+	empty, err := fixture.signals.DiaryRecallAccessibilities(context.Background(), testScope(t), "unknown")
 	if err != nil {
 		t.Fatalf("DiaryRecallAccessibilities(unknown) failed: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestViewableGistStageIsTheRisenBoundedStage(t *testing.T) {
 	fixture.seedGist("unrisen", 0, nil)
 	fixture.seedGist("pending", 2, nil)
 
-	stage, err := fixture.service.ViewableGistStage(context.Background(), testScope(t), "risen")
+	stage, err := fixture.signals.ViewableGistStage(context.Background(), testScope(t), "risen")
 	if err != nil {
 		t.Fatalf("ViewableGistStage failed: %v", err)
 	}
@@ -103,11 +103,11 @@ func TestViewableGistStageIsTheRisenBoundedStage(t *testing.T) {
 		t.Fatalf("stage = %d, want the risen 3", stage)
 	}
 	for _, id := range []string{"unrisen", "pending"} {
-		if _, err := fixture.service.ViewableGistStage(context.Background(), testScope(t), id); !errors.Is(err, ErrViewSemanticStageNotRisen) {
+		if _, err := fixture.signals.ViewableGistStage(context.Background(), testScope(t), id); !errors.Is(err, ErrViewSemanticStageNotRisen) {
 			t.Fatalf("%s err = %v, want ErrViewSemanticStageNotRisen", id, err)
 		}
 	}
-	if _, err := fixture.service.ViewableGistStage(context.Background(), testScope(t), "never"); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
+	if _, err := fixture.signals.ViewableGistStage(context.Background(), testScope(t), "never"); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("missing err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 }
@@ -121,7 +121,7 @@ func TestSignalUniverseTimeNeverPrecedesTheClock(t *testing.T) {
 	fixture.launches.clock = &ahead
 	fixture.seedRecallable("m1", EpisodicMemory{CreatedUniverseTime: ahead, BaseStrength: 0.5}, nil, nil)
 
-	weight, err := fixture.service.RecallAccessibility(context.Background(), testScope(t), "m1")
+	weight, err := fixture.signals.RecallAccessibility(context.Background(), testScope(t), "m1")
 	if err != nil {
 		t.Fatalf("RecallAccessibility failed: %v", err)
 	}

@@ -53,7 +53,7 @@ func TestGetProvenanceSynthesizesCreatedBaselineForAZeroRowStar(t *testing.T) {
 		},
 	}
 
-	entries, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1")
+	entries, err := fixture.reads.GetProvenance(context.Background(), testScope(t), "m1")
 	if err != nil {
 		t.Fatalf("GetProvenance failed: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestGetProvenanceBaselineFallsBackToTheDiaryForAMemoryWithoutAPassage(t *te
 		"m1": {DiaryBody: "the original diary body", CreatedUniverseTime: day(2026, 6, 1)},
 	}
 
-	entries, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1")
+	entries, err := fixture.reads.GetProvenance(context.Background(), testScope(t), "m1")
 	if err != nil {
 		t.Fatalf("GetProvenance failed: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestGetProvenanceOrdersBaselineFirstThenAppendedRowsAndBaselineIsTheOriginN
 		},
 	}
 
-	entries, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1")
+	entries, err := fixture.reads.GetProvenance(context.Background(), testScope(t), "m1")
 	if err != nil {
 		t.Fatalf("GetProvenance failed: %v", err)
 	}
@@ -145,13 +145,13 @@ func TestGetProvenanceRefusesUnknownInputAndScope(t *testing.T) {
 	}
 
 	// A10: a memory that is not the caller's (or is soft-deleted) is the canonical not-found.
-	if _, err := fixture.service.GetProvenance(context.Background(), testScope(t), "someone-elses"); !errors.Is(err, ErrProvenanceMemoryNotFound) {
+	if _, err := fixture.reads.GetProvenance(context.Background(), testScope(t), "someone-elses"); !errors.Is(err, ErrProvenanceMemoryNotFound) {
 		t.Fatalf("cross-user err = %v, want ErrProvenanceMemoryNotFound", err)
 	}
-	if _, err := fixture.service.GetProvenance(context.Background(), testScope(t), ""); !errors.Is(err, ErrProvenanceInputRequired) {
+	if _, err := fixture.reads.GetProvenance(context.Background(), testScope(t), ""); !errors.Is(err, ErrProvenanceInputRequired) {
 		t.Fatalf("empty id err = %v, want ErrProvenanceInputRequired", err)
 	}
-	if _, err := fixture.service.GetProvenance(context.Background(), platform.UserScope{}, "m1"); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.reads.GetProvenance(context.Background(), platform.UserScope{}, "m1"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("empty scope err = %v, want ErrScopeRequired", err)
 	}
 	// A6: an invalid/empty-scope read never reaches the reader.
@@ -172,7 +172,7 @@ func TestGetProvenanceIsReadOnly(t *testing.T) {
 		"m1": {{Kind: ProvenanceKindReconsolidated, Source: ProvenanceSourceUser, Text: "rewrite", UniverseTime: day(2026, 6, 5)}},
 	}
 
-	if _, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1"); err != nil {
+	if _, err := fixture.reads.GetProvenance(context.Background(), testScope(t), "m1"); err != nil {
 		t.Fatalf("GetProvenance failed: %v", err)
 	}
 	// A6/A7: no spend, no transaction, no clock advance, no reconsolidation, no provenance append —

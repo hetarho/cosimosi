@@ -71,7 +71,7 @@ type ProvenanceReader interface {
 // synthesize the created/original baseline from the immutable Diary body → prepend it to the appended
 // rows (already universe-time ordered). The baseline is the earliest event ([T]), so prepending it is
 // the time order the panel renders ([R8a], A1). No write, no clock, no spend (A6).
-func (s *Service) GetProvenance(ctx context.Context, scope platform.UserScope, memoryID string) ([]ProvenanceEntry, error) {
+func (s *ReadService) GetProvenance(ctx context.Context, scope platform.UserScope, memoryID string) ([]ProvenanceEntry, error) {
 	if scope.UserID() == "" {
 		return nil, ErrScopeRequired
 	}

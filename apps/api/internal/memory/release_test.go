@@ -700,36 +700,19 @@ func stringPointer(value string) *string {
 
 // --- fixture -------------------------------------------------------------------------------------
 
-func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealSuggester, now time.Time) *Service {
+func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealSuggester, now time.Time) *ReleaseService {
 	t.Helper()
-	launches := &fakeLaunchStore{}
-	service, err := NewService(ServiceDeps{
-		Extractor:        &fakeExtractor{splitResult: validSplit()},
-		Embedder:         &fakeEmbedder{},
-		Candidates:       &fakeCandidateRepo{},
-		Launches:         launches,
-		Universe:         &fakeUniverseReader{},
-		Linker:           &fakeLinker{},
-		Progression:      &fakeProgression{store: launches},
-		Recalls:          launches,
-		SignupSettlement: NoSignupSettlement{},
-		PredictionError:  &fakePredictionError{},
-		Gists:            &fakeGistReader{},
-		ViewSemantics:    launches,
-		Signals:          launches,
-		Provenance:       &fakeProvenanceReader{},
-		Exports:          &fakeExportReader{},
-		Diaries:          &fakeDiaryReader{},
-		Releases:         repo,
-		SealSuggester:    suggester,
-		Now:              func() time.Time { return now },
+	service, err := NewReleaseService(ReleaseDeps{
+		Releases:      repo,
+		SealSuggester: suggester,
+		Now:           func() time.Time { return now },
 		NewID: func() string {
 			repo.nextID++
 			return fmt.Sprintf("release-id-%d", repo.nextID)
 		},
 	})
 	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
+		t.Fatalf("NewReleaseService failed: %v", err)
 	}
 	return service
 }
