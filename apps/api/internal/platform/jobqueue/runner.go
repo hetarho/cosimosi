@@ -10,7 +10,11 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
-var ErrNoJob = errors.New("job queue has no due job")
+var (
+	ErrNoJob                 = errors.New("job queue has no due job")
+	ErrInvalidRegistration   = errors.New("job registration needs a kind and a non-nil handler")
+	ErrDuplicateRegistration = errors.New("job kind is already registered")
+)
 
 // DefaultPollInterval is the deployment-shaped worker polling default. Composition roots pass it
 // explicitly so production and the opt-in development worker share one named fallback.
@@ -44,11 +48,9 @@ type Queue[J Job] interface {
 	ClaimDue(ctx context.Context, now time.Time) (J, error)
 	Complete(ctx context.Context, job J) error
 	Retry(ctx context.Context, job J, nextAttempts int32, nextRunAt time.Time) error
-	// Fail ends a job whose retry budget is spent. A queue may legitimately override this — a kind
-	// that is the only durable trigger for something the user cannot re-request is retried instead.
+	// Fail ends a job whose retry budget is spent. The runner never calls it for a retry-forever kind.
 	Fail(ctx context.Context, job J, nextAttempts int32) error
-	// DeadLetter ends a job the runner is refusing to run again, whatever the retry policy says. A
-	// queue that overrides Fail must NOT override this, or its kill-loop breaker is decoration.
+	// DeadLetter ends a job the runner is refusing to run again, whatever the retry policy says.
 	DeadLetter(ctx context.Context, job J, cause DeadLetterCause) error
 }
 
@@ -58,35 +60,58 @@ type retryAtError interface {
 	RetryAt() time.Time
 }
 
-// Registration makes retry policy explicit beside the handler's composition-root binding.
+// Registration is one job kind's handler and retry policy, published by the context that produces
+// the kind and composed by the roots.
+//
+// RetryForever marks a kind that is the only durable trigger for something the user cannot ask for
+// a second time: a spent retry budget re-queues it at the base backoff instead of failing it. It
+// covers that POLICY give-up alone. The claim ceiling and the unhandled-kind stop are safety
+// transitions no retry policy overrides, or a job that kills its worker would loop at the head of
+// the queue forever.
 type Registration[J Job] struct {
 	Handler      Handler[J]
 	RetryForever bool
 }
 
+// Registrations merges each producer's registrations, refusing a malformed entry or a kind two
+// producers claim: silently dropping either would leave a worker that never runs that kind.
+func Registrations[J Job](sets ...map[string]Registration[J]) (map[string]Registration[J], error) {
+	merged := map[string]Registration[J]{}
+	for _, set := range sets {
+		for kind, registration := range set {
+			if kind == "" || registration.Handler == nil {
+				return nil, ErrInvalidRegistration
+			}
+			if _, exists := merged[kind]; exists {
+				return nil, fmt.Errorf("%w: %s", ErrDuplicateRegistration, kind)
+			}
+			merged[kind] = registration
+		}
+	}
+	return merged, nil
+}
+
 type Config struct {
-	RetryForeverKinds map[string]bool
-	MaxAttempts       int32
-	MaxClaims         int32
-	BackoffBase       time.Duration
-	PollInterval      time.Duration
-	Now               func() time.Time
-	Logger            *log.Logger
+	MaxAttempts  int32
+	MaxClaims    int32
+	BackoffBase  time.Duration
+	PollInterval time.Duration
+	Now          func() time.Time
+	Logger       *log.Logger
 }
 
 type Runner[J Job] struct {
-	retryForeverKinds map[string]bool
-	queue             Queue[J]
-	handlers          map[string]Handler[J]
-	maxAttempts       int32
-	maxClaims         int32
-	backoffBase       time.Duration
-	pollInterval      time.Duration
-	now               func() time.Time
-	logger            *log.Logger
+	queue         Queue[J]
+	registrations map[string]Registration[J]
+	maxAttempts   int32
+	maxClaims     int32
+	backoffBase   time.Duration
+	pollInterval  time.Duration
+	now           func() time.Time
+	logger        *log.Logger
 }
 
-func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config) (Runner[J], error) {
+func NewRunner[J Job](queue Queue[J], registrations map[string]Registration[J], cfg Config) (Runner[J], error) {
 	if queue == nil {
 		return Runner[J]{}, errors.New("job runner requires a queue")
 	}
@@ -104,26 +129,19 @@ func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
-	copiedHandlers := make(map[string]Handler[J], len(handlers))
-	for kind, handler := range handlers {
-		if kind != "" && handler != nil {
-			copiedHandlers[kind] = handler
-		}
-	}
-	retryForever := make(map[string]bool, len(cfg.RetryForeverKinds))
-	for kind, forever := range cfg.RetryForeverKinds {
-		retryForever[kind] = forever
+	copied, err := Registrations(registrations)
+	if err != nil {
+		return Runner[J]{}, err
 	}
 	return Runner[J]{
-		retryForeverKinds: retryForever,
-		queue:             queue,
-		handlers:          copiedHandlers,
-		maxAttempts:       cfg.MaxAttempts,
-		maxClaims:         cfg.MaxClaims,
-		backoffBase:       cfg.BackoffBase,
-		pollInterval:      pollInterval,
-		now:               now,
-		logger:            cfg.Logger,
+		queue:         queue,
+		registrations: copied,
+		maxAttempts:   cfg.MaxAttempts,
+		maxClaims:     cfg.MaxClaims,
+		backoffBase:   cfg.BackoffBase,
+		pollInterval:  pollInterval,
+		now:           now,
+		logger:        cfg.Logger,
 	}, nil
 }
 
@@ -163,7 +181,7 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	// finishing — the signature of a handler that kills its worker (panic that escapes,
 	// OOM, SIGKILL) every run, which would otherwise loop forever since a killed worker
 	// never records a failure.
-	if !r.retryForeverKinds[job.JobKind()] && r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
+	if !r.registrations[job.JobKind()].RetryForever && r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
 		if err := r.queue.DeadLetter(ctx, job, DeadLetterClaimCeiling); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err
@@ -175,7 +193,7 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	handler, ok := r.handlers[job.JobKind()]
+	registration, ok := r.registrations[job.JobKind()]
 	if !ok {
 		if err := r.queue.DeadLetter(ctx, job, DeadLetterUnhandledKind); err != nil {
 			if shouldStop(ctx, err) {
@@ -189,7 +207,7 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	}
 
 	handlerCtx := platform.ContextWithUserID(ctx, job.JobUserID())
-	if err := r.invoke(handler, handlerCtx, job); err != nil {
+	if err := r.invoke(registration.Handler, handlerCtx, job); err != nil {
 		if err := r.handleFailure(ctx, job, err); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err
@@ -229,6 +247,13 @@ func (r Runner[J]) handleFailure(ctx context.Context, job J, cause error) error 
 	}
 
 	nextAttempts := r.nextAttempts(job)
+	if nextAttempts >= r.maxAttempts && r.registrations[job.JobKind()].RetryForever {
+		if err := r.queue.Retry(ctx, job, 0, r.now().Add(r.backoffBase)); err != nil {
+			return err
+		}
+		r.logf("job %s spent its retry budget and is retried, its kind is durable: %v", job.JobID(), cause)
+		return nil
+	}
 	if nextAttempts >= r.maxAttempts {
 		if err := r.queue.Fail(ctx, job, nextAttempts); err != nil {
 			return err

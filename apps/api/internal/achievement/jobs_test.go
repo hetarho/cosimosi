@@ -58,3 +58,10 @@ func TestSettlementJobIdentityIsPerClaimAndHandlerRejectsForgedTargets(t *testin
 		t.Fatal("forged target reached settlement")
 	}
 }
+
+// Persisted job rows name their kind by this string; renaming it would strand every queued job.
+func TestSettlementJobKindIsPinned(t *testing.T) {
+	if SettlementJobKind != "achievement_settle" {
+		t.Fatalf("SettlementJobKind = %q, want %q", SettlementJobKind, "achievement_settle")
+	}
+}

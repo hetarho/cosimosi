@@ -149,24 +149,27 @@ func TestRunnerReturnsIdleWhenNoJobIsDue(t *testing.T) {
 func TestRegistryOwnsDurableClaimPolicyAndStillRejectsUnhandledKinds(t *testing.T) {
 	for _, handled := range []bool{true, false} {
 		queue := &fakeQueue{claim: testJob{id: "durable", userID: "owner", kind: "external", leaseGeneration: 99}}
-		handlers := map[string]Handler[testJob]{}
+		registrations := map[string]Registration[testJob]{}
 		if handled {
-			handlers["external"] = func(context.Context, testJob) error { return nil }
+			registrations["external"] = Registration[testJob]{
+				Handler: func(context.Context, testJob) error { return nil }, RetryForever: true,
+			}
 		}
-		policy := map[string]bool{"external": true}
-		runner, err := NewRunner[testJob](queue, handlers, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Second, RetryForeverKinds: policy})
+		runner, err := NewRunner[testJob](queue, registrations, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Second})
 		if err != nil {
 			t.Fatal(err)
 		}
-		policy["external"] = false
+		// The runner copies its registrations, so a later edit of the caller's map changes nothing.
+		delete(registrations, "external")
 		if _, err := runner.RunOnce(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 		if handled && queue.completed.id != "durable" {
 			t.Fatal("durable registration lost its retry policy")
 		}
-		if !handled && queue.deadCause != DeadLetterUnhandledKind {
-			t.Fatalf("unregistered durable kind: %q", queue.deadCause)
+		// A kind nobody registers carries no retry policy, so the claim ceiling stops it first.
+		if !handled && queue.deadCause != DeadLetterClaimCeiling {
+			t.Fatalf("unregistered kind past the ceiling: %q", queue.deadCause)
 		}
 	}
 }
@@ -217,7 +220,11 @@ func TestRunnerStopsOnContextCancellation(t *testing.T) {
 
 func mustRunner(t *testing.T, queue *fakeQueue, handlers map[string]Handler[testJob], now time.Time) Runner[testJob] {
 	t.Helper()
-	runner, err := NewRunner[testJob](queue, handlers, Config{
+	registrations := map[string]Registration[testJob]{}
+	for kind, handler := range handlers {
+		registrations[kind] = Registration[testJob]{Handler: handler}
+	}
+	runner, err := NewRunner[testJob](queue, registrations, Config{
 		MaxAttempts:  3,
 		MaxClaims:    10,
 		BackoffBase:  time.Minute,
@@ -323,4 +330,50 @@ func (q *fakeQueue) DeadLetter(_ context.Context, job testJob, cause DeadLetterC
 
 func fixedRunnerNow() time.Time {
 	return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+}
+
+// A durable kind's spent retry budget re-queues it at the base backoff with a fresh attempt count;
+// an ordinary kind fails. Both halves hold at once.
+func TestRetryForeverRequeuesASpentBudgetAndOrdinaryKindsFail(t *testing.T) {
+	now := fixedRunnerNow()
+	failing := func(context.Context, testJob) error { return errors.New("handler failed") }
+	for _, tc := range []struct {
+		forever bool
+	}{{forever: true}, {forever: false}} {
+		queue := &fakeQueue{claim: testJob{id: "spent", userID: "owner", kind: "durable", attempts: 2}}
+		runner, err := NewRunner[testJob](queue, map[string]Registration[testJob]{
+			"durable": {Handler: failing, RetryForever: tc.forever},
+		}, Config{MaxAttempts: 3, MaxClaims: 10, BackoffBase: time.Minute, Now: func() time.Time { return now }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := runner.RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if tc.forever {
+			if queue.retried.id != "spent" || queue.retryAttempts != 0 || !queue.retryAt.Equal(now.Add(time.Minute)) || queue.failed.id != "" {
+				t.Fatalf("durable spent budget: retried %q attempts %d at %v, failed %q", queue.retried.id, queue.retryAttempts, queue.retryAt, queue.failed.id)
+			}
+			continue
+		}
+		if queue.failed.id != "spent" || queue.retried.id != "" {
+			t.Fatalf("ordinary spent budget: failed %q retried %q", queue.failed.id, queue.retried.id)
+		}
+	}
+}
+
+func TestRegistrationsRefuseMalformedAndDuplicateKinds(t *testing.T) {
+	handler := func(context.Context, testJob) error { return nil }
+	if _, err := Registrations(map[string]Registration[testJob]{"": {Handler: handler}}); !errors.Is(err, ErrInvalidRegistration) {
+		t.Fatalf("blank kind err = %v, want ErrInvalidRegistration", err)
+	}
+	if _, err := Registrations(map[string]Registration[testJob]{"embed": {}}); !errors.Is(err, ErrInvalidRegistration) {
+		t.Fatalf("nil handler err = %v, want ErrInvalidRegistration", err)
+	}
+	if _, err := Registrations(
+		map[string]Registration[testJob]{"embed": {Handler: handler}},
+		map[string]Registration[testJob]{"embed": {Handler: handler}},
+	); !errors.Is(err, ErrDuplicateRegistration) {
+		t.Fatalf("duplicate kind err = %v, want ErrDuplicateRegistration", err)
+	}
 }

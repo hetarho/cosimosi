@@ -13,6 +13,7 @@ import (
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	queuepg "github.com/cosimosi/api/internal/platform/jobqueue/pg"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
@@ -167,7 +168,7 @@ func (s Store) InsertEmbedding(ctx context.Context, scope platform.UserScope, em
 
 // EmbedJobSources resolves the authoritative current names only while the job's
 // running lease and each live neuron revision still match its target row.
-func (s Store) EmbedJobSources(ctx context.Context, job memory.Job) ([]memory.EmbedJobSource, error) {
+func (s Store) EmbedJobSources(ctx context.Context, job jobqueue.Record) ([]memory.EmbedJobSource, error) {
 	if err := s.readyJob(job); err != nil {
 		return nil, err
 	}
@@ -192,7 +193,7 @@ func (s Store) EmbedJobSources(ctx context.Context, job memory.Job) ([]memory.Em
 
 // SemanticizeJobSource resolves the current memory representation, live member
 // neurons, and risen stages under the same running lease/revision predicate.
-func (s Store) SemanticizeJobSource(ctx context.Context, job memory.Job) (memory.SemanticizeJobSource, bool, error) {
+func (s Store) SemanticizeJobSource(ctx context.Context, job jobqueue.Record) (memory.SemanticizeJobSource, bool, error) {
 	if err := s.readyJob(job); err != nil {
 		return memory.SemanticizeJobSource{}, false, err
 	}
@@ -230,7 +231,7 @@ func (s Store) SemanticizeJobSource(ctx context.Context, job memory.Job) (memory
 	}, true, nil
 }
 
-func (s Store) SaveJobEmbeddings(ctx context.Context, job memory.Job, embeddings []memory.RevisionedEmbedding) error {
+func (s Store) SaveJobEmbeddings(ctx context.Context, job jobqueue.Record, embeddings []memory.RevisionedEmbedding) error {
 	if err := s.readyJob(job); err != nil {
 		return err
 	}
@@ -260,7 +261,7 @@ func (s Store) SaveJobEmbeddings(ctx context.Context, job memory.Job, embeddings
 // crossing's universe-time), and marks the job done — atomically. A lost fence applies no
 // side effect and lets the worker's own terminal transition decide the job's fate; a
 // replayed completion finds the job no longer running and is a no-op.
-func (s Store) CompleteSemanticizeJob(ctx context.Context, job memory.Job, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
+func (s Store) CompleteSemanticizeJob(ctx context.Context, job jobqueue.Record, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
 	if err := s.readyJob(job); err != nil {
 		return err
 	}
@@ -281,7 +282,7 @@ func (s Store) CompleteSemanticizeJob(ctx context.Context, job memory.Job, memor
 	return tx.Commit(ctx)
 }
 
-func (s Store) completeSemanticizeJob(ctx context.Context, queries *dbgen.Queries, job memory.Job, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
+func (s Store) completeSemanticizeJob(ctx context.Context, queries *dbgen.Queries, job jobqueue.Record, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
 	// The same advisory lock every graph writer takes first: the finalization below moves
 	// semantic_stage and appends provenance, so it must serialize with a concurrent
 	// consolidation instead of racing its stale ListMemoriesForConsolidation read.
@@ -448,7 +449,7 @@ func (s Store) readyUserID(userID string) error {
 	return nil
 }
 
-func (s Store) readyJob(job memory.Job) error {
+func (s Store) readyJob(job jobqueue.Record) error {
 	if job.ID == "" {
 		return errors.New("memory job requires an id")
 	}

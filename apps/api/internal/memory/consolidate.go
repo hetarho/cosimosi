@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -55,10 +56,10 @@ type SynapseStrength struct {
 // so consolidation cannot express an [I1]/[I2] violation.
 type ConsolidateTx interface {
 	UniverseClockStore
-	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error)
 	// HasActiveTargetJob reports whether a pending or running job of kind already targets the row
 	// at the expected revision.
-	HasActiveTargetJob(ctx context.Context, scope platform.UserScope, kind JobKind, target JobTarget) (bool, error)
+	HasActiveTargetJob(ctx context.Context, scope platform.UserScope, kind jobqueue.Kind, target jobqueue.Target) (bool, error)
 	MemoryProvenanceStore
 	// ConsolidationWatermarkForUpdate returns (locked, nil = never consolidated) the
 	// universe-time this user's consolidation already processed through — the clamp
@@ -348,7 +349,7 @@ func missingStageText(stages *SemanticStages, risenStage int) bool {
 // enqueues nothing more: otherwise every advance during a backlog or provider outage would stack
 // another paid generation per memory. Once that job ends, a still-missing text is enqueued again.
 func (c Consolidator) enqueueSemanticizeRegen(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, episodicMemory *EpisodicMemory) error {
-	target := JobTarget{Kind: JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}
+	target := jobqueue.Target{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}
 	active, err := tx.HasActiveTargetJob(ctx, scope, JobKindSemanticize, target)
 	if err != nil || active {
 		return err
@@ -471,9 +472,9 @@ func (c Consolidator) downscaleSynapses(ctx context.Context, scope platform.User
 }
 
 func (c Consolidator) enqueueConsolidateJob(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, neurons []ExistingNeuron) error {
-	targets := make([]JobTarget, 0, len(neurons))
+	targets := make([]jobqueue.Target, 0, len(neurons))
 	for _, neuron := range neurons {
-		targets = append(targets, JobTarget{Kind: JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
+		targets = append(targets, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
 	}
 	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindConsolidate, ConsolidateJobPayload{}, targets...)
 }

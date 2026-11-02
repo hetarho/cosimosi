@@ -20,6 +20,7 @@ import (
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
@@ -131,13 +132,13 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		service,
 		func() time.Time { return second.RestoreDeadlineAt },
 	)
-	if err := handler(ctx, memory.Job{
+	if err := handler(ctx, jobqueue.Record{
 		ID:      secondJobID,
 		UserID:  userID,
 		Kind:    account.WithdrawalJobKind,
 		Payload: []byte(`{}`),
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetUser,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetUser,
 			ID:   userID,
 		}},
 	}); err != nil {
@@ -244,13 +245,13 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 	}
 	sweepNow := now.Add(-time.Hour - time.Second)
 	handler := account.NewWithdrawalSweepJobHandler(service, func() time.Time { return sweepNow })
-	job := memory.Job{
+	job := jobqueue.Record{
 		ID:      keepJobID,
 		UserID:  userID,
 		Kind:    account.WithdrawalJobKind,
 		Payload: []byte(`{}`),
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetUser,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetUser,
 			ID:   userID,
 		}},
 	}

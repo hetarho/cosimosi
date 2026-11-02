@@ -46,14 +46,6 @@ type Semanticizer interface {
 	GenerateSemanticStages(ctx context.Context, memory SemanticizeMemory) (SemanticStages, error)
 }
 
-type JobQueue interface {
-	ClaimDue(ctx context.Context, now time.Time) (Job, error)
-	Complete(ctx context.Context, job Job) error
-	Retry(ctx context.Context, job Job, nextAttempts int32, nextRunAt time.Time) error
-	Fail(ctx context.Context, job Job, nextAttempts int32) error
-	DeadLetter(ctx context.Context, job Job, cause jobqueue.DeadLetterCause) error
-}
-
 // NeuronCandidateRepo assembles the per-user dedup-candidate set Encode hands the
 // extractor to canonicalize against ([E10]): a name match against the diary body
 // plus the narrow embedding nearest-neighbour assist.
@@ -82,7 +74,7 @@ type LaunchTx interface {
 	FindNeuronsByNames(ctx context.Context, scope platform.UserScope, names []string) ([]ExistingNeuron, error)
 	UpsertNeuron(ctx context.Context, scope platform.UserScope, neuron Neuron) (Neuron, error)
 	InsertNeuronActivation(ctx context.Context, scope platform.UserScope, activation NeuronActivation) (NeuronActivation, error)
-	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error)
 	SynapseStore
 	UniverseClockStore
 }

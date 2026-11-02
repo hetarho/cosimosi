@@ -1,8 +1,9 @@
 package memory
 
 import (
-	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"time"
+
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 type NeuronType string
@@ -36,38 +37,12 @@ func AllNeuronTypes() []NeuronType {
 }
 
 // Queue envelopes are neutral infrastructure; memory owns only its producer kinds.
-type JobKind = jobqueue.Kind
-
 const (
-	JobKindEmbed       JobKind = "embed"
-	JobKindSemanticize JobKind = "semanticize"
-	JobKindLink        JobKind = "link"
-	JobKindExtract     JobKind = "extract"
-	JobKindConsolidate JobKind = "consolidate"
-	JobKindRetention   JobKind = "retention_sweep"
+	JobKindEmbed       jobqueue.Kind = "embed"
+	JobKindSemanticize jobqueue.Kind = "semanticize"
+	JobKindConsolidate jobqueue.Kind = "consolidate"
+	JobKindRetention   jobqueue.Kind = "retention_sweep"
 )
-
-type JobStatus = jobqueue.Status
-
-const (
-	JobStatusPending  = jobqueue.StatusPending
-	JobStatusRunning  = jobqueue.StatusRunning
-	JobStatusDone     = jobqueue.StatusDone
-	JobStatusFailed   = jobqueue.StatusFailed
-	JobStatusCanceled = jobqueue.StatusCanceled
-)
-
-type JobTargetKind = jobqueue.TargetKind
-
-const (
-	JobTargetMemory  = jobqueue.TargetMemory
-	JobTargetNeuron  = jobqueue.TargetNeuron
-	JobTargetRelease = jobqueue.TargetRelease
-	JobTargetUser    = jobqueue.TargetUser
-)
-
-type JobTarget = jobqueue.Target
-type Job = jobqueue.Record
 
 // ProvenanceKind labels a representational event in a memory's 변천사 ([R8a][D1]).
 // 'created' is never written — it is synthesized at read from the memory's

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 // The graph commands are three services sized to their use cases, so a change to one constructs and
@@ -50,7 +51,7 @@ func resolveUserToday(ctx context.Context, zones UserZone, now time.Time, scope 
 	return dateInLocation(now, location), nil
 }
 
-func (s *graphClock) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any, targets ...JobTarget) error {
+func (s *graphClock) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind jobqueue.Kind, payload any, targets ...jobqueue.Target) error {
 	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload, targets...)
 }
 

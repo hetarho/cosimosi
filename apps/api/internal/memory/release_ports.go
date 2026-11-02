@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 // The release use-case's consumer-owned ports (§2.4). Declared HERE because
@@ -169,7 +170,7 @@ type ReleaseTx interface {
 	CancelReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs []string, cancelledAt time.Time) error
 	RequeueReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, nextRunAt time.Time) error
 	DeleteReleaseRetentionJobs(ctx context.Context, scope platform.UserScope, releaseID string) error
-	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error)
 	DeleteReleaseGroup(ctx context.Context, scope platform.UserScope, releaseID string) error
 
 	// Retention sweep reads + the FK-safe hard deletes (the only hard delete of user data, [I1]).

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -77,7 +78,7 @@ type fakeReleaseRepo struct {
 	activations []fakeRelActivation
 	synapses    map[string]*fakeRelSynapse
 	groups      map[string]*fakeRelGroup
-	jobs        map[string]*Job
+	jobs        map[string]*jobqueue.Record
 	operations  []string
 	nextID      int
 
@@ -93,7 +94,7 @@ func newFakeReleaseRepo() *fakeReleaseRepo {
 		neurons:  map[string]*fakeRelNeuron{},
 		synapses: map[string]*fakeRelSynapse{},
 		groups:   map[string]*fakeRelGroup{},
-		jobs:     map[string]*Job{},
+		jobs:     map[string]*jobqueue.Record{},
 	}
 }
 
@@ -136,7 +137,7 @@ func (f *fakeReleaseRepo) snapshot() *fakeReleaseRepo {
 	for id, job := range f.jobs {
 		copyJob := *job
 		copyJob.Payload = append([]byte(nil), job.Payload...)
-		copyJob.Targets = append([]JobTarget(nil), job.Targets...)
+		copyJob.Targets = append([]jobqueue.Target(nil), job.Targets...)
 		if job.DedupKey != nil {
 			value := *job.DedupKey
 			copyJob.DedupKey = &value
@@ -468,13 +469,13 @@ func (f *fakeReleaseRepo) ReverseReleaseSynapseDeltas(_ context.Context, _ platf
 
 func (f *fakeReleaseRepo) CancelReleaseMemoryJobs(_ context.Context, _ platform.UserScope, releaseID string, memoryIDs []string, cancelledAt time.Time) error {
 	for _, job := range f.jobs {
-		if job.Status != JobStatusPending && job.Status != JobStatusRunning {
+		if job.Status != jobqueue.StatusPending && job.Status != jobqueue.StatusRunning {
 			continue
 		}
 		if !jobTargetsAny(targetMemoryIDs(job), memoryIDs) {
 			continue
 		}
-		job.Status = JobStatusCanceled
+		job.Status = jobqueue.StatusCanceled
 		job.Payload = []byte("{}")
 		job.TerminalAt = timePointer(cancelledAt)
 		job.CanceledByReleaseID = stringPointer(releaseID)
@@ -486,10 +487,10 @@ func (f *fakeReleaseRepo) CancelReleaseMemoryJobs(_ context.Context, _ platform.
 
 func (f *fakeReleaseRepo) RequeueReleaseMemoryJobs(_ context.Context, _ platform.UserScope, releaseID string, nextRunAt time.Time) error {
 	for _, job := range f.jobs {
-		if job.Status != JobStatusCanceled || job.CanceledByReleaseID == nil || *job.CanceledByReleaseID != releaseID {
+		if job.Status != jobqueue.StatusCanceled || job.CanceledByReleaseID == nil || *job.CanceledByReleaseID != releaseID {
 			continue
 		}
-		job.Status = JobStatusPending
+		job.Status = jobqueue.StatusPending
 		job.Payload = []byte("{}")
 		job.TerminalAt = nil
 		job.CanceledByReleaseID = nil
@@ -501,7 +502,7 @@ func (f *fakeReleaseRepo) RequeueReleaseMemoryJobs(_ context.Context, _ platform
 
 func (f *fakeReleaseRepo) DeleteReleaseRetentionJobs(_ context.Context, _ platform.UserScope, releaseID string) error {
 	for id, job := range f.jobs {
-		if job.Kind == JobKindRetention && jobHasTarget(job, JobTargetRelease, releaseID) {
+		if job.Kind == JobKindRetention && jobHasTarget(job, jobqueue.TargetRelease, releaseID) {
 			delete(f.jobs, id)
 		}
 	}
@@ -509,10 +510,10 @@ func (f *fakeReleaseRepo) DeleteReleaseRetentionJobs(_ context.Context, _ platfo
 	return nil
 }
 
-func (f *fakeReleaseRepo) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
+func (f *fakeReleaseRepo) EnqueueJob(_ context.Context, _ platform.UserScope, job jobqueue.Record) (jobqueue.Record, error) {
 	copyJob := job
 	copyJob.Payload = append([]byte(nil), job.Payload...)
-	copyJob.Targets = append([]JobTarget(nil), job.Targets...)
+	copyJob.Targets = append([]jobqueue.Target(nil), job.Targets...)
 	f.jobs[job.ID] = &copyJob
 	f.operations = append(f.operations, "enqueue:"+string(job.Kind))
 	return copyJob, nil
@@ -567,11 +568,11 @@ func (f *fakeReleaseRepo) ExclusiveReleaseNeurons(_ context.Context, _ platform.
 
 func (f *fakeReleaseRepo) PurgeReleaseJobs(_ context.Context, _ platform.UserScope, releaseID string, memoryIDs, neuronIDs []string) error {
 	for jobID, job := range f.jobs {
-		kept := make([]JobTarget, 0, len(job.Targets))
+		kept := make([]jobqueue.Target, 0, len(job.Targets))
 		for _, target := range job.Targets {
-			remove := target.Kind == JobTargetRelease && target.ID == releaseID
-			remove = remove || target.Kind == JobTargetMemory && stringIn(target.ID, memoryIDs)
-			remove = remove || target.Kind == JobTargetNeuron && stringIn(target.ID, neuronIDs)
+			remove := target.Kind == jobqueue.TargetRelease && target.ID == releaseID
+			remove = remove || target.Kind == jobqueue.TargetMemory && stringIn(target.ID, memoryIDs)
+			remove = remove || target.Kind == jobqueue.TargetNeuron && stringIn(target.ID, neuronIDs)
 			if !remove {
 				kept = append(kept, target)
 			}
@@ -644,10 +645,10 @@ func (f *fakeReleaseRepo) DeleteReleaseDiary(_ context.Context, _ platform.UserS
 	return nil
 }
 
-func targetMemoryIDs(job *Job) []string {
+func targetMemoryIDs(job *jobqueue.Record) []string {
 	ids := []string{}
 	for _, target := range job.Targets {
-		if target.Kind == JobTargetMemory {
+		if target.Kind == jobqueue.TargetMemory {
 			ids = append(ids, target.ID)
 		}
 	}
@@ -663,7 +664,7 @@ func jobTargetsAny(left, right []string) bool {
 	return false
 }
 
-func jobHasTarget(job *Job, kind JobTargetKind, id string) bool {
+func jobHasTarget(job *jobqueue.Record, kind jobqueue.TargetKind, id string) bool {
 	for _, target := range job.Targets {
 		if target.Kind == kind && target.ID == id {
 			return true
@@ -672,7 +673,7 @@ func jobHasTarget(job *Job, kind JobTargetKind, id string) bool {
 	return false
 }
 
-func hasJobKind(jobs map[string]*Job, kind JobKind) bool {
+func hasJobKind(jobs map[string]*jobqueue.Record, kind jobqueue.Kind) bool {
 	for _, job := range jobs {
 		if job.Kind == kind {
 			return true
@@ -813,25 +814,25 @@ func TestReleaseSchedulesExactRetentionAndCancelsMemoryJobs(t *testing.T) {
 	seedReleaseGraph(repo)
 	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
 	scope := releaseTestScope(t)
-	repo.jobs["semantic-m1"] = &Job{
+	repo.jobs["semantic-m1"] = &jobqueue.Record{
 		ID:              "semantic-m1",
 		UserID:          scope.UserID(),
 		Kind:            JobKindSemanticize,
 		Payload:         []byte(`{"current_text":"must be redacted"}`),
-		Status:          JobStatusRunning,
+		Status:          jobqueue.StatusRunning,
 		LeaseGeneration: 7,
-		Targets: []JobTarget{{
-			Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 1,
 		}},
 	}
-	repo.jobs["semantic-m2"] = &Job{
+	repo.jobs["semantic-m2"] = &jobqueue.Record{
 		ID:      "semantic-m2",
 		UserID:  scope.UserID(),
 		Kind:    JobKindSemanticize,
 		Payload: []byte("{}"),
-		Status:  JobStatusPending,
-		Targets: []JobTarget{{
-			Kind: JobTargetMemory, ID: "m2", ExpectedRevision: 1,
+		Status:  jobqueue.StatusPending,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetMemory, ID: "m2", ExpectedRevision: 1,
 		}},
 	}
 	service := newReleaseService(t, repo, &fakeSealSuggester{}, now)
@@ -845,7 +846,7 @@ func TestReleaseSchedulesExactRetentionAndCancelsMemoryJobs(t *testing.T) {
 	}
 
 	cancelled := repo.jobs["semantic-m1"]
-	if cancelled.Status != JobStatusCanceled || cancelled.CanceledByReleaseID == nil || *cancelled.CanceledByReleaseID != group.ID {
+	if cancelled.Status != jobqueue.StatusCanceled || cancelled.CanceledByReleaseID == nil || *cancelled.CanceledByReleaseID != group.ID {
 		t.Fatalf("released-memory job = %+v, want cancelled by %s", cancelled, group.ID)
 	}
 	if cancelled.TerminalAt == nil || !cancelled.TerminalAt.Equal(now) {
@@ -854,17 +855,17 @@ func TestReleaseSchedulesExactRetentionAndCancelsMemoryJobs(t *testing.T) {
 	if string(cancelled.Payload) != "{}" || cancelled.LeaseGeneration != 8 {
 		t.Fatalf("cancelled payload/generation = %s/%d, want {}/8", cancelled.Payload, cancelled.LeaseGeneration)
 	}
-	if outside := repo.jobs["semantic-m2"]; outside.Status != JobStatusPending {
+	if outside := repo.jobs["semantic-m2"]; outside.Status != jobqueue.StatusPending {
 		t.Fatalf("outside-memory job status = %q, want pending", outside.Status)
 	}
 
-	var trigger *Job
+	var trigger *jobqueue.Record
 	for _, job := range repo.jobs {
 		if job.Kind == JobKindRetention {
 			trigger = job
 		}
 	}
-	if trigger == nil || trigger.Kind != JobKindRetention || trigger.Status != JobStatusPending {
+	if trigger == nil || trigger.Kind != JobKindRetention || trigger.Status != jobqueue.StatusPending {
 		t.Fatalf("retention trigger = %+v, want pending retention_sweep", trigger)
 	}
 	deadline := now.Add(retentionWindow())
@@ -874,7 +875,7 @@ func TestReleaseSchedulesExactRetentionAndCancelsMemoryJobs(t *testing.T) {
 	if trigger.DedupKey == nil || *trigger.DedupKey != group.ID || string(trigger.Payload) != "{}" {
 		t.Fatalf("retention trigger dedup/payload = %v/%s, want %s/{}", trigger.DedupKey, trigger.Payload, group.ID)
 	}
-	if len(trigger.Targets) != 1 || trigger.Targets[0] != (JobTarget{Kind: JobTargetRelease, ID: group.ID}) {
+	if len(trigger.Targets) != 1 || trigger.Targets[0] != (jobqueue.Target{Kind: jobqueue.TargetRelease, ID: group.ID}) {
 		t.Fatalf("retention targets = %+v, want release-group identity only", trigger.Targets)
 	}
 }
@@ -1150,14 +1151,14 @@ func TestRestoreBeforeDeadlineRemovesTriggerAndRequeuesSafely(t *testing.T) {
 	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
 	restoreAt := releaseAt.Add(6 * time.Hour)
 	scope := releaseTestScope(t)
-	repo.jobs["semantic-m1"] = &Job{
+	repo.jobs["semantic-m1"] = &jobqueue.Record{
 		ID:      "semantic-m1",
 		UserID:  scope.UserID(),
 		Kind:    JobKindSemanticize,
 		Payload: []byte("{}"),
-		Status:  JobStatusPending,
-		Targets: []JobTarget{{
-			Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1,
+		Status:  jobqueue.StatusPending,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 1,
 		}},
 	}
 	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt).Release(context.Background(), scope, "d1"); err != nil {
@@ -1168,7 +1169,7 @@ func TestRestoreBeforeDeadlineRemovesTriggerAndRequeuesSafely(t *testing.T) {
 	}
 
 	requeued := repo.jobs["semantic-m1"]
-	if requeued == nil || requeued.Status != JobStatusPending || !requeued.NextRunAt.Equal(restoreAt) {
+	if requeued == nil || requeued.Status != jobqueue.StatusPending || !requeued.NextRunAt.Equal(restoreAt) {
 		t.Fatalf("restored semantic job = %+v, want pending at %v", requeued, restoreAt)
 	}
 	if requeued.TerminalAt != nil || requeued.CanceledByReleaseID != nil || string(requeued.Payload) != "{}" {
@@ -1179,18 +1180,18 @@ func TestRestoreBeforeDeadlineRemovesTriggerAndRequeuesSafely(t *testing.T) {
 			t.Fatalf("retention trigger survived Restore: %+v", job)
 		}
 	}
-	var reembed *Job
+	var reembed *jobqueue.Record
 	for _, job := range repo.jobs {
 		if job.Kind == JobKindEmbed {
 			reembed = job
 		}
 	}
-	if reembed == nil || reembed.Kind != JobKindEmbed || reembed.Status != JobStatusPending {
+	if reembed == nil || reembed.Kind != JobKindEmbed || reembed.Status != jobqueue.StatusPending {
 		t.Fatalf("restore re-embed = %+v, want pending embed", reembed)
 	}
-	wantTargets := []JobTarget{
-		{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
-		{Kind: JobTargetNeuron, ID: "n-shared", ExpectedRevision: 1},
+	wantTargets := []jobqueue.Target{
+		{Kind: jobqueue.TargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
+		{Kind: jobqueue.TargetNeuron, ID: "n-shared", ExpectedRevision: 1},
 	}
 	if !slices.Equal(reembed.Targets, wantTargets) {
 		t.Fatalf("restore re-embed targets = %+v, want all current live neuron revisions %+v", reembed.Targets, wantTargets)
@@ -1420,15 +1421,15 @@ func TestSweepHardDeletesOnlyExpiredGroups(t *testing.T) {
 	if _, err := service.Release(context.Background(), scope, "d1"); err != nil {
 		t.Fatalf("Release failed: %v", err)
 	}
-	repo.jobs["memory-job"] = &Job{
-		ID: "memory-job", UserID: scope.UserID(), Kind: JobKindSemanticize, Status: JobStatusCanceled,
-		Payload: []byte("{}"), Targets: []JobTarget{{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1}},
+	repo.jobs["memory-job"] = &jobqueue.Record{
+		ID: "memory-job", UserID: scope.UserID(), Kind: JobKindSemanticize, Status: jobqueue.StatusCanceled,
+		Payload: []byte("{}"), Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 1}},
 	}
-	repo.jobs["mixed-neuron-job"] = &Job{
-		ID: "mixed-neuron-job", UserID: scope.UserID(), Kind: JobKindEmbed, Status: JobStatusPending,
-		Payload: []byte("{}"), Targets: []JobTarget{
-			{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
-			{Kind: JobTargetNeuron, ID: "n-shared", ExpectedRevision: 1},
+	repo.jobs["mixed-neuron-job"] = &jobqueue.Record{
+		ID: "mixed-neuron-job", UserID: scope.UserID(), Kind: JobKindEmbed, Status: jobqueue.StatusPending,
+		Payload: []byte("{}"), Targets: []jobqueue.Target{
+			{Kind: jobqueue.TargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
+			{Kind: jobqueue.TargetNeuron, ID: "n-shared", ExpectedRevision: 1},
 		},
 	}
 

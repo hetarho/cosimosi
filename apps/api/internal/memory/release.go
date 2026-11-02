@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -139,7 +140,7 @@ func (s *ReleaseService) Release(ctx context.Context, scope platform.UserScope, 
 			JobKindRetention,
 			releaseID,
 			RetentionSweepJobPayload{},
-			JobTarget{Kind: JobTargetRelease, ID: releaseID},
+			jobqueue.Target{Kind: jobqueue.TargetRelease, ID: releaseID},
 		); err != nil {
 			return err
 		}
@@ -465,7 +466,7 @@ func sweepReleaseGroup(ctx context.Context, scope platform.UserScope, tx Release
 	return tx.DeleteReleaseGroup(ctx, scope, group.ID)
 }
 
-func reclassifyReleaseMemoryNeurons(ctx context.Context, scope platform.UserScope, tx ReleaseTx, releaseID string) ([]JobTarget, error) {
+func reclassifyReleaseMemoryNeurons(ctx context.Context, scope platform.UserScope, tx ReleaseTx, releaseID string) ([]jobqueue.Target, error) {
 	facts, err := tx.ReleaseMemoryNeuronSealFacts(ctx, scope, releaseID)
 	if err != nil {
 		return nil, err
@@ -477,10 +478,10 @@ func reclassifyReleaseMemoryNeurons(ctx context.Context, scope platform.UserScop
 	if err := tx.UnsealReleaseOwnedNeurons(ctx, scope, plan.UnsealNeuronIDs); err != nil {
 		return nil, err
 	}
-	targets := make([]JobTarget, 0, len(plan.Reembed))
+	targets := make([]jobqueue.Target, 0, len(plan.Reembed))
 	for _, target := range plan.Reembed {
-		targets = append(targets, JobTarget{
-			Kind:             JobTargetNeuron,
+		targets = append(targets, jobqueue.Target{
+			Kind:             jobqueue.TargetNeuron,
 			ID:               target.NeuronID,
 			ExpectedRevision: target.RepresentationRevision,
 		})

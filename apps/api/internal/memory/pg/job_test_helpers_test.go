@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/memory"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 const maxTestJobDrainAttempts = 32
@@ -20,10 +20,10 @@ type singleRunJobRunner interface {
 
 type recordingJobQueue struct {
 	Store
-	claims []memory.Job
+	claims []jobqueue.Record
 }
 
-func (q *recordingJobQueue) ClaimDue(ctx context.Context, now time.Time) (memory.Job, error) {
+func (q *recordingJobQueue) ClaimDue(ctx context.Context, now time.Time) (jobqueue.Record, error) {
 	job, err := q.Store.ClaimDue(ctx, now)
 	if err == nil {
 		q.claims = append(q.claims, job)
@@ -56,9 +56,9 @@ func drainJobToDone(
 	for attempt := 0; attempt < maxTestJobDrainAttempts; attempt++ {
 		status := readTargetJobStatus(t, ctx, pool, userID, jobID)
 		switch status {
-		case memory.JobStatusDone:
+		case jobqueue.StatusDone:
 			return
-		case memory.JobStatusFailed, memory.JobStatusCanceled:
+		case jobqueue.StatusFailed, jobqueue.StatusCanceled:
 			t.Fatalf(
 				"target job %s/%s reached terminal status %q; claimed: %s",
 				userID,
@@ -106,10 +106,10 @@ func readTargetJobStatus(
 	pool *platformdb.Pool,
 	userID string,
 	jobID string,
-) memory.JobStatus {
+) jobqueue.Status {
 	t.Helper()
 
-	var status memory.JobStatus
+	var status jobqueue.Status
 	if err := pool.PgxPool().QueryRow(
 		ctx,
 		"SELECT status FROM jobs WHERE user_id = $1 AND id = $2",
@@ -126,8 +126,8 @@ func findJobIDForTarget(
 	ctx context.Context,
 	pool *platformdb.Pool,
 	userID string,
-	kind memory.JobKind,
-	targetKind memory.JobTargetKind,
+	kind jobqueue.Kind,
+	targetKind jobqueue.TargetKind,
 	targetID string,
 ) string {
 	t.Helper()

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
@@ -392,22 +391,22 @@ func TestClaimDueJobsAreDisjointAcrossConcurrentClaimants(t *testing.T) {
 	store := NewStore(pool.PgxPool())
 	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
 	for _, id := range []string{base + "-job-a", base + "-job-b"} {
-		if _, err := store.EnqueueJob(ctx, scope, memory.Job{
+		if _, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
 			ID:        id,
 			Kind:      memory.JobKindEmbed,
 			Payload:   []byte(`{}`),
-			Status:    memory.JobStatusPending,
+			Status:    jobqueue.StatusPending,
 			NextRunAt: now.Add(-time.Minute),
 			CreatedAt: now,
-			Targets: []memory.JobTarget{{
-				Kind: memory.JobTargetNeuron, ID: id + "-target", ExpectedRevision: 1,
+			Targets: []jobqueue.Target{{
+				Kind: jobqueue.TargetNeuron, ID: id + "-target", ExpectedRevision: 1,
 			}},
 		}); err != nil {
 			t.Fatalf("EnqueueJob failed: %v", err)
 		}
 	}
 
-	claims := make(chan memory.Job, 2)
+	claims := make(chan jobqueue.Record, 2)
 	errs := make(chan error, 2)
 	for i := 0; i < 2; i++ {
 		go func() {
@@ -425,7 +424,7 @@ func TestClaimDueJobsAreDisjointAcrossConcurrentClaimants(t *testing.T) {
 		case err := <-errs:
 			t.Fatalf("ClaimDue failed: %v", err)
 		case job := <-claims:
-			if job.UserID != userID || job.Status != memory.JobStatusRunning {
+			if job.UserID != userID || job.Status != jobqueue.StatusRunning {
 				t.Fatalf("claimed job = %s", diagnosticValue(job))
 			}
 			if job.ID == "" {
@@ -473,15 +472,15 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 	}
 	store := NewStore(pool.PgxPool())
 	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
-	job, err := store.EnqueueJob(ctx, scope, memory.Job{
+	job, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
 		Payload:   []byte(`{}`),
-		Status:    memory.JobStatusPending,
+		Status:    jobqueue.StatusPending,
 		NextRunAt: now.Add(-time.Minute),
 		CreatedAt: now,
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetNeuron, ID: base + "-target", ExpectedRevision: 1,
 		}},
 	})
 	if err != nil {
@@ -492,7 +491,7 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first ClaimDue failed: %v", err)
 	}
-	if claimed.ID != job.ID || claimed.Status != memory.JobStatusRunning || !claimed.NextRunAt.Equal(now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond)) {
+	if claimed.ID != job.ID || claimed.Status != jobqueue.StatusRunning || !claimed.NextRunAt.Equal(now.Add(time.Duration(values.AiJobLeaseMs)*time.Millisecond)) {
 		t.Fatalf("claimed job = %s", diagnosticValue(claimed))
 	}
 
@@ -504,7 +503,7 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reclaim ClaimDue failed: %v", err)
 	}
-	if reclaimed.ID != job.ID || reclaimed.Status != memory.JobStatusRunning {
+	if reclaimed.ID != job.ID || reclaimed.Status != jobqueue.StatusRunning {
 		t.Fatalf("reclaimed job = %s", diagnosticValue(reclaimed))
 	}
 }
@@ -544,15 +543,15 @@ func TestEnqueueJobCanSharePersistTransaction(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("InsertDiary in tx failed: %v", err)
 	}
-	if _, err := txStore.EnqueueJob(ctx, scope, memory.Job{
+	if _, err := txStore.EnqueueJob(ctx, scope, jobqueue.Record{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
 		Payload:   []byte(`{}`),
-		Status:    memory.JobStatusPending,
+		Status:    jobqueue.StatusPending,
 		NextRunAt: day,
 		CreatedAt: day,
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetNeuron, ID: base + "-target", ExpectedRevision: 1,
 		}},
 	}); err != nil {
 		t.Fatalf("EnqueueJob in tx failed: %v", err)
@@ -566,7 +565,7 @@ func TestEnqueueJobCanSharePersistTransaction(t *testing.T) {
 		t.Fatalf("diary body = %q, want transactional diary", body)
 	}
 	status, _ := readJobStatus(t, pool, userID, base+"-job")
-	if status != string(memory.JobStatusPending) {
+	if status != string(jobqueue.StatusPending) {
 		t.Fatalf("job status = %q, want pending", status)
 	}
 }
@@ -587,15 +586,15 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	}
 	store := NewStore(pool.PgxPool())
 	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
-	job, err := store.EnqueueJob(ctx, scope, memory.Job{
+	job, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
 		Payload:   []byte(`{}`),
-		Status:    memory.JobStatusPending,
+		Status:    jobqueue.StatusPending,
 		NextRunAt: now,
 		CreatedAt: now,
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetNeuron, ID: base + "-target", ExpectedRevision: 1,
 		}},
 	})
 	if err != nil {
@@ -612,7 +611,7 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 		t.Fatalf("Retry failed: %v", err)
 	}
 	status, attempts := readJobStatus(t, pool, userID, job.ID)
-	if status != string(memory.JobStatusPending) || attempts != 1 {
+	if status != string(jobqueue.StatusPending) || attempts != 1 {
 		t.Fatalf("after retry status=%q attempts=%d", status, attempts)
 	}
 
@@ -625,7 +624,7 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	if err := store.Complete(ctx, claimed); err != nil {
 		t.Fatalf("stale Complete returned error, want silent no-op: %v", err)
 	}
-	if status, _ := readJobStatus(t, pool, userID, job.ID); status != string(memory.JobStatusRunning) {
+	if status, _ := readJobStatus(t, pool, userID, job.ID); status != string(jobqueue.StatusRunning) {
 		t.Fatalf("stale lease clobbered the row: status=%q, want running", status)
 	}
 
@@ -633,7 +632,7 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 		t.Fatalf("Fail failed: %v", err)
 	}
 	status, attempts = readJobStatus(t, pool, userID, job.ID)
-	if status != string(memory.JobStatusFailed) || attempts != int32(values.AiJobMaxAttempts) {
+	if status != string(jobqueue.StatusFailed) || attempts != int32(values.AiJobMaxAttempts) {
 		t.Fatalf("after fail status=%q attempts=%d", status, attempts)
 	}
 }
@@ -651,11 +650,11 @@ func TestEnqueueJobRejectsSourceBearingPayloadAtAdapterAndDatabase(t *testing.T)
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
 	store := NewStore(pool.PgxPool())
-	job := memory.Job{
+	job := jobqueue.Record{
 		ID: base + "-job", Kind: memory.JobKindSemanticize,
-		Payload: []byte(`{"current_text":"must never persist"}`), Status: memory.JobStatusPending,
+		Payload: []byte(`{"current_text":"must never persist"}`), Status: jobqueue.StatusPending,
 		NextRunAt: time.Now().UTC(), CreatedAt: time.Now().UTC(),
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: base + "-memory", ExpectedRevision: 1}},
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: base + "-memory", ExpectedRevision: 1}},
 	}
 	if _, err := store.EnqueueJob(ctx, scope, job); err == nil {
 		t.Fatal("source-bearing payload passed the memory/pg enqueue boundary")
@@ -694,10 +693,10 @@ func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T
 	for i := 0; i < 3; i++ {
 		id := fmt.Sprintf("%s-old-%d", base, i)
 		oldIDs = append(oldIDs, id)
-		if _, err := store.EnqueueJob(ctx, scope, memory.Job{
-			ID: id, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+		if _, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
+			ID: id, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: jobqueue.StatusPending,
 			NextRunAt: cutoff, CreatedAt: cutoff,
-			Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: id + "-target", ExpectedRevision: 1}},
+			Targets: []jobqueue.Target{{Kind: jobqueue.TargetNeuron, ID: id + "-target", ExpectedRevision: 1}},
 		}); err != nil {
 			t.Fatalf("enqueue old terminal fixture failed: %v", err)
 		}
@@ -708,10 +707,10 @@ func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T
 		}
 	}
 	boundaryID := base + "-boundary"
-	if _, err := store.EnqueueJob(ctx, scope, memory.Job{
-		ID: boundaryID, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+	if _, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
+		ID: boundaryID, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: jobqueue.StatusPending,
 		NextRunAt: cutoff, CreatedAt: cutoff,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: boundaryID + "-target", ExpectedRevision: 1}},
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetNeuron, ID: boundaryID + "-target", ExpectedRevision: 1}},
 	}); err != nil {
 		t.Fatalf("enqueue boundary fixture failed: %v", err)
 	}
@@ -727,10 +726,10 @@ func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T
 		t.Fatalf("insert release group failed: %v", err)
 	}
 	retentionID := base + "-retention"
-	if _, err := store.EnqueueJob(ctx, scope, memory.Job{
-		ID: retentionID, Kind: memory.JobKindRetention, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+	if _, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
+		ID: retentionID, Kind: memory.JobKindRetention, Payload: []byte(`{}`), Status: jobqueue.StatusPending,
 		NextRunAt: cutoff, CreatedAt: cutoff,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetRelease, ID: releaseID}},
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetRelease, ID: releaseID}},
 	}); err != nil {
 		t.Fatalf("enqueue retention fixture failed: %v", err)
 	}
@@ -853,16 +852,16 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 	}
 
 	now := day.Add(time.Hour)
-	jobs := []memory.Job{
+	jobs := []jobqueue.Record{
 		{
 			ID: base + "-job-embed", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
-			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
-			Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision}},
+			Status: jobqueue.StatusPending, NextRunAt: now, CreatedAt: now,
+			Targets: []jobqueue.Target{{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision}},
 		},
 		{
 			ID: base + "-job-semanticize", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
-			Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}},
+			Status: jobqueue.StatusPending, NextRunAt: now, CreatedAt: now,
+			Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}},
 		},
 	}
 	for _, job := range jobs {
@@ -871,25 +870,7 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		}
 	}
 	queue := &recordingJobQueue{Store: store}
-	runner, err := memory.NewJobRunner(
-		queue,
-		store,
-		store,
-		store,
-		mustRetentionSweeper(t, store),
-		store,
-		ai.NewMockEmbedder(),
-		ai.NewMockSemanticizer(),
-		memory.WorkerConfig{
-			MaxAttempts:  int32(values.AiJobMaxAttempts),
-			BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
-			PollInterval: time.Millisecond,
-			Now:          func() time.Time { return now },
-		},
-	)
-	if err != nil {
-		t.Fatalf("NewJobRunner failed: %v", err)
-	}
+	runner := newTestJobRunner(t, queue, store, func() time.Time { return now }, 0)
 	for _, job := range jobs {
 		drainJobToDone(t, ctx, pool, runner, queue, userID, job.ID)
 	}
@@ -951,10 +932,10 @@ func TestJobHandlersHonorStoreLivenessAndRevisionFences(t *testing.T) {
 		t.Fatalf("InsertNeuronActivation failed: %v", err)
 	}
 
-	staleSemantic := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	staleSemantic := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-semantic-stale", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
 	})
 	if _, err := pool.PgxPool().Exec(ctx, `
 		UPDATE episodic_memories SET representation_revision = 2
@@ -969,10 +950,10 @@ func TestJobHandlersHonorStoreLivenessAndRevisionFences(t *testing.T) {
 		t.Fatalf("superseded semantic target made %d provider calls, want 0", staleSemanticizer.calls)
 	}
 
-	raceSemantic := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	raceSemantic := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-semantic-race", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 2}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: 2}},
 	})
 	raceSemanticizer := &pgCallbackSemanticizer{onCall: func() error {
 		_, err := pool.PgxPool().Exec(ctx, `
@@ -993,10 +974,10 @@ func TestJobHandlersHonorStoreLivenessAndRevisionFences(t *testing.T) {
 		t.Fatalf("semantic race = calls %d stages_null %t, want provider call but fenced write", raceSemanticizer.calls, stagesNull)
 	}
 
-	sealedEmbed := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	sealedEmbed := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-embed-sealed", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
 	})
 	if _, err := pool.PgxPool().Exec(ctx, `
 		UPDATE neurons SET sealed_at = now() WHERE user_id = $1 AND id = $2`, userID, neuron.ID); err != nil {
@@ -1014,10 +995,10 @@ func TestJobHandlersHonorStoreLivenessAndRevisionFences(t *testing.T) {
 		UPDATE neurons SET sealed_at = NULL WHERE user_id = $1 AND id = $2`, userID, neuron.ID); err != nil {
 		t.Fatalf("unseal embed source failed: %v", err)
 	}
-	raceEmbed := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	raceEmbed := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-embed-race", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
 	})
 	raceEmbedder := &pgCallbackEmbedder{onCall: func() error {
 		_, err := pool.PgxPool().Exec(ctx, `
@@ -1541,7 +1522,7 @@ func setSemanticStagesFixture(t *testing.T, ctx context.Context, store Store, us
 	}
 }
 
-func enqueueRunningJobFixture(t *testing.T, ctx context.Context, store Store, scope platform.UserScope, job memory.Job) memory.Job {
+func enqueueRunningJobFixture(t *testing.T, ctx context.Context, store Store, scope platform.UserScope, job jobqueue.Record) jobqueue.Record {
 	t.Helper()
 	enqueued, err := store.EnqueueJob(ctx, scope, job)
 	if err != nil {
@@ -1553,7 +1534,7 @@ func enqueueRunningJobFixture(t *testing.T, ctx context.Context, store Store, sc
 		WHERE user_id = $1 AND id = $2`, scope.UserID(), enqueued.ID); err != nil {
 		t.Fatalf("claim running job fixture failed: %v", err)
 	}
-	enqueued.Status = memory.JobStatusRunning
+	enqueued.Status = jobqueue.StatusRunning
 	enqueued.LeaseGeneration++
 	return enqueued
 }

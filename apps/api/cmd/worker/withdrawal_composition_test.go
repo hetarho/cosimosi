@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
-	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 func TestProductionWorkerRejectsMissingCredentialDirectory(t *testing.T) {
@@ -62,8 +62,8 @@ type withdrawalCompositionMemoryStore struct {
 func (s *withdrawalCompositionMemoryStore) EnqueueJob(
 	_ context.Context,
 	_ platform.UserScope,
-	job memory.Job,
-) (memory.Job, error) {
+	job jobqueue.Record,
+) (jobqueue.Record, error) {
 	if job.DedupKey != nil {
 		s.scheduledDedupKey = *job.DedupKey
 	}
@@ -73,7 +73,7 @@ func (s *withdrawalCompositionMemoryStore) EnqueueJob(
 func (s *withdrawalCompositionMemoryStore) CancelUserJob(
 	_ context.Context,
 	_ platform.UserScope,
-	_ memory.JobKind,
+	_ jobqueue.Kind,
 	dedupKey string,
 ) error {
 	s.cancelledDedupKey = dedupKey

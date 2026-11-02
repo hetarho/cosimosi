@@ -38,6 +38,7 @@ import (
 	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/secretbox"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
+	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/store"
 	storepg "github.com/cosimosi/api/internal/store/pg"
 	"github.com/cosimosi/api/internal/twinkle"
@@ -167,17 +168,7 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	if err != nil {
 		return nil, "", err
 	}
-	runner, err := memory.NewDefaultJobRunner(
-		memoryStore,
-		adapters.Embedder,
-		adapters.Semanticizer,
-		jobqueue.DefaultPollInterval,
-		logger,
-		map[memory.JobKind]jobqueue.Registration[memory.Job]{
-			account.WithdrawalJobKind:     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
-			achievement.SettlementJobKind: {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
-		},
-	)
+	runner, err := newQueueRunner(memoryStore, adapters, accountService, settler, logger)
 	if err != nil {
 		return nil, "", err
 	}
@@ -397,4 +388,47 @@ func (g workerOrnamentGranter) Grant(
 	ornamentID string,
 ) error {
 	return g.service.GrantOwnership(ctx, scope, store.OrnamentID(ornamentID), store.AcquisitionAchievement)
+}
+
+// newQueueRunner composes every producer's job registrations into one runner over the queue, with
+// terminal-job cleanup in its polling loop. Withdrawal sweeps and achievement settlements are the
+// only durable triggers for effects the user cannot request again, so they retry forever.
+func newQueueRunner(
+	store memorypg.Store,
+	adapters ai.Adapters,
+	accountService *account.Service,
+	settler *achievement.Service,
+	logger *log.Logger,
+) (jobqueue.Runner[jobqueue.Record], error) {
+	memoryJobs, err := memory.JobRegistrations(memory.JobDeps{
+		Embedder:             adapters.Embedder,
+		Semanticizer:         adapters.Semanticizer,
+		Sources:              store,
+		EmbeddingWriter:      store,
+		SemanticStagesWriter: store,
+		Releases:             store,
+	})
+	if err != nil {
+		return jobqueue.Runner[jobqueue.Record]{}, err
+	}
+	registrations, err := jobqueue.Registrations(memoryJobs, map[string]jobqueue.Registration[jobqueue.Record]{
+		string(account.WithdrawalJobKind):     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
+		string(achievement.SettlementJobKind): {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
+	})
+	if err != nil {
+		return jobqueue.Runner[jobqueue.Record]{}, err
+	}
+	queue := jobqueue.WithTerminalCleanup[jobqueue.Record](store, store, jobqueue.CleanupPolicy{
+		Interval:  time.Duration(values.WorkerCleanupIntervalS) * time.Second,
+		BatchSize: int32(values.WorkerCleanupBatchSize),
+		Retention: time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour,
+		Logger:    logger,
+	})
+	return jobqueue.NewRunner(queue, registrations, jobqueue.Config{
+		MaxAttempts:  int32(values.AiJobMaxAttempts),
+		MaxClaims:    int32(values.AiJobMaxClaims),
+		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
+		PollInterval: jobqueue.DefaultPollInterval,
+		Logger:       logger,
+	})
 }

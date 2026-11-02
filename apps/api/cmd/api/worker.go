@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cosimosi/api/internal/ai"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
@@ -89,17 +91,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		pool.Close()
 		return nil, err
 	}
-	runner, err := memory.NewDefaultJobRunner(
-		store,
-		adapters.Embedder,
-		adapters.Semanticizer,
-		jobqueue.DefaultPollInterval,
-		logger,
-		map[memory.JobKind]jobqueue.Registration[memory.Job]{
-			account.WithdrawalJobKind:     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
-			achievement.SettlementJobKind: {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
-		},
-	)
+	runner, err := newDevQueueRunner(store, adapters, accountService, settler, logger)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -214,4 +206,45 @@ type devWorkerNoSignupBonusGranter struct{}
 
 func (devWorkerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error {
 	return errDevWorkerSettlesNoSignup
+}
+
+// newDevQueueRunner composes the same job registrations as cmd/worker over the dev worker's pool.
+func newDevQueueRunner(
+	store memorypg.Store,
+	adapters ai.Adapters,
+	accountService *account.Service,
+	settler *achievement.Service,
+	logger *log.Logger,
+) (jobqueue.Runner[jobqueue.Record], error) {
+	memoryJobs, err := memory.JobRegistrations(memory.JobDeps{
+		Embedder:             adapters.Embedder,
+		Semanticizer:         adapters.Semanticizer,
+		Sources:              store,
+		EmbeddingWriter:      store,
+		SemanticStagesWriter: store,
+		Releases:             store,
+	})
+	if err != nil {
+		return jobqueue.Runner[jobqueue.Record]{}, err
+	}
+	registrations, err := jobqueue.Registrations(memoryJobs, map[string]jobqueue.Registration[jobqueue.Record]{
+		string(account.WithdrawalJobKind):     {Handler: account.NewWithdrawalSweepJobHandler(accountService, nil), RetryForever: true},
+		string(achievement.SettlementJobKind): {Handler: achievement.NewSettlementJobHandler(settler), RetryForever: true},
+	})
+	if err != nil {
+		return jobqueue.Runner[jobqueue.Record]{}, err
+	}
+	queue := jobqueue.WithTerminalCleanup[jobqueue.Record](store, store, jobqueue.CleanupPolicy{
+		Interval:  time.Duration(values.WorkerCleanupIntervalS) * time.Second,
+		BatchSize: int32(values.WorkerCleanupBatchSize),
+		Retention: time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour,
+		Logger:    logger,
+	})
+	return jobqueue.NewRunner(queue, registrations, jobqueue.Config{
+		MaxAttempts:  int32(values.AiJobMaxAttempts),
+		MaxClaims:    int32(values.AiJobMaxClaims),
+		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
+		PollInterval: jobqueue.DefaultPollInterval,
+		Logger:       logger,
+	})
 }

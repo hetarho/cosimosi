@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -90,10 +91,10 @@ func TestCompleteSemanticizeJobFinalizesPendingRiseExactlyOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RecordPendingGistRises failed: %v", err)
 	}
-	job := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	job := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-job", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: riseAt, CreatedAt: riseAt,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: riseAt, CreatedAt: riseAt,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
 	})
 
 	generated := memory.SemanticStages{"one", "two", "three", "four"}
@@ -195,10 +196,10 @@ func TestCompleteSemanticizeJobMergesLiveKeptStagesAndFencesRevision(t *testing.
 		UPDATE episodic_memories SET semantic_stage = 2 WHERE user_id = $1 AND id = $2`, userID, episodicMemory.ID); err != nil {
 		t.Fatalf("set risen stage failed: %v", err)
 	}
-	job := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	job := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-job", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
 	})
 	if err := store.CompleteSemanticizeJob(ctx, job, episodicMemory.ID, 1, memory.SemanticStages{"gen-1", "gen-2", "gen-3", "gen-4"}); err != nil {
 		t.Fatalf("CompleteSemanticizeJob failed: %v", err)
@@ -224,10 +225,10 @@ func TestCompleteSemanticizeJobMergesLiveKeptStagesAndFencesRevision(t *testing.
 		WHERE user_id = $1 AND id = $2`, userID, episodicMemory.ID); err != nil {
 		t.Fatalf("supersede failed: %v", err)
 	}
-	staleJob := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+	staleJob := enqueueRunningJobFixture(t, ctx, store, scope, jobqueue.Record{
 		ID: base + "-job-stale", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
+		Status: jobqueue.StatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
 	})
 	if err := store.CompleteSemanticizeJob(ctx, staleJob, episodicMemory.ID, 1, memory.SemanticStages{"STALE-1", "STALE-2", "STALE-3", "STALE-4"}); err != nil {
 		t.Fatalf("stale completion errored: %v", err)
@@ -451,27 +452,24 @@ func TestSyncDefersRiseThenWorkerMaterializesIt(t *testing.T) {
 		pool,
 		userID,
 		memory.JobKindSemanticize,
-		memory.JobTargetMemory,
+		jobqueue.TargetMemory,
 		episodicMemory.ID,
 	)
 
 	// The worker regenerates from live source and its completion materializes the rise.
 	queue := &recordingJobQueue{Store: store}
-	runner, err := memory.NewDefaultJobRunner(queue, ai.NewMockEmbedder(), ai.NewMockSemanticizer(), time.Millisecond, nil)
-	if err != nil {
-		t.Fatalf("NewDefaultJobRunner failed: %v", err)
-	}
+	runner := newTestJobRunner(t, queue, store, nil, int32(values.AiJobMaxClaims))
 	unrelatedAt := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	unrelatedJobID := base + "-unrelated-job"
-	if _, err := store.EnqueueJob(ctx, otherScope, memory.Job{
+	if _, err := store.EnqueueJob(ctx, otherScope, jobqueue.Record{
 		ID:        unrelatedJobID,
-		Kind:      memory.JobKind("unrelated-test"),
+		Kind:      jobqueue.Kind("unrelated-test"),
 		Payload:   []byte(`{}`),
-		Status:    memory.JobStatusPending,
+		Status:    jobqueue.StatusPending,
 		NextRunAt: unrelatedAt,
 		CreatedAt: unrelatedAt,
-		Targets: []memory.JobTarget{{
-			Kind: memory.JobTargetRelease,
+		Targets: []jobqueue.Target{{
+			Kind: jobqueue.TargetRelease,
 			ID:   base + "-unrelated-target",
 		}},
 	}); err != nil {

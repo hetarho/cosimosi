@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -412,8 +413,8 @@ func (s *PaidActionService) reconsolidate(ctx context.Context, scope platform.Us
 	// The identity-only job re-reads the current text, mood, live neurons, and already-risen
 	// stages immediately before the external call. The revision returned by the rewrite is
 	// its fence, so an older generation cannot publish over this representation.
-	if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
-		Kind: JobTargetMemory, ID: memory.ID, ExpectedRevision: revision,
+	if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, jobqueue.Target{
+		Kind: jobqueue.TargetMemory, ID: memory.ID, ExpectedRevision: revision,
 	}); err != nil {
 		return 0, err
 	}

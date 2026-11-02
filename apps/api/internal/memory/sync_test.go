@@ -214,3 +214,30 @@ func TestNewMemoryServicesRefuseMissingUserZone(t *testing.T) {
 		t.Errorf("NewRetentionSweeper without a repository err = %v, want ErrReleasesRequired", err)
 	}
 }
+
+// Persisted job rows name their kind by these strings; renaming one would strand every queued job
+// of that kind.
+func TestJobRegistrationsPinPersistedKindsAndPolicy(t *testing.T) {
+	t.Parallel()
+	registrations, err := JobRegistrations(JobDeps{
+		Embedder:             &fakeEmbedder{},
+		Semanticizer:         &fakeSemanticizer{},
+		Sources:              &fakeJobSourceReader{},
+		EmbeddingWriter:      &fakeEmbeddingWriter{},
+		SemanticStagesWriter: &fakeSemanticStagesWriter{},
+		Releases:             newFakeReleaseRepo(),
+	})
+	if err != nil {
+		t.Fatalf("JobRegistrations failed: %v", err)
+	}
+	want := map[string]bool{"embed": false, "semanticize": false, "consolidate": false, "retention_sweep": true}
+	if len(registrations) != len(want) {
+		t.Fatalf("registered kinds = %v, want %v", registrations, want)
+	}
+	for kind, forever := range want {
+		registration, ok := registrations[kind]
+		if !ok || registration.Handler == nil || registration.RetryForever != forever {
+			t.Fatalf("kind %q registration = %+v, want a handler with RetryForever=%v", kind, registration, forever)
+		}
+	}
+}

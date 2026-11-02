@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -58,7 +59,7 @@ type fakeConsolidateTx struct {
 	touchedAt       time.Time
 	downscaled      []SynapseStrength
 	downscaleCalls  int
-	jobs            []Job
+	jobs            []jobqueue.Record
 	listMemoriesErr error
 }
 
@@ -70,14 +71,14 @@ func newFakeConsolidateTx() *fakeConsolidateTx {
 	}
 }
 
-func (f *fakeConsolidateTx) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
+func (f *fakeConsolidateTx) EnqueueJob(_ context.Context, _ platform.UserScope, job jobqueue.Record) (jobqueue.Record, error) {
 	f.jobs = append(f.jobs, job)
 	return job, nil
 }
 
-func (f *fakeConsolidateTx) HasActiveTargetJob(_ context.Context, _ platform.UserScope, kind JobKind, target JobTarget) (bool, error) {
+func (f *fakeConsolidateTx) HasActiveTargetJob(_ context.Context, _ platform.UserScope, kind jobqueue.Kind, target jobqueue.Target) (bool, error) {
 	for _, job := range f.jobs {
-		if job.Kind != kind || (job.Status != JobStatusPending && job.Status != JobStatusRunning) {
+		if job.Kind != kind || (job.Status != jobqueue.StatusPending && job.Status != jobqueue.StatusRunning) {
 			continue
 		}
 		for _, candidate := range job.Targets {
@@ -641,7 +642,7 @@ func TestRepairPassEnqueuesOnceWhileActive(t *testing.T) {
 	}
 
 	// Once that job has ended with the text still missing, the next advance enqueues again.
-	tx.jobs[semanticizeJobs()[0]].Status = JobStatusFailed
+	tx.jobs[semanticizeJobs()[0]].Status = jobqueue.StatusFailed
 	fourth := consolidateDate(55)
 	runConsolidator(t, tx, &third, fourth)
 	if jobs := semanticizeJobs(); len(jobs) != 2 {
@@ -665,7 +666,7 @@ func TestConsolidateRepairsMissingStageTextsAtTheCeiling(t *testing.T) {
 
 	runConsolidator(t, tx, &from, to)
 
-	var semanticize *Job
+	var semanticize *jobqueue.Record
 	for i := range tx.jobs {
 		if tx.jobs[i].Kind == JobKindSemanticize {
 			semanticize = &tx.jobs[i]
@@ -677,7 +678,7 @@ func TestConsolidateRepairsMissingStageTextsAtTheCeiling(t *testing.T) {
 	if string(semanticize.Payload) != "{}" {
 		t.Fatalf("payload = %s, want source-free object", semanticize.Payload)
 	}
-	if len(semanticize.Targets) != 1 || semanticize.Targets[0] != (JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1}) {
+	if len(semanticize.Targets) != 1 || semanticize.Targets[0] != (jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 1}) {
 		t.Fatalf("targets = %+v, want revisioned m1", semanticize.Targets)
 	}
 	if len(tx.advances) != 0 {
@@ -708,7 +709,7 @@ func TestConsolidateEnqueuesHeavyWorkNotInlineLLM(t *testing.T) {
 	if string(job.Payload) != "{}" {
 		t.Fatalf("payload = %s, want source-free object", job.Payload)
 	}
-	if len(job.Targets) != 1 || job.Targets[0].Kind != JobTargetNeuron || job.Targets[0].ID != "n1" {
+	if len(job.Targets) != 1 || job.Targets[0].Kind != jobqueue.TargetNeuron || job.Targets[0].ID != "n1" {
 		t.Fatalf("targets = %+v, want the replay-set neuron only", job.Targets)
 	}
 }
@@ -729,7 +730,7 @@ func TestConsolidatePartialLadderPublishesReadablePrefixAndDefersTheRest(t *test
 
 	runConsolidator(t, tx, &from, to)
 
-	var semanticize *Job
+	var semanticize *jobqueue.Record
 	for i := range tx.jobs {
 		if tx.jobs[i].Kind == JobKindSemanticize {
 			semanticize = &tx.jobs[i]
@@ -810,7 +811,7 @@ func TestConsolidateMissingLadderDefersWholeRiseWithoutBlankHistory(t *testing.T
 	if len(tx.pendings) != 1 || tx.pendings[0] != (PendingGistRise{MemoryID: "m1", Stage: 2, RiseAt: to}) {
 		t.Fatalf("pendings = %+v, want the deferred rise to stage 2", tx.pendings)
 	}
-	var semanticize *Job
+	var semanticize *jobqueue.Record
 	for i := range tx.jobs {
 		if tx.jobs[i].Kind == JobKindSemanticize {
 			semanticize = &tx.jobs[i]

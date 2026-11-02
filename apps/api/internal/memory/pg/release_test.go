@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -400,10 +400,10 @@ func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {
 		t.Fatalf("read memory revision: %v", err)
 	}
 	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
-	job, err := store.EnqueueJob(ctx, scope, memory.Job{
-		ID: base + "-semantic", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+	job, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
+		ID: base + "-semantic", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`), Status: jobqueue.StatusPending,
 		NextRunAt: releaseAt.Add(-time.Minute), CreatedAt: releaseAt.Add(-time.Minute),
-		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: g.m1, ExpectedRevision: revision}},
+		Targets: []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: g.m1, ExpectedRevision: revision}},
 	})
 	if err != nil {
 		t.Fatalf("enqueue semantic job: %v", err)
@@ -472,24 +472,12 @@ func TestScheduledRetentionWorkerSweepsWithoutAnotherUserRPC(t *testing.T) {
 		pool,
 		userID,
 		memory.JobKindRetention,
-		memory.JobTargetRelease,
+		jobqueue.TargetRelease,
 		releaseID,
 	)
 	due := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
 	queue := &recordingJobQueue{Store: store}
-	runner, err := memory.NewJobRunner(
-		queue, store, store, store, mustRetentionSweeper(t, store), store,
-		ai.NewMockEmbedder(), ai.NewMockSemanticizer(), memory.WorkerConfig{
-			MaxAttempts:  int32(values.AiJobMaxAttempts),
-			MaxClaims:    int32(values.AiJobMaxClaims),
-			BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
-			PollInterval: time.Millisecond,
-			Now:          func() time.Time { return due },
-		},
-	)
-	if err != nil {
-		t.Fatalf("NewJobRunner failed: %v", err)
-	}
+	runner := newTestJobRunner(t, queue, store, func() time.Time { return due }, int32(values.AiJobMaxClaims))
 	drainJobToDone(t, ctx, pool, runner, queue, userID, retentionJobID)
 	var memories, diaries, groups int
 	if err := pool.PgxPool().QueryRow(ctx, `

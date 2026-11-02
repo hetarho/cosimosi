@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -284,17 +285,17 @@ func (s *LaunchService) resolveNeurons(ctx context.Context, scope platform.UserS
 // the genuinely new neurons and one semanticize job per launched memory.
 func (s *LaunchService) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
 	if len(newNeurons) > 0 {
-		targets := make([]JobTarget, 0, len(newNeurons))
+		targets := make([]jobqueue.Target, 0, len(newNeurons))
 		for _, neuron := range newNeurons {
-			targets = append(targets, JobTarget{Kind: JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
+			targets = append(targets, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
 		}
 		if err := s.enqueue(ctx, scope, tx, JobKindEmbed, EmbedJobPayload{}, targets...); err != nil {
 			return err
 		}
 	}
 	for _, launchedMemory := range launched {
-		if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
-			Kind: JobTargetMemory, ID: launchedMemory.ID, ExpectedRevision: launchedMemory.RepresentationRevision,
+		if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, jobqueue.Target{
+			Kind: jobqueue.TargetMemory, ID: launchedMemory.ID, ExpectedRevision: launchedMemory.RepresentationRevision,
 		}); err != nil {
 			return err
 		}

@@ -138,3 +138,10 @@ func TestWithdrawalJobHandlerValidatesIdentityTargetAndPublishesInFlightJobID(t 
 		t.Fatalf("forged target error = %v, want jobqueue.ErrUserJobSpecInvalid", err)
 	}
 }
+
+// Persisted job rows name their kind by this string; renaming it would strand every queued job.
+func TestWithdrawalJobKindIsPinned(t *testing.T) {
+	if WithdrawalJobKind != "withdrawal_sweep" {
+		t.Fatalf("WithdrawalJobKind = %q, want %q", WithdrawalJobKind, "withdrawal_sweep")
+	}
+}

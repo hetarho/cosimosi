@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -365,7 +366,7 @@ func TestRecallErrorBranchReconsolidates(t *testing.T) {
 	if string(job.Payload) != "{}" {
 		t.Fatalf("regen payload = %s, want source-free object", job.Payload)
 	}
-	if len(job.Targets) != 1 || job.Targets[0] != (JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 2}) {
+	if len(job.Targets) != 1 || job.Targets[0] != (jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 2}) {
 		t.Fatalf("regen targets = %+v, want m1 at rewrite revision 2", job.Targets)
 	}
 }
@@ -384,7 +385,7 @@ func TestReconsolidateRegenHandsGenerationToTheCompletionFence(t *testing.T) {
 	}}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
 
-	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 2})
+	job := revisionedJob(JobKindSemanticize, jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "m1", ExpectedRevision: 2})
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
 	}

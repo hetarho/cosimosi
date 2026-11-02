@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 // fakeLaunchStore implements LaunchRepo + LaunchTx: writes stage into a scratch
@@ -86,7 +87,7 @@ type launchState struct {
 	neurons      []Neuron
 	activations  []NeuronActivation
 	synapses     []Synapse
-	jobs         []Job
+	jobs         []jobqueue.Record
 	findCalls    [][]string
 	clockAdvance *time.Time
 }
@@ -258,9 +259,9 @@ func (f *fakeLaunchStore) InsertNeuronActivation(_ context.Context, _ platform.U
 	return activation, nil
 }
 
-func (f *fakeLaunchStore) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
+func (f *fakeLaunchStore) EnqueueJob(_ context.Context, _ platform.UserScope, job jobqueue.Record) (jobqueue.Record, error) {
 	if err := f.fail("EnqueueJob"); err != nil {
-		return Job{}, err
+		return jobqueue.Record{}, err
 	}
 	f.staging.jobs = append(f.staging.jobs, job)
 	return job, nil
@@ -471,7 +472,7 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 		}
 	}
 
-	kinds := map[JobKind]int{}
+	kinds := map[jobqueue.Kind]int{}
 	for _, job := range state.jobs {
 		kinds[job.Kind]++
 	}
@@ -489,7 +490,7 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 			t.Fatalf("embed targets = %d, want only the 3 new neurons", len(job.Targets))
 		}
 		for _, target := range job.Targets {
-			if target.Kind != JobTargetNeuron || target.ExpectedRevision != 1 {
+			if target.Kind != jobqueue.TargetNeuron || target.ExpectedRevision != 1 {
 				t.Fatalf("embed target = %+v, want revisioned neuron", target)
 			}
 		}

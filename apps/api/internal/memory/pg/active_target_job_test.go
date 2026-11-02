@@ -8,6 +8,7 @@ import (
 
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 // The repair pass asks whether a regeneration is already queued; only a pending or running job of
@@ -25,16 +26,16 @@ func TestHasActiveTargetJobSeesOnlyUnfinishedWorkAtTheRevision(t *testing.T) {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
 	store := NewStore(pool.PgxPool())
-	target := memory.JobTarget{Kind: memory.JobTargetMemory, ID: base + "-memory", ExpectedRevision: 3}
+	target := jobqueue.Target{Kind: jobqueue.TargetMemory, ID: base + "-memory", ExpectedRevision: 3}
 	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
-	if _, err := store.EnqueueJob(ctx, scope, memory.Job{
+	if _, err := store.EnqueueJob(ctx, scope, jobqueue.Record{
 		ID: base + "-job", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
-		Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now, Targets: []memory.JobTarget{target},
+		Status: jobqueue.StatusPending, NextRunAt: now, CreatedAt: now, Targets: []jobqueue.Target{target},
 	}); err != nil {
 		t.Fatalf("EnqueueJob failed: %v", err)
 	}
 
-	check := func(kind memory.JobKind, candidate memory.JobTarget, want bool) {
+	check := func(kind jobqueue.Kind, candidate jobqueue.Target, want bool) {
 		t.Helper()
 		active, err := store.HasActiveTargetJob(ctx, scope, kind, candidate)
 		if err != nil {

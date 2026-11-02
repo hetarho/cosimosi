@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
 var (
@@ -49,8 +50,8 @@ type SemanticizeJobSource struct {
 }
 
 type JobSourceReader interface {
-	EmbedJobSources(ctx context.Context, job Job) ([]EmbedJobSource, error)
-	SemanticizeJobSource(ctx context.Context, job Job) (SemanticizeJobSource, bool, error)
+	EmbedJobSources(ctx context.Context, job jobqueue.Record) ([]EmbedJobSource, error)
+	SemanticizeJobSource(ctx context.Context, job jobqueue.Record) (SemanticizeJobSource, bool, error)
 }
 
 type RevisionedEmbedding struct {
@@ -60,7 +61,7 @@ type RevisionedEmbedding struct {
 }
 
 type JobEmbeddingWriter interface {
-	SaveJobEmbeddings(ctx context.Context, job Job, embeddings []RevisionedEmbedding) error
+	SaveJobEmbeddings(ctx context.Context, job jobqueue.Record, embeddings []RevisionedEmbedding) error
 }
 
 // JobSemanticStagesWriter is the semanticize completion operation: in ONE
@@ -71,7 +72,7 @@ type JobEmbeddingWriter interface {
 // job done. A lost fence applies no side effect; replaying a committed
 // completion is a no-op because the job is no longer running.
 type JobSemanticStagesWriter interface {
-	CompleteSemanticizeJob(ctx context.Context, job Job, memoryID string, expectedRevision int64, generated SemanticStages) error
+	CompleteSemanticizeJob(ctx context.Context, job jobqueue.Record, memoryID string, expectedRevision int64, generated SemanticStages) error
 }
 
 type DueReleaseSweeper interface {
@@ -79,12 +80,12 @@ type DueReleaseSweeper interface {
 }
 
 type jobEnqueuer interface {
-	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error)
 }
 
-func NewEmbedJobHandler(embedder Embedder, sources JobSourceReader, writer JobEmbeddingWriter) func(context.Context, Job) error {
-	return func(ctx context.Context, job Job) error {
-		if err := validateJob(job, JobTargetNeuron, false); err != nil {
+func NewEmbedJobHandler(embedder Embedder, sources JobSourceReader, writer JobEmbeddingWriter) func(context.Context, jobqueue.Record) error {
+	return func(ctx context.Context, job jobqueue.Record) error {
+		if err := validateJob(job, jobqueue.TargetNeuron, false); err != nil {
 			return err
 		}
 		var payload EmbedJobPayload
@@ -99,9 +100,9 @@ func NewEmbedJobHandler(embedder Embedder, sources JobSourceReader, writer JobEm
 	}
 }
 
-func NewSemanticizeJobHandler(semanticizer Semanticizer, sources JobSourceReader, writer JobSemanticStagesWriter) func(context.Context, Job) error {
-	return func(ctx context.Context, job Job) error {
-		if err := validateJob(job, JobTargetMemory, true); err != nil {
+func NewSemanticizeJobHandler(semanticizer Semanticizer, sources JobSourceReader, writer JobSemanticStagesWriter) func(context.Context, jobqueue.Record) error {
+	return func(ctx context.Context, job jobqueue.Record) error {
+		if err := validateJob(job, jobqueue.TargetMemory, true); err != nil {
 			return err
 		}
 		var payload SemanticizeJobPayload
@@ -136,9 +137,9 @@ func NewSemanticizeJobHandler(semanticizer Semanticizer, sources JobSourceReader
 
 // NewConsolidateJobHandler drains consolidation's asynchronous re-embed. It has
 // the same target contract as embed; only the enqueueing use-case differs.
-func NewConsolidateJobHandler(embedder Embedder, sources JobSourceReader, writer JobEmbeddingWriter) func(context.Context, Job) error {
-	return func(ctx context.Context, job Job) error {
-		if err := validateJob(job, JobTargetNeuron, false); err != nil {
+func NewConsolidateJobHandler(embedder Embedder, sources JobSourceReader, writer JobEmbeddingWriter) func(context.Context, jobqueue.Record) error {
+	return func(ctx context.Context, job jobqueue.Record) error {
+		if err := validateJob(job, jobqueue.TargetNeuron, false); err != nil {
 			return err
 		}
 		var payload ConsolidateJobPayload
@@ -153,12 +154,12 @@ func NewConsolidateJobHandler(embedder Embedder, sources JobSourceReader, writer
 	}
 }
 
-func NewRetentionSweepJobHandler(sweeper DueReleaseSweeper, now func() time.Time) func(context.Context, Job) error {
+func NewRetentionSweepJobHandler(sweeper DueReleaseSweeper, now func() time.Time) func(context.Context, jobqueue.Record) error {
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
-	return func(ctx context.Context, job Job) error {
-		if err := validateJob(job, JobTargetRelease, true); err != nil {
+	return func(ctx context.Context, job jobqueue.Record) error {
+		if err := validateJob(job, jobqueue.TargetRelease, true); err != nil {
 			return err
 		}
 		var payload RetentionSweepJobPayload
@@ -177,7 +178,7 @@ func NewRetentionSweepJobHandler(sweeper DueReleaseSweeper, now func() time.Time
 // embedCurrentSources is the shared current-read -> external call -> fenced-write
 // tail. Missing, sealed, deleted, or superseded targets never appear in sources;
 // a race after the call is stopped by the conditional writer.
-func embedCurrentSources(ctx context.Context, embedder Embedder, writer JobEmbeddingWriter, job Job, sources []EmbedJobSource) error {
+func embedCurrentSources(ctx context.Context, embedder Embedder, writer JobEmbeddingWriter, job jobqueue.Record, sources []EmbedJobSource) error {
 	if len(sources) == 0 {
 		return nil
 	}
@@ -206,7 +207,7 @@ func embedCurrentSources(ctx context.Context, embedder Embedder, writer JobEmbed
 	return writer.SaveJobEmbeddings(ctx, job, embeddings)
 }
 
-func validateJob(job Job, targetKind JobTargetKind, exactlyOne bool) error {
+func validateJob(job jobqueue.Record, targetKind jobqueue.TargetKind, exactlyOne bool) error {
 	if job.UserID == "" {
 		return ErrJobUserRequired
 	}
@@ -218,7 +219,7 @@ func validateJob(job Job, targetKind JobTargetKind, exactlyOne bool) error {
 		if target.Kind != targetKind || target.ID == "" {
 			return fmt.Errorf("%w: invalid %s target", ErrJobPayload, targetKind)
 		}
-		if targetKind == JobTargetRelease || targetKind == JobTargetUser {
+		if targetKind == jobqueue.TargetRelease || targetKind == jobqueue.TargetUser {
 			if target.ExpectedRevision != 0 {
 				return fmt.Errorf("%w: release target has a revision", ErrJobPayload)
 			}
@@ -236,25 +237,25 @@ func validateJob(job Job, targetKind JobTargetKind, exactlyOne bool) error {
 // enqueueJob marshals an allowlisted control payload and stores it with the
 // authoritative target identities/revisions. A zero timestamp keeps the store's
 // run-now default.
-func enqueueJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, at time.Time, kind JobKind, payload any, targets ...JobTarget) error {
+func enqueueJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, at time.Time, kind jobqueue.Kind, payload any, targets ...jobqueue.Target) error {
 	return enqueueJobRecord(ctx, tx, scope, id, at, at, kind, nil, payload, targets)
 }
 
-func enqueueScheduledJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind JobKind, dedupKey string, payload any, targets ...JobTarget) error {
+func enqueueScheduledJob(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind jobqueue.Kind, dedupKey string, payload any, targets ...jobqueue.Target) error {
 	return enqueueJobRecord(ctx, tx, scope, id, nextRunAt, createdAt, kind, &dedupKey, payload, targets)
 }
 
-func enqueueJobRecord(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind JobKind, dedupKey *string, payload any, targets []JobTarget) error {
+func enqueueJobRecord(ctx context.Context, tx jobEnqueuer, scope platform.UserScope, id string, nextRunAt time.Time, createdAt time.Time, kind jobqueue.Kind, dedupKey *string, payload any, targets []jobqueue.Target) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	_, err = tx.EnqueueJob(ctx, scope, Job{
+	_, err = tx.EnqueueJob(ctx, scope, jobqueue.Record{
 		ID:        id,
 		UserID:    scope.UserID(),
 		Kind:      kind,
 		Payload:   raw,
-		Status:    JobStatusPending,
+		Status:    jobqueue.StatusPending,
 		NextRunAt: nextRunAt,
 		CreatedAt: createdAt,
 		DedupKey:  dedupKey,

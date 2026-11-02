@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
-func revisionedJob(kind JobKind, target JobTarget) Job {
-	return Job{
+func revisionedJob(kind jobqueue.Kind, target jobqueue.Target) jobqueue.Record {
+	return jobqueue.Record{
 		ID:              "job-1",
 		UserID:          "user-1",
 		Kind:            kind,
 		Payload:         []byte(`{}`),
-		Status:          JobStatusRunning,
+		Status:          jobqueue.StatusRunning,
 		LeaseGeneration: 3,
-		Targets:         []JobTarget{target},
+		Targets:         []jobqueue.Target{target},
 	}
 }
 
@@ -30,8 +31,8 @@ func TestEmbedJobHandlerReadsCurrentSourceAndWritesRevisionedEmbedding(t *testin
 	embedder := &fakeEmbedder{vectors: [][]float32{{0.1, 0.2}, {0.3, 0.4}}}
 	writer := &fakeEmbeddingWriter{}
 	handler := NewEmbedJobHandler(embedder, reader, writer)
-	job := revisionedJob(JobKindEmbed, JobTarget{Kind: JobTargetNeuron, ID: "neuron-1", ExpectedRevision: 2})
-	job.Targets = append(job.Targets, JobTarget{Kind: JobTargetNeuron, ID: "neuron-2", ExpectedRevision: 1})
+	job := revisionedJob(JobKindEmbed, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: "neuron-1", ExpectedRevision: 2})
+	job.Targets = append(job.Targets, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: "neuron-2", ExpectedRevision: 1})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -49,7 +50,7 @@ func TestEmbedJobHandlerSkipsMissingSealedOrSupersededSources(t *testing.T) {
 	embedder := &fakeEmbedder{}
 	writer := &fakeEmbeddingWriter{}
 	handler := NewEmbedJobHandler(embedder, reader, writer)
-	job := revisionedJob(JobKindEmbed, JobTarget{Kind: JobTargetNeuron, ID: "stale", ExpectedRevision: 1})
+	job := revisionedJob(JobKindEmbed, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: "stale", ExpectedRevision: 1})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -76,7 +77,7 @@ func TestSemanticizeJobHandlerReadsCurrentSourceAndHandsGenerationToCompletion(t
 	semanticizer := &fakeSemanticizer{stages: SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}}
 	writer := &fakeSemanticStagesWriter{}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
-	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "memory-1", ExpectedRevision: 4})
+	job := revisionedJob(JobKindSemanticize, jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "memory-1", ExpectedRevision: 4})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -104,7 +105,7 @@ func TestSemanticizeJobHandlerRefusesBlankGeneratedStage(t *testing.T) {
 	semanticizer := &fakeSemanticizer{stages: SemanticStages{"gen-0", "  ", "gen-2", "gen-3"}}
 	writer := &fakeSemanticStagesWriter{}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
-	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "memory-1", ExpectedRevision: 4})
+	job := revisionedJob(JobKindSemanticize, jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "memory-1", ExpectedRevision: 4})
 
 	// A blank rung is a provider failure on the retry path — never a committed ladder.
 	if err := handler(context.Background(), job); !errors.Is(err, errBlankSemanticStage) {
@@ -120,7 +121,7 @@ func TestSemanticizeJobHandlerSkipsUnavailableSource(t *testing.T) {
 	semanticizer := &fakeSemanticizer{}
 	writer := &fakeSemanticStagesWriter{}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
-	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "memory-1", ExpectedRevision: 1})
+	job := revisionedJob(JobKindSemanticize, jobqueue.Target{Kind: jobqueue.TargetMemory, ID: "memory-1", ExpectedRevision: 1})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -135,7 +136,7 @@ func TestConsolidateJobHandlerUsesSameCurrentSourceFence(t *testing.T) {
 	embedder := &fakeEmbedder{vectors: [][]float32{{0.5, 0.6}}}
 	writer := &fakeEmbeddingWriter{}
 	handler := NewConsolidateJobHandler(embedder, reader, writer)
-	job := revisionedJob(JobKindConsolidate, JobTarget{Kind: JobTargetNeuron, ID: "n1", ExpectedRevision: 7})
+	job := revisionedJob(JobKindConsolidate, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: "n1", ExpectedRevision: 7})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -148,7 +149,7 @@ func TestConsolidateJobHandlerUsesSameCurrentSourceFence(t *testing.T) {
 func TestJobHandlersRejectSourceBearingPayloadAndInvalidTarget(t *testing.T) {
 	reader := &fakeJobSourceReader{}
 	handler := NewEmbedJobHandler(&fakeEmbedder{}, reader, &fakeEmbeddingWriter{})
-	job := revisionedJob(JobKindEmbed, JobTarget{Kind: JobTargetNeuron, ID: "n1", ExpectedRevision: 1})
+	job := revisionedJob(JobKindEmbed, jobqueue.Target{Kind: jobqueue.TargetNeuron, ID: "n1", ExpectedRevision: 1})
 	job.Payload = []byte(`{"text":"must not survive"}`)
 	if err := handler(context.Background(), job); !errors.Is(err, ErrJobPayload) {
 		t.Fatalf("source-bearing payload error = %v, want ErrJobPayload", err)
@@ -168,7 +169,7 @@ func TestRetentionSweepJobHandlerUsesReleaseTarget(t *testing.T) {
 	now := time.Date(2026, 7, 21, 0, 0, 0, 0, time.UTC)
 	sweeper := &fakeDueReleaseSweeper{}
 	handler := NewRetentionSweepJobHandler(sweeper, func() time.Time { return now })
-	job := revisionedJob(JobKindRetention, JobTarget{Kind: JobTargetRelease, ID: "release-1"})
+	job := revisionedJob(JobKindRetention, jobqueue.Target{Kind: jobqueue.TargetRelease, ID: "release-1"})
 
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
@@ -192,13 +193,13 @@ func (f *fakeEmbedder) Embed(_ context.Context, texts []string) ([][]float32, er
 }
 
 type fakeEmbeddingWriter struct {
-	job        Job
+	job        jobqueue.Record
 	embeddings []RevisionedEmbedding
 	err        error
 	calls      int
 }
 
-func (f *fakeEmbeddingWriter) SaveJobEmbeddings(_ context.Context, job Job, embeddings []RevisionedEmbedding) error {
+func (f *fakeEmbeddingWriter) SaveJobEmbeddings(_ context.Context, job jobqueue.Record, embeddings []RevisionedEmbedding) error {
 	f.calls++
 	f.job = job
 	f.embeddings = append([]RevisionedEmbedding(nil), embeddings...)
@@ -223,21 +224,21 @@ type fakeJobSourceReader struct {
 	semanticSource SemanticizeJobSource
 	semanticOK     bool
 	err            error
-	job            Job
+	job            jobqueue.Record
 }
 
-func (f *fakeJobSourceReader) EmbedJobSources(_ context.Context, job Job) ([]EmbedJobSource, error) {
+func (f *fakeJobSourceReader) EmbedJobSources(_ context.Context, job jobqueue.Record) ([]EmbedJobSource, error) {
 	f.job = job
 	return append([]EmbedJobSource(nil), f.embedSources...), f.err
 }
 
-func (f *fakeJobSourceReader) SemanticizeJobSource(_ context.Context, job Job) (SemanticizeJobSource, bool, error) {
+func (f *fakeJobSourceReader) SemanticizeJobSource(_ context.Context, job jobqueue.Record) (SemanticizeJobSource, bool, error) {
 	f.job = job
 	return f.semanticSource, f.semanticOK, f.err
 }
 
 type fakeSemanticStagesWriter struct {
-	job              Job
+	job              jobqueue.Record
 	memoryID         string
 	expectedRevision int64
 	generated        SemanticStages
@@ -245,7 +246,7 @@ type fakeSemanticStagesWriter struct {
 	calls            int
 }
 
-func (f *fakeSemanticStagesWriter) CompleteSemanticizeJob(_ context.Context, job Job, memoryID string, expectedRevision int64, generated SemanticStages) error {
+func (f *fakeSemanticStagesWriter) CompleteSemanticizeJob(_ context.Context, job jobqueue.Record, memoryID string, expectedRevision int64, generated SemanticStages) error {
 	f.calls++
 	f.job = job
 	f.memoryID = memoryID

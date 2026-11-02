@@ -12,10 +12,10 @@ import (
 	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/account/accounttest"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
-	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
@@ -33,8 +33,8 @@ type withdrawalCompositionMemoryStore struct {
 func (s *withdrawalCompositionMemoryStore) EnqueueJob(
 	_ context.Context,
 	_ platform.UserScope,
-	job memory.Job,
-) (memory.Job, error) {
+	job jobqueue.Record,
+) (jobqueue.Record, error) {
 	if job.DedupKey != nil {
 		s.scheduledDedupKey = *job.DedupKey
 	}
@@ -44,7 +44,7 @@ func (s *withdrawalCompositionMemoryStore) EnqueueJob(
 func (s *withdrawalCompositionMemoryStore) CancelUserJob(
 	_ context.Context,
 	_ platform.UserScope,
-	_ memory.JobKind,
+	_ jobqueue.Kind,
 	dedupKey string,
 ) error {
 	s.cancelledDedupKey = dedupKey

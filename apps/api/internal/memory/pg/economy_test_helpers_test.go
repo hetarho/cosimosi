@@ -7,6 +7,8 @@ import (
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/memory"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"github.com/cosimosi/api/internal/platform/values"
 )
 
 // withEconomy binds an EconomyTx onto every transaction the store opens. Suites that exercise the
@@ -98,4 +100,32 @@ func mustRetentionSweeper(t *testing.T, repo memory.ReleaseRepo) memory.Retentio
 		t.Fatalf("NewRetentionSweeper failed: %v", err)
 	}
 	return sweeper
+}
+
+// newTestJobRunner runs memory's registered jobs over queue the way the roots compose them.
+func newTestJobRunner(t *testing.T, queue *recordingJobQueue, store Store, now func() time.Time, maxClaims int32) jobqueue.Runner[jobqueue.Record] {
+	t.Helper()
+	registrations, err := memory.JobRegistrations(memory.JobDeps{
+		Embedder:             ai.NewMockEmbedder(),
+		Semanticizer:         ai.NewMockSemanticizer(),
+		Sources:              store,
+		EmbeddingWriter:      store,
+		SemanticStagesWriter: store,
+		Releases:             store,
+		Now:                  now,
+	})
+	if err != nil {
+		t.Fatalf("JobRegistrations failed: %v", err)
+	}
+	runner, err := jobqueue.NewRunner[jobqueue.Record](queue, registrations, jobqueue.Config{
+		MaxAttempts:  int32(values.AiJobMaxAttempts),
+		MaxClaims:    maxClaims,
+		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
+		PollInterval: time.Millisecond,
+		Now:          now,
+	})
+	if err != nil {
+		t.Fatalf("NewRunner failed: %v", err)
+	}
+	return runner
 }
