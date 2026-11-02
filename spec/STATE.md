@@ -14,11 +14,6 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T22:39Z | T213 |
-
 ## inbox
 - 261103 decided UI-30 T210: F29 deletes the unused background seam that UI-30 still defined → UI-30 [x] (r2) and the seam, `useBackground` and their exports removed (alt: keep the seam as reserved API | give it a consumer) ← no surface reads it, and ARCH-27 forbids entries publishing what nothing imports
 - 261103 decided CLIENT-11 T207: with the signup-completion leg in account, CLIENT-11's "then auth's own leg" named a leg auth no longer has → CLIENT-11 r3: the app's product legs end with account's `signup-completion`, then `locale`; auth's registry is removed (alt: keep an empty auth registry | let auth import account) ← AUTH-24 keeps auth free of product packages, and the order stays what it was
