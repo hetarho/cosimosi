@@ -114,6 +114,41 @@ INSERT INTO neuron_activations (
 )
 RETURNING episodic_memory_id, neuron_id, weight;
 
+-- A launch's genuinely new neurons in one statement ([E10]). Ids are fresh, so a conflict is only a
+-- replayed transaction re-inserting its own rows, settled exactly as UpsertNeuron settles it.
+-- name: InsertNeurons :many
+INSERT INTO neurons (id, user_id, name, neuron_type, created_at)
+SELECT batch.id, sqlc.arg(user_id), batch.name, batch.neuron_type, batch.created_at
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(ids)::text[]) AS id,
+        UNNEST(sqlc.arg(names)::text[]) AS name,
+        UNNEST(sqlc.arg(neuron_types)::text[]) AS neuron_type,
+        UNNEST(sqlc.arg(created_ats)::timestamptz[]) AS created_at
+) AS batch
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    neuron_type = EXCLUDED.neuron_type,
+    representation_revision = CASE
+        WHEN neurons.name IS DISTINCT FROM EXCLUDED.name
+          OR neurons.neuron_type IS DISTINCT FROM EXCLUDED.neuron_type
+        THEN neurons.representation_revision + 1
+        ELSE neurons.representation_revision
+    END
+WHERE neurons.user_id = EXCLUDED.user_id
+RETURNING id, name, neuron_type, created_at, sealed_at, representation_revision;
+
+-- A launch's activations in one statement.
+-- name: InsertNeuronActivations :exec
+INSERT INTO neuron_activations (episodic_memory_id, neuron_id, user_id, weight)
+SELECT batch.episodic_memory_id, batch.neuron_id, sqlc.arg(user_id), batch.weight
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(episodic_memory_ids)::text[]) AS episodic_memory_id,
+        UNNEST(sqlc.arg(neuron_ids)::text[]) AS neuron_id,
+        UNNEST(sqlc.arg(weights)::real[]) AS weight
+) AS batch;
+
 -- name: UpsertSynapse :one
 INSERT INTO synapses (
     id,

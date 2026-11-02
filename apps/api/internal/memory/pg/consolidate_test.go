@@ -351,7 +351,7 @@ func TestConsolidationQueriesAreUserScopedAndMonotone(t *testing.T) {
 	}
 
 	// The decay fill and downscale writes are equally scoped.
-	if err := store.FillDecayStages(ctx, scope, base+"-theirs", []string{"x"}); err != nil {
+	if err := store.FillDecayStages(ctx, scope, []memory.DecayStageFill{{MemoryID: base + "-theirs", Stages: []string{"x"}}}); err != nil {
 		t.Fatalf("FillDecayStages failed: %v", err)
 	}
 	var theirDecay []byte

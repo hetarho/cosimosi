@@ -85,6 +85,14 @@ func (profileZoneStore) MarkInviteRewarded(context.Context, platform.UserScope, 
 	return nil
 }
 
+func (profileZoneStore) SignupSettlementState(context.Context, platform.UserScope) (bool, bool, error) {
+	return true, false, nil
+}
+
+func (profileZoneStore) MarkSignupSettled(context.Context, platform.UserScope, time.Time) error {
+	return nil
+}
+
 type accountNoInviteGranter struct{}
 
 func (accountNoInviteGranter) Grant(context.Context, platform.UserScope, string) error { return nil }

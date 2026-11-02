@@ -57,7 +57,7 @@ func NewLinkService(deps LinkDeps) *LinkService {
 // correct under the product's per-user serial launch model (the diary-monotonic
 // universe clock); concurrent same-user launches of the same pair are not a
 // supported path, matching PersistEncoded's other optimistic reads (§2.8).
-func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory) error {
+func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, activations []NeuronMemoryActivation) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
@@ -114,12 +114,8 @@ func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope
 	}
 
 	// Rule 3 [L4][E6]: the launched neurons' memory memberships (with dates), so the
-	// temporal bonus can be timed on the memories' dates. The read runs after this
-	// launch's activations are persisted, so it already sees them alongside priors.
-	activations, err := tx.CoActivations(ctx, scope, neuronIDs)
-	if err != nil {
-		return err
-	}
+	// temporal bonus can be timed on the memories' dates. The caller read them after this
+	// launch's activations were persisted, so they include this launch alongside priors.
 	memoryDatesByNeuron := make(map[string]map[string]time.Time, len(neuronSet))
 	for _, activation := range activations {
 		dates := memoryDatesByNeuron[activation.NeuronID]

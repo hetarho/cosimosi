@@ -26,7 +26,11 @@ func runLink(t *testing.T, store *fakeLaunchStore, launched []LaunchedMemory) []
 	})
 	scope := testScope(t)
 	err := store.InLaunchTx(context.Background(), func(tx LaunchTx) error {
-		return link.LinkLaunched(context.Background(), scope, tx, launched)
+		coActivations, err := tx.CoActivations(context.Background(), scope, launchedNeuronIDs(launched))
+		if err != nil {
+			return err
+		}
+		return link.LinkLaunched(context.Background(), scope, tx, launched, coActivations)
 	})
 	if err != nil {
 		t.Fatalf("LinkLaunched failed: %v", err)
@@ -270,7 +274,7 @@ func TestLinkRequiresScope(t *testing.T) {
 	t.Parallel()
 
 	link := NewLinkService(LinkDeps{})
-	err := link.LinkLaunched(context.Background(), platform.UserScope{}, &fakeLaunchStore{}, nil)
+	err := link.LinkLaunched(context.Background(), platform.UserScope{}, &fakeLaunchStore{}, nil, nil)
 	if err != ErrScopeRequired {
 		t.Fatalf("LinkLaunched error = %v, want ErrScopeRequired", err)
 	}

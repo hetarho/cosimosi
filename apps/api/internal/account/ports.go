@@ -28,6 +28,11 @@ type Store interface {
 	FindSettleableInviteForInvitee(ctx context.Context, inviteeScope platform.UserScope) (*SettleableInvite, error)
 	CountRewardedInvitesByInviter(ctx context.Context, scope platform.UserScope) (int64, error)
 	MarkInviteRewarded(ctx context.Context, inviterScope platform.UserScope, inviteID string, rewardedAt time.Time) error
+	// SignupSettlementState reads whether the account exists and whether its signup settlement
+	// already completed.
+	SignupSettlementState(ctx context.Context, scope platform.UserScope) (found bool, settled bool, err error)
+	// MarkSignupSettled stamps a completed settlement; a later stamp keeps the first.
+	MarkSignupSettled(ctx context.Context, scope platform.UserScope, settledAt time.Time) error
 }
 
 // Directory is account's narrow view of Supabase Auth. The composition root translates from the

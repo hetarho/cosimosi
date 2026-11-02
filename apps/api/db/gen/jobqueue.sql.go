@@ -249,6 +249,61 @@ func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Enqueue
 	return i, err
 }
 
+const enqueueJobs = `-- name: EnqueueJobs :exec
+WITH inserted_jobs AS (
+    INSERT INTO jobs (id, user_id, kind, payload, status, attempts, next_run_at, created_at)
+    SELECT batch.id, $1, batch.kind, '{}'::jsonb, 'pending', 0, batch.next_run_at, batch.created_at
+    FROM (
+        SELECT
+            UNNEST($6::text[]) AS id,
+            UNNEST($7::text[]) AS kind,
+            UNNEST($8::timestamptz[]) AS next_run_at,
+            UNNEST($9::timestamptz[]) AS created_at
+    ) AS batch
+    RETURNING id
+)
+INSERT INTO job_targets (job_id, user_id, target_kind, target_id, expected_revision)
+SELECT target.job_id, $1, target.target_kind, target.target_id, NULLIF(target.expected_revision, 0)
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS job_id,
+        UNNEST($3::text[]) AS target_kind,
+        UNNEST($4::text[]) AS target_id,
+        UNNEST($5::bigint[]) AS expected_revision
+) AS target
+JOIN inserted_jobs ON inserted_jobs.id = target.job_id
+ON CONFLICT DO NOTHING
+`
+
+type EnqueueJobsParams struct {
+	UserID            string
+	TargetJobIds      []string
+	TargetKinds       []string
+	TargetIds         []string
+	ExpectedRevisions []int64
+	Ids               []string
+	Kinds             []string
+	NextRunAts        []pgtype.Timestamptz
+	CreatedAts        []pgtype.Timestamptz
+}
+
+// Batch form of EnqueueJob for jobs without a dedup key: one statement inserts every job and its
+// targets. The caller sizes the batch; payloads are the empty control object every kind carries.
+func (q *Queries) EnqueueJobs(ctx context.Context, arg EnqueueJobsParams) error {
+	_, err := q.db.Exec(ctx, enqueueJobs,
+		arg.UserID,
+		arg.TargetJobIds,
+		arg.TargetKinds,
+		arg.TargetIds,
+		arg.ExpectedRevisions,
+		arg.Ids,
+		arg.Kinds,
+		arg.NextRunAts,
+		arg.CreatedAts,
+	)
+	return err
+}
+
 const failJob = `-- name: FailJob :one
 UPDATE jobs
 SET status = 'failed',
@@ -295,42 +350,60 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 	return i, err
 }
 
-const hasActiveTargetJob = `-- name: HasActiveTargetJob :one
-SELECT EXISTS (
-    SELECT 1
-    FROM job_targets AS jt
-    JOIN jobs AS j ON j.id = jt.job_id AND j.user_id = jt.user_id
-    WHERE jt.user_id = $1
-      AND j.user_id = $1
-      AND jt.target_kind = $2
-      AND jt.target_id = $3
-      AND jt.expected_revision IS NOT DISTINCT FROM NULLIF($4::bigint, 0)
-      AND j.kind = $5
-      AND j.status IN ('pending', 'running')
-) AS active
+const listActiveTargetIDs = `-- name: ListActiveTargetIDs :many
+SELECT DISTINCT candidate.target_id::text
+FROM (
+    SELECT
+        UNNEST($1::text[]) AS target_id,
+        UNNEST($2::bigint[]) AS expected_revision
+) AS candidate
+JOIN job_targets AS jt
+  ON jt.user_id = $3
+ AND jt.target_kind = $4
+ AND jt.target_id = candidate.target_id
+ AND jt.expected_revision IS NOT DISTINCT FROM NULLIF(candidate.expected_revision, 0)
+JOIN jobs AS j
+  ON j.id = jt.job_id
+ AND j.user_id = jt.user_id
+WHERE j.user_id = $3
+  AND j.kind = $5
+  AND j.status IN ('pending', 'running')
 `
 
-type HasActiveTargetJobParams struct {
-	UserID           string
-	TargetKind       string
-	TargetID         string
-	ExpectedRevision int64
-	Kind             string
+type ListActiveTargetIDsParams struct {
+	TargetIds         []string
+	ExpectedRevisions []int64
+	UserID            string
+	TargetKind        string
+	Kind              string
 }
 
-// Whether a pending or running job of this kind already targets this row at this revision (0 is
-// stored as NULL, as EnqueueJob writes it). Served by job_targets_user_target_idx.
-func (q *Queries) HasActiveTargetJob(ctx context.Context, arg HasActiveTargetJobParams) (bool, error) {
-	row := q.db.QueryRow(ctx, hasActiveTargetJob,
+// Batch form of HasActiveTargetJob: which of these targets (id at its revision, 0 stored as NULL)
+// a pending or running job of this kind already covers.
+func (q *Queries) ListActiveTargetIDs(ctx context.Context, arg ListActiveTargetIDsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listActiveTargetIDs,
+		arg.TargetIds,
+		arg.ExpectedRevisions,
 		arg.UserID,
 		arg.TargetKind,
-		arg.TargetID,
-		arg.ExpectedRevision,
 		arg.Kind,
 	)
-	var active bool
-	err := row.Scan(&active)
-	return active, err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var candidate_target_id string
+		if err := rows.Scan(&candidate_target_id); err != nil {
+			return nil, err
+		}
+		items = append(items, candidate_target_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listJobTargets = `-- name: ListJobTargets :many

@@ -63,15 +63,96 @@ WHERE em.user_id = sqlc.arg(user_id)
   AND em.id = pending.memory_id
   AND em.deleted_at IS NULL;
 
--- Whole-array decay-stage text write ([F1][R8a]): the use-case merges (existing entries are
--- never overwritten — the merge fills missing slots only) and the per-user advisory lock the
--- advance transaction holds serializes the read-merge-write.
+-- Whole-array decay-stage text writes ([F1][R8a]), one batch: the use-case merges (existing
+-- entries are never overwritten — the merge fills missing slots only) and the per-user advisory
+-- lock the advance transaction holds serializes the read-merge-write. Arrays travel as JSON text.
 -- name: FillConsolidationDecayStages :exec
-UPDATE episodic_memories
-SET decay_stages = sqlc.arg(decay_stages)::jsonb
+UPDATE episodic_memories AS em
+SET decay_stages = fill.decay_stages::jsonb
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(memory_ids)::text[]) AS memory_id,
+        UNNEST(sqlc.arg(decay_stages)::text[]) AS decay_stages
+) AS fill
+WHERE em.user_id = sqlc.arg(user_id)
+  AND em.id = fill.memory_id
+  AND em.deleted_at IS NULL;
+
+-- Consolidation's scalar view of the universe: the anchors and stage integers the interval math
+-- reads, with text presence summarized instead of the text itself, so ladder and decay texts are
+-- fetched only for memories whose stage crosses. semantic_stages_present sets bit (stage - 1) for
+-- each of the four ladder rungs (SemanticStages is a fixed four-rung array) holding a
+-- non-whitespace character; decay_stages_filled counts the non-empty stored decay texts, so it
+-- equals decay_stage_count exactly when the stored array has no hole.
+-- name: ListConsolidationMemories :many
+SELECT
+    id,
+    arousal,
+    base_strength,
+    recall_count,
+    created_universe_time,
+    last_recalled_universe_time,
+    forgetting_offset_days,
+    semantic_stage,
+    semanticize_timer_reset_at,
+    pending_semantic_stage,
+    representation_revision,
+    (CASE WHEN COALESCE(semantic_stages->>0, '') ~ '[^[:space:]]' THEN 1 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>1, '') ~ '[^[:space:]]' THEN 2 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>2, '') ~ '[^[:space:]]' THEN 4 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>3, '') ~ '[^[:space:]]' THEN 8 ELSE 0 END)::int AS semantic_stages_present,
+    COALESCE(jsonb_array_length(decay_stages), 0)::int AS decay_stage_count,
+    COALESCE(jsonb_array_length(
+        jsonb_path_query_array(decay_stages, '$[*] ? (@.type() == "string" && @ != "")')
+    ), 0)::int AS decay_stages_filled
+FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
-  AND id = sqlc.arg(memory_id)
+  AND deleted_at IS NULL
+ORDER BY created_universe_time, id;
+
+-- The texts a crossing memory needs: its ladder for the provenance rows a rise publishes, and its
+-- current text, seed and stored decay texts for the decay fill.
+-- name: ListConsolidationTexts :many
+SELECT id, current_text, seed, semantic_stages, decay_stages
+FROM episodic_memories
+WHERE user_id = sqlc.arg(user_id)
+  AND id = ANY(sqlc.arg(memory_ids)::text[])
   AND deleted_at IS NULL;
+
+-- A rise's semanticized provenance rows in one batch ([R8a][CC5]). semantic_stage 0 is stored as
+-- NULL: stages start at 1, and only a semanticized row carries one.
+-- name: AppendMemoryProvenances :exec
+INSERT INTO memory_provenance (
+    id,
+    user_id,
+    episodic_memory_id,
+    kind,
+    source,
+    text,
+    universe_time,
+    semantic_stage,
+    created_at
+)
+SELECT
+    entry.id,
+    sqlc.arg(user_id),
+    entry.episodic_memory_id,
+    entry.kind,
+    entry.source,
+    entry.text,
+    entry.universe_time,
+    NULLIF(entry.semantic_stage, 0),
+    clock_timestamp()
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(ids)::text[]) AS id,
+        UNNEST(sqlc.arg(episodic_memory_ids)::text[]) AS episodic_memory_id,
+        UNNEST(sqlc.arg(kinds)::text[]) AS kind,
+        UNNEST(sqlc.arg(sources)::text[]) AS source,
+        UNNEST(sqlc.arg(texts)::text[]) AS text,
+        UNNEST(sqlc.arg(universe_times)::date[]) AS universe_time,
+        UNNEST(sqlc.arg(semantic_stages)::smallint[]) AS semantic_stage
+) AS entry;
 
 -- The live neurons activated by a memory set — the replay-set expansion step ([C2]).
 -- name: ListReplaySetNeurons :many

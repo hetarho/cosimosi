@@ -11,6 +11,67 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const appendMemoryProvenances = `-- name: AppendMemoryProvenances :exec
+INSERT INTO memory_provenance (
+    id,
+    user_id,
+    episodic_memory_id,
+    kind,
+    source,
+    text,
+    universe_time,
+    semantic_stage,
+    created_at
+)
+SELECT
+    entry.id,
+    $1,
+    entry.episodic_memory_id,
+    entry.kind,
+    entry.source,
+    entry.text,
+    entry.universe_time,
+    NULLIF(entry.semantic_stage, 0),
+    clock_timestamp()
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS id,
+        UNNEST($3::text[]) AS episodic_memory_id,
+        UNNEST($4::text[]) AS kind,
+        UNNEST($5::text[]) AS source,
+        UNNEST($6::text[]) AS text,
+        UNNEST($7::date[]) AS universe_time,
+        UNNEST($8::smallint[]) AS semantic_stage
+) AS entry
+`
+
+type AppendMemoryProvenancesParams struct {
+	UserID            string
+	Ids               []string
+	EpisodicMemoryIds []string
+	Kinds             []string
+	Sources           []string
+	Texts             []string
+	UniverseTimes     []pgtype.Date
+	SemanticStages    []int16
+}
+
+// A rise's semanticized provenance rows in one batch ([R8a][CC5]). semantic_stage 0 is stored as
+// NULL: stages start at 1, and only a semanticized row carries one.
+func (q *Queries) AppendMemoryProvenances(ctx context.Context, arg AppendMemoryProvenancesParams) error {
+	_, err := q.db.Exec(ctx, appendMemoryProvenances,
+		arg.UserID,
+		arg.Ids,
+		arg.EpisodicMemoryIds,
+		arg.Kinds,
+		arg.Sources,
+		arg.Texts,
+		arg.UniverseTimes,
+		arg.SemanticStages,
+	)
+	return err
+}
+
 const applyConsolidationStageAdvances = `-- name: ApplyConsolidationStageAdvances :exec
 
 UPDATE episodic_memories AS em
@@ -101,25 +162,164 @@ func (q *Queries) ConsolidationWatermarkForUpdate(ctx context.Context, userID st
 }
 
 const fillConsolidationDecayStages = `-- name: FillConsolidationDecayStages :exec
-UPDATE episodic_memories
-SET decay_stages = $1::jsonb
-WHERE user_id = $2
-  AND id = $3
-  AND deleted_at IS NULL
+UPDATE episodic_memories AS em
+SET decay_stages = fill.decay_stages::jsonb
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS memory_id,
+        UNNEST($3::text[]) AS decay_stages
+) AS fill
+WHERE em.user_id = $1
+  AND em.id = fill.memory_id
+  AND em.deleted_at IS NULL
 `
 
 type FillConsolidationDecayStagesParams struct {
-	DecayStages []byte
 	UserID      string
-	MemoryID    string
+	MemoryIds   []string
+	DecayStages []string
 }
 
-// Whole-array decay-stage text write ([F1][R8a]): the use-case merges (existing entries are
-// never overwritten — the merge fills missing slots only) and the per-user advisory lock the
-// advance transaction holds serializes the read-merge-write.
+// Whole-array decay-stage text writes ([F1][R8a]), one batch: the use-case merges (existing
+// entries are never overwritten — the merge fills missing slots only) and the per-user advisory
+// lock the advance transaction holds serializes the read-merge-write. Arrays travel as JSON text.
 func (q *Queries) FillConsolidationDecayStages(ctx context.Context, arg FillConsolidationDecayStagesParams) error {
-	_, err := q.db.Exec(ctx, fillConsolidationDecayStages, arg.DecayStages, arg.UserID, arg.MemoryID)
+	_, err := q.db.Exec(ctx, fillConsolidationDecayStages, arg.UserID, arg.MemoryIds, arg.DecayStages)
 	return err
+}
+
+const listConsolidationMemories = `-- name: ListConsolidationMemories :many
+SELECT
+    id,
+    arousal,
+    base_strength,
+    recall_count,
+    created_universe_time,
+    last_recalled_universe_time,
+    forgetting_offset_days,
+    semantic_stage,
+    semanticize_timer_reset_at,
+    pending_semantic_stage,
+    representation_revision,
+    (CASE WHEN COALESCE(semantic_stages->>0, '') ~ '[^[:space:]]' THEN 1 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>1, '') ~ '[^[:space:]]' THEN 2 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>2, '') ~ '[^[:space:]]' THEN 4 ELSE 0 END
+     | CASE WHEN COALESCE(semantic_stages->>3, '') ~ '[^[:space:]]' THEN 8 ELSE 0 END)::int AS semantic_stages_present,
+    COALESCE(jsonb_array_length(decay_stages), 0)::int AS decay_stage_count,
+    COALESCE(jsonb_array_length(
+        jsonb_path_query_array(decay_stages, '$[*] ? (@.type() == "string" && @ != "")')
+    ), 0)::int AS decay_stages_filled
+FROM episodic_memories
+WHERE user_id = $1
+  AND deleted_at IS NULL
+ORDER BY created_universe_time, id
+`
+
+type ListConsolidationMemoriesRow struct {
+	ID                       string
+	Arousal                  float32
+	BaseStrength             float32
+	RecallCount              int32
+	CreatedUniverseTime      pgtype.Date
+	LastRecalledUniverseTime pgtype.Date
+	ForgettingOffsetDays     float32
+	SemanticStage            int16
+	SemanticizeTimerResetAt  pgtype.Date
+	PendingSemanticStage     pgtype.Int2
+	RepresentationRevision   int64
+	SemanticStagesPresent    int32
+	DecayStageCount          int32
+	DecayStagesFilled        int32
+}
+
+// Consolidation's scalar view of the universe: the anchors and stage integers the interval math
+// reads, with text presence summarized instead of the text itself, so ladder and decay texts are
+// fetched only for memories whose stage crosses. semantic_stages_present sets bit (stage - 1) for
+// each of the four ladder rungs (SemanticStages is a fixed four-rung array) holding a
+// non-whitespace character; decay_stages_filled counts the non-empty stored decay texts, so it
+// equals decay_stage_count exactly when the stored array has no hole.
+func (q *Queries) ListConsolidationMemories(ctx context.Context, userID string) ([]ListConsolidationMemoriesRow, error) {
+	rows, err := q.db.Query(ctx, listConsolidationMemories, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListConsolidationMemoriesRow
+	for rows.Next() {
+		var i ListConsolidationMemoriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Arousal,
+			&i.BaseStrength,
+			&i.RecallCount,
+			&i.CreatedUniverseTime,
+			&i.LastRecalledUniverseTime,
+			&i.ForgettingOffsetDays,
+			&i.SemanticStage,
+			&i.SemanticizeTimerResetAt,
+			&i.PendingSemanticStage,
+			&i.RepresentationRevision,
+			&i.SemanticStagesPresent,
+			&i.DecayStageCount,
+			&i.DecayStagesFilled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listConsolidationTexts = `-- name: ListConsolidationTexts :many
+SELECT id, current_text, seed, semantic_stages, decay_stages
+FROM episodic_memories
+WHERE user_id = $1
+  AND id = ANY($2::text[])
+  AND deleted_at IS NULL
+`
+
+type ListConsolidationTextsParams struct {
+	UserID    string
+	MemoryIds []string
+}
+
+type ListConsolidationTextsRow struct {
+	ID             string
+	CurrentText    string
+	Seed           pgtype.Int8
+	SemanticStages []byte
+	DecayStages    []byte
+}
+
+// The texts a crossing memory needs: its ladder for the provenance rows a rise publishes, and its
+// current text, seed and stored decay texts for the decay fill.
+func (q *Queries) ListConsolidationTexts(ctx context.Context, arg ListConsolidationTextsParams) ([]ListConsolidationTextsRow, error) {
+	rows, err := q.db.Query(ctx, listConsolidationTexts, arg.UserID, arg.MemoryIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListConsolidationTextsRow
+	for rows.Next() {
+		var i ListConsolidationTextsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CurrentText,
+			&i.Seed,
+			&i.SemanticStages,
+			&i.DecayStages,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMemoriesActivatingNeurons = `-- name: ListMemoriesActivatingNeurons :many

@@ -279,6 +279,110 @@ func (q *Queries) InsertNeuronActivation(ctx context.Context, arg InsertNeuronAc
 	return i, err
 }
 
+const insertNeuronActivations = `-- name: InsertNeuronActivations :exec
+INSERT INTO neuron_activations (episodic_memory_id, neuron_id, user_id, weight)
+SELECT batch.episodic_memory_id, batch.neuron_id, $1, batch.weight
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS episodic_memory_id,
+        UNNEST($3::text[]) AS neuron_id,
+        UNNEST($4::real[]) AS weight
+) AS batch
+`
+
+type InsertNeuronActivationsParams struct {
+	UserID            string
+	EpisodicMemoryIds []string
+	NeuronIds         []string
+	Weights           []float32
+}
+
+// A launch's activations in one statement.
+func (q *Queries) InsertNeuronActivations(ctx context.Context, arg InsertNeuronActivationsParams) error {
+	_, err := q.db.Exec(ctx, insertNeuronActivations,
+		arg.UserID,
+		arg.EpisodicMemoryIds,
+		arg.NeuronIds,
+		arg.Weights,
+	)
+	return err
+}
+
+const insertNeurons = `-- name: InsertNeurons :many
+INSERT INTO neurons (id, user_id, name, neuron_type, created_at)
+SELECT batch.id, $1, batch.name, batch.neuron_type, batch.created_at
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS id,
+        UNNEST($3::text[]) AS name,
+        UNNEST($4::text[]) AS neuron_type,
+        UNNEST($5::timestamptz[]) AS created_at
+) AS batch
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name,
+    neuron_type = EXCLUDED.neuron_type,
+    representation_revision = CASE
+        WHEN neurons.name IS DISTINCT FROM EXCLUDED.name
+          OR neurons.neuron_type IS DISTINCT FROM EXCLUDED.neuron_type
+        THEN neurons.representation_revision + 1
+        ELSE neurons.representation_revision
+    END
+WHERE neurons.user_id = EXCLUDED.user_id
+RETURNING id, name, neuron_type, created_at, sealed_at, representation_revision
+`
+
+type InsertNeuronsParams struct {
+	UserID      string
+	Ids         []string
+	Names       []string
+	NeuronTypes []string
+	CreatedAts  []pgtype.Timestamptz
+}
+
+type InsertNeuronsRow struct {
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	CreatedAt              pgtype.Timestamptz
+	SealedAt               pgtype.Timestamptz
+	RepresentationRevision int64
+}
+
+// A launch's genuinely new neurons in one statement ([E10]). Ids are fresh, so a conflict is only a
+// replayed transaction re-inserting its own rows, settled exactly as UpsertNeuron settles it.
+func (q *Queries) InsertNeurons(ctx context.Context, arg InsertNeuronsParams) ([]InsertNeuronsRow, error) {
+	rows, err := q.db.Query(ctx, insertNeurons,
+		arg.UserID,
+		arg.Ids,
+		arg.Names,
+		arg.NeuronTypes,
+		arg.CreatedAts,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InsertNeuronsRow
+	for rows.Next() {
+		var i InsertNeuronsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.CreatedAt,
+			&i.SealedAt,
+			&i.RepresentationRevision,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertNeuron = `-- name: UpsertNeuron :one
 INSERT INTO neurons (
     id,

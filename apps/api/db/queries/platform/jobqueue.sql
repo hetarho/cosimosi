@@ -174,18 +174,51 @@ SELECT
     lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 FROM inserted_job;
 
--- name: HasActiveTargetJob :one
--- Whether a pending or running job of this kind already targets this row at this revision (0 is
--- stored as NULL, as EnqueueJob writes it). Served by job_targets_user_target_idx.
-SELECT EXISTS (
-    SELECT 1
-    FROM job_targets AS jt
-    JOIN jobs AS j ON j.id = jt.job_id AND j.user_id = jt.user_id
-    WHERE jt.user_id = sqlc.arg(user_id)
-      AND j.user_id = sqlc.arg(user_id)
-      AND jt.target_kind = sqlc.arg(target_kind)
-      AND jt.target_id = sqlc.arg(target_id)
-      AND jt.expected_revision IS NOT DISTINCT FROM NULLIF(sqlc.arg(expected_revision)::bigint, 0)
-      AND j.kind = sqlc.arg(kind)
-      AND j.status IN ('pending', 'running')
-) AS active;
+-- Batch form of EnqueueJob for jobs without a dedup key: one statement inserts every job and its
+-- targets. The caller sizes the batch; payloads are the empty control object every kind carries.
+-- name: EnqueueJobs :exec
+WITH inserted_jobs AS (
+    INSERT INTO jobs (id, user_id, kind, payload, status, attempts, next_run_at, created_at)
+    SELECT batch.id, sqlc.arg(user_id), batch.kind, '{}'::jsonb, 'pending', 0, batch.next_run_at, batch.created_at
+    FROM (
+        SELECT
+            UNNEST(sqlc.arg(ids)::text[]) AS id,
+            UNNEST(sqlc.arg(kinds)::text[]) AS kind,
+            UNNEST(sqlc.arg(next_run_ats)::timestamptz[]) AS next_run_at,
+            UNNEST(sqlc.arg(created_ats)::timestamptz[]) AS created_at
+    ) AS batch
+    RETURNING id
+)
+INSERT INTO job_targets (job_id, user_id, target_kind, target_id, expected_revision)
+SELECT target.job_id, sqlc.arg(user_id), target.target_kind, target.target_id, NULLIF(target.expected_revision, 0)
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(target_job_ids)::text[]) AS job_id,
+        UNNEST(sqlc.arg(target_kinds)::text[]) AS target_kind,
+        UNNEST(sqlc.arg(target_ids)::text[]) AS target_id,
+        UNNEST(sqlc.arg(expected_revisions)::bigint[]) AS expected_revision
+) AS target
+JOIN inserted_jobs ON inserted_jobs.id = target.job_id
+ON CONFLICT DO NOTHING;
+
+-- name: ListActiveTargetIDs :many
+-- Batch form of HasActiveTargetJob: which of these targets (id at its revision, 0 stored as NULL)
+-- a pending or running job of this kind already covers.
+SELECT DISTINCT candidate.target_id::text
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(target_ids)::text[]) AS target_id,
+        UNNEST(sqlc.arg(expected_revisions)::bigint[]) AS expected_revision
+) AS candidate
+JOIN job_targets AS jt
+  ON jt.user_id = sqlc.arg(user_id)
+ AND jt.target_kind = sqlc.arg(target_kind)
+ AND jt.target_id = candidate.target_id
+ AND jt.expected_revision IS NOT DISTINCT FROM NULLIF(candidate.expected_revision, 0)
+JOIN jobs AS j
+  ON j.id = jt.job_id
+ AND j.user_id = jt.user_id
+WHERE j.user_id = sqlc.arg(user_id)
+  AND j.kind = sqlc.arg(kind)
+  AND j.status IN ('pending', 'running');
+

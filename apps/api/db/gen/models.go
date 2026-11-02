@@ -291,10 +291,11 @@ type UniverseState struct {
 }
 
 type User struct {
-	UserID    string
-	Nickname  string
-	Timezone  string
-	Locale    string
-	CreatedAt pgtype.Timestamptz
-	DeletedAt pgtype.Timestamptz
+	UserID          string
+	Nickname        string
+	Timezone        string
+	Locale          string
+	CreatedAt       pgtype.Timestamptz
+	DeletedAt       pgtype.Timestamptz
+	SignupSettledAt pgtype.Timestamptz
 }

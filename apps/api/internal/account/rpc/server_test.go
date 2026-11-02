@@ -206,6 +206,14 @@ func (absentProfileStore) CountRewardedInvitesByInviter(context.Context, platfor
 	return 0, nil
 }
 
+func (absentProfileStore) SignupSettlementState(context.Context, platform.UserScope) (bool, bool, error) {
+	return false, false, nil
+}
+
+func (absentProfileStore) MarkSignupSettled(context.Context, platform.UserScope, time.Time) error {
+	return nil
+}
+
 func (absentProfileStore) MarkInviteRewarded(context.Context, platform.UserScope, string, time.Time) error {
 	return nil
 }

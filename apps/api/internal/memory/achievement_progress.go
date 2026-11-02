@@ -22,6 +22,7 @@ func (s *LaunchService) recordLaunchProgress(
 	tx LaunchTx,
 	diaryID string,
 	launched []LaunchedMemory,
+	coActivations []NeuronMemoryActivation,
 ) error {
 	if len(launched) == 0 {
 		return nil
@@ -57,12 +58,12 @@ func (s *LaunchService) recordLaunchProgress(
 		}
 	}
 
-	return s.recordNeuronSharing(ctx, scope, tx, launchedPerNeuron)
+	return s.recordNeuronSharing(ctx, scope, tx, launchedPerNeuron, coActivations)
 }
 
 // recordNeuronSharing reports the two sharing facts, both read from the activation memberships this
-// launch just wrote. It reads CoActivations — the same query Link runs a moment earlier for the
-// temporal bonus — because the counts are a property of the graph, not of the launch payload.
+// launch just wrote — the same co-activation read Link uses for the temporal bonus — because the
+// counts are a property of the graph, not of the launch payload.
 //
 // A crossing is `before < 2 && after >= 2`, and `before` is derived by subtracting THIS launch's own
 // memberships rather than by testing `after == 2`. The difference is a real case: a neuron already in
@@ -77,20 +78,16 @@ func (s *LaunchService) recordNeuronSharing(
 	scope platform.UserScope,
 	tx LaunchTx,
 	launchedPerNeuron map[string]int,
+	activations []NeuronMemoryActivation,
 ) error {
 	if len(launchedPerNeuron) == 0 {
 		return nil
 	}
-	ids := make([]string, 0, len(launchedPerNeuron))
-	for id := range launchedPerNeuron {
-		ids = append(ids, id)
-	}
-	activations, err := tx.CoActivations(ctx, scope, ids)
-	if err != nil {
-		return err
-	}
-	memoriesPerNeuron := make(map[string]map[string]struct{}, len(ids))
+	memoriesPerNeuron := make(map[string]map[string]struct{}, len(launchedPerNeuron))
 	for _, activation := range activations {
+		if _, launchedNeuron := launchedPerNeuron[activation.NeuronID]; !launchedNeuron {
+			continue
+		}
 		memories := memoriesPerNeuron[activation.NeuronID]
 		if memories == nil {
 			memories = map[string]struct{}{}

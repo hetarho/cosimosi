@@ -8,6 +8,7 @@ import (
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -64,15 +65,61 @@ func (s Store) RecordPendingGistRises(ctx context.Context, scope platform.UserSc
 	return s.queries.RecordPendingGistRises(ctx, params)
 }
 
-func (s Store) ListMemoriesForConsolidation(ctx context.Context, scope platform.UserScope) ([]memory.EpisodicMemory, error) {
+func (s Store) ListMemoriesForConsolidation(ctx context.Context, scope platform.UserScope) ([]memory.ConsolidationMemory, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
 	}
-	rows, err := s.queries.ListUniverseEpisodicMemories(ctx, scope.UserID())
+	rows, err := s.queries.ListConsolidationMemories(ctx, scope.UserID())
 	if err != nil {
 		return nil, err
 	}
-	return mapEpisodicMemories(rows), nil
+	memories := make([]memory.ConsolidationMemory, 0, len(rows))
+	for _, row := range rows {
+		memories = append(memories, memory.ConsolidationMemory{
+			ID:                       row.ID,
+			Arousal:                  float64(row.Arousal),
+			BaseStrength:             float64(row.BaseStrength),
+			RecallCount:              row.RecallCount,
+			CreatedUniverseTime:      dateValue(row.CreatedUniverseTime),
+			LastRecalledUniverseTime: datePtr(row.LastRecalledUniverseTime),
+			ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
+			SemanticStage:            row.SemanticStage,
+			SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
+			PendingSemanticStage:     int16Ptr(row.PendingSemanticStage),
+			RepresentationRevision:   row.RepresentationRevision,
+			SemanticStagesPresent:    uint32(row.SemanticStagesPresent),
+			DecayStageCount:          int(row.DecayStageCount),
+			DecayStagesFilled:        int(row.DecayStagesFilled),
+		})
+	}
+	return memories, nil
+}
+
+func (s Store) ConsolidationTexts(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]memory.ConsolidationTexts, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	if len(memoryIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := s.queries.ListConsolidationTexts(ctx, dbgen.ListConsolidationTextsParams{
+		UserID:    scope.UserID(),
+		MemoryIds: memoryIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	texts := make([]memory.ConsolidationTexts, 0, len(rows))
+	for _, row := range rows {
+		texts = append(texts, memory.ConsolidationTexts{
+			MemoryID:       row.ID,
+			CurrentText:    row.CurrentText,
+			Seed:           int64Ptr(row.Seed),
+			SemanticStages: semanticStagesPtr(row.SemanticStages),
+			DecayStages:    decayStagesSlice(row.DecayStages),
+		})
+	}
+	return texts, nil
 }
 
 func (s Store) ApplyStageAdvances(ctx context.Context, scope platform.UserScope, advances []memory.StageAdvance) error {
@@ -96,19 +143,64 @@ func (s Store) ApplyStageAdvances(ctx context.Context, scope platform.UserScope,
 	return s.queries.ApplyConsolidationStageAdvances(ctx, params)
 }
 
-func (s Store) FillDecayStages(ctx context.Context, scope platform.UserScope, memoryID string, stages []string) error {
+func (s Store) FillDecayStages(ctx context.Context, scope platform.UserScope, fills []memory.DecayStageFill) error {
 	if err := s.ready(scope); err != nil {
 		return err
 	}
-	raw, err := json.Marshal(stages)
-	if err != nil {
+	for start := 0; start < len(fills); start += values.PersistenceGraphWriteBatchSize {
+		end := min(start+values.PersistenceGraphWriteBatchSize, len(fills))
+		params := dbgen.FillConsolidationDecayStagesParams{
+			UserID:      scope.UserID(),
+			MemoryIds:   make([]string, 0, end-start),
+			DecayStages: make([]string, 0, end-start),
+		}
+		for _, fill := range fills[start:end] {
+			raw, err := json.Marshal(fill.Stages)
+			if err != nil {
+				return err
+			}
+			params.MemoryIds = append(params.MemoryIds, fill.MemoryID)
+			params.DecayStages = append(params.DecayStages, string(raw))
+		}
+		if err := s.queries.FillConsolidationDecayStages(ctx, params); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AppendMemoryProvenances appends 변천사 rows in batches of persistence.graph_write_batch_size, with
+// the same kind and source guards as the single append.
+func (s Store) AppendMemoryProvenances(ctx context.Context, scope platform.UserScope, entries []memory.MemoryProvenance) error {
+	if err := s.ready(scope); err != nil {
 		return err
 	}
-	return s.queries.FillConsolidationDecayStages(ctx, dbgen.FillConsolidationDecayStagesParams{
-		DecayStages: raw,
-		UserID:      scope.UserID(),
-		MemoryID:    memoryID,
-	})
+	for _, entry := range entries {
+		if err := validProvenance(entry); err != nil {
+			return err
+		}
+	}
+	for start := 0; start < len(entries); start += values.PersistenceGraphWriteBatchSize {
+		end := min(start+values.PersistenceGraphWriteBatchSize, len(entries))
+		params := dbgen.AppendMemoryProvenancesParams{UserID: scope.UserID()}
+		for _, entry := range entries[start:end] {
+			stage := int16(0)
+			if entry.SemanticStage != nil {
+				stage = *entry.SemanticStage
+			}
+			params.Ids = append(params.Ids, entry.ID)
+			params.EpisodicMemoryIds = append(params.EpisodicMemoryIds, entry.EpisodicMemoryID)
+			params.Kinds = append(params.Kinds, string(entry.Kind))
+			params.Sources = append(params.Sources, string(entry.Source))
+			params.Texts = append(params.Texts, entry.Text)
+			params.UniverseTimes = append(params.UniverseTimes, pgDate(entry.UniverseTime))
+			params.SemanticStages = append(params.SemanticStages, stage)
+		}
+		if err := s.queries.AppendMemoryProvenances(ctx, params); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s Store) ReplaySetNeurons(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]memory.ExistingNeuron, error) {

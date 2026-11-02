@@ -87,9 +87,18 @@ FROM users
 WHERE user_id = $1
 `
 
-func (q *Queries) GetUserProfile(ctx context.Context, userID string) (User, error) {
+type GetUserProfileRow struct {
+	UserID    string
+	Nickname  string
+	Timezone  string
+	Locale    string
+	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserProfile(ctx context.Context, userID string) (GetUserProfileRow, error) {
 	row := q.db.QueryRow(ctx, getUserProfile, userID)
-	var i User
+	var i GetUserProfileRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Nickname,
@@ -134,6 +143,38 @@ func (q *Queries) ListUserTimezones(ctx context.Context, userIds []string) ([]Li
 	return items, nil
 }
 
+const markSignupSettled = `-- name: MarkSignupSettled :exec
+UPDATE users
+SET signup_settled_at = COALESCE(signup_settled_at, $1)
+WHERE user_id = $2
+`
+
+type MarkSignupSettledParams struct {
+	SettledAt pgtype.Timestamptz
+	UserID    string
+}
+
+// Stamps a completed signup settlement once; a later stamp keeps the first.
+func (q *Queries) MarkSignupSettled(ctx context.Context, arg MarkSignupSettledParams) error {
+	_, err := q.db.Exec(ctx, markSignupSettled, arg.SettledAt, arg.UserID)
+	return err
+}
+
+const signupSettlementState = `-- name: SignupSettlementState :one
+SELECT signup_settled_at
+FROM users
+WHERE user_id = $1
+`
+
+// The signup-settlement gate: whether the account exists and whether its settlement already
+// completed (ACCT-21).
+func (q *Queries) SignupSettlementState(ctx context.Context, userID string) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, signupSettlementState, userID)
+	var signup_settled_at pgtype.Timestamptz
+	err := row.Scan(&signup_settled_at)
+	return signup_settled_at, err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET nickname = $1,
@@ -151,16 +192,25 @@ type UpdateUserProfileParams struct {
 	UserID   string
 }
 
+type UpdateUserProfileRow struct {
+	UserID    string
+	Nickname  string
+	Timezone  string
+	Locale    string
+	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
+}
+
 // UpdateProfile is the sole writer of the editable profile fields. A withdrawn row cannot be
 // changed during its retention window.
-func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error) {
 	row := q.db.QueryRow(ctx, updateUserProfile,
 		arg.Nickname,
 		arg.Timezone,
 		arg.Locale,
 		arg.UserID,
 	)
-	var i User
+	var i UpdateUserProfileRow
 	err := row.Scan(
 		&i.UserID,
 		&i.Nickname,

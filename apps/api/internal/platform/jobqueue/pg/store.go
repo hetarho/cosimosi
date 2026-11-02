@@ -155,17 +155,62 @@ func (s Store) Complete(ctx context.Context, job jobqueue.Record) error {
 
 // HasActiveTargetJob reports whether a pending or running job of kind already targets the row at
 // the expected revision, so a producer can avoid stacking duplicate work on an unfinished job.
-func (s Store) HasActiveTargetJob(ctx context.Context, scope platform.UserScope, kind jobqueue.Kind, target jobqueue.Target) (bool, error) {
+// ActiveTargetIDs returns which of the targets a pending or running job of kind already covers at
+// the expected revision. The targets share one kind.
+func (s Store) ActiveTargetIDs(ctx context.Context, scope platform.UserScope, kind jobqueue.Kind, targets []jobqueue.Target) ([]string, error) {
 	if err := s.ready(scope); err != nil {
-		return false, err
+		return nil, err
 	}
-	return s.queries.HasActiveTargetJob(ctx, dbgen.HasActiveTargetJobParams{
-		UserID:           scope.UserID(),
-		TargetKind:       string(target.Kind),
-		TargetID:         target.ID,
-		ExpectedRevision: target.ExpectedRevision,
-		Kind:             string(kind),
-	})
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	params := dbgen.ListActiveTargetIDsParams{
+		UserID:     scope.UserID(),
+		TargetKind: string(targets[0].Kind),
+		Kind:       string(kind),
+	}
+	for _, target := range targets {
+		if target.Kind != targets[0].Kind {
+			return nil, errors.New("active target read requires targets of one kind")
+		}
+		params.TargetIds = append(params.TargetIds, target.ID)
+		params.ExpectedRevisions = append(params.ExpectedRevisions, target.ExpectedRevision)
+	}
+	return s.queries.ListActiveTargetIDs(ctx, params)
+}
+
+// EnqueueJobs inserts dedup-free jobs and their targets in one statement. The caller sizes the
+// batch; each job carries the empty control payload and runs now unless it names a time.
+func (s Store) EnqueueJobs(ctx context.Context, scope platform.UserScope, jobs []jobqueue.Record) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	if len(jobs) == 0 {
+		return nil
+	}
+	params := dbgen.EnqueueJobsParams{UserID: scope.UserID()}
+	for _, job := range jobs {
+		if job.DedupKey != nil || job.Status != jobqueue.StatusPending || job.Attempts != 0 {
+			return errors.New("batch enqueue takes only fresh pending jobs without a dedup key")
+		}
+		if len(job.Targets) == 0 {
+			return errors.New("memory job requires at least one target")
+		}
+		params.Ids = append(params.Ids, job.ID)
+		params.Kinds = append(params.Kinds, string(job.Kind))
+		params.NextRunAts = append(params.NextRunAts, pgTime(timeOrNow(job.NextRunAt)))
+		params.CreatedAts = append(params.CreatedAts, pgTime(timeOrNow(job.CreatedAt)))
+		for _, target := range job.Targets {
+			if target.Kind == "" || target.ID == "" {
+				return errors.New("memory job target requires kind and id")
+			}
+			params.TargetJobIds = append(params.TargetJobIds, job.ID)
+			params.TargetKinds = append(params.TargetKinds, string(target.Kind))
+			params.TargetIds = append(params.TargetIds, target.ID)
+			params.ExpectedRevisions = append(params.ExpectedRevisions, target.ExpectedRevision)
+		}
+	}
+	return s.queries.EnqueueJobs(ctx, params)
 }
 
 func (s Store) CancelUserJob(

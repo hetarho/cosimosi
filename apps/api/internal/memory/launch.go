@@ -115,6 +115,7 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 		}
 
 		launched := make([]LaunchedMemory, 0, len(confirmed))
+		activations := make([]NeuronActivation, 0)
 		for _, confirmedMemory := range confirmed {
 			emotion, ok := NewEmotion(confirmedMemory.Mood)
 			if !ok {
@@ -154,27 +155,32 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 				// The schema-forced extractor output carries no weight by [W4a]
 				// design and the column is NOT NULL, so the launch writes the
 				// tuned uniform weight ([E8] differentiation is a later epic).
-				if _, err := tx.InsertNeuronActivation(ctx, scope, NeuronActivation{
+				activations = append(activations, NeuronActivation{
 					EpisodicMemoryID: episodicMemory.ID,
 					NeuronID:         neuronID,
 					Weight:           float32(values.EncodeActivationWeight),
-				}); err != nil {
-					return err
-				}
+				})
 				neuronIDs = append(neuronIDs, neuronID)
 			}
 			launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
 		}
+		if err := tx.InsertNeuronActivations(ctx, scope, activations); err != nil {
+			return err
+		}
+		// One membership read, after the activations landed, serves both Link's temporal bonus and
+		// the sharing report: the counts are a property of the graph this launch just made ([A6]).
+		coActivations, err := tx.CoActivations(ctx, scope, launchedNeuronIDs(launched))
+		if err != nil {
+			return err
+		}
 
 		// Link runs before the async enqueue: synapses land atomically
 		// with the launch.
-		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
+		if err := s.linker.LinkLaunched(ctx, scope, tx, launched, coActivations); err != nil {
 			return err
 		}
-		// The counter facts, reported after the activations are persisted so the sharing depth is
-		// read from the graph this launch just made ([A6]). Same transaction, so a rollback here
-		// leaves no counter advanced.
-		if err := s.recordLaunchProgress(ctx, scope, tx, diary.ID, launched); err != nil {
+		// The counter facts ride the same transaction, so a rollback here leaves no counter advanced.
+		if err := s.recordLaunchProgress(ctx, scope, tx, diary.ID, launched, coActivations); err != nil {
 			return err
 		}
 		if err := s.enqueueAsyncJobs(ctx, scope, tx, launched, newNeurons); err != nil {
@@ -259,26 +265,51 @@ func (s *LaunchService) resolveNeurons(ctx context.Context, scope platform.UserS
 		idByKey[neuronKey(neuron.Name, neuron.Type)] = neuron.ID
 	}
 
-	newNeurons := make([]Neuron, 0)
+	proposed := make([]Neuron, 0)
+	proposedKeys := make([]string, 0)
 	for _, key := range keys {
 		if _, ok := idByKey[key]; ok {
 			continue
 		}
-		proposed := byKey[key]
-		name := strings.TrimSpace(proposed.Name)
-		created, err := tx.UpsertNeuron(ctx, scope, Neuron{
+		name := strings.TrimSpace(byKey[key].Name)
+		proposed = append(proposed, Neuron{
 			ID:        s.newID(),
 			Name:      &name,
-			Type:      proposed.Type,
+			Type:      byKey[key].Type,
 			CreatedAt: s.now(),
 		})
-		if err != nil {
-			return nil, nil, err
-		}
-		idByKey[key] = created.ID
-		newNeurons = append(newNeurons, created)
+		proposedKeys = append(proposedKeys, key)
 	}
-	return idByKey, newNeurons, nil
+	if len(proposed) == 0 {
+		return idByKey, nil, nil
+	}
+	newNeurons, err := tx.InsertNeurons(ctx, scope, proposed)
+	if err != nil {
+		return nil, nil, err
+	}
+	createdByID := make(map[string]Neuron, len(newNeurons))
+	for _, neuron := range newNeurons {
+		createdByID[neuron.ID] = neuron
+	}
+	ordered := make([]Neuron, 0, len(proposed))
+	for i, neuron := range proposed {
+		created, ok := createdByID[neuron.ID]
+		if !ok {
+			return nil, nil, fmt.Errorf("neuron %s was not created", neuron.ID)
+		}
+		idByKey[proposedKeys[i]] = created.ID
+		ordered = append(ordered, created)
+	}
+	return idByKey, ordered, nil
+}
+
+// launchedNeuronIDs is the distinct set of neurons this launch activated.
+func launchedNeuronIDs(launched []LaunchedMemory) []string {
+	ids := make([]string, 0)
+	for _, memory := range launched {
+		ids = append(ids, memory.NeuronIDs...)
+	}
+	return dedupIDs(ids)
 }
 
 // enqueueAsyncJobs hands the slow work to the worker (§2.8): one embed job for

@@ -228,42 +228,58 @@ func (s *ReadService) ResolveInviteSettlement(
 
 // SettleSignup pairs account bookkeeping with independently idempotent Twinkle credits. Credits
 // land before rewarded_at so a crash can only replay dedup-keyed no-ops, never lose a reward.
+//
+// It runs after every admitted launch until it has nothing left to do, then stamps the account
+// settled and returns early from then on. Settled means the bonus leg succeeded and the invite leg
+// either had no settleable invite or credited it. A refused invite keeps settlement running: email
+// verification is judged again at the next launch, and a refusal does not say which condition failed.
 func (s *Service) SettleSignup(ctx context.Context, scope platform.UserScope) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
-	if err := s.requireSignup(ctx, scope); err != nil {
+	found, settled, err := s.store.SignupSettlementState(ctx, scope)
+	if err != nil {
 		return err
+	}
+	if !found {
+		return ErrSignupRequired
+	}
+	if settled {
+		return nil
 	}
 	invite, err := s.store.FindSettleableInviteForInvitee(ctx, scope)
 	settlementErr := err
+	inviteSettled := err == nil && invite == nil
 	if err == nil && invite != nil {
 		inviterScope, scopeErr := platform.NewUserScope(invite.InviterUserID)
 		if scopeErr != nil {
 			settlementErr = ErrInviteNotEligible
 		} else {
-			settlementErr = s.settleInvite(ctx, scope, inviterScope, invite)
+			inviteSettled, settlementErr = s.settleInvite(ctx, scope, inviterScope, invite)
 		}
 	}
 
-	// The one-time signup bonus is independent of invite eligibility and is attempted after every
-	// admitted launch. Its account-scoped dedup key makes the steady-state call a no-op.
+	// The one-time signup bonus is independent of invite eligibility and is attempted on every
+	// unsettled pass. Its account-scoped dedup key makes a repeat a no-op.
 	bonusErr := s.signupBonusGranter.Grant(ctx, scope)
-	return errors.Join(settlementErr, bonusErr)
+	if err := errors.Join(settlementErr, bonusErr); err != nil || !inviteSettled {
+		return err
+	}
+	return s.store.MarkSignupSettled(ctx, scope, s.now().UTC())
 }
 
-// settleInvite credits one invite and stamps it rewarded. It holds no lock and no transaction of its
-// own: the inviter's reward cap is enforced inside the grant's ledger transaction, which locks the
-// inviter's rewards and recounts them, so concurrent invitees past the cap are refused there and
-// their invites stay settleable for the next attempt. The private context marker makes the resolver
-// unreachable from the legacy ClaimInvite wire method.
-func (s *Service) settleInvite(ctx context.Context, scope, inviterScope platform.UserScope, invite *SettleableInvite) error {
+// settleInvite credits one invite and stamps it rewarded, reporting whether it was credited. It holds
+// no lock and no transaction of its own: the inviter's reward cap is enforced inside the grant's
+// ledger transaction, which locks the inviter's rewards and recounts them, so concurrent invitees
+// past the cap are refused there and their invites stay settleable for the next attempt. The private
+// context marker makes the resolver unreachable from the legacy ClaimInvite wire method.
+func (s *Service) settleInvite(ctx context.Context, scope, inviterScope platform.UserScope, invite *SettleableInvite) (bool, error) {
 	grantErr := s.inviteGranter.Grant(withSignupSettlement(ctx), scope, invite.Token)
 	if grantErr != nil {
 		if errors.Is(grantErr, ErrInviteNotEligible) {
-			return nil
+			return false, nil
 		}
-		return grantErr
+		return false, grantErr
 	}
 	// The inviter's counter is reported BEFORE rewarded_at is stamped, deliberately: a report
 	// failure then leaves the invite settleable, so the next SettleSignup heals it (the credit is
@@ -271,7 +287,10 @@ func (s *Service) settleInvite(ctx context.Context, scope, inviterScope platform
 	// and the only row reading this counter has a target of one — so a retry counting twice costs
 	// nothing, while losing the count would cost the achievement.
 	if err := s.achievements.RecordProgress(ctx, inviterScope, CounterInviteSettled, 1); err != nil {
-		return fmt.Errorf("record invite settled: %w", err)
+		return false, fmt.Errorf("record invite settled: %w", err)
 	}
-	return s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC())
+	if err := s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC()); err != nil {
+		return false, err
+	}
+	return true, nil
 }

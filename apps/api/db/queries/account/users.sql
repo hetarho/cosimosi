@@ -33,6 +33,19 @@ SELECT user_id, nickname, timezone, locale, created_at, deleted_at
 FROM users
 WHERE user_id = sqlc.arg(user_id);
 
+-- The signup-settlement gate: whether the account exists and whether its settlement already
+-- completed (ACCT-21).
+-- name: SignupSettlementState :one
+SELECT signup_settled_at
+FROM users
+WHERE user_id = sqlc.arg(user_id);
+
+-- Stamps a completed signup settlement once; a later stamp keeps the first.
+-- name: MarkSignupSettled :exec
+UPDATE users
+SET signup_settled_at = COALESCE(signup_settled_at, sqlc.arg(settled_at))
+WHERE user_id = sqlc.arg(user_id);
+
 -- Batch form of the published timezone read used by Twinkle's admin balance enrichment. Missing
 -- profile rows are omitted; account's service maps them to its UTC default.
 -- name: ListUserTimezones :many

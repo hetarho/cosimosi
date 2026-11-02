@@ -43,11 +43,8 @@ func (s Store) AppendMemoryProvenance(ctx context.Context, scope platform.UserSc
 	if err := s.ready(scope); err != nil {
 		return err
 	}
-	if !entry.Kind.Valid() || entry.Kind == memory.ProvenanceKindCreated {
-		return fmt.Errorf("%w: %q", ErrProvenanceKindInvalid, entry.Kind)
-	}
-	if !entry.Source.Valid() {
-		return fmt.Errorf("%w: %q", ErrProvenanceSourceInvalid, entry.Source)
+	if err := validProvenance(entry); err != nil {
+		return err
 	}
 	return s.queries.AppendMemoryProvenance(ctx, dbgen.AppendMemoryProvenanceParams{
 		ID:               entry.ID,
@@ -59,4 +56,16 @@ func (s Store) AppendMemoryProvenance(ctx context.Context, scope platform.UserSc
 		UniverseTime:     pgDate(entry.UniverseTime),
 		SemanticStage:    pgInt2Ptr(entry.SemanticStage),
 	})
+}
+
+// validProvenance refuses the kinds never written ('created' is synthesized at read) and unknown
+// sources before any row is appended.
+func validProvenance(entry memory.MemoryProvenance) error {
+	if !entry.Kind.Valid() || entry.Kind == memory.ProvenanceKindCreated {
+		return fmt.Errorf("%w: %q", ErrProvenanceKindInvalid, entry.Kind)
+	}
+	if !entry.Source.Valid() {
+		return fmt.Errorf("%w: %q", ErrProvenanceSourceInvalid, entry.Source)
+	}
+	return nil
 }

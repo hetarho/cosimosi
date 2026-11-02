@@ -36,6 +36,8 @@ type fakeStore struct {
 	providerWrites  int
 	bindWrites      int
 	lastBound       Invite
+	settledAt       map[string]time.Time
+	settlementReads int
 }
 
 func (f *fakeStore) UserTimezones(_ context.Context, userIDs []string) (map[string]string, error) {
@@ -1225,6 +1227,11 @@ func TestSettleSignupCreditsBeforeMarkAndAlwaysAttemptsBonus(t *testing.T) {
 	if inviteGranter.grants != 1 || bonusGranter.grants != 1 || store.rewardedCounts["inviter"] != 1 {
 		t.Fatalf("settlement = invite grants %d bonus grants %d rewarded %d", inviteGranter.grants, bonusGranter.grants, store.rewardedCounts["inviter"])
 	}
+	if _, settled := store.settledAt["invitee"]; !settled {
+		t.Fatal("a fully applied settlement did not stamp the account settled")
+	}
+	// The remaining phases exercise the unsettled path with a freshly bound invite.
+	delete(store.settledAt, "invitee")
 
 	store.invites["invitee"] = SettleableInvite{
 		InviteID:      "invite-2",
@@ -1419,5 +1426,83 @@ func TestNewServiceRefusesMissingWithdrawalSeams(t *testing.T) {
 		if _, err := NewService(deps); !errors.Is(err, testCase.want) {
 			t.Errorf("NewService without %s err = %v, want %v", testCase.name, err, testCase.want)
 		}
+	}
+}
+
+func (f *fakeStore) SignupSettlementState(_ context.Context, scope platform.UserScope) (bool, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.settlementReads++
+	if f.getErr != nil {
+		return false, false, f.getErr
+	}
+	if _, ok := f.profiles[scope.UserID()]; !ok {
+		return false, false, nil
+	}
+	_, settled := f.settledAt[scope.UserID()]
+	return true, settled, nil
+}
+
+func (f *fakeStore) MarkSignupSettled(_ context.Context, scope platform.UserScope, settledAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.settledAt == nil {
+		f.settledAt = map[string]time.Time{}
+	}
+	if _, ok := f.settledAt[scope.UserID()]; !ok {
+		f.settledAt[scope.UserID()] = settledAt
+	}
+	return nil
+}
+
+// Settlement stops re-running once it completes: the stamp follows a bonus with no settleable invite
+// or a credited one, a refused invite keeps it unsettled (email verification is judged again at the
+// next launch), and a settled account touches neither leg.
+func TestSettleSignupStampsCompletionAndThenReturnsEarly(t *testing.T) {
+	store := &fakeStore{
+		profiles: map[string]Profile{
+			"invitee": {UserID: "invitee", Timezone: "UTC"},
+			"inviter": {UserID: "inviter", Timezone: "UTC"},
+		},
+		invites: map[string]SettleableInvite{"invitee": {
+			InviteID: "invite-1", InviterUserID: "inviter", InviteeUserID: "invitee", Token: "token",
+		}},
+	}
+	inviteGranter := &fakeInviteGranter{err: ErrInviteNotEligible}
+	bonusGranter := &fakeSignupBonusGranter{}
+	service, err := NewService(withWithdrawal(ServiceDeps{
+		Store:              store,
+		Directory:          &fakeDirectory{},
+		InviteGranter:      inviteGranter,
+		SignupBonusGranter: bonusGranter,
+		Achievements:       NoAchievementRecorder{},
+	}))
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	scope := mustScope(t, "invitee")
+
+	if err := service.SettleSignup(context.Background(), scope); err != nil {
+		t.Fatalf("SettleSignup (refused invite) failed: %v", err)
+	}
+	if _, settled := store.settledAt["invitee"]; settled {
+		t.Fatal("a refused invite stamped the account settled; verification may still pass later")
+	}
+
+	inviteGranter.err = nil
+	if err := service.SettleSignup(context.Background(), scope); err != nil {
+		t.Fatalf("SettleSignup (credited invite) failed: %v", err)
+	}
+	if _, settled := store.settledAt["invitee"]; !settled {
+		t.Fatal("a credited invite and bonus did not stamp the account settled")
+	}
+
+	invites, bonuses := inviteGranter.grants, bonusGranter.grants
+	if err := service.SettleSignup(context.Background(), scope); err != nil {
+		t.Fatalf("SettleSignup (settled) failed: %v", err)
+	}
+	if inviteGranter.grants != invites || bonusGranter.grants != bonuses {
+		t.Fatalf("a settled account re-ran settlement: invite grants %d→%d bonus grants %d→%d",
+			invites, inviteGranter.grants, bonuses, bonusGranter.grants)
 	}
 }

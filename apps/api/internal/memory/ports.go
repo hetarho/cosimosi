@@ -72,8 +72,10 @@ type LaunchTx interface {
 	InsertDiary(ctx context.Context, scope platform.UserScope, diary Diary) (Diary, error)
 	InsertEpisodicMemory(ctx context.Context, scope platform.UserScope, episodicMemory EpisodicMemory) (EpisodicMemory, error)
 	FindNeuronsByNames(ctx context.Context, scope platform.UserScope, names []string) ([]ExistingNeuron, error)
-	UpsertNeuron(ctx context.Context, scope platform.UserScope, neuron Neuron) (Neuron, error)
-	InsertNeuronActivation(ctx context.Context, scope platform.UserScope, activation NeuronActivation) (NeuronActivation, error)
+	// InsertNeurons creates the launch's genuinely new neurons and InsertNeuronActivations its
+	// activations, each in batches of persistence.graph_write_batch_size statements' worth of rows.
+	InsertNeurons(ctx context.Context, scope platform.UserScope, neurons []Neuron) ([]Neuron, error)
+	InsertNeuronActivations(ctx context.Context, scope platform.UserScope, activations []NeuronActivation) error
 	EnqueueJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error)
 	SynapseStore
 	UniverseClockStore
@@ -193,7 +195,9 @@ type SpendSignalRepo interface {
 // the last step of its transaction so synapse writes land atomically with the
 // launch. A nil Linker skips linking (no synapse is created at launch).
 type Linker interface {
-	LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory) error
+	// coActivations are the launched neurons' memory memberships read once after the launch's
+	// activations landed; the launch shares the same read with its achievement report.
+	LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, coActivations []NeuronMemoryActivation) error
 }
 
 // LaunchedMemory is what the Link seam receives per launched memory: the persisted

@@ -11,9 +11,9 @@ import (
 	"github.com/cosimosi/api/internal/platform/jobqueue"
 )
 
-// The repair pass asks whether a regeneration is already queued; only a pending or running job of
-// the same kind, target and revision counts.
-func TestHasActiveTargetJobSeesOnlyUnfinishedWorkAtTheRevision(t *testing.T) {
+// The repair pass asks which regenerations are already queued; only a pending or running job of the
+// same kind, target and revision counts, and a batch-enqueued job counts like a single one.
+func TestActiveTargetIDsSeeOnlyUnfinishedWorkAtTheRevision(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -37,12 +37,12 @@ func TestHasActiveTargetJobSeesOnlyUnfinishedWorkAtTheRevision(t *testing.T) {
 
 	check := func(kind jobqueue.Kind, candidate jobqueue.Target, want bool) {
 		t.Helper()
-		active, err := store.HasActiveTargetJob(ctx, scope, kind, candidate)
+		active, err := store.ActiveTargetIDs(ctx, scope, kind, []jobqueue.Target{candidate})
 		if err != nil {
-			t.Fatalf("HasActiveTargetJob failed: %v", err)
+			t.Fatalf("ActiveTargetIDs failed: %v", err)
 		}
-		if active != want {
-			t.Fatalf("HasActiveTargetJob(%s, %+v) = %v, want %v", kind, candidate, active, want)
+		if got := len(active) == 1 && active[0] == candidate.ID; got != want {
+			t.Fatalf("ActiveTargetIDs(%s, %+v) = %v, want active %v", kind, candidate, active, want)
 		}
 	}
 	check(memory.JobKindSemanticize, target, true)
@@ -56,4 +56,13 @@ func TestHasActiveTargetJobSeesOnlyUnfinishedWorkAtTheRevision(t *testing.T) {
 		t.Fatalf("finish job failed: %v", err)
 	}
 	check(memory.JobKindSemanticize, target, false)
+
+	batched := jobqueue.Target{Kind: jobqueue.TargetMemory, ID: base + "-batched", ExpectedRevision: 2}
+	if err := store.EnqueueJobs(ctx, scope, []jobqueue.Record{{
+		ID: base + "-batch-job", Kind: memory.JobKindSemanticize, Status: jobqueue.StatusPending,
+		Targets: []jobqueue.Target{batched},
+	}}); err != nil {
+		t.Fatalf("EnqueueJobs failed: %v", err)
+	}
+	check(memory.JobKindSemanticize, batched, true)
 }

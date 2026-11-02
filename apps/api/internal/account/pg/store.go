@@ -213,7 +213,7 @@ func (s Store) GetUserProfile(ctx context.Context, scope platform.UserScope) (ac
 	if err != nil {
 		return account.Profile{}, false, err
 	}
-	return profileFromRow(row), true, nil
+	return profileFromRow(profileRow(row)), true, nil
 }
 
 func (s Store) CreateUserIfAbsent(
@@ -275,7 +275,7 @@ func (s Store) UpdateUserProfile(ctx context.Context, scope platform.UserScope, 
 	if err != nil {
 		return account.Profile{}, false, err
 	}
-	return profileFromRow(row), true, nil
+	return profileFromRow(profileRow(row)), true, nil
 }
 
 func (s Store) ListAuthProviders(ctx context.Context, scope platform.UserScope) ([]account.AuthProvider, error) {
@@ -473,6 +473,30 @@ func (s Store) MarkInviteRewarded(
 	})
 }
 
+func (s Store) SignupSettlementState(ctx context.Context, scope platform.UserScope) (bool, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, false, err
+	}
+	settledAt, err := s.queries.SignupSettlementState(ctx, scope.UserID())
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return true, settledAt.Valid, nil
+}
+
+func (s Store) MarkSignupSettled(ctx context.Context, scope platform.UserScope, settledAt time.Time) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	return s.queries.MarkSignupSettled(ctx, dbgen.MarkSignupSettledParams{
+		SettledAt: pgtype.Timestamptz{Time: settledAt.UTC(), Valid: true},
+		UserID:    scope.UserID(),
+	})
+}
+
 func (s Store) ready(scope platform.UserScope) error {
 	if scope.UserID() == "" {
 		return ErrUserScopeRequired
@@ -483,7 +507,18 @@ func (s Store) ready(scope platform.UserScope) error {
 	return nil
 }
 
-func profileFromRow(row dbgen.User) account.Profile {
+// profileRow is the profile columns every profile query returns; the settlement marker is not part
+// of the profile.
+type profileRow struct {
+	UserID    string
+	Nickname  string
+	Timezone  string
+	Locale    string
+	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
+}
+
+func profileFromRow(row profileRow) account.Profile {
 	return account.Profile{
 		UserID:    row.UserID,
 		Nickname:  row.Nickname,

@@ -1,6 +1,6 @@
 # ACCT account & access
 
-> r3 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
+> r4 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
 
 ## decisions
 - ACCT-1 [o] only an authenticated user reaches their own universe, and every product row is isolated per user by `user_id` →!AUTH
@@ -71,7 +71,7 @@
   - at most once per account: dedup key `signup_bonus:<userID>`, ledger reason `signup_bonus` →=TWINK
   - paid whether or not an invite qualifies, so onboarding is never empty
   - withdrawing cannot re-arm it: a withdrawn scope cannot call `SignUp` →=ACCT-23, and a swept subject never recurs →~ACCT-26
-- ACCT-12 [o] Supabase Auth owns credentials, email, email verification and provider membership; the product `users` row owns only nickname, time zone, locale, `created_at` and the withdrawal marker `deleted_at` ← a copied email goes stale at the user's next change
+- ACCT-12 [o] Supabase Auth owns credentials, email, email verification and provider membership; the product `users` row owns only nickname, time zone, locale, `created_at`, the withdrawal marker `deleted_at` and the settlement marker `signup_settled_at` ← a copied email goes stale at the user's next change
   - no email column: profile responses join the current directory email at read time
   - a directory failure while reading the email fails `GetProfile` and `UpdateProfile`; the profile gate then shows its refused arm →~ACCT-32
   - the GoTrue Admin adapter lives in `internal/platform/supabase`, returns platform-owned DTOs and imports no product context; `account` and `admin` each bind it through their own port at `cmd/api` →=ADMIN
@@ -138,6 +138,8 @@
   - the counter report precedes the stamp: a failed report leaves the invite settleable, and the next settlement heals it with dedup-keyed credits
   - credits before the stamp: a crash replays dedup-keyed no-ops and never loses or doubles a reward
   - dedup keys `invite:<inviteID>` (inviter), `invite_signup:<inviteID>` (invitee), `signup_bonus:<userID>`; twinkle enforces the cap again inside its ledger transaction
+  - settlement runs after every admitted launch until it completes, then stamps `users.signup_settled_at` and returns before either leg from then on ← every launch otherwise re-ran an invite probe and a ledger transaction for the life of the account
+  - complete means the bonus leg succeeded and the invite leg found no settleable invite or credited it; a refused invite leaves the account unsettled, because the refusal does not say whether the transient email condition (ACCT-20 #4) failed
   - the bonus is attempted after every admitted launch; its dedup key makes the steady state a no-op
   - no settled reward is ever reversed, by withdrawal or anything else →!INV-1
 - ACCT-22 [o] `Withdraw` stamps `users.deleted_at` with real-clock UTC and schedules one deduplicated `withdrawal_sweep` job due at the deadline; `deleted_at` is the only withdrawal fact and the source of the deadline →!ACCT-10
@@ -313,6 +315,7 @@
 
 ## chg
 
+- r4 261103 ACCT-12✎ `users` columns +`signup_settled_at` ; ACCT-21✎ settlement re-run after every launch→stops once completed (bonus applied and no settleable or a credited invite)
 - r3 261103 ACCT-6✎ ACCT-33✎ ACCT-34✎ ACCT-40✎ ACCT-42✎ FE account pieces `packages/auth`→`packages/account`
 - r2 261102 ACCT-22✎ memory-owned withdrawal scheduling→account-owned identity and handler over the infrastructure queue; persisted kind, dedup key and target unchanged
 - r1 261102 initial

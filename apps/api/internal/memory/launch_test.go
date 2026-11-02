@@ -240,23 +240,27 @@ func (f *fakeLaunchStore) FindNeuronsByNames(_ context.Context, _ platform.UserS
 	return matched, nil
 }
 
-func (f *fakeLaunchStore) UpsertNeuron(_ context.Context, _ platform.UserScope, neuron Neuron) (Neuron, error) {
-	if err := f.fail("UpsertNeuron"); err != nil {
-		return Neuron{}, err
+func (f *fakeLaunchStore) InsertNeurons(_ context.Context, _ platform.UserScope, neurons []Neuron) ([]Neuron, error) {
+	if err := f.fail("InsertNeurons"); err != nil {
+		return nil, err
 	}
-	if neuron.RepresentationRevision == 0 {
-		neuron.RepresentationRevision = 1
+	created := make([]Neuron, 0, len(neurons))
+	for _, neuron := range neurons {
+		if neuron.RepresentationRevision == 0 {
+			neuron.RepresentationRevision = 1
+		}
+		f.staging.neurons = append(f.staging.neurons, neuron)
+		created = append(created, neuron)
 	}
-	f.staging.neurons = append(f.staging.neurons, neuron)
-	return neuron, nil
+	return created, nil
 }
 
-func (f *fakeLaunchStore) InsertNeuronActivation(_ context.Context, _ platform.UserScope, activation NeuronActivation) (NeuronActivation, error) {
-	if err := f.fail("InsertNeuronActivation"); err != nil {
-		return NeuronActivation{}, err
+func (f *fakeLaunchStore) InsertNeuronActivations(_ context.Context, _ platform.UserScope, activations []NeuronActivation) error {
+	if err := f.fail("InsertNeuronActivations"); err != nil {
+		return err
 	}
-	f.staging.activations = append(f.staging.activations, activation)
-	return activation, nil
+	f.staging.activations = append(f.staging.activations, activations...)
+	return nil
 }
 
 func (f *fakeLaunchStore) EnqueueJob(_ context.Context, _ platform.UserScope, job jobqueue.Record) (jobqueue.Record, error) {
@@ -353,7 +357,7 @@ type fakeLinker struct {
 	err      error
 }
 
-func (f *fakeLinker) LinkLaunched(_ context.Context, _ platform.UserScope, _ LaunchTx, launched []LaunchedMemory) error {
+func (f *fakeLinker) LinkLaunched(_ context.Context, _ platform.UserScope, _ LaunchTx, launched []LaunchedMemory, _ []NeuronMemoryActivation) error {
 	f.calls++
 	f.launched = append([]LaunchedMemory(nil), launched...)
 	return f.err
@@ -559,7 +563,7 @@ func TestPersistEncodedAcceptsAPassageTheWriterRewrote(t *testing.T) {
 
 func TestPersistEncodedMidStepFailureLeavesNoPartialRows(t *testing.T) {
 	t.Parallel()
-	for _, method := range []string{"InsertEpisodicMemory", "UpsertNeuron", "InsertNeuronActivation", "EnqueueJob"} {
+	for _, method := range []string{"InsertEpisodicMemory", "InsertNeurons", "InsertNeuronActivations", "CoActivations", "EnqueueJob"} {
 		fixture := newFixture(t)
 		fixture.launches.failMethod = method
 		_, err := fixture.launch.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -60,6 +61,8 @@ type fakeConsolidateTx struct {
 	downscaled      []SynapseStrength
 	downscaleCalls  int
 	jobs            []jobqueue.Record
+	enqueueBatches  int
+	textReads       [][]string
 	listMemoriesErr error
 }
 
@@ -76,18 +79,29 @@ func (f *fakeConsolidateTx) EnqueueJob(_ context.Context, _ platform.UserScope, 
 	return job, nil
 }
 
-func (f *fakeConsolidateTx) HasActiveTargetJob(_ context.Context, _ platform.UserScope, kind jobqueue.Kind, target jobqueue.Target) (bool, error) {
-	for _, job := range f.jobs {
-		if job.Kind != kind || (job.Status != jobqueue.StatusPending && job.Status != jobqueue.StatusRunning) {
-			continue
-		}
-		for _, candidate := range job.Targets {
-			if candidate == target {
-				return true, nil
+func (f *fakeConsolidateTx) EnqueueJobs(_ context.Context, _ platform.UserScope, jobs []jobqueue.Record) error {
+	f.enqueueBatches++
+	for _, job := range jobs {
+		job.Payload = []byte(`{}`)
+		f.jobs = append(f.jobs, job)
+	}
+	return nil
+}
+
+func (f *fakeConsolidateTx) ActiveTargetIDs(_ context.Context, _ platform.UserScope, kind jobqueue.Kind, targets []jobqueue.Target) ([]string, error) {
+	active := make([]string, 0)
+	for _, target := range targets {
+		for _, job := range f.jobs {
+			if job.Kind != kind || (job.Status != jobqueue.StatusPending && job.Status != jobqueue.StatusRunning) {
+				continue
+			}
+			if slices.Contains(job.Targets, target) {
+				active = append(active, target.ID)
+				break
 			}
 		}
 	}
-	return false, nil
+	return active, nil
 }
 
 func (f *fakeConsolidateTx) LockGraphMutation(context.Context, platform.UserScope) error {
@@ -110,19 +124,68 @@ func (f *fakeConsolidateTx) AdvanceUniverseClock(_ context.Context, _ platform.U
 	return target, nil
 }
 
-func (f *fakeConsolidateTx) AppendMemoryProvenance(_ context.Context, _ platform.UserScope, entry MemoryProvenance) error {
-	f.provenance = append(f.provenance, entry)
+func (f *fakeConsolidateTx) AppendMemoryProvenances(_ context.Context, _ platform.UserScope, entries []MemoryProvenance) error {
+	f.provenance = append(f.provenance, entries...)
 	return nil
 }
 
-func (f *fakeConsolidateTx) ListMemoriesForConsolidation(context.Context, platform.UserScope) ([]EpisodicMemory, error) {
+func (f *fakeConsolidateTx) ListMemoriesForConsolidation(context.Context, platform.UserScope) ([]ConsolidationMemory, error) {
 	f.listCalls++
 	if f.listMemoriesErr != nil {
 		return nil, f.listMemoriesErr
 	}
-	out := make([]EpisodicMemory, len(f.memories))
-	copy(out, f.memories)
+	out := make([]ConsolidationMemory, 0, len(f.memories))
+	for _, episodicMemory := range f.memories {
+		out = append(out, consolidationProjection(episodicMemory))
+	}
 	return out, nil
+}
+
+func (f *fakeConsolidateTx) ConsolidationTexts(_ context.Context, _ platform.UserScope, memoryIDs []string) ([]ConsolidationTexts, error) {
+	f.textReads = append(f.textReads, memoryIDs)
+	texts := make([]ConsolidationTexts, 0, len(memoryIDs))
+	for _, episodicMemory := range f.memories {
+		if !slices.Contains(memoryIDs, episodicMemory.ID) {
+			continue
+		}
+		texts = append(texts, ConsolidationTexts{
+			MemoryID:       episodicMemory.ID,
+			CurrentText:    episodicMemory.CurrentText,
+			Seed:           episodicMemory.Seed,
+			SemanticStages: episodicMemory.SemanticStages,
+			DecayStages:    episodicMemory.DecayStages,
+		})
+	}
+	return texts, nil
+}
+
+// consolidationProjection is the scalar view the pg projection computes in SQL.
+func consolidationProjection(episodicMemory EpisodicMemory) ConsolidationMemory {
+	projection := ConsolidationMemory{
+		ID:                       episodicMemory.ID,
+		Arousal:                  episodicMemory.Emotion.Arousal,
+		BaseStrength:             episodicMemory.BaseStrength,
+		RecallCount:              episodicMemory.RecallCount,
+		CreatedUniverseTime:      episodicMemory.CreatedUniverseTime,
+		LastRecalledUniverseTime: episodicMemory.LastRecalledUniverseTime,
+		ForgettingOffsetDays:     episodicMemory.ForgettingOffsetDays,
+		SemanticStage:            episodicMemory.SemanticStage,
+		SemanticizeTimerResetAt:  episodicMemory.SemanticizeTimerResetAt,
+		PendingSemanticStage:     episodicMemory.PendingSemanticStage,
+		RepresentationRevision:   episodicMemory.RepresentationRevision,
+		DecayStageCount:          len(episodicMemory.DecayStages),
+	}
+	for stage := 1; stage <= semanticMaxStage; stage++ {
+		if stageText(episodicMemory.SemanticStages, stage) != "" {
+			projection.SemanticStagesPresent |= 1 << (stage - 1)
+		}
+	}
+	for _, text := range episodicMemory.DecayStages {
+		if text != "" {
+			projection.DecayStagesFilled++
+		}
+	}
+	return projection
 }
 
 func (f *fakeConsolidateTx) RecallMemberNeurons(_ context.Context, _ platform.UserScope, memoryID string) ([]ExistingNeuron, error) {
@@ -151,8 +214,10 @@ func (f *fakeConsolidateTx) RecordPendingGistRises(_ context.Context, _ platform
 	return nil
 }
 
-func (f *fakeConsolidateTx) FillDecayStages(_ context.Context, _ platform.UserScope, memoryID string, stages []string) error {
-	f.decayFills[memoryID] = stages
+func (f *fakeConsolidateTx) FillDecayStages(_ context.Context, _ platform.UserScope, fills []DecayStageFill) error {
+	for _, fill := range fills {
+		f.decayFills[fill.MemoryID] = fill.Stages
+	}
 	return nil
 }
 
@@ -876,5 +941,26 @@ func TestMergeDecayStageTextsNeverShrinksOrOverwrites(t *testing.T) {
 	}
 	if _, changedAgain := mergeDecayStageTexts(merged, "some current text to redact", 2, 7); changedAgain {
 		t.Fatal("a fully-filled merge must report no change")
+	}
+}
+
+// Text columns are read only for memories whose interval crosses something that needs them: a memory
+// at the gist ceiling whose decay stage holds still is decided from its scalar projection alone.
+func TestConsolidationReadsTextsOnlyForCrossingMemories(t *testing.T) {
+	t.Parallel()
+	tx := newFakeConsolidateTx()
+	crossing := plainConsolidateMemory("crossing", consolidateDate(0))
+	still := plainConsolidateMemory("still", consolidateDate(39))
+	still.SemanticStage = int16(semanticMaxStage)
+	tx.memories = []EpisodicMemory{crossing, still}
+	from, to := consolidateDate(39), consolidateDate(41)
+
+	runConsolidator(t, tx, &from, to)
+
+	if len(tx.textReads) != 1 || !slices.Equal(tx.textReads[0], []string{"crossing"}) {
+		t.Fatalf("text reads = %v, want one read of the crossing memory only", tx.textReads)
+	}
+	if len(tx.provenance) == 0 {
+		t.Fatal("the crossing memory published no gist stage")
 	}
 }
