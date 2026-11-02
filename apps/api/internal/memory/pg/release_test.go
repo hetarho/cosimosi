@@ -314,7 +314,7 @@ func TestOverlappingReleaseRestoreAndSweepOrdersEndToEnd(t *testing.T) {
 			}
 			deadline := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
 			for index, which := range order {
-				swept, err := memory.NewRetentionSweeper(store).SweepRelease(ctx, scope, groups[which], deadline)
+				swept, err := mustRetentionSweeper(t, store).SweepRelease(ctx, scope, groups[which], deadline)
 				if err != nil || !swept {
 					t.Fatalf("sweep d%d = (%v, %v), want true/nil", which, swept, err)
 				}
@@ -360,7 +360,7 @@ func TestOverlappingReleaseRestoreAndSweepOrdersEndToEnd(t *testing.T) {
 			t.Fatalf("Restore d1 failed: %v", err)
 		}
 		deadline := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
-		if swept, err := memory.NewRetentionSweeper(store).SweepRelease(ctx, scope, group2, deadline); err != nil || !swept {
+		if swept, err := mustRetentionSweeper(t, store).SweepRelease(ctx, scope, group2, deadline); err != nil || !swept {
 			t.Fatalf("Sweep d2 = (%v, %v), want true/nil", swept, err)
 		}
 		var liveSealed, graphRows int
@@ -478,7 +478,7 @@ func TestScheduledRetentionWorkerSweepsWithoutAnotherUserRPC(t *testing.T) {
 	due := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
 	queue := &recordingJobQueue{Store: store}
 	runner, err := memory.NewJobRunner(
-		queue, store, store, store, memory.NewRetentionSweeper(store), store,
+		queue, store, store, store, mustRetentionSweeper(t, store), store,
 		ai.NewMockEmbedder(), ai.NewMockSemanticizer(), memory.WorkerConfig{
 			MaxAttempts:  int32(values.AiJobMaxAttempts),
 			MaxClaims:    int32(values.AiJobMaxClaims),

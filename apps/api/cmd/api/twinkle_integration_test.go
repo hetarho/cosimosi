@@ -36,7 +36,7 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	scope := economyScope(t, userID)
 
 	twinkleService := economyTwinkleService(t, pool)
-	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
+	memoryStore := mustBindMemoryTransactions(t, memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
 	intent := memory.RecallSpendIntent("op-1", "memory-1", 1.0)
 	wantCost := twinkle.RecallCost(1.0)
 
@@ -84,7 +84,7 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	scope := economyScope(t, userID)
 
 	twinkleService := economyTwinkleService(t, pool)
-	memoryStore := bindMemoryTransactions(memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
+	memoryStore := mustBindMemoryTransactions(t, memorypg.NewStore(pool.PgxPool()), twinkleService, noProgress{})
 
 	// Roll back: a failed launch leaves no grant.
 	injected := errors.New("injected launch failure after the grant")
@@ -337,4 +337,13 @@ type noProgress struct{}
 
 func (noProgress) RecordProgress(context.Context, platform.UserScope, achievement.ProgressStore, achievement.CounterKey, int) error {
 	return nil
+}
+
+func mustBindMemoryTransactions(t *testing.T, repo memorypg.Store, economy *twinkle.Service, progress progressRecorder) memorypg.Store {
+	t.Helper()
+	bound, err := bindMemoryTransactions(repo, economy, progress)
+	if err != nil {
+		t.Fatalf("bindMemoryTransactions failed: %v", err)
+	}
+	return bound
 }

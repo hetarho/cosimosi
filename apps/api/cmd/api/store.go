@@ -18,17 +18,16 @@ import (
 // cross-context edges — account's withdrawal sweep calling the purge leg, and a save's debit reaching
 // the Twinkle ledger — are closed here, where both concretes are visible.
 
-// errDecorateTxUnusable is the wiring fault of a save transaction the economy cannot be bound onto —
-// never a client mistake.
-var errDecorateTxUnusable = errors.New("store decorate tx does not expose a database handle")
-
 func newStoreService(
 	pool *platformdb.Pool,
 	twinkleService *twinkle.Service,
 	progress progressRecorder,
 ) (*store.Service, error) {
 	// The save's debit and counter reports ride its own transaction, so a refused save counts nothing.
-	repo := bindStoreTransactions(storepg.NewStore(pool.PgxPool()), twinkleService, progress)
+	repo, err := bindStoreTransactions(storepg.NewStore(pool.PgxPool()), twinkleService, progress)
+	if err != nil {
+		return nil, err
+	}
 	return store.NewService(store.ServiceDeps{
 		Ownerships: repo,
 		Selections: repo,

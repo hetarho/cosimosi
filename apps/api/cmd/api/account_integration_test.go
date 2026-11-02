@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
+	"github.com/cosimosi/api/internal/account/accounttest"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
@@ -210,13 +211,13 @@ func (accountNoSignupBonusGranter) Grant(context.Context, platform.UserScope) er
 func TestProductionMemoryZoneAdapterBindsAccountReader(t *testing.T) {
 	t.Parallel()
 	source := platformsupabase.Fake{}
-	service, err := account.NewService(account.ServiceDeps{
+	service, err := account.NewService(accounttest.WithInertWithdrawal(account.ServiceDeps{
 		Store:              profileZoneStore{profile: account.Profile{UserID: "u1", Timezone: "Asia/Seoul"}},
 		Directory:          accountDirectoryAdapter{source: source},
 		InviteGranter:      accountNoInviteGranter{},
 		SignupBonusGranter: accountNoSignupBonusGranter{},
 		Achievements:       account.NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -371,14 +372,14 @@ func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
-	accountService, err := account.NewService(account.ServiceDeps{
+	accountService, err := account.NewService(accounttest.WithInertWithdrawal(account.ServiceDeps{
 		Store:              store,
 		Directory:          accountDirectoryAdapter{source: source},
 		InviteSigner:       signer,
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: bonusGranter,
 		Achievements:       account.NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("account.NewService failed: %v", err)
 	}

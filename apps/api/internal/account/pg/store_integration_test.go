@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
+	"github.com/cosimosi/api/internal/account/accounttest"
 	accounttestregistry "github.com/cosimosi/api/internal/account/testregistry"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
@@ -179,7 +180,7 @@ func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *
 	if err != nil {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
-	service, err := account.NewService(account.ServiceDeps{
+	service, err := account.NewService(accounttest.WithInertWithdrawal(account.ServiceDeps{
 		Store:              store,
 		Directory:          signupTestDirectory{identities: map[string][]string{inviteeID: {"google"}}},
 		InviteSigner:       signer,
@@ -188,7 +189,7 @@ func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *
 		Achievements:       account.NoAchievementRecorder{},
 		Now:                func() time.Time { return time.Now().UTC() },
 		NewID:              func() string { return base + "-invite" },
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}

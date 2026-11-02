@@ -186,3 +186,31 @@ func TestCommandsResolveTodayBeforeTheirTransaction(t *testing.T) {
 		t.Fatalf("SyncToToday failed: %v", err)
 	}
 }
+
+func TestNewMemoryServicesRefuseMissingUserZone(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	if _, err := NewLaunchService(LaunchDeps{
+		Launches: fixture.launches, Linker: fixture.linker, Progression: fixture.progression,
+		SignupSettlement: fixture.signupSettlement,
+	}); !errors.Is(err, ErrUserZoneRequired) {
+		t.Errorf("NewLaunchService without a zone err = %v, want ErrUserZoneRequired", err)
+	}
+	if _, err := NewPaidActionService(PaidActionDeps{
+		Recalls: fixture.launches, ViewSemantics: fixture.launches, PredictionError: fixture.predictionError,
+		Progression: fixture.progression,
+	}); !errors.Is(err, ErrUserZoneRequired) {
+		t.Errorf("NewPaidActionService without a zone err = %v, want ErrUserZoneRequired", err)
+	}
+	if _, err := NewReadService(ReadDeps{
+		Universe: fixture.universe, Provenance: fixture.provenance, Diaries: fixture.diaries, Clock: fixture.launches,
+	}); !errors.Is(err, ErrUserZoneRequired) {
+		t.Errorf("NewReadService without a zone err = %v, want ErrUserZoneRequired", err)
+	}
+	if _, err := NewSpendSignalService(fixture.launches, fixture.gists, nil, nil); !errors.Is(err, ErrUserZoneRequired) {
+		t.Errorf("NewSpendSignalService without a zone err = %v, want ErrUserZoneRequired", err)
+	}
+	if _, err := NewRetentionSweeper(nil); !errors.Is(err, ErrReleasesRequired) {
+		t.Errorf("NewRetentionSweeper without a repository err = %v, want ErrReleasesRequired", err)
+	}
+}

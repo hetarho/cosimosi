@@ -26,10 +26,6 @@ import (
 // The adapters map memory's EconomyTx vocabulary onto twinkle
 // use-case inputs, and twinkle's SpendSignalReader onto memory's published reads.
 
-// errEconomyTxUnusable is the wiring fault of an EconomyTx handle the economy
-// cannot bind a ledger store to — never a client mistake.
-var errEconomyTxUnusable = errors.New("economy tx does not expose a database handle")
-
 // newTwinkleService builds the twinkle context over the shared pool. The invite seam stays
 // fail-closed until a real account/signup adapter is explicitly selected here; write earns and
 // metered spends remain available.

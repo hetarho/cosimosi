@@ -10,8 +10,10 @@ import (
 	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/achievement"
 	"github.com/cosimosi/api/internal/memory"
+	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/store"
+	storepg "github.com/cosimosi/api/internal/store/pg"
 )
 
 // The boot guards. They live here because the composition root is the one package that sees both
@@ -102,8 +104,11 @@ func TestAchievementRecordersFailClosedUntilBound(t *testing.T) {
 	if err := account.RecordProgress(context.Background(), scope, "invite_settled", 1); !errors.Is(err, errAchievementRecorderUnbound) {
 		t.Fatalf("unbound account recorder = %v, want errAchievementRecorderUnbound", err)
 	}
-	if err := recordTransactionProgress(context.Background(), scope, nil, nil, "diary_written", 1); !errors.Is(err, errAchievementRecorderUnbound) {
-		t.Fatalf("unbound transactional report = %v, want errAchievementRecorderUnbound", err)
+	if _, err := bindMemoryTransactions(memorypg.Store{}, nil, nil); !errors.Is(err, errTransactionBindingIncomplete) {
+		t.Fatalf("memory binding without its recorder = %v, want errTransactionBindingIncomplete", err)
+	}
+	if _, err := bindStoreTransactions(storepg.Store{}, nil, nil); !errors.Is(err, errTransactionBindingIncomplete) {
+		t.Fatalf("store binding without its recorder = %v, want errTransactionBindingIncomplete", err)
 	}
 }
 

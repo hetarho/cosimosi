@@ -185,6 +185,7 @@ func newWithdrawalTestService(
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
+		InviteSigner:       UnavailableInviteSigner{},
 		Withdrawals:        store,
 		Scheduler:          scheduler,
 		Purgers:            purgers,

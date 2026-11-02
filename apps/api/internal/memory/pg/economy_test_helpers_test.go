@@ -65,6 +65,7 @@ func newGraphServices(t *testing.T, deps graphServiceDeps) *graphServices {
 		Linker:           memory.NewLinkService(memory.LinkDeps{}),
 		Progression:      progression,
 		SignupSettlement: memory.NoSignupSettlement{},
+		UserZone:         memory.UTCUserZone{},
 		Now:              deps.now,
 		NewSeed:          deps.newSeed,
 	})
@@ -74,6 +75,7 @@ func newGraphServices(t *testing.T, deps graphServiceDeps) *graphServices {
 		ViewSemantics:   store,
 		PredictionError: adapters.PredictionError,
 		Progression:     progression,
+		UserZone:        memory.UTCUserZone{},
 		Now:             deps.now,
 		NewSeed:         deps.newSeed,
 	})
@@ -83,8 +85,17 @@ func newGraphServices(t *testing.T, deps graphServiceDeps) *graphServices {
 	})
 	fail(err)
 	services.ReadService, err = memory.NewReadService(memory.ReadDeps{
-		Universe: store, Provenance: store, Diaries: store, Clock: store, Now: deps.now,
+		Universe: store, Provenance: store, Diaries: store, Clock: store, UserZone: memory.UTCUserZone{}, Now: deps.now,
 	})
 	fail(err)
 	return services
+}
+
+func mustRetentionSweeper(t *testing.T, repo memory.ReleaseRepo) memory.RetentionSweeper {
+	t.Helper()
+	sweeper, err := memory.NewRetentionSweeper(repo)
+	if err != nil {
+		t.Fatalf("NewRetentionSweeper failed: %v", err)
+	}
+	return sweeper
 }

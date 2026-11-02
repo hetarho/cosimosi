@@ -33,10 +33,10 @@ func NewSpendSignalService(signals SpendSignalRepo, gists GistReader, zone UserZ
 		return nil, ErrGistsRequired
 	}
 	if zone == nil {
-		zone = UTCUserZone{}
+		return nil, ErrUserZoneRequired
 	}
 	if now == nil {
-		now = time.Now
+		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &SpendSignalService{signals: signals, gists: gists, userZone: zone, now: now}, nil
 }

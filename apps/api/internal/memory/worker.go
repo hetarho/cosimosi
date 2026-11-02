@@ -56,12 +56,16 @@ func NewDefaultJobRunner(
 	logger *log.Logger,
 	extraHandlers ...map[JobKind]jobqueue.Registration[Job],
 ) (jobqueue.Runner[Job], error) {
+	sweeper, err := NewRetentionSweeper(store)
+	if err != nil {
+		return jobqueue.Runner[Job]{}, err
+	}
 	return NewJobRunner(
 		store,
 		store,
 		store,
 		store,
-		NewRetentionSweeper(store),
+		sweeper,
 		store,
 		embedder,
 		semanticizer,

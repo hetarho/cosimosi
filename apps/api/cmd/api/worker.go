@@ -60,17 +60,18 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 	}
 	directory := accountDirectoryAdapter{source: newAccountDirectory(apiDirectoryHTTPClient())}
 	accountService, err := account.NewService(account.ServiceDeps{
-		Store:              accountStore,
-		Directory:          directory,
-		InviteGranter:      &accountInviteRewardGranter{},
-		SignupBonusGranter: &accountSignupBonusGranter{},
-		// The worker runs the withdrawal sweep and settles no signup, so its recorder REFUSES rather
-		// than counting nothing: an unexpected settlement here should be loud, not silently uncounted.
-		Achievements: accountAchievementUnavailable{},
-		Withdrawals:  accountStore,
-		Purgers:      withdrawalAdapters.purgers,
-		Scheduler:    withdrawalAdapters.scheduler,
-		Credentials:  directory,
+		Store:     accountStore,
+		Directory: directory,
+		// The worker runs the withdrawal sweep: it settles no signup and issues no invite link, so
+		// these bindings REFUSE rather than doing nothing: an unexpected call here should be loud.
+		InviteSigner:       account.UnavailableInviteSigner{},
+		InviteGranter:      devWorkerNoInviteGranter{},
+		SignupBonusGranter: devWorkerNoSignupBonusGranter{},
+		Achievements:       accountAchievementUnavailable{},
+		Withdrawals:        accountStore,
+		Purgers:            withdrawalAdapters.purgers,
+		Scheduler:          withdrawalAdapters.scheduler,
+		Credentials:        directory,
 	})
 	if err != nil {
 		pool.Close()
@@ -197,4 +198,20 @@ func truthy(value string) bool {
 	default:
 		return false
 	}
+}
+
+// errDevWorkerSettlesNoSignup is the dev worker's refusal of signup settlement, which only the API
+// serves.
+var errDevWorkerSettlesNoSignup = errors.New("signup settlement is not available in the dev worker")
+
+type devWorkerNoInviteGranter struct{}
+
+func (devWorkerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error {
+	return errDevWorkerSettlesNoSignup
+}
+
+type devWorkerNoSignupBonusGranter struct{}
+
+func (devWorkerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error {
+	return errDevWorkerSettlesNoSignup
 }

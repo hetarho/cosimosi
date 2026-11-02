@@ -13,6 +13,7 @@ var (
 	ErrCipherRequired    = errors.New("admin service requires an API-key cipher")
 	ErrCatalogRequired   = errors.New("admin service requires an AI provider catalog")
 	ErrModelsRequired    = errors.New("admin service requires an AI model catalog")
+	ErrEnvConfigRequired = errors.New("admin service requires the environment AI config reader")
 
 	// ErrUserIDRequired rejects an admin action with no target user id.
 	ErrUserIDRequired = errors.New("admin action requires a target user id")

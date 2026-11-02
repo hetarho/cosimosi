@@ -966,7 +966,7 @@ func TestRestoreOneOwnerThenSweepOtherPreservesLiveGraph(t *testing.T) {
 		t.Fatalf("Restore A failed: %v", err)
 	}
 	deadline := releaseAt.Add(retentionWindow())
-	swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, bGroup, deadline)
+	swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, bGroup, deadline)
 	if err != nil || !swept {
 		t.Fatalf("Sweep B = (%v, %v), want true/nil", swept, err)
 	}
@@ -1003,13 +1003,13 @@ func TestOverlappingReleasesSweepInEitherOrderDeletesLastOwner(t *testing.T) {
 				"d-b": releaseGroupIDForDiary(t, repo, scope, "d-b"),
 			}
 			deadline := releaseAt.Add(retentionWindow())
-			if swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, groups[order[0]], deadline); err != nil || !swept {
+			if swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, groups[order[0]], deadline); err != nil || !swept {
 				t.Fatalf("first sweep = (%v, %v)", swept, err)
 			}
 			if _, ok := repo.neurons["n-1"]; !ok {
 				t.Fatal("first sweep deleted a neuron retained by the other release owner")
 			}
-			if swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, groups[order[1]], deadline); err != nil || !swept {
+			if swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, groups[order[1]], deadline); err != nil || !swept {
 				t.Fatalf("second sweep = (%v, %v)", swept, err)
 			}
 			if _, ok := repo.neurons["n-1"]; ok {
@@ -1344,7 +1344,7 @@ func TestRetentionSweeperDueNoOpAndEarlyRetry(t *testing.T) {
 			t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
 		}
 
-		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline.Add(-time.Nanosecond))
+		swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, group.ID, deadline.Add(-time.Nanosecond))
 		if swept {
 			t.Fatal("an early retention claim reported a sweep")
 		}
@@ -1372,7 +1372,7 @@ func TestRetentionSweeperDueNoOpAndEarlyRetry(t *testing.T) {
 			t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
 		}
 
-		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline)
+		swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, group.ID, deadline)
 		if err != nil || !swept {
 			t.Fatalf("deadline sweep = (%v, %v), want (true, nil)", swept, err)
 		}
@@ -1399,7 +1399,7 @@ func TestRetentionSweeperDueNoOpAndEarlyRetry(t *testing.T) {
 			t.Fatalf("Restore failed: %v", err)
 		}
 
-		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline)
+		swept, err := mustRetentionSweeper(t, repo).SweepRelease(context.Background(), scope, group.ID, deadline)
 		if err != nil || swept {
 			t.Fatalf("restored-group sweep = (%v, %v), want (false, nil)", swept, err)
 		}
@@ -1534,4 +1534,13 @@ func (f *fakeReleaseRepo) EarnDiary(ctx context.Context, scope platform.UserScop
 
 func (f *fakeReleaseRepo) CheckMemorySpend(ctx context.Context, scope platform.UserScope, spend SpendIntent) error {
 	return f.economy.check(ctx, scope, f, spend)
+}
+
+func mustRetentionSweeper(t *testing.T, repo ReleaseRepo) RetentionSweeper {
+	t.Helper()
+	sweeper, err := NewRetentionSweeper(repo)
+	if err != nil {
+		t.Fatalf("NewRetentionSweeper failed: %v", err)
+	}
+	return sweeper
 }

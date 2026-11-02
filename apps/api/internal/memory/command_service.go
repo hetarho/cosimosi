@@ -26,7 +26,7 @@ func newGraphClock(progression AdvanceProgression, zone UserZone, now func() tim
 		return graphClock{}, ErrProgressionRequired
 	}
 	if zone == nil {
-		zone = UTCUserZone{}
+		return graphClock{}, ErrUserZoneRequired
 	}
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }

@@ -54,35 +54,34 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Achievements == nil {
 		return nil, ErrAchievementsRequired
 	}
-	withdrawalConfigured := deps.Withdrawals != nil || deps.Scheduler != nil ||
-		deps.Credentials != nil || len(deps.Purgers) > 0
-	purgers := append([]UserDataPurger(nil), deps.Purgers...)
-	if withdrawalConfigured {
-		if deps.Withdrawals == nil {
-			return nil, ErrWithdrawalStoreRequired
-		}
-		if deps.Scheduler == nil {
-			return nil, ErrWithdrawalSchedulerRequired
-		}
-		if deps.Credentials == nil {
-			return nil, ErrCredentialDirectoryRequired
-		}
-		if len(purgers) == 0 {
-			return nil, ErrPurgersRequired
-		}
-		purgerNames := make(map[string]struct{}, len(purgers))
-		for _, purger := range purgers {
-			if purger == nil || purger.PurgeName() == "" {
-				return nil, ErrPurgerNameRequired
-			}
-			if _, exists := purgerNames[purger.PurgeName()]; exists {
-				return nil, ErrDuplicatePurger
-			}
-			purgerNames[purger.PurgeName()] = struct{}{}
-		}
+	// Withdrawal is part of every account: a root that omitted its legs would serve sign-up and
+	// then fail a withdrawal at request time, so each seam is refused here instead.
+	if deps.Withdrawals == nil {
+		return nil, ErrWithdrawalStoreRequired
 	}
+	if deps.Scheduler == nil {
+		return nil, ErrWithdrawalSchedulerRequired
+	}
+	if deps.Credentials == nil {
+		return nil, ErrCredentialDirectoryRequired
+	}
+	purgers := append([]UserDataPurger(nil), deps.Purgers...)
+	if len(purgers) == 0 {
+		return nil, ErrPurgersRequired
+	}
+	purgerNames := make(map[string]struct{}, len(purgers))
+	for _, purger := range purgers {
+		if purger == nil || purger.PurgeName() == "" {
+			return nil, ErrPurgerNameRequired
+		}
+		if _, exists := purgerNames[purger.PurgeName()]; exists {
+			return nil, ErrDuplicatePurger
+		}
+		purgerNames[purger.PurgeName()] = struct{}{}
+	}
+	// A root without a signing key binds UnavailableInviteSigner by name.
 	if deps.InviteSigner == nil {
-		deps.InviteSigner = UnavailableInviteSigner{}
+		return nil, ErrInviteSignerRequired
 	}
 	if deps.Now == nil {
 		deps.Now = func() time.Time { return time.Now().UTC() }

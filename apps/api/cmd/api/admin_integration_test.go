@@ -103,6 +103,7 @@ func TestAdminUserListDatabaseRoundTripsStayConstant(t *testing.T) {
 		Cipher:    secretbox.Disabled{},
 		Catalog:   aiProviderCatalog{},
 		Models:    adminIntegrationModels{},
+		EnvConfig: adminEnvConfig{},
 	})
 	if err != nil {
 		t.Fatalf("admin.NewService: %v", err)

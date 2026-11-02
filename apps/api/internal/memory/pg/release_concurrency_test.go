@@ -745,7 +745,7 @@ func TestConcurrentRestoreAndBoundarySweepConverge(t *testing.T) {
 			}
 			startSweep := func(repo memory.ReleaseRepo) {
 				go func() {
-					swept, err := memory.NewRetentionSweeper(repo).SweepRelease(ctx, scope, releaseID, deadline)
+					swept, err := mustRetentionSweeper(t, repo).SweepRelease(ctx, scope, releaseID, deadline)
 					sweepResult <- struct {
 						swept bool
 						err   error

@@ -198,9 +198,6 @@ func (g accountInviteRewardGranter) Grant(
 	scope platform.UserScope,
 	token string,
 ) error {
-	if g.service == nil {
-		return account.ErrInviteGranterRequired
-	}
 	_, err := g.service.ClaimInvite(ctx, scope, token)
 	if errors.Is(err, twinkle.ErrInviteNotEligible) {
 		return account.ErrInviteNotEligible
@@ -213,9 +210,6 @@ type accountSignupBonusGranter struct {
 }
 
 func (g accountSignupBonusGranter) Grant(ctx context.Context, scope platform.UserScope) error {
-	if g.service == nil {
-		return account.ErrSignupBonusGranterRequired
-	}
 	_, err := g.service.EarnSignupBonus(ctx, scope)
 	return err
 }

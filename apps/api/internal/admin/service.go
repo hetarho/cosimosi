@@ -72,6 +72,8 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		return nil, ErrCatalogRequired
 	case deps.Models == nil:
 		return nil, ErrModelsRequired
+	case deps.EnvConfig == nil:
+		return nil, ErrEnvConfigRequired
 	}
 	ids, emails := parseSeedAdmins(deps.SeedAdmins)
 	svc := &Service{
@@ -496,9 +498,6 @@ func (s *Service) GetAIConfig(ctx context.Context) ([]CapabilitySelection, error
 }
 
 func (s *Service) envSnapshot(capability AICapability) (provider, model string, keySet bool) {
-	if s.envConfig == nil {
-		return "", "", false
-	}
 	return s.envConfig.EnvConfig(capability)
 }
 

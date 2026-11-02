@@ -146,8 +146,10 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		return nil, "", err
 	}
 	accountService, err := account.NewService(account.ServiceDeps{
-		Store:              accountStore,
-		Directory:          directory,
+		Store:     accountStore,
+		Directory: directory,
+		// The worker issues no invite link.
+		InviteSigner:       account.UnavailableInviteSigner{},
 		InviteGranter:      workerNoInviteGranter{},
 		SignupBonusGranter: workerNoSignupBonusGranter{},
 		// This process settles no signup — it runs the job queue — so its recorder REFUSES rather than

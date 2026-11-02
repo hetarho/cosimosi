@@ -377,8 +377,11 @@ type RetentionSweeper struct {
 	releases ReleaseRepo
 }
 
-func NewRetentionSweeper(releases ReleaseRepo) RetentionSweeper {
-	return RetentionSweeper{releases: releases}
+func NewRetentionSweeper(releases ReleaseRepo) (RetentionSweeper, error) {
+	if releases == nil {
+		return RetentionSweeper{}, ErrReleasesRequired
+	}
+	return RetentionSweeper{releases: releases}, nil
 }
 
 func (s RetentionSweeper) SweepRelease(ctx context.Context, scope platform.UserScope, releaseID string, now time.Time) (bool, error) {
@@ -387,9 +390,6 @@ func (s RetentionSweeper) SweepRelease(ctx context.Context, scope platform.UserS
 	}
 	if releaseID == "" {
 		return false, ErrReleaseInputRequired
-	}
-	if s.releases == nil {
-		return false, errors.New("retention sweep requires a release repository")
 	}
 	swept := false
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {

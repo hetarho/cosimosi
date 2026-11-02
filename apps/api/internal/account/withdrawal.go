@@ -133,9 +133,6 @@ func (s *Service) Withdraw(ctx context.Context, scope platform.UserScope) (Withd
 	if scope.UserID() == "" {
 		return WithdrawalWindow{}, ErrScopeRequired
 	}
-	if err := s.withdrawalReady(); err != nil {
-		return WithdrawalWindow{}, err
-	}
 	_, found, err := s.withdrawals.WithdrawalStatus(ctx, scope)
 	if err != nil {
 		return WithdrawalWindow{}, err
@@ -184,9 +181,6 @@ func (s *Service) Withdraw(ctx context.Context, scope platform.UserScope) (Withd
 func (s *Service) RestoreAccount(ctx context.Context, scope platform.UserScope) (time.Time, error) {
 	if scope.UserID() == "" {
 		return time.Time{}, ErrScopeRequired
-	}
-	if err := s.withdrawalReady(); err != nil {
-		return time.Time{}, err
 	}
 	now := s.now().UTC()
 	err := s.withdrawals.InWithdrawalTx(ctx, func(tx WithdrawalStore) error {
@@ -256,9 +250,6 @@ func (s *Service) SweepWithdrawnAccount(ctx context.Context, scope platform.User
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
-	if err := s.withdrawalReady(); err != nil {
-		return err
-	}
 	return s.withdrawals.InWithdrawalTx(ctx, func(tx WithdrawalStore) error {
 		withdrawnAt, found, err := tx.WithdrawalStatusForUpdate(ctx, scope)
 		if err != nil || !found || withdrawnAt.IsZero() {
@@ -291,21 +282,6 @@ func (s *Service) SweepWithdrawnAccount(ctx context.Context, scope platform.User
 		}
 		return nil
 	})
-}
-
-func (s *Service) withdrawalReady() error {
-	switch {
-	case s.withdrawals == nil:
-		return ErrWithdrawalStoreRequired
-	case s.scheduler == nil:
-		return ErrWithdrawalSchedulerRequired
-	case s.credentials == nil:
-		return ErrCredentialDirectoryRequired
-	case len(s.purgers) == 0:
-		return ErrPurgersRequired
-	default:
-		return nil
-	}
 }
 
 type withdrawalNotDueError struct {

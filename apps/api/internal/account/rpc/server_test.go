@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/account"
+	"github.com/cosimosi/api/internal/account/accounttest"
 	accountv1 "github.com/cosimosi/api/internal/gen/cosimosi/account/v1"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
@@ -116,13 +117,13 @@ func TestSignUpHandlerMapsOnlyThePinnedWireFields(t *testing.T) {
 	}
 
 	store := &signupRPCStore{}
-	service, err := account.NewService(account.ServiceDeps{
+	service, err := account.NewService(accounttest.WithInertWithdrawal(account.ServiceDeps{
 		Store:              store,
 		Directory:          emptyDirectory{},
 		InviteGranter:      emptyInviteGranter{},
 		SignupBonusGranter: emptySignupBonusGranter{},
 		Achievements:       account.NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -229,14 +230,14 @@ func (emptySignupBonusGranter) Grant(context.Context, platform.UserScope) error 
 
 func TestGetProfileKeepsUnprovisionedProfileMessageAbsent(t *testing.T) {
 	t.Parallel()
-	service, err := account.NewService(account.ServiceDeps{
+	service, err := account.NewService(accounttest.WithInertWithdrawal(account.ServiceDeps{
 		Store:              absentProfileStore{},
 		Directory:          emptyDirectory{},
 		InviteGranter:      emptyInviteGranter{},
 		SignupBonusGranter: emptySignupBonusGranter{},
 		Achievements:       account.NoAchievementRecorder{},
 		Now:                func() time.Time { return time.Time{} },
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}

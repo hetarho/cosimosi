@@ -235,6 +235,7 @@ func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service
 		Cipher:    fakeCipher{},
 		Catalog:   fakeCatalog{},
 		Models:    &fakeModels{},
+		EnvConfig: unsetEnvConfig{},
 		NewID:     func() string { return "id-1" },
 	}
 	if deps != nil {
@@ -576,5 +577,30 @@ func TestListProviderModelsGatesLikeSetAIConfigThenDelegates(t *testing.T) {
 	models.err = ErrModelListingUnavailable
 	if _, err := svc.ListProviderModels(ctx, CapabilityLLM, "openai"); !errors.Is(err, ErrModelListingUnavailable) {
 		t.Fatalf("vendor-failure err = %v, want ErrModelListingUnavailable", err)
+	}
+}
+
+// unsetEnvConfig is the environment with no AI provider configured.
+type unsetEnvConfig struct{}
+
+func (unsetEnvConfig) EnvConfig(AICapability) (provider, model string, keySet bool) {
+	return "", "", false
+}
+
+func TestNewServiceRefusesMissingEnvConfig(t *testing.T) {
+	t.Parallel()
+	_, err := NewService(ServiceDeps{
+		Store:     &fakeStore{},
+		Directory: fakeDirectory{accounts: map[string]DirectoryAccount{}},
+		Twinkle:   &fakeGranter{},
+		MemStats:  &fakeStats{},
+		Usage:     fakeUsage{},
+		Jobs:      fakeJobs{},
+		Cipher:    fakeCipher{},
+		Catalog:   fakeCatalog{},
+		Models:    &fakeModels{},
+	})
+	if !errors.Is(err, ErrEnvConfigRequired) {
+		t.Fatalf("NewService without EnvConfig err = %v, want ErrEnvConfigRequired", err)
 	}
 }

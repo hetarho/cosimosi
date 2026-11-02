@@ -26,6 +26,7 @@ var (
 	ErrDiariesRequired          = errors.New("memory service requires a diary reader")
 	ErrReleasesRequired         = errors.New("memory service requires a release repo")
 	ErrSealSuggesterRequired    = errors.New("memory service requires a seal suggester")
+	ErrUserZoneRequired         = errors.New("memory service requires a user zone reader")
 )
 
 // ReadService answers the free graph reads: the universe snapshot, a memory's provenance, the diary
@@ -43,7 +44,8 @@ type ReadDeps struct {
 	Universe   UniverseReader
 	Provenance ProvenanceReader
 	Diaries    DiaryReader
-	// Clock reads the stored universe clock the sync status compares with today.
+	// Clock reads the stored universe clock the sync status compares with today; UserZone decides
+	// that today. UTCUserZone is the named binding for roots without profiles.
 	Clock    SpendSignalRepo
 	UserZone UserZone
 	Now      func() time.Time
@@ -62,6 +64,9 @@ func NewReadService(deps ReadDeps) (*ReadService, error) {
 	if deps.Clock == nil {
 		return nil, ErrSignalsRequired
 	}
+	if deps.UserZone == nil {
+		return nil, ErrUserZoneRequired
+	}
 	service := &ReadService{
 		universe:   deps.Universe,
 		provenance: deps.Provenance,
@@ -69,9 +74,6 @@ func NewReadService(deps ReadDeps) (*ReadService, error) {
 		clock:      deps.Clock,
 		userZone:   deps.UserZone,
 		now:        deps.Now,
-	}
-	if service.userZone == nil {
-		service.userZone = UTCUserZone{}
 	}
 	if service.now == nil {
 		service.now = func() time.Time { return time.Now().UTC() }

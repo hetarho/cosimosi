@@ -390,14 +390,14 @@ func (f *fakeSignupBonusGranter) Grant(context.Context, platform.UserScope) erro
 
 func newTestService(t *testing.T, store Store) *Service {
 	t.Helper()
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          &fakeDirectory{},
 		InviteSigner:       UnavailableInviteSigner{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -554,13 +554,13 @@ func TestProfileEmailIsReadThroughAndStoredTimezoneCoerces(t *testing.T) {
 		Locale:   "en",
 	}}}
 	directory := &fakeDirectory{emails: map[string]string{"u1": "first@example.com"}}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -633,13 +633,13 @@ func TestListAuthProvidersUsesDirectoryClosedSetAndStoredTimestamps(t *testing.T
 		}},
 	}
 	directory := &fakeDirectory{identities: map[string][]string{"u1": {"google", "email", "github"}}}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -663,13 +663,13 @@ func TestListAuthProvidersFallsBackToStoredRowsOnDirectoryFailure(t *testing.T) 
 		}},
 	}
 	directory := &fakeDirectory{identitiesErr: errors.New("directory unavailable")}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -720,7 +720,7 @@ func TestSignUpHasExactlyFourInputsAndCreatesDirectoryProviderWithoutCrediting(t
 	if err != nil {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteSigner:       signer,
@@ -735,7 +735,7 @@ func TestSignUpHasExactlyFourInputsAndCreatesDirectoryProviderWithoutCrediting(t
 			return now
 		},
 		NewID: func() string { return "invite-1" },
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -852,13 +852,13 @@ func TestSignUpValidationIdempotencyConcurrencyAndDirectoryDegradation(t *testin
 
 	store := &fakeStore{}
 	directory := &fakeDirectory{identitiesErr: errors.New("directory unavailable")}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -928,7 +928,7 @@ func TestSignUpRollsBackProfileWhenInviteBindingInfrastructureFails(t *testing.T
 	if err != nil {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          &fakeDirectory{},
 		InviteSigner:       signer,
@@ -937,7 +937,7 @@ func TestSignUpRollsBackProfileWhenInviteBindingInfrastructureFails(t *testing.T
 		Achievements:       NoAchievementRecorder{},
 		Now:                func() time.Time { return now },
 		NewID:              func() string { return "invite-atomic" },
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -975,7 +975,7 @@ func TestAcceptInviteRefusalsAreBestEffort(t *testing.T) {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
 	nextID := 0
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          &fakeDirectory{},
 		InviteSigner:       signer,
@@ -987,7 +987,7 @@ func TestAcceptInviteRefusalsAreBestEffort(t *testing.T) {
 			nextID++
 			return fmt.Sprintf("invite-%d", nextID)
 		},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -1067,13 +1067,13 @@ func TestResolveInviteSettlementAppliesPermanentGatesBeforeDirectory(t *testing.
 		invites:  map[string]SettleableInvite{"invitee": invite},
 	}
 	directory := &fakeDirectory{verifiedAt: map[string]time.Time{"invitee": time.Now().UTC()}}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -1123,13 +1123,13 @@ func TestResolveInviteSettlementAppliesPermanentGatesBeforeDirectory(t *testing.
 func TestSettleSignupRequiresProvisionedAccountAndSerializesInviterCap(t *testing.T) {
 	t.Parallel()
 	bonus := &fakeSignupBonusGranter{}
-	missingService, err := NewService(ServiceDeps{
+	missingService, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              &fakeStore{},
 		Directory:          &fakeDirectory{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: bonus,
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService(missing) failed: %v", err)
 	}
@@ -1159,13 +1159,13 @@ func TestSettleSignupRequiresProvisionedAccountAndSerializesInviterCap(t *testin
 		"invitee-b": time.Now().UTC(),
 	}}
 	granter := &resolvingInviteGranter{}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          directory,
 		InviteGranter:      granter,
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -1209,13 +1209,13 @@ func TestSettleSignupCreditsBeforeMarkAndAlwaysAttemptsBonus(t *testing.T) {
 	}
 	inviteGranter := &fakeInviteGranter{}
 	bonusGranter := &fakeSignupBonusGranter{}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          &fakeDirectory{},
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: bonusGranter,
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -1258,7 +1258,7 @@ func TestInviteTokenRoundTripTamperMalformedExpiryAndOnlySignupStoreRead(t *test
 	if err != nil {
 		t.Fatalf("NewHMACInviteSigner failed: %v", err)
 	}
-	service, err := NewService(ServiceDeps{
+	service, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              store,
 		Directory:          &fakeDirectory{},
 		InviteSigner:       signer,
@@ -1266,7 +1266,7 @@ func TestInviteTokenRoundTripTamperMalformedExpiryAndOnlySignupStoreRead(t *test
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
 		Now:                func() time.Time { return now },
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -1306,14 +1306,14 @@ func TestInviteLinkFailsClosedWithoutSigningKey(t *testing.T) {
 		t.Fatalf("GetInviteLink without key err = %v", err)
 	}
 
-	zeroValueService, err := NewService(ServiceDeps{
+	zeroValueService, err := NewService(withWithdrawal(ServiceDeps{
 		Store:              &fakeStore{profiles: map[string]Profile{"u1": provisionedProfile("u1")}},
 		Directory:          &fakeDirectory{},
 		InviteSigner:       HMACInviteSigner{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
 		Achievements:       NoAchievementRecorder{},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("NewService with zero-value signer failed: %v", err)
 	}
@@ -1364,6 +1364,60 @@ func assertStringFixture(t *testing.T, path string, actual []string) {
 	for index := range fixture {
 		if fixture[index] != actual[index] {
 			t.Fatalf("actual %v does not match fixture %v", actual, fixture)
+		}
+	}
+}
+
+// withWithdrawal fills the withdrawal seams and invite signer a test does not exercise with inert
+// fakes, since every account service now requires them at construction.
+func withWithdrawal(deps ServiceDeps) ServiceDeps {
+	if deps.Withdrawals == nil {
+		deps.Withdrawals = &fakeWithdrawalStore{}
+	}
+	if deps.Scheduler == nil {
+		deps.Scheduler = &fakeWithdrawalScheduler{}
+	}
+	if deps.Credentials == nil {
+		deps.Credentials = &fakeCredentialDirectory{}
+	}
+	if len(deps.Purgers) == 0 {
+		deps.Purgers = []UserDataPurger{&fakeUserDataPurger{name: "memory"}}
+	}
+	if deps.InviteSigner == nil {
+		deps.InviteSigner = UnavailableInviteSigner{}
+	}
+	return deps
+}
+
+func TestNewServiceRefusesMissingWithdrawalSeams(t *testing.T) {
+	t.Parallel()
+	complete := func() ServiceDeps {
+		return withWithdrawal(ServiceDeps{
+			Store:              &fakeStore{},
+			Directory:          &fakeDirectory{},
+			InviteGranter:      &fakeInviteGranter{},
+			SignupBonusGranter: &fakeSignupBonusGranter{},
+			Achievements:       NoAchievementRecorder{},
+		})
+	}
+	if _, err := NewService(complete()); err != nil {
+		t.Fatalf("NewService(complete) failed: %v", err)
+	}
+	for _, testCase := range []struct {
+		name  string
+		strip func(*ServiceDeps)
+		want  error
+	}{
+		{"withdrawal store", func(d *ServiceDeps) { d.Withdrawals = nil }, ErrWithdrawalStoreRequired},
+		{"scheduler", func(d *ServiceDeps) { d.Scheduler = nil }, ErrWithdrawalSchedulerRequired},
+		{"credentials", func(d *ServiceDeps) { d.Credentials = nil }, ErrCredentialDirectoryRequired},
+		{"purgers", func(d *ServiceDeps) { d.Purgers = nil }, ErrPurgersRequired},
+		{"invite signer", func(d *ServiceDeps) { d.InviteSigner = nil }, ErrInviteSignerRequired},
+	} {
+		deps := complete()
+		testCase.strip(&deps)
+		if _, err := NewService(deps); !errors.Is(err, testCase.want) {
+			t.Errorf("NewService without %s err = %v, want %v", testCase.name, err, testCase.want)
 		}
 	}
 }

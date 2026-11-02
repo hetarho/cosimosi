@@ -876,7 +876,7 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		store,
 		store,
 		store,
-		memory.NewRetentionSweeper(store),
+		mustRetentionSweeper(t, store),
 		store,
 		ai.NewMockEmbedder(),
 		ai.NewMockSemanticizer(),

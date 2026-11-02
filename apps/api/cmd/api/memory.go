@@ -75,7 +75,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	// One progress recorder serves every producer: memory and store report on their own
 	// transactions, account on the pool.
 	progress := achievement.NewRecorder()
-	store = bindMemoryTransactions(store, twinkleService, progress)
+	store, err = bindMemoryTransactions(store, twinkleService, progress)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	achievementRecorders := &achievementRecorderBinding{pool: pool, service: progress}
 	accountOptions, accountService, err := accountServiceOption(
 		pool, accountDirectoryAdapter{source: directory},
