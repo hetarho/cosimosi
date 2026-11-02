@@ -13,7 +13,6 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/observability"
 )
@@ -23,8 +22,6 @@ const (
 	// they stay named at the composition root and are passed to the adapters.
 	supabaseAuthHTTPTimeout      = 3 * time.Second
 	supabaseDirectoryHTTPTimeout = 5 * time.Second
-	apiDeepSeekHTTPTimeout       = 60 * time.Second
-	apiVoyageHTTPTimeout         = 30 * time.Second
 	apiShutdownTimeout           = 5 * time.Second
 	reporterFlushTimeout         = 2 * time.Second
 	// The database budget is shared with the worker and the other stack on one session pooler
@@ -107,17 +104,6 @@ func authHandlerOptions(logger *log.Logger, httpClient *http.Client) []platform.
 		return nil
 	}
 	return []platform.HandlerOption{platform.WithAuthVerifier(verifier)}
-}
-
-func apiAIHTTPClients() ai.HTTPClients {
-	return ai.HTTPClients{
-		LLMByProvider: map[string]*http.Client{
-			"deepseek": {Timeout: apiDeepSeekHTTPTimeout},
-		},
-		EmbeddingByProvider: map[string]*http.Client{
-			"voyage": {Timeout: apiVoyageHTTPTimeout},
-		},
-	}
 }
 
 func apiDirectoryHTTPClient() *http.Client {

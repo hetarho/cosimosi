@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/achievement"
 	achievementpg "github.com/cosimosi/api/internal/achievement/pg"
@@ -31,11 +32,6 @@ var (
 	// errAchievementRecorderUnbound is the wiring fault of a producer reporting before the root
 	// finished binding. It fails the producing transaction rather than dropping the report.
 	errAchievementRecorderUnbound = errors.New("achievement recorder was not bound to a service")
-	// errAchievementSignupRecordingUnavailable is what a root that settles no signup answers if the
-	// account recorder is somehow reached — the fail-closed shape, not a silent no-op (the worker runs
-	// the withdrawal sweep and the settle drain, and takes no signup). It is deliberately not named
-	// "settlement": in this file that word now belongs to a claim's payout drain.
-	errAchievementSignupRecordingUnavailable = errors.New("this root does not record achievement progress")
 )
 
 func newAchievementService(pool *platformdb.Pool, deps achievementDeps) (*achievement.Service, error) {
@@ -47,8 +43,8 @@ func newAchievementService(pool *platformdb.Pool, deps achievementDeps) (*achiev
 	}
 	return achievement.NewService(achievement.AchievementServiceDeps{
 		Repo:      bindClaimTransactions(achievementpg.NewStore(pool.PgxPool())),
-		Twinkle:   achievementTwinkleGranter{service: deps.twinkle},
-		Ornaments: achievementOrnamentGranter{service: deps.store},
+		Twinkle:   wiring.TwinkleGranter{Service: deps.twinkle},
+		Ornaments: wiring.OrnamentGranter{Service: deps.store},
 		// The drain rides the claim's own transaction; the queue is infrastructure, the claim is
 		// achievement's, and this is the only place both are visible.
 		Settlements: achievementSettlementScheduler{},
@@ -235,42 +231,6 @@ func (r accountAchievementRecorder) RecordProgress(
 	return r.record(ctx, scope, r.pooledStore(), counterKey, delta)
 }
 
-// achievementTwinkleGranter is the stardust leg over the shipped achievement-reward earn. The claim
-// id is the dedup key, so a replay credits nothing and still answers the same total; the earn credits
-// GENERAL by construction, which is where "no SMALL reward" actually holds.
-type achievementTwinkleGranter struct {
-	service *twinkle.Service
-}
-
-func (g achievementTwinkleGranter) EarnAchievementReward(
-	ctx context.Context,
-	scope platform.UserScope,
-	claimID string,
-	amount int,
-) (int, error) {
-	balance, err := g.service.EarnAchievementReward(ctx, scope, claimID, amount)
-	if err != nil {
-		return 0, err
-	}
-	return balance.General, nil
-}
-
-// achievementOrnamentGranter is the rare ornament leg over the store's ownership append, which is
-// ON CONFLICT DO NOTHING — so a replayed claim grants once. The claim id is unused here: the
-// ownership row's own primary key is the dedup identity.
-type achievementOrnamentGranter struct {
-	service *store.Service
-}
-
-func (g achievementOrnamentGranter) Grant(
-	ctx context.Context,
-	scope platform.UserScope,
-	_ string,
-	ornamentID string,
-) error {
-	return g.service.GrantOwnership(ctx, scope, store.OrnamentID(ornamentID), store.AcquisitionAchievement)
-}
-
 // achievementSettlementScheduler is the drain's enqueue leg, and it binds a JOB store onto the
 // claim's own transaction — the mirror image of the recorder adapters above, which bind a counter
 // store onto a producer's. The claim stamp and the enqueue therefore commit together: a crash before
@@ -292,21 +252,6 @@ func (achievementSettlementScheduler) ScheduleSettlement(
 		return errRecorderTxUnusable
 	}
 	return tx.EnqueueSettlement(ctx, scope, achievementID)
-}
-
-// accountAchievementUnavailable is the fail-closed account recorder for a root that never settles a
-// signup (the worker, which runs only the withdrawal sweep). It refuses rather than silently
-// counting nothing, so a path that unexpectedly reached it is loud.
-type accountAchievementUnavailable struct{}
-
-func (accountAchievementUnavailable) RecordProgress(context.Context, platform.UserScope, string, int) error {
-	return errAchievementSignupRecordingUnavailable
-}
-
-// achievementWithdrawalPurgerFor is the sweep's achievement leg, satisfying account's
-// UserDataPurger port. Built straight over the pool: a sweep needs nothing the service composes.
-func achievementWithdrawalPurgerFor(pool *platformdb.Pool) achievement.WithdrawalPurger {
-	return achievement.NewWithdrawalPurger(achievementpg.NewStore(pool.PgxPool()))
 }
 
 // achievementServiceOption registers the AchievementService Connect handler.

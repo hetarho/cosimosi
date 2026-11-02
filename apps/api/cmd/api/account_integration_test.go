@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/account/accounttest"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
-	"github.com/cosimosi/api/internal/platform/jobqueue"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
@@ -23,121 +23,6 @@ import (
 
 type profileZoneStore struct {
 	profile account.Profile
-}
-
-type withdrawalCompositionMemoryStore struct {
-	scheduledDedupKey string
-	cancelledDedupKey string
-}
-
-func (s *withdrawalCompositionMemoryStore) EnqueueJob(
-	_ context.Context,
-	_ platform.UserScope,
-	job jobqueue.Record,
-) (jobqueue.Record, error) {
-	if job.DedupKey != nil {
-		s.scheduledDedupKey = *job.DedupKey
-	}
-	return job, nil
-}
-
-func (s *withdrawalCompositionMemoryStore) CancelUserJob(
-	_ context.Context,
-	_ platform.UserScope,
-	_ jobqueue.Kind,
-	dedupKey string,
-) error {
-	s.cancelledDedupKey = dedupKey
-	return nil
-}
-
-func (*withdrawalCompositionMemoryStore) PurgeUser(
-	context.Context,
-	platform.UserScope,
-	string,
-) error {
-	return nil
-}
-
-type withdrawalCompositionTwinkleStore struct{}
-
-func (withdrawalCompositionTwinkleStore) PurgeUser(
-	context.Context,
-	platform.UserScope,
-) error {
-	return nil
-}
-
-type withdrawalCompositionStorePurger struct{}
-
-func (withdrawalCompositionStorePurger) PurgeName() string { return "store" }
-
-func (withdrawalCompositionStorePurger) PurgeUser(
-	context.Context,
-	platform.UserScope,
-) error {
-	return nil
-}
-
-type withdrawalCompositionAchievementPurger struct{}
-
-func (withdrawalCompositionAchievementPurger) PurgeName() string { return "achievement" }
-
-func (withdrawalCompositionAchievementPurger) PurgeUser(
-	context.Context,
-	platform.UserScope,
-) error {
-	return nil
-}
-
-func TestAPIWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
-	t.Parallel()
-	store := &withdrawalCompositionMemoryStore{}
-	composition, err := newWithdrawalComposition(
-		store,
-		store,
-		withdrawalCompositionTwinkleStore{},
-		withdrawalCompositionStorePurger{},
-		withdrawalCompositionAchievementPurger{},
-	)
-	if err != nil {
-		t.Fatalf("newWithdrawalComposition failed: %v", err)
-	}
-	scope, err := platform.NewUserScope("api-withdrawal-user")
-	if err != nil {
-		t.Fatalf("NewUserScope failed: %v", err)
-	}
-	identity, err := account.WithdrawalSweepJobIdentity(scope)
-	if err != nil {
-		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
-	}
-
-	if err := composition.scheduler.Schedule(
-		context.Background(),
-		scope,
-		time.Now().Add(time.Hour),
-	); err != nil {
-		t.Fatalf("Schedule failed: %v", err)
-	}
-	if err := composition.scheduler.Cancel(context.Background(), scope); err != nil {
-		t.Fatalf("Cancel failed: %v", err)
-	}
-	if store.scheduledDedupKey != identity.DedupKey() ||
-		store.cancelledDedupKey != store.scheduledDedupKey {
-		t.Fatalf(
-			"withdrawal identities = scheduled %q cancelled %q want %q",
-			store.scheduledDedupKey,
-			store.cancelledDedupKey,
-			identity.DedupKey(),
-		)
-	}
-	if len(composition.purgers) != 4 ||
-		composition.purgers[0].PurgeName() != "memory" ||
-		composition.purgers[1].PurgeName() != "twinkle" ||
-		composition.purgers[2].PurgeName() != "store" ||
-		composition.purgers[3].PurgeName() != "achievement" {
-		t.Fatalf("withdrawal purgers = %#v", composition.purgers)
-	}
 }
 
 func (s profileZoneStore) InSignupTx(ctx context.Context, fn func(account.Store) error) error {
@@ -276,28 +161,10 @@ func TestProductionAccountCompositionRejectsMissingInviteSigningKey(t *testing.T
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
 		account.NoAchievementRecorder{},
-		withdrawalCompositionStorePurger{},
-		withdrawalCompositionAchievementPurger{},
+		wiring.Withdrawal{},
 	)
 	if err == nil || !strings.Contains(err.Error(), envInviteTokenSigningKey) {
 		t.Fatalf("production account composition err = %v, want missing %s refusal", err, envInviteTokenSigningKey)
-	}
-}
-
-func TestProductionAccountCompositionRejectsKeylessCredentialDirectory(t *testing.T) {
-	t.Setenv(apperr.EnvDeployEnvironment, "production")
-	t.Setenv(envInviteTokenSigningKey, base64.StdEncoding.EncodeToString(make([]byte, 32)))
-	_, _, err := accountServiceOption(
-		nil,
-		accountDirectoryAdapter{source: platformsupabase.Fake{}},
-		accountNoInviteGranter{},
-		accountNoSignupBonusGranter{},
-		account.NoAchievementRecorder{},
-		withdrawalCompositionStorePurger{},
-		withdrawalCompositionAchievementPurger{},
-	)
-	if err == nil {
-		t.Fatal("production account composition accepted a keyless credential directory")
 	}
 }
 
@@ -387,7 +254,7 @@ func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
 		pool,
 		&memorySpendSignals{},
 		accountInviteResolver{service: accountService},
-		accountTwinkleZone{service: accountService},
+		wiring.TwinkleZone{Service: accountService},
 	)
 	if err != nil {
 		t.Fatalf("newTwinkleService failed: %v", err)

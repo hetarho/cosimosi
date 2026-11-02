@@ -54,12 +54,6 @@ func storeSpendRefusal(err error) error {
 	return err
 }
 
-// storeWithdrawalPurgerFor is the sweep's store leg, satisfying account's UserDataPurger port. It is
-// built straight over the pool: the sweep deletes rows and needs neither the catalog nor the economy.
-func storeWithdrawalPurgerFor(pool *platformdb.Pool) store.WithdrawalPurger {
-	return store.NewWithdrawalPurger(storepg.NewStore(pool.PgxPool()))
-}
-
 // storeServiceOption registers the StoreService Connect handler.
 func storeServiceOption(service *store.Service) (platform.HandlerOption, error) {
 	server, err := storerpc.NewServer(service)

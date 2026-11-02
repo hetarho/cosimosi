@@ -7,9 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/admin"
 	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	adminrpc "github.com/cosimosi/api/internal/admin/rpc"
@@ -88,17 +88,8 @@ func adminServiceOption(deps adminDeps) (platform.HandlerOption, error) {
 	}), nil
 }
 
-type accountDirectorySource interface {
-	ListUsers(ctx context.Context, page int, pageSize int, query string) ([]platformsupabase.Account, bool, error)
-	EmailFor(ctx context.Context, userID string) (string, error)
-	EmailVerifiedAt(ctx context.Context, userID string) (time.Time, error)
-	Identities(ctx context.Context, userID string) ([]string, error)
-	SetUserBanned(ctx context.Context, userID string, banned bool) error
-	DeleteUser(ctx context.Context, userID string) error
-}
-
 type adminAccountDirectory struct {
-	source accountDirectorySource
+	source wiring.DirectorySource
 }
 
 func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]admin.DirectoryAccount, bool, error) {
@@ -124,19 +115,6 @@ func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize
 
 func (a adminAccountDirectory) EmailFor(ctx context.Context, userID string) (string, error) {
 	return a.source.EmailFor(ctx, userID)
-}
-
-// newAccountDirectory selects one platform concrete shared by account and admin through their
-// separate composition-root adapters.
-func newAccountDirectory(httpClient *http.Client) accountDirectorySource {
-	baseURL := os.Getenv("SUPABASE_PROJECT_URL")
-	if baseURL == "" {
-		baseURL = os.Getenv("SUPABASE_URL")
-	}
-	if sb, ok := platformsupabase.NewDirectory(baseURL, os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), httpClient); ok {
-		return sb
-	}
-	return platformsupabase.Fake{}
 }
 
 // adminTwinkleGranter binds admin's stardust seam to the twinkle economy (별가루 증정): balance read

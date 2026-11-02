@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/achievement"
@@ -51,11 +52,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	meter := ai.NewMeter()
 	adminStore := adminpg.NewStore(pool.PgxPool())
 	cipher, decrypter := adminCipher(logger)
-	aiHTTPClients := apiAIHTTPClients()
-	adapters := ai.NewResolvingAdapters(
-		ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger, aiHTTPClients,
-	)
-	directory := newAccountDirectory(apiDirectoryHTTPClient())
+	adapters := wiring.AIAdapters(adminStore, decrypter, meter, logger)
+	directory, err := wiring.AccountDirectory(apiDirectoryHTTPClient())
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	accountReads, err := account.NewReadService(accountpg.NewStore(pool.PgxPool()), accountDirectoryAdapter{source: directory})
 	if err != nil {
 		pool.Close()
@@ -67,7 +69,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return nil, noop, err
 	}
 	signals := &memorySpendSignals{service: signalReads}
-	twinkleService, err := newTwinkleService(pool, signals, accountInviteResolver{service: accountReads}, accountTwinkleZone{service: accountReads})
+	twinkleService, err := newTwinkleService(pool, signals, accountInviteResolver{service: accountReads}, wiring.TwinkleZone{Service: accountReads})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
@@ -81,12 +83,17 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return nil, noop, err
 	}
 	achievementRecorders := &achievementRecorderBinding{pool: pool, service: progress}
+	withdrawal, err := wiring.NewWithdrawal(pool.PgxPool())
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	accountOptions, accountService, err := accountServiceOption(
 		pool, accountDirectoryAdapter{source: directory},
 		&accountInviteRewardGranter{service: twinkleService},
 		&accountSignupBonusGranter{service: twinkleService},
 		accountAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
-		storeWithdrawalPurgerFor(pool), achievementWithdrawalPurgerFor(pool),
+		withdrawal,
 	)
 	if err != nil {
 		pool.Close()
@@ -194,7 +201,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		meter:   meter,
 		cipher:  cipher,
 		models: aiModelCatalog{
-			reader: adminStore, decrypter: decrypter, httpClients: aiHTTPClients,
+			reader: adminStore, decrypter: decrypter, httpClients: wiring.AIHTTPClients(),
 		},
 		directory: adminAccountDirectory{source: directory},
 	})

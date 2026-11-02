@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/account"
 	accounttestregistry "github.com/cosimosi/api/internal/account/testregistry"
 	"github.com/cosimosi/api/internal/memory"
@@ -56,8 +57,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
 		account.NoAchievementRecorder{},
-		storeWithdrawalPurgerForTest(t, pool),
-		achievementWithdrawalPurgerFor(pool),
+		mustWithdrawal(t, pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -237,8 +237,7 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
 		account.NoAchievementRecorder{},
-		storeWithdrawalPurgerForTest(t, pool),
-		achievementWithdrawalPurgerFor(pool),
+		mustWithdrawal(t, pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -686,11 +685,15 @@ func openWithdrawalTestPool(t *testing.T) *platformdb.Pool {
 	return pool
 }
 
-// storeWithdrawalPurgerForTest binds the real store purge leg, so the sweep coverage test exercises
-// the same wiring the API and the worker do rather than a stub that always succeeds.
-func storeWithdrawalPurgerForTest(t *testing.T, pool *platformdb.Pool) account.UserDataPurger {
+// mustWithdrawal binds the real purge legs, so the sweep coverage test exercises the same wiring the
+// API and the worker do rather than stubs that always succeed.
+func mustWithdrawal(t *testing.T, pool *platformdb.Pool) wiring.Withdrawal {
 	t.Helper()
-	return storeWithdrawalPurgerFor(pool)
+	withdrawal, err := wiring.NewWithdrawal(pool.PgxPool())
+	if err != nil {
+		t.Fatalf("NewWithdrawal failed: %v", err)
+	}
+	return withdrawal
 }
 
 func cleanupWithdrawalRows(

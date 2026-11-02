@@ -11,25 +11,21 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	accountrpc "github.com/cosimosi/api/internal/account/rpc"
 	accountv1connect "github.com/cosimosi/api/internal/gen/cosimosi/account/v1/accountv1connect"
-	"github.com/cosimosi/api/internal/memory"
-	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
-	"github.com/cosimosi/api/internal/platform/jobqueue"
-	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/twinkle"
-	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 const envInviteTokenSigningKey = "INVITE_TOKEN_SIGNING_KEY"
 
 type accountDirectoryAdapter struct {
-	source accountDirectorySource
+	source wiring.DirectorySource
 }
 
 func (a accountDirectoryAdapter) EmailFor(ctx context.Context, userID string) (string, error) {
@@ -52,70 +48,26 @@ func (a accountDirectoryAdapter) DeleteUser(ctx context.Context, userID string) 
 	return a.source.DeleteUser(ctx, userID)
 }
 
-// accountServiceOption wires the account context and returns its published behavior for the
-// memory-owned timezone adapter.
 type accountServiceDirectory interface {
 	account.Directory
 	account.CredentialDirectory
 }
 
-type withdrawalComposition struct {
-	scheduler account.WithdrawalSweepScheduler
-	purgers   []account.UserDataPurger
-}
-
-func newWithdrawalComposition(
-	jobStore jobqueue.UserJobStore,
-	memoryPurgeRepo memory.UserPurgeRepo,
-	twinklePurgeRepo twinkle.UserPurgeRepo,
-	// The store and achievement legs arrive as BUILT purgers rather than repos: each purges its two
-	// tables in one transaction owned by its context, and both table pairs postdate the sweep itself.
-	// Variadic so the next context's leg is one argument at the two real call sites rather than a
-	// third same-typed positional parameter threaded through every caller and test.
-	builtPurgers ...account.UserDataPurger,
-) (withdrawalComposition, error) {
-	userJobs, err := account.NewWithdrawalJobScheduler(jobStore, nil, nil)
-	if err != nil {
-		return withdrawalComposition{}, err
-	}
-	return withdrawalComposition{
-		scheduler: userJobs,
-		purgers: append([]account.UserDataPurger{
-			memory.NewWithdrawalPurger(memoryPurgeRepo),
-			twinkle.NewWithdrawalPurger(twinklePurgeRepo),
-		}, builtPurgers...),
-	}, nil
-}
-
+// accountServiceOption wires the account context and returns its published behavior for the
+// memory-owned timezone adapter.
 func accountServiceOption(
 	pool *platformdb.Pool,
 	directory accountServiceDirectory,
 	inviteGranter account.InviteRewardGranter,
 	signupBonusGranter account.SignupBonusGranter,
 	achievements account.AchievementRecorder,
-	storePurger account.UserDataPurger,
-	achievementPurger account.UserDataPurger,
+	withdrawal wiring.Withdrawal,
 ) ([]platform.HandlerOption, *account.Service, error) {
-	if err := requireProductionCredentialDirectory(directory); err != nil {
-		return nil, nil, err
-	}
 	signer, err := inviteSignerFromEnv()
 	if err != nil {
 		return nil, nil, err
 	}
 	accountStore := accountpg.NewStore(pool.PgxPool())
-	memoryStore := memorypg.NewStore(pool.PgxPool())
-	twinkleStore := twinklepg.NewStore(pool.PgxPool())
-	withdrawalAdapters, err := newWithdrawalComposition(
-		memoryStore,
-		memoryStore,
-		twinkleStore,
-		storePurger,
-		achievementPurger,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
 	service, err := account.NewService(account.ServiceDeps{
 		Store:              accountStore,
 		Directory:          directory,
@@ -124,8 +76,8 @@ func accountServiceOption(
 		SignupBonusGranter: signupBonusGranter,
 		Achievements:       achievements,
 		Withdrawals:        accountStore,
-		Purgers:            withdrawalAdapters.purgers,
-		Scheduler:          withdrawalAdapters.scheduler,
+		Purgers:            withdrawal.Purgers,
+		Scheduler:          withdrawal.Scheduler,
 		Credentials:        directory,
 	})
 	if err != nil {
@@ -145,17 +97,6 @@ func accountServiceOption(
 			accountv1connect.AccountServiceRestoreAccountProcedure,
 		}),
 	}, service, nil
-}
-
-func requireProductionCredentialDirectory(directory accountServiceDirectory) error {
-	if !strings.EqualFold(strings.TrimSpace(os.Getenv(apperr.EnvDeployEnvironment)), "production") {
-		return nil
-	}
-	adapter, ok := directory.(accountDirectoryAdapter)
-	if !ok || !platformsupabase.CredentialMutationsAvailable(adapter.source) {
-		return errors.New("production account withdrawal requires Supabase Admin API credentials")
-	}
-	return nil
 }
 
 // accountInviteResolver translates the account context's eligible bound invite into Twinkle's
@@ -217,10 +158,7 @@ func (g accountSignupBonusGranter) Grant(ctx context.Context, scope platform.Use
 func inviteSignerFromEnv() (account.InviteSigner, error) {
 	encoded := strings.TrimSpace(os.Getenv(envInviteTokenSigningKey))
 	if encoded == "" {
-		if strings.EqualFold(
-			strings.TrimSpace(os.Getenv(apperr.EnvDeployEnvironment)),
-			"production",
-		) {
+		if apperr.ProductionDeployment() {
 			return nil, errors.New(
 				"production account invite capability requires INVITE_TOKEN_SIGNING_KEY",
 			)

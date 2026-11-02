@@ -111,21 +111,3 @@ func TestAchievementRecordersFailClosedUntilBound(t *testing.T) {
 		t.Fatalf("store binding without its recorder = %v, want errTransactionBindingIncomplete", err)
 	}
 }
-
-// The worker settles no signup, so its account recorder refuses instead of counting nothing: an
-// unexpected settlement there should be loud.
-func TestWorkerAccountRecorderRefusesRatherThanCountingNothing(t *testing.T) {
-	t.Parallel()
-	scope, err := platform.NewUserScope("worker-user")
-	if err != nil {
-		t.Fatalf("NewUserScope failed: %v", err)
-	}
-	if err := (accountAchievementUnavailable{}).RecordProgress(
-		context.Background(),
-		scope,
-		"invite_settled",
-		1,
-	); !errors.Is(err, errAchievementSignupRecordingUnavailable) {
-		t.Fatalf("worker recorder = %v, want errAchievementSignupRecordingUnavailable", err)
-	}
-}

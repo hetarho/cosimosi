@@ -9,9 +9,8 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/cmd/internal/wiring"
 	dbgen "github.com/cosimosi/api/db/gen"
-	"github.com/cosimosi/api/internal/account"
-	accountpg "github.com/cosimosi/api/internal/account/pg"
 	twinklev1connect "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1/twinklev1connect"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
@@ -46,37 +45,12 @@ func newTwinkleService(
 // twinkleLedgerStore is twinkle's pool-bound ledger whose own transactions read the user zone on
 // the transaction's connection.
 func twinkleLedgerStore(pool *platformdb.Pool) twinklepg.Store {
-	return twinklepg.NewStore(pool.PgxPool()).WithZoneBinding(accountZoneReader)
-}
-
-// accountZoneReader binds account's published zone read to an open transaction (ARCH-9), so an earn
-// or spend inside it never waits on a second pooled connection.
-func accountZoneReader(tx dbgen.DBTX) twinkle.ZoneReader {
-	return account.NewZoneReader(accountpg.NewStore(tx))
+	return twinklepg.NewStore(pool.PgxPool()).WithZoneBinding(wiring.LedgerZoneReader)
 }
 
 // twinkleLedgerTx is twinkle's ledger bound to another context's open transaction.
 func twinkleLedgerTx(tx dbgen.DBTX) twinkle.LedgerTx {
-	return twinkle.BindLedgerTx(twinklepg.NewStore(tx), accountZoneReader(tx))
-}
-
-// accountTwinkleZone is the only binding of twinkle's UserZoneReader ([G2][U7]): account's published
-// profile read, published as the IANA NAME twinkle's port asks for. It resolves nothing itself —
-// twinkle owns the name→location step and the UTC fallback, so no permissive adapter can bind the
-// boundary away. account.ZoneFor already answers DefaultTimezone for a user with no profile row.
-type accountTwinkleZone struct {
-	service interface {
-		ZoneFor(context.Context, platform.UserScope) (string, error)
-		ZonesFor(context.Context, []string) (map[string]string, error)
-	}
-}
-
-func (a accountTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
-	return a.service.ZoneFor(ctx, scope)
-}
-
-func (a accountTwinkleZone) ZonesFor(ctx context.Context, userIDs []string) (map[string]string, error) {
-	return a.service.ZonesFor(ctx, userIDs)
+	return twinkle.BindLedgerTx(twinklepg.NewStore(tx), wiring.LedgerZoneReader(tx))
 }
 
 // twinkleServiceOption registers the TwinkleService Connect handler.

@@ -164,10 +164,16 @@ func DefaultReason(code connect.Code) string {
 // stack cannot expose raw causes. The production match is deliberately looser
 // (trimmed, case-insensitive) than the verbose match — both err toward masking.
 func ExposeDetail() bool {
-	if strings.EqualFold(strings.TrimSpace(os.Getenv(EnvDeployEnvironment)), deployProduction) {
+	if ProductionDeployment() {
 		return false
 	}
 	return os.Getenv(EnvErrorDetail) == DetailVerbose
+}
+
+// ProductionDeployment reports whether this process runs on the production stack. It is the one
+// reading of the deployment signal, so every production hard-gate agrees on what "production" means.
+func ProductionDeployment() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv(EnvDeployEnvironment)), deployProduction)
 }
 
 func asConnectError(err error, code connect.Code) *connect.Error {
