@@ -1,4 +1,4 @@
-import type { SupabaseAuthStorage } from '@cosimosi/auth'
+import type { SupabaseAuthStorage } from '@cosimosi/auth/supabase'
 
 /**
  * Secure token storage seam (ARCH-28). The auth facade persists the

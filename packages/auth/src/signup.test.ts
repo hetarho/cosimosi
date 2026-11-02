@@ -86,7 +86,9 @@ describe('signup shared state', () => {
   })
 
   it('does not extend the shared session statuses or gate decisions', () => {
-    expect(Object.keys(sessionMachine.config.states ?? {})).toEqual([
+    // The statuses are the session region's states; the other regions are internal control state.
+    const statuses = sessionMachine.root.states.running?.states.session?.states ?? {}
+    expect(Object.keys(statuses)).toEqual([
       'bootstrapping',
       'signedOut',
       'signingIn',

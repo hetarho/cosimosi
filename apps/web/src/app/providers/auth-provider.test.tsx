@@ -3,7 +3,8 @@ import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 
-import { createAuthFacade, FakeAuthAdapter } from '@cosimosi/auth'
+import { createAuthFacade } from '@cosimosi/auth'
+import { FakeAuthAdapter } from '@cosimosi/auth/testing'
 import { AuthProvider, useAuthFacade } from '@cosimosi/auth/react'
 
 afterEach(cleanup)

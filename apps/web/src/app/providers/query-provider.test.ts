@@ -7,7 +7,8 @@ import { renderToString } from 'react-dom/server'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { createPlatformMockTransport, type ApiTransport } from '@cosimosi/api-client'
-import { FakeAuthAdapter, createAuthFacade } from '@cosimosi/auth'
+import { createAuthFacade } from '@cosimosi/auth'
+import { FakeAuthAdapter } from '@cosimosi/auth/testing'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
 import {

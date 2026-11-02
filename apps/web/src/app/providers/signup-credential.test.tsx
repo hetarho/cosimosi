@@ -4,7 +4,8 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 
-import { FakeAuthAdapter, createAuthFacade, type AuthAdapter } from '@cosimosi/auth'
+import { createAuthFacade, type AuthAdapter } from '@cosimosi/auth'
+import { FakeAuthAdapter } from '@cosimosi/auth/testing'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 import { m } from '../../shared/i18n/index.ts'
 

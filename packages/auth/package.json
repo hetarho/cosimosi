@@ -9,6 +9,8 @@
     "./react": "./src/react.ts",
     "./user-state": "./src/user-state-reset.ts",
     "./scope": "./src/completion-scope.ts",
+    "./supabase": "./src/supabase-adapter.ts",
+    "./testing": "./src/fake-adapter.ts",
     "./react/profile": "./src/react/profile.ts",
     "./react/signup": "./src/react/signup.ts"
   },

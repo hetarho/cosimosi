@@ -483,6 +483,24 @@ describe('createAuthFacade', () => {
     await expect(facade.getAccessToken()).resolves.toBeNull()
   })
 
+  it('applies nothing from a sign-in that resolves after disposal', async () => {
+    const pendingSignIn = deferred<AuthSession>()
+    const base = new FakeAuthAdapter()
+    const facade = createAuthFacade({
+      adapter: { ...adapterOf(base), signIn: () => pendingSignIn.promise },
+    })
+    await flush()
+
+    const signIn = facade.signIn({ email: 'a@b.co', password: 'pw' })
+    facade.dispose()
+    pendingSignIn.resolve({ userId: 'late-user', expiresAt: 999 })
+    await signIn
+
+    expect(facade.snapshot.status).toBe('signingIn')
+    expect(facade.snapshot.userId).toBeNull()
+    await expect(facade.getAccessToken()).resolves.toBeNull()
+  })
+
   it('disposes the adapter subscription and actor', async () => {
     const adapter = new FakeAuthAdapter({ initial: { userId: 'u', expiresAt: 999 } })
     const facade = createAuthFacade({ adapter })
@@ -535,4 +553,18 @@ function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
     resolve = innerResolve
   })
   return { promise, resolve }
+}
+
+function adapterOf(base: FakeAuthAdapter): AuthAdapter {
+  return {
+    bootstrap: () => base.bootstrap(),
+    signIn: (credentials) => base.signIn(credentials),
+    signUpWithPassword: (credentials) => base.signUpWithPassword(credentials),
+    signInWithGoogle: () => base.signInWithGoogle(),
+    completeOAuthSignIn: (callbackUrl) => base.completeOAuthSignIn(callbackUrl),
+    signOut: () => base.signOut(),
+    refresh: () => base.refresh(),
+    getAccessToken: () => base.getAccessToken(),
+    onChange: (listener) => base.onChange(listener),
+  }
 }

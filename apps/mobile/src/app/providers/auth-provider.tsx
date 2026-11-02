@@ -1,15 +1,14 @@
 import { useCallback, useEffect, type ReactNode } from 'react'
 
 import {
-  FakeAuthAdapter,
   bindPendingInviteStorage,
   createMemoryPendingInviteStorage,
   createAuthFacade,
-  createSupabaseAuthAdapter,
-  createSupabaseAuthClient,
   type AuthAdapter,
   type AuthFacade,
 } from '@cosimosi/auth'
+import { FakeAuthAdapter } from '@cosimosi/auth/testing'
+import { createSupabaseAuthAdapter, createSupabaseAuthClient } from '@cosimosi/auth/supabase'
 import { AuthProvider, useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 
 import {

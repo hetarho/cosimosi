@@ -1,5 +1,5 @@
 # AUTH authentication
-> r2 | who the caller is: the client auth session, bearer-token verification, the per-request user identity and the gate between auth and the universe
+> r3 | who the caller is: the client auth session, bearer-token verification, the per-request user identity and the gate between auth and the universe
 
 ## decisions
 - AUTH-1 [o] Supabase Auth is the only identity provider: client sessions are Supabase sessions and the API trusts only Supabase-issued access tokens; what the product stores about an account →=ACCT-12
@@ -10,7 +10,7 @@
   - statuses: `bootstrapping`, `signedOut`, `signingIn` (also while an OAuth flow is outside the app), `authenticated`, `refreshing`, `expired`, `failed`
   - `refreshing` keeps `userId`; a refresh failure while a `userId` is held returns to `authenticated` with `error`, never to a signed-out status
   - tokens, Supabase session objects, SDK clients and storage handles never enter the context; the adapter owns them
-  - Google, password signup and OAuth cancel add no states or events
+  - Google, password signup and OAuth cancel add no statuses; an awaited sign-in call, an OAuth flow outside the app, a local or forced sign-out, bootstrap settling and disposal are machine states outside the context, and they decide which adapter events apply; the facade's operation epoch is its only closure state
 - AUTH-4 [o] the auth facade (`createAuthFacade`) is the only auth seam: lower layers see the snapshot, the actions and the token accessor, never a Supabase type or storage primitive
   - each app root owns at most one live facade, provided through `@cosimosi/auth/react`; releasing it never signs the user out, and an injected facade stays caller-owned
 - AUTH-5 [o] every auth operation is fenced by an operation epoch: a result settling after a newer operation or a local sign-out never drives the machine ← a late bootstrap, sign-in or refresh would re-authenticate a signed-out user
@@ -106,5 +106,6 @@
 - environment, not values: the Supabase project URL and keys, `SUPABASE_JWT_SECRET`, JWT audience and issuer, the token storage choice
 
 ## chg
+- r3 261103 AUTH-3✎ OAuth "add no states or events"→"add no statuses"; sign-in attempt, local/forced sign-out, bootstrap settling and disposal→machine states
 - r2 261103 AUTH-24✎ `packages/auth` "session + pending invite, signup flag, withdrawal coordinator"→"session only"; account lifecycle pieces→`packages/account`
 - r1 261102 initial

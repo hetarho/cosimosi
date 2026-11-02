@@ -1,8 +1,20 @@
-import { createActor, type Actor, type SnapshotFrom } from 'xstate'
+import { createActor } from 'xstate'
 
-import type { AuthAdapter, AuthFacade, SignInCredentials } from './auth-adapter.ts'
+import type {
+  AuthAdapter,
+  AuthAdapterChange,
+  AuthFacade,
+  AuthSession,
+  SignInCredentials,
+} from './auth-adapter.ts'
 import { readErrorMessage } from './error.ts'
-import { sessionMachine } from './session-machine.ts'
+import {
+  holdsAccessToken,
+  refreshAllowed,
+  restorePoint,
+  sessionMachine,
+  type SessionEvent,
+} from './session-machine.ts'
 import type { SessionSnapshot } from './session.ts'
 
 export interface CreateAuthFacadeOptions {
@@ -10,360 +22,187 @@ export interface CreateAuthFacadeOptions {
 }
 
 /**
- * Wire an AuthAdapter to the XState session machine. The adapter owns IO (Supabase
- * client, secure storage, network) and emits adapter-side changes; this façade
- * translates those into machine events and exposes the resulting SessionSnapshot +
- * transport-facing token accessor. Platform-pure — both web and mobile providers
- * call this from a React context; tests can call it directly.
+ * Wire an AuthAdapter to the XState session machine. The adapter owns IO (Supabase client, secure
+ * storage, network) and reports adapter-side changes; the machine decides which of them apply, and
+ * this façade only issues the adapter calls and exposes the resulting SessionSnapshot plus the
+ * transport-facing token accessor. Platform-pure — both web and mobile providers call this from a
+ * React context; tests can call it directly.
  *
- * The façade is single-threaded by design: machine events are dispatched in the
- * order the adapter/host invokes the methods, so the machine never observes a
- * refresh-success for a session that already signed out.
+ * Every operation takes the next `epoch` when it starts, and its settlement reaches the machine only
+ * while that epoch is still current, so a later operation, a sign-out or disposal fences it. The
+ * machine moves the epoch too, through `fence`, when it ends a session on its own.
  */
 export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFacade {
-  const actor: Actor<typeof sessionMachine> = createActor(sessionMachine)
   let epoch = 0
-  let bootstrapped = false
-  let disposed = false
-  let locallySignedOut = false
-  let suppressAdapterRefresh = false
-  let forcedLocalSignOut = false
-  // True only between a Google flow leaving the app (adapter resolved null) and its
-  // completion/abandonment. cancelSignIn is gated on it so a host's blanket
-  // "foreground/pageshow → cancel" wiring can never abandon an in-flight password
-  // sign-in that would still resolve.
-  let externalOAuthPending = false
-  // Count of in-flight sign-in operations (password/Google/OAuth-completion).
-  let signInFlight = 0
+  const actor = createActor(
+    sessionMachine.provide({
+      actions: {
+        fence: () => {
+          epoch += 1
+        },
+      },
+    }),
+  )
   actor.start()
-
-  // An adapter "signedOut" event only says "there is no session". While a sign-in
-  // operation is in flight, or after one failed (`failed` holds the error the visitor
-  // must see), that is already true — letting the event through would bump the epoch
-  // (killing the in-flight operation's settlement) or clobber `failed` back to a
-  // pristine signedOut form. Skipping is safe against the late-bootstrap-restore
-  // hazard the SIGN_OUT normally guards: any sign-in operation already bumped the
-  // epoch when it started, so a pending bootstrap can no longer apply.
-  const signedOutEventIsRedundant = () =>
-    signInFlight > 0 || actor.getSnapshot().context.status === 'failed'
+  const running = () => actor.getSnapshot().status === 'active'
+  const send = (event: SessionEvent) => {
+    if (running()) actor.send(event)
+  }
 
   const adapterUnsubscribe = adapter.onChange((snapshot, change) => {
-    if (disposed) return
-    if (!bootstrapped && (snapshot.status === 'signedOut' || snapshot.status === 'expired')) {
-      if (snapshot.status === 'signedOut' && signedOutEventIsRedundant()) return
-      epoch += 1
-      locallySignedOut = true
-      suppressAdapterRefresh = true
-      actor.send({ type: 'SIGN_OUT' })
-      return
-    }
-    if (!bootstrapped) return
-    switch (snapshot.status) {
-      case 'signedOut':
-        if (signedOutEventIsRedundant()) return
-        epoch += 1
-        locallySignedOut = true
-        suppressAdapterRefresh = true
-        actor.send({ type: 'SIGN_OUT' })
-        break
-      case 'authenticated':
-        if (forcedLocalSignOut) return
-        if (change.source === 'tokenRefreshed' && suppressAdapterRefresh) return
-        if (snapshot.userId && snapshot.expiresAt !== null) {
-          locallySignedOut = false
-          suppressAdapterRefresh = false
-          externalOAuthPending = false
-          actor.send({
-            type: 'AUTHENTICATED',
-            userId: snapshot.userId,
-            expiresAt: snapshot.expiresAt,
-          })
-        }
-        break
-      case 'expired':
-        if (!locallySignedOut) actor.send({ type: 'EXPIRED' })
-        break
-    }
+    const event = adapterEvent(snapshot, change)
+    if (event) send(event)
   })
 
   const bootstrapEpoch = epoch
-  void bootstrap(adapter, actor, {
-    shouldApply: () => !disposed && bootstrapEpoch === epoch,
-    didFinish: () => {
-      if (disposed) return
-      bootstrapped = true
-    },
-  })
+  void (async () => {
+    try {
+      const session = await adapter.bootstrap()
+      if (bootstrapEpoch === epoch) {
+        send({
+          type: 'BOOTSTRAP_DONE',
+          userId: session?.userId ?? null,
+          expiresAt: session?.expiresAt ?? null,
+        })
+      }
+    } catch (error) {
+      if (bootstrapEpoch === epoch) send({ type: 'BOOTSTRAP_FAILURE', error: errorMessage(error) })
+    } finally {
+      send({ type: 'BOOTSTRAP_SETTLED' })
+    }
+  })()
+
+  // One sign-in attempt: start it, await the adapter, and settle it only if nothing fenced it since.
+  async function attempt<T>(
+    start: Extract<SessionEvent, { type: 'SIGN_IN_START' }>,
+    call: () => Promise<T>,
+    settled: (result: T) => SessionEvent,
+  ): Promise<T> {
+    const operationEpoch = ++epoch
+    send(start)
+    try {
+      const result = await call()
+      if (operationEpoch === epoch) send(settled(result))
+      return result
+    } catch (error) {
+      if (operationEpoch === epoch) send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
+      throw error
+    }
+  }
 
   return {
     get snapshot(): SessionSnapshot {
       return actor.getSnapshot().context
     },
     async signIn(credentials: SignInCredentials) {
-      const operationEpoch = ++epoch
-      signInFlight += 1
-      externalOAuthPending = false
-      const previousSuppressAdapterRefresh = suppressAdapterRefresh
-      suppressAdapterRefresh = true
-      actor.send({ type: 'SIGN_IN_START' })
-      try {
-        const session = await adapter.signIn(credentials)
-        if (!disposed && operationEpoch === epoch) {
-          forcedLocalSignOut = false
-          locallySignedOut = false
-          suppressAdapterRefresh = false
-          actor.send({
-            type: 'SIGN_IN_SUCCESS',
-            userId: session.userId,
-            expiresAt: session.expiresAt,
-          })
-        }
-      } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
-          suppressAdapterRefresh = previousSuppressAdapterRefresh
-          actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
-        }
-        throw error
-      } finally {
-        signInFlight -= 1
-      }
+      await attempt({ type: 'SIGN_IN_START' }, () => adapter.signIn(credentials), signedIn)
     },
     async signUpWithPassword(credentials: SignInCredentials) {
-      const operationEpoch = ++epoch
-      signInFlight += 1
-      externalOAuthPending = false
-      const previousSuppressAdapterRefresh = suppressAdapterRefresh
-      suppressAdapterRefresh = true
-      actor.send({ type: 'SIGN_IN_START' })
-      try {
-        const session = await adapter.signUpWithPassword(credentials)
-        if (disposed || operationEpoch !== epoch) {
-          return session ? ('signedIn' as const) : ('confirmationRequired' as const)
-        }
-        if (session) {
-          forcedLocalSignOut = false
-          locallySignedOut = false
-          suppressAdapterRefresh = false
-          actor.send({
-            type: 'SIGN_IN_SUCCESS',
-            userId: session.userId,
-            expiresAt: session.expiresAt,
-          })
-          return 'signedIn' as const
-        }
-        // Email confirmation is an expected successful credential-creation
-        // outcome. Settle the existing session domain back to signedOut; the
-        // local signup machine owns the confirmationSent presentation.
-        locallySignedOut = true
-        suppressAdapterRefresh = true
-        actor.send({ type: 'SIGN_OUT' })
-        return 'confirmationRequired' as const
-      } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
-          suppressAdapterRefresh = previousSuppressAdapterRefresh
-          actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
-        }
-        throw error
-      } finally {
-        signInFlight -= 1
-      }
+      // Email confirmation is an expected successful credential-creation outcome: the session
+      // settles back to signedOut, and the local signup machine owns the confirmationSent copy.
+      const session = await attempt(
+        { type: 'SIGN_IN_START' },
+        () => adapter.signUpWithPassword(credentials),
+        (result) => (result ? signedIn(result) : { type: 'SIGN_OUT' }),
+      )
+      return session ? ('signedIn' as const) : ('confirmationRequired' as const)
     },
     async signInWithGoogle() {
-      const operationEpoch = ++epoch
-      signInFlight += 1
-      // Set BEFORE the await: the flow may leave the app inside adapter.signInWithGoogle()
-      // (system browser open), and a fast foreground/`pageshow` can call cancelSignIn()
-      // before that await resolves — the pending flag must already allow the abandon, or
-      // the machine sits `signingIn` until the next foreground.
-      externalOAuthPending = true
-      const previousSuppressAdapterRefresh = suppressAdapterRefresh
-      suppressAdapterRefresh = true
-      actor.send({ type: 'SIGN_IN_START' })
-      try {
-        const session = await adapter.signInWithGoogle()
-        if (!disposed && operationEpoch === epoch) {
-          if (session) {
-            externalOAuthPending = false
-            forcedLocalSignOut = false
-            locallySignedOut = false
-            suppressAdapterRefresh = false
-            actor.send({
-              type: 'SIGN_IN_SUCCESS',
-              userId: session.userId,
-              expiresAt: session.expiresAt,
-            })
-          }
-          // else: the flow continues outside the app (web full-page redirect / mobile
-          // system browser) — the machine holds `signingIn` and settles later via the
-          // adapter's onChange (web return), via completeOAuthSignIn (mobile callback),
-          // or via cancelSignIn (abandoned); the pending flag stays up until then.
-        }
-      } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
-          externalOAuthPending = false
-          suppressAdapterRefresh = previousSuppressAdapterRefresh
-          actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
-        }
-        throw error
-      } finally {
-        signInFlight -= 1
-      }
+      // A null session means the flow continues outside the app (web full-page redirect, mobile
+      // system browser); the machine holds `signingIn` until the adapter's report, a completion
+      // call or a cancel settles it.
+      await attempt(
+        { type: 'SIGN_IN_START', external: true },
+        () => adapter.signInWithGoogle(),
+        (session) => (session ? signedIn(session) : { type: 'SIGN_IN_LEFT_APP' }),
+      )
     },
     async completeOAuthSignIn(callbackUrl: string) {
-      const operationEpoch = ++epoch
-      signInFlight += 1
-      externalOAuthPending = false
-      const previousSuppressAdapterRefresh = suppressAdapterRefresh
-      suppressAdapterRefresh = true
-      // A no-op when the machine already sits in `signingIn` (the machine ignores
-      // it there), but a completion can also arrive after cancelSignIn returned the
-      // machine to `signedOut` — this re-enters the attempt from that state too.
-      actor.send({ type: 'SIGN_IN_START' })
-      try {
-        const session = await adapter.completeOAuthSignIn(callbackUrl)
-        if (!disposed && operationEpoch === epoch) {
-          forcedLocalSignOut = false
-          locallySignedOut = false
-          suppressAdapterRefresh = false
-          actor.send({
-            type: 'SIGN_IN_SUCCESS',
-            userId: session.userId,
-            expiresAt: session.expiresAt,
-          })
-        }
-      } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
-          suppressAdapterRefresh = previousSuppressAdapterRefresh
-          actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
-        }
-        throw error
-      } finally {
-        signInFlight -= 1
-      }
+      // A completion can arrive after cancelSignIn returned the machine to `signedOut`; starting a
+      // new attempt re-enters `signingIn` from there too.
+      await attempt(
+        { type: 'SIGN_IN_START' },
+        () => adapter.completeOAuthSignIn(callbackUrl),
+        signedIn,
+      )
     },
     cancelSignIn() {
-      if (disposed) return
-      // Only an OAuth attempt that left the app can be abandoned; an in-call
-      // sign-in (password) still owns its `signingIn` and must be left to resolve.
-      if (!externalOAuthPending) return
-      if (actor.getSnapshot().context.status !== 'signingIn') return
-      // Invalidate the in-flight sign-in operation so a late resolution can no
-      // longer drive the machine, then settle back to signedOut (an existing
-      // transition — no new machine states/events for OAuth).
-      epoch += 1
-      externalOAuthPending = false
-      locallySignedOut = true
-      suppressAdapterRefresh = true
-      actor.send({ type: 'SIGN_OUT' })
+      send({ type: 'CANCEL_SIGN_IN' })
     },
     async signOut() {
       const previousEpoch = epoch
-      const previousLocallySignedOut = locallySignedOut
-      const previousSuppressAdapterRefresh = suppressAdapterRefresh
-      const previousForcedLocalSignOut = forcedLocalSignOut
-      const previousSnapshot = { ...actor.getSnapshot().context }
+      const restore = restorePoint(actor.getSnapshot())
       const operationEpoch = ++epoch
-      locallySignedOut = true
-      suppressAdapterRefresh = true
-      if (!disposed) actor.send({ type: 'SIGN_OUT' })
+      send({ type: 'SIGN_OUT' })
       try {
         await adapter.signOut()
       } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
+        if (operationEpoch === epoch) {
           epoch = previousEpoch
-          locallySignedOut = previousLocallySignedOut
-          suppressAdapterRefresh = previousSuppressAdapterRefresh
-          forcedLocalSignOut = previousForcedLocalSignOut
-          actor.send({ type: 'RESTORE', snapshot: previousSnapshot })
+          send(restore)
         }
         throw error
       }
     },
     forceLocalSignOut() {
       epoch += 1
-      locallySignedOut = true
-      suppressAdapterRefresh = true
-      forcedLocalSignOut = true
-      externalOAuthPending = false
-      if (!disposed) actor.send({ type: 'SIGN_OUT' })
+      send({ type: 'SIGN_OUT', forced: true })
     },
     async refresh() {
-      if (forcedLocalSignOut) return
+      if (!refreshAllowed(actor.getSnapshot())) return
       const operationEpoch = ++epoch
-      actor.send({ type: 'REFRESH_START' })
+      send({ type: 'REFRESH_START' })
       try {
         const session = await adapter.refresh()
-        if (!disposed && operationEpoch === epoch) {
-          forcedLocalSignOut = false
-          locallySignedOut = false
-          suppressAdapterRefresh = false
-          actor.send({
-            type: 'REFRESH_SUCCESS',
-            userId: session.userId,
-            expiresAt: session.expiresAt,
-          })
+        if (operationEpoch === epoch) {
+          send({ type: 'REFRESH_SUCCESS', userId: session.userId, expiresAt: session.expiresAt })
         }
       } catch (error) {
-        if (!disposed && operationEpoch === epoch) {
-          actor.send({ type: 'REFRESH_FAILURE', error: errorMessage(error) })
-        }
+        if (operationEpoch === epoch) send({ type: 'REFRESH_FAILURE', error: errorMessage(error) })
         throw error
       }
     },
     getAccessToken() {
-      if (disposed || locallySignedOut) return Promise.resolve(null)
-      const snapshot = actor.getSnapshot().context
-      if (
-        (snapshot.status !== 'authenticated' && snapshot.status !== 'refreshing') ||
-        snapshot.userId === null
-      ) {
-        return Promise.resolve(null)
-      }
+      if (!holdsAccessToken(actor.getSnapshot())) return Promise.resolve(null)
       return adapter.getAccessToken().catch(() => null)
     },
     subscribe(listener) {
-      if (disposed) return () => {}
-      const subscription = actor.subscribe((snapshot: SnapshotFrom<typeof sessionMachine>) => {
-        listener(snapshot.context)
-      })
+      if (!running()) return () => {}
+      const subscription = actor.subscribe((snapshot) => listener(snapshot.context))
       return () => subscription.unsubscribe()
     },
     dispose() {
-      if (disposed) return
-      disposed = true
+      if (!running()) return
       epoch += 1
       adapterUnsubscribe()
-      actor.stop()
+      actor.send({ type: 'DISPOSE' })
       adapter.dispose?.()
     },
   }
 }
 
-interface BootstrapCallbacks {
-  shouldApply(): boolean
-  didFinish(): void
+function signedIn(session: AuthSession): SessionEvent {
+  return { type: 'SIGN_IN_SUCCESS', userId: session.userId, expiresAt: session.expiresAt }
 }
 
-async function bootstrap(
-  adapter: AuthAdapter,
-  actor: Actor<typeof sessionMachine>,
-  callbacks: BootstrapCallbacks,
-): Promise<void> {
-  try {
-    const session = await adapter.bootstrap()
-    if (callbacks.shouldApply()) {
-      actor.send({
-        type: 'BOOTSTRAP_DONE',
-        userId: session?.userId ?? null,
-        expiresAt: session?.expiresAt ?? null,
-      })
-    }
-  } catch (error) {
-    if (callbacks.shouldApply()) {
-      actor.send({ type: 'BOOTSTRAP_FAILURE', error: errorMessage(error) })
-    }
-  } finally {
-    callbacks.didFinish()
+// What the adapter reported, as the machine event that may apply it.
+function adapterEvent(snapshot: SessionSnapshot, change: AuthAdapterChange): SessionEvent | null {
+  switch (snapshot.status) {
+    case 'signedOut':
+      return { type: 'ADAPTER_SIGNED_OUT' }
+    case 'expired':
+      return { type: 'ADAPTER_EXPIRED' }
+    case 'authenticated':
+      return snapshot.userId && snapshot.expiresAt !== null
+        ? {
+            type: 'ADAPTER_AUTHENTICATED',
+            userId: snapshot.userId,
+            expiresAt: snapshot.expiresAt,
+            refreshed: change.source === 'tokenRefreshed',
+          }
+        : null
+    default:
+      return null
   }
 }
 

@@ -1,15 +1,22 @@
-export * from './callback-url.ts'
-export * from './session.ts'
-export * from './session-machine.ts'
-export * from './auth-adapter.ts'
-export * from './fake-adapter.ts'
-export * from './facade.ts'
-export * from './error.ts'
-export * from './supabase-adapter.ts'
-export * from './gate-decision.ts'
-export * from './nickname.ts'
-export * from './pending-invite.ts'
-export * from './signup-completion.ts'
-export * from './signup.machine.ts'
-export * from './withdrawal.ts'
+export { callbackUrlError } from './callback-url.ts'
+export type { SessionStatus } from './session.ts'
+export type { AuthAdapter, AuthFacade, AuthSession } from './auth-adapter.ts'
+export { createAuthFacade } from './facade.ts'
+export { readErrorMessage } from './error.ts'
+export { gateDecision, requiresSignIn } from './gate-decision.ts'
+export {
+  bindPendingInviteStorage,
+  createMemoryPendingInviteStorage,
+  inviteLinkPath,
+  pendingInvite,
+  type PendingInviteStorage,
+} from './pending-invite.ts'
+export {
+  hasSignupCompletion,
+  recordSignupCompletion,
+  resetSignupUserState,
+  takeSignupCompletion,
+} from './signup-completion.ts'
+export { signupCredentialMachine } from './signup.machine.ts'
+export { commitWithdrawalAndEndSession } from './withdrawal.ts'
 export { ME_TABS, type MeTabId } from './me-tabs.ts'

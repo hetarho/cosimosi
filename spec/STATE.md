@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T21:33Z | T206 |
+| rf41 | ihaelam-ui-MacBookPro | autopilot | 2026-11-02T18:15Z | 2026-11-02T21:45Z | T207 |
 
 ## inbox
+- 261103 decided AUTH-3 T206: AUTH-3 said OAuth adds no machine states or events, but F19 moves the facade's flags into the machine → AUTH-3 r3: OAuth adds no statuses; attempt, local/forced sign-out, bootstrap settling and disposal are machine states outside the context (alt: keep the flags and drop the acceptance | encode them as statuses) ← statuses are the public lifecycle; the flags are control state the machine owns
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
 - 261103 decided T165 T181 T221: which work the autopilot runs first → T181–T221 first by making T165 depend on T221 (alt: T165 first as the lowest runnable ID | park T165) ← the user asked to implement the post-refactor tasks; T165 carries live-evaluation gates and is not part of that request
 - 261103 decided ACCT-12 ACCT-21 T195: `users.signup_settled_at` contradicted ACCT-12's closed column list, and a refused invite cannot say whether the transient email condition failed → amended ACCT-12/21 (r4): stamp only after the bonus and no settleable or a credited invite (alt: keep re-running settlement every launch | stamp after any refusal, losing late email verification) ← the transient condition must still be judged at the next launch
@@ -56,7 +57,7 @@
 | ONB | 2 | 2 | - | 1 |
 | VIS    | 2   | 2      | -       | 0   |
 | ACCT | 4 | 4 | - | 1 |
-| AUTH | 2 | 2 | - | 0 |
+| AUTH | 3 | 3 | - | 0 |
 | CLIENT | 2 | 2 | - | 0 |
 | UI | 1 | 1 | - | 2 |
 | ERR | 2 | 2 | - | 0 |
@@ -90,7 +91,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
-| T206 | Auth facade lifecycle lives in the session machine | ARCH AUTH | T205 | todo |
 | T207 | Account lifecycle moves into `@cosimosi/account` | ARCH AUTH ACCT ONB CLIENT | T206 | todo |
 | T208 | Passive displays become entity UI | ARCH TWINK | T207 | todo |
 | T209 | Steiger exemptions match real slices and cite ARCH | ARCH | T208 | todo |
@@ -108,11 +108,12 @@
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- implement-task T206 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T207 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 T206 done
 - 261103 T205 done
 - 261103 T204 done
 - 261103 T203 done
@@ -132,4 +133,3 @@
 - 261103 T189 done
 - 261103 T188 done
 - 261103 T187 done
-- 261103 T186 done

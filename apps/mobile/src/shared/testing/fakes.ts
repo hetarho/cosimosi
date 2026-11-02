@@ -1,11 +1,7 @@
 import { type ApiTransport } from '@cosimosi/api-client'
-import {
-  FakeAuthAdapter,
-  createAuthFacade,
-  type AuthFacade,
-  type AuthSession,
-  type SupabaseAuthStorage,
-} from '@cosimosi/auth'
+import { createAuthFacade, type AuthFacade, type AuthSession } from '@cosimosi/auth'
+import { FakeAuthAdapter } from '@cosimosi/auth/testing'
+import { type SupabaseAuthStorage } from '@cosimosi/auth/supabase'
 import {
   createClientCacheTestContext,
   type ClientCacheQueryClient,
