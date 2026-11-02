@@ -37,3 +37,10 @@ func TestWorkerBootsWithEveryAccountSeamBound(t *testing.T) {
 		t.Fatal("newWorker returned no AI mode")
 	}
 }
+
+// Every lane can hold a connection while the claim and the cleanup still find one.
+func TestWorkerLanesLeaveAPooledConnection(t *testing.T) {
+	if workerJobConcurrency >= workerDBMaxConns {
+		t.Fatalf("workerJobConcurrency = %d, want fewer than workerDBMaxConns = %d", workerJobConcurrency, workerDBMaxConns)
+	}
+}

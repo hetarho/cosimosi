@@ -24,6 +24,9 @@ services:
     entrypoint: ['/worker']
     env_file: .env
     restart: unless-stopped
+    # Longer than the worker's 20 s drain (workerDrainTimeout), so in-flight jobs finish or are
+    # released before the kill.
+    stop_grace_period: 30s
 
 networks:
   edge:

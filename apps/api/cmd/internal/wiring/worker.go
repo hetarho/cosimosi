@@ -24,6 +24,9 @@ type WorkerDeps struct {
 	Directory DirectorySource
 	Decrypter ai.KeyDecrypter
 	Logger    *log.Logger
+	// Lanes and DrainTimeout are the root's concurrency and shutdown budget (jobqueue.Config).
+	Lanes        int
+	DrainTimeout time.Duration
 }
 
 // Worker drains the job queue: memory's AI jobs and retention sweep, the withdrawal sweep and the
@@ -74,7 +77,7 @@ func NewWorker(deps WorkerDeps) (Worker, error) {
 	if err != nil {
 		return Worker{}, err
 	}
-	runner, err := newRunner(queuepg.NewStore(db), registrations, deps.Logger)
+	runner, err := newRunner(queuepg.NewStore(db), registrations, deps)
 	if err != nil {
 		return Worker{}, err
 	}
@@ -102,8 +105,9 @@ func jobRegistrations(
 func newRunner(
 	queue queuepg.Store,
 	registrations map[string]jobqueue.Registration[jobqueue.Record],
-	logger *log.Logger,
+	deps WorkerDeps,
 ) (jobqueue.Runner[jobqueue.Record], error) {
+	logger := deps.Logger
 	cleaned := jobqueue.WithTerminalCleanup[jobqueue.Record](queue, queue, jobqueue.CleanupPolicy{
 		Interval:  time.Duration(values.WorkerCleanupIntervalS) * time.Second,
 		BatchSize: int32(values.WorkerCleanupBatchSize),
@@ -116,6 +120,8 @@ func newRunner(
 		MaxClaims:    int32(values.AiJobMaxClaims),
 		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
 		PollInterval: jobqueue.DefaultPollInterval,
+		Lanes:        deps.Lanes,
+		DrainTimeout: deps.DrainTimeout,
 		Logger:       logger,
 	})
 }

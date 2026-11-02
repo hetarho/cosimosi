@@ -3,6 +3,9 @@ package jobqueue
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -376,5 +379,164 @@ func TestRegistrationsRefuseMalformedAndDuplicateKinds(t *testing.T) {
 		map[string]Registration[testJob]{"embed": {Handler: handler}},
 	); !errors.Is(err, ErrDuplicateRegistration) {
 		t.Fatalf("duplicate kind err = %v, want ErrDuplicateRegistration", err)
+	}
+}
+
+// drainQueue hands out a fixed list of jobs once each and records the transitions, guarded for lanes.
+type drainQueue struct {
+	mu        sync.Mutex
+	pending   []testJob
+	completed []string
+	retried   map[string]time.Time
+	attempts  map[string]int32
+	retryCtx  []error
+}
+
+func (q *drainQueue) ClaimDue(ctx context.Context, _ time.Time, _ time.Duration) (testJob, error) {
+	if err := ctx.Err(); err != nil {
+		return testJob{}, err
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.pending) == 0 {
+		return testJob{}, ErrNoJob
+	}
+	job := q.pending[0]
+	q.pending = q.pending[1:]
+	return job, nil
+}
+
+func (q *drainQueue) Complete(ctx context.Context, job testJob) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.completed = append(q.completed, job.id)
+	return nil
+}
+
+func (q *drainQueue) Retry(ctx context.Context, job testJob, nextAttempts int32, nextRunAt time.Time) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.retryCtx = append(q.retryCtx, ctx.Err())
+	if q.retried == nil {
+		q.retried, q.attempts = map[string]time.Time{}, map[string]int32{}
+	}
+	q.retried[job.id], q.attempts[job.id] = nextRunAt, nextAttempts
+	return nil
+}
+
+func (q *drainQueue) Fail(context.Context, testJob, int32) error { return nil }
+
+func (q *drainQueue) DeadLetter(context.Context, testJob, DeadLetterCause) error { return nil }
+
+func drainRunner(t *testing.T, queue *drainQueue, handler Handler[testJob], lanes int, drain time.Duration, now time.Time) Runner[testJob] {
+	t.Helper()
+	runner, err := NewRunner[testJob](queue, map[string]Registration[testJob]{"kind": {Handler: handler}}, Config{
+		Lease: time.Minute, MaxAttempts: 3, BackoffBase: time.Minute, PollInterval: time.Millisecond,
+		Lanes: lanes, DrainTimeout: drain, Now: func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatalf("NewRunner failed: %v", err)
+	}
+	return runner
+}
+
+// Two lanes run two slow handlers at once, so the queue clears in about half the single-lane time.
+func TestLanesRunHandlersConcurrently(t *testing.T) {
+	jobs := func() []testJob {
+		out := make([]testJob, 0, 8)
+		for i := range 8 {
+			out = append(out, testJob{id: fmt.Sprintf("job-%d", i), userID: "user-1", kind: "kind"})
+		}
+		return out
+	}
+	elapsed := func(lanes int) (time.Duration, []string) {
+		queue := &drainQueue{pending: jobs()}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		handler := func(context.Context, testJob) error { time.Sleep(20 * time.Millisecond); return nil }
+		runner := drainRunner(t, queue, handler, lanes, time.Second, fixedRunnerNow())
+		start := time.Now()
+		done := make(chan error, 1)
+		go func() { done <- runner.Run(ctx) }()
+		for {
+			queue.mu.Lock()
+			finished := len(queue.completed)
+			queue.mu.Unlock()
+			if finished == 8 {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		took := time.Since(start)
+		cancel()
+		<-done
+		return took, queue.completed
+	}
+	single, _ := elapsed(1)
+	double, completed := elapsed(2)
+	if double > single*3/4 {
+		t.Fatalf("two lanes took %v against one lane's %v, want about half", double, single)
+	}
+	slices.Sort(completed)
+	if len(slices.Compact(completed)) != 8 {
+		t.Fatalf("completed = %v, want every job exactly once", completed)
+	}
+}
+
+// A shutdown stops claiming but lets the in-flight handler finish within the drain, so the job
+// completes instead of waiting out its lease.
+func TestShutdownDrainsTheInFlightHandler(t *testing.T) {
+	queue := &drainQueue{pending: []testJob{{id: "job-1", userID: "user-1", kind: "kind"}, {id: "job-2", userID: "user-1", kind: "kind"}}}
+	entered := make(chan struct{})
+	handler := func(ctx context.Context, job testJob) error {
+		if job.id == "job-1" {
+			close(entered)
+			time.Sleep(50 * time.Millisecond)
+		}
+		return ctx.Err()
+	}
+	runner := drainRunner(t, queue, handler, 1, time.Second, fixedRunnerNow())
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	<-entered
+	cancel()
+	<-done
+	if !slices.Equal(queue.completed, []string{"job-1"}) || len(queue.pending) != 1 {
+		t.Fatalf("completed %v with %d still pending, want the in-flight job done and no new claim", queue.completed, len(queue.pending))
+	}
+}
+
+// A handler outliving the drain is cancelled, and its lease is released on a fresh context, due now
+// and without spending an attempt.
+func TestDrainExpiryReleasesTheLeaseDueNow(t *testing.T) {
+	now := fixedRunnerNow()
+	queue := &drainQueue{pending: []testJob{{id: "job-1", userID: "user-1", kind: "kind", attempts: 1}}}
+	entered := make(chan struct{})
+	handler := func(ctx context.Context, _ testJob) error {
+		close(entered)
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	runner := drainRunner(t, queue, handler, 1, 20*time.Millisecond, now)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(ctx) }()
+	<-entered
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("the runner did not return after the drain expired")
+	}
+	if len(queue.completed) != 0 || !queue.retried["job-1"].Equal(now) || queue.attempts["job-1"] != 1 {
+		t.Fatalf("aborted job: completed %v, retried at %v with %d attempts; want released due now with 1",
+			queue.completed, queue.retried["job-1"], queue.attempts["job-1"])
+	}
+	if len(queue.retryCtx) != 1 || queue.retryCtx[0] != nil {
+		t.Fatalf("release ran on a cancelled context: %v", queue.retryCtx)
 	}
 }

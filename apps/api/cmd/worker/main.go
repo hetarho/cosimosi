@@ -25,6 +25,13 @@ const (
 	// (DEPLOY.md).
 	workerDBMaxConns     = 3
 	dbConnLifetimeJitter = 10 * time.Minute
+	// workerJobConcurrency lanes share the queue, so one slow provider call no longer holds every
+	// other job behind it. It stays below the pool size: a lane holds at most one connection at a
+	// time, and the claim and cleanup need one more.
+	workerJobConcurrency = 2
+	// workerDrainTimeout is how long in-flight jobs may finish after SIGTERM; it stays inside the
+	// container's stop grace (docker-compose.prod.yml) so the drain ends before the kill.
+	workerDrainTimeout = 20 * time.Second
 )
 
 func main() {
@@ -71,5 +78,8 @@ func newWorker(pool *platformdb.Pool, logger *log.Logger) (wiring.Worker, error)
 	if err != nil {
 		return wiring.Worker{}, err
 	}
-	return wiring.NewWorker(wiring.WorkerDeps{Pool: pool, Directory: directory, Decrypter: decrypter, Logger: logger})
+	return wiring.NewWorker(wiring.WorkerDeps{
+		Pool: pool, Directory: directory, Decrypter: decrypter, Logger: logger,
+		Lanes: workerJobConcurrency, DrainTimeout: workerDrainTimeout,
+	})
 }

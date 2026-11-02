@@ -34,7 +34,8 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		return nil, err
 	}
 	_, decrypter := adminCipher(logger)
-	worker, err := wiring.NewWorker(wiring.WorkerDeps{Pool: pool, Directory: directory, Decrypter: decrypter, Logger: logger})
+	// The dev worker stays single-lane and stops with the API, with no drain window.
+	worker, err := wiring.NewWorker(wiring.WorkerDeps{Pool: pool, Directory: directory, Decrypter: decrypter, Logger: logger, Lanes: 1})
 	if err != nil {
 		pool.Close()
 		return nil, err

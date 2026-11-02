@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
 )
+
+// leaseReleaseTimeout bounds the one write that returns a shutdown-aborted job to the queue.
+const leaseReleaseTimeout = 5 * time.Second
 
 var (
 	ErrNoJob                 = errors.New("job queue has no due job")
@@ -101,6 +105,12 @@ type Config struct {
 	MaxClaims    int32
 	BackoffBase  time.Duration
 	PollInterval time.Duration
+	// Lanes is how many claim-and-run loops share the queue: SKIP LOCKED claims and the lease fence
+	// keep two lanes from running one job. Zero means one.
+	Lanes int
+	// DrainTimeout bounds how long an in-flight handler keeps running once the run context ends;
+	// claiming stops at once. Zero cancels in-flight handlers with the run context.
+	DrainTimeout time.Duration
 	Now          func() time.Time
 	Logger       *log.Logger
 }
@@ -113,6 +123,8 @@ type Runner[J Job] struct {
 	maxClaims     int32
 	backoffBase   time.Duration
 	pollInterval  time.Duration
+	lanes         int
+	drainTimeout  time.Duration
 	now           func() time.Time
 	logger        *log.Logger
 }
@@ -150,13 +162,39 @@ func NewRunner[J Job](queue Queue[J], registrations map[string]Registration[J], 
 		maxClaims:     cfg.MaxClaims,
 		backoffBase:   cfg.BackoffBase,
 		pollInterval:  pollInterval,
+		lanes:         max(cfg.Lanes, 1),
+		drainTimeout:  max(cfg.DrainTimeout, 0),
 		now:           now,
 		logger:        cfg.Logger,
 	}, nil
 }
 
+// Run runs the configured lanes until ctx ends, then waits for each lane's in-flight job to finish
+// or be released.
 func (r Runner[J]) Run(ctx context.Context) error {
+	var wg sync.WaitGroup
+	errs := make([]error, r.lanes)
+	for lane := range r.lanes {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs[lane] = r.runLane(ctx)
+		}()
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+	}
+	return ctx.Err()
+}
+
+func (r Runner[J]) runLane(ctx context.Context) error {
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		worked, err := r.RunOnce(ctx)
 		if err != nil {
 			return err
@@ -174,6 +212,9 @@ func (r Runner[J]) Run(ctx context.Context) error {
 	}
 }
 
+// RunOnce claims one due job and runs it. Claiming honours ctx; the claimed job's handler and its
+// transition run on a drain context that outlives ctx by at most the drain timeout, so a shutdown
+// lets in-flight work finish instead of stranding it until its lease expires.
 func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	job, err := r.queue.ClaimDue(ctx, r.now(), r.lease)
 	if errors.Is(err, ErrNoJob) {
@@ -186,53 +227,89 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 		r.logf("job claim failed: %v", err)
 		return false, nil
 	}
+	work, release := r.drainContext(ctx)
+	defer release()
+	r.process(ctx, work, job)
+	return true, nil
+}
 
+// drainContext detaches the claimed job's work from ctx: when ctx ends, the work keeps running for
+// the drain timeout and is cancelled after it.
+func (r Runner[J]) drainContext(ctx context.Context) (context.Context, func()) {
+	work, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	var mu sync.Mutex
+	var drain *time.Timer
+	released := false
+	stop := context.AfterFunc(ctx, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if !released {
+			drain = time.AfterFunc(r.drainTimeout, cancel)
+		}
+	})
+	return work, func() {
+		stop()
+		mu.Lock()
+		released = true
+		if drain != nil {
+			drain.Stop()
+		}
+		mu.Unlock()
+		cancel()
+	}
+}
+
+func (r Runner[J]) process(ctx context.Context, work context.Context, job J) {
 	// Dead-letter a job that has been re-claimed past the hard claim ceiling without ever
 	// finishing — the signature of a handler that kills its worker (panic that escapes,
 	// OOM, SIGKILL) every run, which would otherwise loop forever since a killed worker
 	// never records a failure.
 	if !r.registrations[job.JobKind()].RetryForever && r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
-		if err := r.queue.DeadLetter(ctx, job, DeadLetterClaimCeiling); err != nil {
-			if shouldStop(ctx, err) {
-				return true, err
-			}
+		if err := r.queue.DeadLetter(work, job, DeadLetterClaimCeiling); err != nil {
 			r.logf("job %s dead-letter transition failed: %v", job.JobID(), err)
-			return true, nil
+			return
 		}
 		r.logf("job %s dead-lettered after %d claims", job.JobID(), job.JobLeaseGeneration())
-		return true, nil
+		return
 	}
 
 	registration, ok := r.registrations[job.JobKind()]
 	if !ok {
-		if err := r.queue.DeadLetter(ctx, job, DeadLetterUnhandledKind); err != nil {
-			if shouldStop(ctx, err) {
-				return true, err
-			}
+		if err := r.queue.DeadLetter(work, job, DeadLetterUnhandledKind); err != nil {
 			r.logf("job %s dead-letter transition failed: %v", job.JobID(), err)
-			return true, nil
+			return
 		}
 		r.logf("job %s dead-lettered: unhandled kind %q", job.JobID(), job.JobKind())
-		return true, nil
+		return
 	}
 
-	handlerCtx := platform.ContextWithUserID(ctx, job.JobUserID())
+	handlerCtx := platform.ContextWithUserID(work, job.JobUserID())
 	if err := r.invoke(registration.Handler, handlerCtx, job); err != nil {
-		if err := r.handleFailure(ctx, job, err); err != nil {
-			if shouldStop(ctx, err) {
-				return true, err
-			}
+		if work.Err() != nil {
+			r.releaseAborted(ctx, job, err)
+			return
+		}
+		if err := r.handleFailure(work, job, err); err != nil {
 			r.logf("job %s failure transition failed: %v", job.JobID(), err)
 		}
-		return true, nil
+		return
 	}
-	if err := r.queue.Complete(ctx, job); err != nil {
-		if shouldStop(ctx, err) {
-			return true, err
-		}
+	if err := r.queue.Complete(work, job); err != nil {
 		r.logf("job %s complete transition failed: %v", job.JobID(), err)
 	}
-	return true, nil
+}
+
+// releaseAborted hands a job the shutdown cut off back to the queue, due now and without spending
+// an attempt: the abort was the worker's, not the job's. It writes on a fresh context, because the
+// one the handler ran on is the one that was cancelled.
+func (r Runner[J]) releaseAborted(ctx context.Context, job J, cause error) {
+	release, cancel := context.WithTimeout(context.WithoutCancel(ctx), leaseReleaseTimeout)
+	defer cancel()
+	if err := r.queue.Retry(release, job, job.JobAttempts(), r.now()); err != nil {
+		r.logf("job %s aborted by shutdown and its lease release failed: %v", job.JobID(), err)
+		return
+	}
+	r.logf("job %s aborted by shutdown, released due now: %v", job.JobID(), cause)
 }
 
 // invoke runs a handler, converting a panic into an ordinary failure so one bad job
