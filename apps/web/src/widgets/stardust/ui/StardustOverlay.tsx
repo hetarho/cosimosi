@@ -6,7 +6,7 @@ import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
 import { useErrorToast } from '@cosimosi/errors/react'
 import { WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
-import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
+import { useLaunchedNeuronsStore } from '@cosimosi/universe'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
 import { TwinkleDetailSheet } from './TwinkleDetailSheet.tsx'
 

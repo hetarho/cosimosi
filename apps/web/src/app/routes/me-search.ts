@@ -5,7 +5,7 @@
 // before any chunk is fetched, so the accepted ids have to be in the entry chunk — and a value
 // import from `pages/me` would drag `MePage` in with them and undo the route's lazy boundary. A
 // `import type` is erased, so the union still constrains this list without costing a byte.
-import type { MeTabId } from '../../pages/me/index.ts'
+import type { MeTabId } from '@cosimosi/auth'
 
 export interface MeSearchParams {
   tab?: MeTabId

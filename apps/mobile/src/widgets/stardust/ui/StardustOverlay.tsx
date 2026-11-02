@@ -9,7 +9,7 @@ import { IconButton, NoticeIcon, tokens } from '@cosimosi/ui'
 
 import { useErrorToast } from '@cosimosi/errors/react'
 import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
-import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
+import { useLaunchedNeuronsStore } from '@cosimosi/universe'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 // widgets/stardust (RN fork, [G2][G3]): the persistent economy overlay over the running canvas — it

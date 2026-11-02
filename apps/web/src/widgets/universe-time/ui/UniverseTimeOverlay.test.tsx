@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { useUniverseClockStore } from '@cosimosi/universe'
 
-import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
-import { useTimeSyncConsentStore } from '../../../features/confirm-time-sync/index.ts'
+import { useAdvanceAnnouncementStore } from '@cosimosi/universe'
+import { useTimeSyncConsentStore } from '@cosimosi/universe'
 import { UniverseTimeOverlay } from './UniverseTimeOverlay.tsx'
 
 // The web overlay is the DOM host of the shared sequencing (machine + stores + advanceSweepFrame).

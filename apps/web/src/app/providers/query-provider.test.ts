@@ -27,16 +27,13 @@ import {
   useReleasedGroupsStore,
 } from '@cosimosi/universe'
 
-import { useAdvanceAnnouncementStore } from '../../features/accelerate-time/index.ts'
-import {
-  requestTimeSyncConsent,
-  useTimeSyncConsentStore,
-} from '../../features/confirm-time-sync/index.ts'
-import { useLaunchedNeuronsStore } from '../../features/launch-stars/index.ts'
-import { useDiaryDraftStore } from '../../features/write-diary/index.ts'
-import { useDeletionDraftStore } from '../../widgets/deletion-flow/index.ts'
-import { useRecallDraftStore } from '../../widgets/recall-flow/index.ts'
-import { useProposalStore } from '../../widgets/writing-flow/index.ts'
+import { useAdvanceAnnouncementStore } from '@cosimosi/universe'
+import { requestTimeSyncConsent, useTimeSyncConsentStore } from '@cosimosi/universe'
+import { useLaunchedNeuronsStore } from '@cosimosi/universe'
+import { useDiaryDraftStore } from '@cosimosi/universe'
+import { useDeletionDraftStore } from '@cosimosi/universe/testing'
+import { useRecallDraftStore } from '@cosimosi/universe/testing'
+import { useProposalStore } from '@cosimosi/universe/testing'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'

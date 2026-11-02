@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
     "./react/flows": "./src/react/flows.ts",
-    "./react/exports": "./src/react/use-export.ts"
+    "./react/exports": "./src/react/use-export.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

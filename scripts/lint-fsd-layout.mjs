@@ -312,36 +312,28 @@ export function findSliceBoundaryProblems(srcAbs, root = repoRoot) {
     const imports = []
     let jsx = false
     const visit = (node) => {
+      // A slice's public API publishes what the slice defines. Re-exporting a package symbol makes the
+      // slice a second door to the package, and consumers then reach package internals through it.
       if (
-        /^widgets\/(writing-flow|recall-flow|deletion-flow|diary-reader)\/ui\//.test(local) &&
+        /^(pages|widgets|features|entities)\/[^/]+\/index\.[jt]sx?$/.test(local) &&
+        ts.isExportDeclaration(node) &&
+        node.moduleSpecifier &&
+        ts.isStringLiteralLike(node.moduleSpecifier) &&
+        node.moduleSpecifier.text.startsWith('@cosimosi/')
+      )
+        problems.push(
+          `${portableRelative(root, file)} — a slice index re-exports ${node.moduleSpecifier.text}; import it from the package`,
+        )
+      // The flow drafts' test entry exists so suites can seed and read them; production reaches the
+      // flows only through their controllers.
+      if (
         ts.isImportDeclaration(node) &&
         ts.isStringLiteralLike(node.moduleSpecifier) &&
-        node.moduleSpecifier.text === '@cosimosi/universe' &&
-        !node.importClause?.isTypeOnly
-      ) {
-        const bindings = node.importClause?.namedBindings
-        const mutable = new Set([
-          'useProposalStore',
-          'useRecallDraftStore',
-          'useDeletionDraftStore',
-          'applyRecallResult',
-          'insertLaunchedMemories',
-          'requestRecall',
-          'requestRecallDiaryStars',
-          'requestLaunchStars',
-        ])
-        if (
-          bindings &&
-          (ts.isNamespaceImport(bindings) ||
-            bindings.elements.some(
-              (binding) =>
-                !binding.isTypeOnly && mutable.has((binding.propertyName ?? binding.name).text),
-            ))
+        node.moduleSpecifier.text === '@cosimosi/universe/testing'
+      )
+        problems.push(
+          `${portableRelative(root, file)} — @cosimosi/universe/testing is for tests only`,
         )
-          problems.push(
-            `${portableRelative(root, file)} — flow UI must use its shared controller capability`,
-          )
-      }
       // A paid flow — its operation-id session and its paid request — belongs to the package
       // controller that tests it, wherever the view lives; an app ui file only binds that controller.
       if (

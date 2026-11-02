@@ -252,20 +252,46 @@ test('rejects normalized-equivalent modules whose exported identifier was rename
   assert.ok(problems.some((problem) => problem.includes('normalized-equivalent pure module')))
 })
 
-test('prevents both platforms from bypassing shared flow controllers through aliased imports', () => {
+test('rejects a slice index that re-exports a package symbol, on both platforms', () => {
   const root = fixture()
   for (const app of ['web', 'mobile']) {
     put(
       root,
-      `apps/${app}/src/widgets/recall-flow/ui/Sheet.tsx`,
-      "import { requestRecall as send } from '@cosimosi/universe'; export const submit = send;",
+      `apps/${app}/src/widgets/recall-flow/index.ts`,
+      "export { RecallFlowSheet } from './ui/RecallFlowSheet.tsx'\nexport { useRecallFlowController as useController } from '@cosimosi/universe/react/flows'\n",
+    )
+    put(
+      root,
+      `apps/${app}/src/widgets/recall-flow/ui/RecallFlowSheet.tsx`,
+      'export const RecallFlowSheet = 1\n',
     )
   }
-  const problems = findFsdLayoutProblems(root)
-  assert.equal(
-    problems.filter((problem) => problem.includes('shared controller capability')).length,
-    2,
+  put(root, 'apps/web/src/features/probe/index.ts', "export * from '@cosimosi/universe'\n")
+  put(root, 'apps/web/src/features/probe/ui/Own.ts', 'export const own = 1\n')
+  put(root, 'apps/mobile/src/features/own/index.ts', "export { own } from './ui/Own.ts'\n")
+  put(
+    root,
+    'apps/mobile/src/features/own/ui/Own.ts',
+    "export { cn } from '@cosimosi/ui'\nexport const own = 1\n",
   )
+  const barrels = findFsdLayoutProblems(root).filter((problem) =>
+    problem.includes('a slice index re-exports'),
+  )
+  assert.equal(barrels.length, 3, barrels.join('\n'))
+  assert.ok(barrels.some((problem) => problem.includes('apps/web/src/features/probe/index.ts')))
+})
+
+test('only tests import the flow drafts test entry', () => {
+  const root = fixture()
+  const seed =
+    "import { useRecallDraftStore } from '@cosimosi/universe/testing'\nexport const seed = useRecallDraftStore\n"
+  put(root, 'apps/web/src/widgets/recall-flow/ui/Seed.ts', seed)
+  put(root, 'apps/web/src/widgets/recall-flow/ui/Seed.test.ts', seed)
+  const problems = findFsdLayoutProblems(root).filter((problem) =>
+    problem.includes('@cosimosi/universe/testing is for tests only'),
+  )
+  assert.deepEqual(problems.length, 1, problems.join('\n'))
+  assert.ok(problems[0].includes('widgets/recall-flow/ui/Seed.ts'))
 })
 
 test('rejects a paid session or paid request in any app ui file', () => {

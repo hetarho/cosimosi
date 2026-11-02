@@ -6,7 +6,8 @@ import { createRouterTransport } from '@connectrpc/connect'
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryService } from '@cosimosi/api-client'
-import { resetUniverseUserState, useDiaryDraftStore, useProposalStore } from '@cosimosi/universe'
+import { resetUniverseUserState, useDiaryDraftStore } from '@cosimosi/universe'
+import { useProposalStore } from '@cosimosi/universe/testing'
 import { useWritingFlowController } from '@cosimosi/universe/react/flows'
 
 const clients: QueryClient[] = []

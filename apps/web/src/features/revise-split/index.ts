@@ -1,4 +1,3 @@
-export { requestReviseSplit, type ReviseSplitInput } from '@cosimosi/memory'
 export {
   ReviseControls,
   type ReviseControlsProps,

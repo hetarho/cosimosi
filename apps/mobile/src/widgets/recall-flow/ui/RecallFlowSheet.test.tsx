@@ -14,7 +14,7 @@ import {
   useUniverseClockStore,
 } from '@cosimosi/universe'
 
-import { useRecallDraftStore } from '@cosimosi/universe'
+import { useRecallDraftStore } from '@cosimosi/universe/testing'
 import { ErrorToastContext } from '@cosimosi/errors/react'
 import { RecallFlowSheet } from './RecallFlowSheet.tsx'
 

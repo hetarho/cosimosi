@@ -3,12 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { MemoryService } from '@cosimosi/api-client'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import {
-  applyRestoreResult,
-  requestRestore,
-  useEpisodicMemoryStore,
-  useReleasedGroupsStore,
-} from '@cosimosi/universe'
+import { useEpisodicMemoryStore, useReleasedGroupsStore } from '@cosimosi/universe'
+
+import { applyRestoreResult, requestRestore } from './deletion.ts'
 
 const memory = (id: string): EpisodicMemory => ({
   id,

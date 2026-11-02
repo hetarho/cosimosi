@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
-import type { MeTabId } from '../../pages/me/index.ts'
+import type { MeTabId } from '@cosimosi/auth'
 
 /**
  * Typed route registry for the mobile shell. This file and NavigationRoot are the

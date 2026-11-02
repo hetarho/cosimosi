@@ -5,7 +5,8 @@ import { useGistViewController } from '@cosimosi/universe/react/flows'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useErrorToast } from '@cosimosi/errors/react'
-import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
+import { SpendCostDisplay } from '../../../features/spend-cost-display/index.ts'
+import { gistViewSpend } from '@cosimosi/twinkle'
 import { m } from '../../../shared/i18n/index.ts'
 
 // widgets/star-detail ui: the 요지 보기 sheet. The paid read, its operation id, refusal routing and

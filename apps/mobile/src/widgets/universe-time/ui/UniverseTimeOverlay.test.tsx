@@ -3,12 +3,9 @@ import { act, fireEvent, render } from '@testing-library/react-native'
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 import { useUniverseClockStore } from '@cosimosi/universe'
 
-import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
-import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
-import {
-  requestTimeSyncConsent,
-  useTimeSyncConsentStore,
-} from '../../../features/confirm-time-sync/index.ts'
+import { useLaunchedNeuronsStore } from '@cosimosi/universe'
+import { useAdvanceAnnouncementStore } from '@cosimosi/universe'
+import { requestTimeSyncConsent, useTimeSyncConsentStore } from '@cosimosi/universe'
 import { UniverseTimeOverlay } from './UniverseTimeOverlay.tsx'
 
 // Overlay sequencing over the real machine + stores. requestAnimationFrame is captured (not run by

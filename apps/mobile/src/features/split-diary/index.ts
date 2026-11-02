@@ -1,4 +1,3 @@
-export { requestSplitDiary, type SplitDiaryInput } from '@cosimosi/memory'
 export {
   ProposedMemoryList,
   type ProposedMemoryListProps,

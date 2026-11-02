@@ -2,7 +2,7 @@ import { createRouterTransport } from '@connectrpc/connect'
 import { describe, expect, it } from 'vitest'
 
 import { MemoryService } from '@cosimosi/api-client'
-import { requestLetGo, requestSuggestLetGo } from '@cosimosi/universe'
+import { requestLetGo, requestSuggestLetGo } from './deletion.ts'
 
 describe('features/let-go api', () => {
   it('SuggestLetGo returns this-memory-only candidates + the heavy-state hint; it seals nothing (A4/A8)', async () => {

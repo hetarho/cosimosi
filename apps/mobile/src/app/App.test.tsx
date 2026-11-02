@@ -36,18 +36,15 @@ import {
   useUniverseClockStore,
 } from '@cosimosi/universe'
 
-import { useAdvanceAnnouncementStore } from '../features/accelerate-time/index.ts'
-import {
-  requestTimeSyncConsent,
-  useTimeSyncConsentStore,
-} from '../features/confirm-time-sync/index.ts'
-import { useLaunchedNeuronsStore } from '../features/launch-stars/index.ts'
-import { useDiaryDraftStore } from '../features/write-diary/index.ts'
+import { useAdvanceAnnouncementStore } from '@cosimosi/universe'
+import { requestTimeSyncConsent, useTimeSyncConsentStore } from '@cosimosi/universe'
+import { useLaunchedNeuronsStore } from '@cosimosi/universe'
+import { useDiaryDraftStore } from '@cosimosi/universe'
 import { fallbackSafeAreaMetrics } from '../shared/native/index.ts'
 import { createMobileShellFakes, type MobileShellFakes } from '../shared/testing/index.ts'
-import { useDeletionDraftStore } from '../widgets/deletion-flow/index.ts'
-import { useRecallDraftStore } from '../widgets/recall-flow/index.ts'
-import { useProposalStore } from '../widgets/writing-flow/index.ts'
+import { useDeletionDraftStore } from '@cosimosi/universe/testing'
+import { useRecallDraftStore } from '@cosimosi/universe/testing'
+import { useProposalStore } from '@cosimosi/universe/testing'
 import App from './App.tsx'
 import { ROUTES, type RootStackParamList } from './navigation/routes.ts'
 

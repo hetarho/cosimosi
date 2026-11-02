@@ -18,7 +18,8 @@ import {
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
 import { MetaBlock } from '../../../entities/episodic-memory/index.ts'
-import { ProvenanceList, useProvenanceQuery } from '../../../features/star-provenance/index.ts'
+import { ProvenanceList } from '../../../features/star-provenance/index.ts'
+import { useProvenanceQuery } from '@cosimosi/memory/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
 

@@ -12,8 +12,8 @@ import {
   useEpisodicMemoryStore,
   useReleasedGroupsStore,
   resetUniverseUserState,
-  useDeletionDraftStore,
 } from '@cosimosi/universe'
+import { useDeletionDraftStore } from '@cosimosi/universe/testing'
 
 import { ErrorToastContext } from '@cosimosi/errors/react'
 import { DeletionFlowSheet } from './DeletionFlowSheet.tsx'

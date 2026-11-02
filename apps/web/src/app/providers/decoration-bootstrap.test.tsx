@@ -12,7 +12,7 @@ import { defaultMoodPalette, moodColor, resetMoodPalette } from '@cosimosi/emoti
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 
-import { usePaletteVersion } from '../../features/change-mood-colors/index.ts'
+import { usePaletteVersion } from '@cosimosi/emotion/react'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { DecorationBootstrap } from './decoration-bootstrap.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
