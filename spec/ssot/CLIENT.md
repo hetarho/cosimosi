@@ -1,5 +1,5 @@
 # CLIENT client platform
-> r1 | the frontend substrate web and mobile share: provider composition, the server-data cache, the user-scope reset, the state-machine foundation, the i18n seam, web routing and the mobile shell
+> r2 | the frontend substrate web and mobile share: provider composition, the server-data cache, the user-scope reset, the state-machine foundation, the i18n seam, web routing and the mobile shell
 
 ## decisions
 - CLIENT-1 [o] each app root composes one provider stack in a fixed order, providers outer and routing inner; feature slices never create long-lived providers →=ARCH
@@ -44,7 +44,7 @@
   - the toast queue sits above auth, so unmounting a feature host alone would leave its queued entry for the next user →=UI
   - an injected QueryClient takes part but stays caller-owned; an owned one is also cleared on unmount
   - persisted data is never deleted; this is the presentation-side complement of server user scoping →=ACCT-1
-- CLIENT-11 [o] every scope change runs one ordered set of reset legs on both platforms: `resetUserState` (`@cosimosi/auth/user-state`) runs the app's product legs, then auth's own leg, then the app's `locale` leg
+- CLIENT-11 [o] every scope change runs one ordered set of reset legs on both platforms: `resetUserState` (`@cosimosi/auth/user-state`) first advances the user-scope generation, then runs the app's product legs, then auth's own leg, then the app's `locale` leg
   | leg | clears |
   |---|---|
   | `universe` | read mirrors (episodic memories, neurons, synapses, clock, diaries); released groups; recall, open-diary, pending-fly, spotlight and deletion targets; latent-consumed marks, awaken registry; advance announcement, sweep and sky rate; launched-neuron hand-off; diary, proposal, recall and deletion drafts; a pending time-sync consent, settled as `cancel` |
@@ -53,11 +53,12 @@
   | `store` | ornament preview, decoration request channel |
   | `sequence` | anchor registry |
   | `onboarding` | pending start or replay request, signal channel →~ONB-24 |
-  | `signup-completion` (auth) | the one-shot signup-completion flag →~ACCT-33 |
+  | `signup-completion` (account) | the one-shot signup-completion flag →~ACCT-33 |
   | `locale` (per app) | web: stored choice, then browser negotiation; mobile: device locale |
-  - app composition lists the product legs (`WEB_USER_STATE_RESETS`, `MOBILE_USER_STATE_RESETS`) in the same order on both apps; `@cosimosi/auth` owns only its session state and depends on no product package
+  - app composition lists the product legs (`WEB_USER_STATE_RESETS`, `MOBILE_USER_STATE_RESETS`) in the same order on both apps, each in `app/providers/user-state-resets.ts`; `@cosimosi/auth` owns only its session state and depends on no product package
   - each package owns one public reset seam; composition calls seams, never package internals
-  - the universe seam first bumps the user-scope generation, invalidating in-flight completions before its stores clear →!CLIENT-13
+  - the generation advances before any leg, so in-flight completions are invalidated whichever legs an app registers →!CLIENT-13
+  - every package-level store or mutable module value is either cleared by a leg or listed as device-scoped; a sandbox that clears product stores (the demo) calls the store seams without advancing the generation
 - CLIENT-12 [o] every module-global user-owned store or deferred-action channel registers its reset in its package's seam and extends the reset regression tests; component-local state needs none, since the boundary unmounts it
   - excluded on purpose: the pending-invite holder survives the anonymous→user transition and an OAuth round trip, clearing only when `SignUp` consumes it or an established profile enters →=ACCT-34
   - excluded on purpose: the universe view mode (`useUniverseViewStore`, pinned or free) is a device preference kept across account switches until the runtime restarts →=VIS
@@ -172,13 +173,18 @@
   - API base URL: web `VITE_API_BASE_URL` → `VITE_API_URL` → local default; mobile injected, else `localhost:8080` (iOS) or `10.0.2.2:8080` (Android emulator)
   - a `*.native` sibling exists only where DOM and RN differ →=ARCH
 - CLIENT-38 [o] mobile has a host test gate with no emulator: Jest with the RN preset and Testing Library (`pnpm test:mobile`); the shell smoke test renders the full stack with `createMobileShellFakes`
+- CLIENT-39 [o] the universe read is never refetched just because the window regains focus; on refocus past its stale time the client reads `GetUniverseRevision` and refetches `GetUniverse` only when the revision differs from the cached snapshot's ← the full snapshot grows with the account while a revision read stays constant →!MEM-21
+  - `GetUniverseRevision` is a `NO_SIDE_EFFECTS` read classified in the memory policy list →=CLIENT-5
+  - post-mutation invalidation and an explicit refresh still refetch the full read →=CLIENT-6
+  - other reads keep the default focus behavior; mobile wires no focus source
 
 ## flow
-- scope change: session user id changes → `SessionScopeBoundary` withholds children → clear QueryClient → drop session toasts → `resetUserState`(product legs → `signup-completion` → `locale`) → commit the new scope → routed subtree mounts
+- scope change: session user id changes → `SessionScopeBoundary` withholds children → clear QueryClient → drop session toasts → `resetUserState`(advance generation → product legs → `signup-completion` → `locale`) → commit the new scope → routed subtree mounts
 
 ## constraints
 - values keys owned by CLIENT: `client_cache.default_stale_ms`, `client_cache.default_gc_ms`, `client_cache.default_retry_count`; routing, i18n and machines add none
 - canonical domain terms are owned by the UL and never become message keys →=UL
 
 ## chg
+- r2 261103 CLIENT-11✎ generation advance "by the universe leg"→"by `resetUserState` before any leg", signup-completion leg auth→account, +inventory path and store-registration rule ; CLIENT-39+ refocus revision read before the full universe read
 - r1 261102 initial

@@ -1,6 +1,6 @@
 # ARCH architecture
 
-> r2 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
+> r3 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
 
 ## decisions
 - ARCH-1 [o] cosimosi is one pnpm workspace of peer apps, shared packages and one RPC contract; each app builds and ships on its own
@@ -55,6 +55,7 @@
   | path | holds |
   | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
   | `apps/api/cmd/api`, `apps/api/cmd/worker` | composition roots →~ARCH-18 |
+  | `apps/api/cmd/internal/wiring` | adapters, fail-closed bindings and leg lists both composition roots construct; each leg list is a function its tests pin →~ARCH-9 |
   | `internal/<context>/` | domain types and canonical names, behavior and use-cases, consumer-owned ports (`ports.go`) once a consumer exists |
   | `internal/<context>/pg/` | sqlc + thin pgx adapter, row↔domain mapping |
   | `internal/<context>/rpc/` | Connect handler, proto↔domain mapping, the context's error reasons |
@@ -139,10 +140,11 @@
   | ---------- | ----------------------------------------------------------------- | ------------------------------ |
   | `app` | composition: providers, routing, global style | wires the app together |
   | `pages` | a route or screen composing lower layers, holding no domain logic | a URL lands here |
-  | `widgets` | a large self-contained block reused across pages | a big chunk a page drops in |
-  | `features` | one user-facing action, named by its verb | a verb the user does |
-  | `entities` | a domain object mirror, or its visual projection →~ARCH-26 | a noun the product talks about |
+  | `widgets` | a self-contained block that binds one product controller or composes two or more features; reuse across pages is not required | a big chunk a page drops in |
+  | `features` | the view(s) of one user action (trigger, form, step), named by its verb, wherever the action's request runs | a verb the user does |
+  | `entities` | read-only views of exactly one domain noun, or its visual projection; the mirror itself lives in `packages/` →~ARCH-26 →~ARCH-27 | a noun the product talks about |
   | `shared` | domain-agnostic reuse | no domain word in it |
+  - facts shown without an action are entity UI; a view only its parent uses stays in the parent's `ui`; a view combining two nouns belongs to the composing widget ← a passive view inside a feature cannot be imported by another feature, so it gets copied sideways
   - same-layer cross-import is forbidden; the one exception is `entities` → `entities` through the target's `@x` public API (`entities/A/@x/B.ts`), and an `@x` file reaches only its own slice
   - each slice exposes one `index.ts`; no wildcard barrels
   - guards: web `steiger --fail-on-warnings` and `eslint-plugin-boundaries`, mobile `eslint-plugin-boundaries`; each app's boundary probe proves a forbidden reach fails
@@ -187,11 +189,15 @@
   | transport and cache | `api-client` (generated client, service descriptors), `client-cache` (Query defaults, keys, optimistic helpers, RPC cache policy) |
   | platform seams | `auth`, `errors`, `i18n`, `observability`, `state-machine` |
   | design system | `ui` →~UI |
-  | FE domain mirrors: types, stores, IO, React seams | `emotion`, `memory`, `universe`, `twinkle`, `store`, `achievement` |
+  | color math shared by the design system and domain mirrors | `color` (pure, dependency-free) |
+  | FE domain mirrors: types, stores, IO, React seams | `account`, `emotion`, `memory`, `universe`, `twinkle`, `store`, `achievement` |
   | deterministic domain logic mirrored in Go | `memory-logic`, `twinkle-logic`, `emotion` →~ARCH-48 |
   | layout and rendering | `force-sim`, `3d-renderer`, `universe-render` →~VIS |
   | guided runs | `sequence`, `onboarding` →~ONB, `demo` →~DEMO |
-  - a pure package has no Vite, Metro, DOM or native dependency; React enters only through an explicit seam entry (`react.ts`, `./react`)
+  - a pure package has no Vite, Metro, DOM or native dependency; React enters only through an explicit seam entry (`react.ts`, `./react`), except Zustand hook stores (`create` from `zustand`), which a root entry may export ← both apps consume the stores as hooks, and splitting every store into a vanilla store plus a seam hook costs more than the purity buys
+  - no other React, React DOM, React Native, three, TanStack React Query or connect-query import is reachable from a root entry
+  - package entries name their exports (no `export *`), and an entry exports only what something outside the package imports
+  - `auth` owns the session only (model, machine, facade, adapters, gate mapping, callback parsing, user-scope reset and completion fence); account lifecycle (nickname rule, pending invite, signup handoff and machine, profile and signup controllers, withdrawal teardown) lives in `account`, which depends on `auth`
   - `@cosimosi/ui` and `@cosimosi/3d-renderer` are the platform-aware packages: each exports a `react-native` entry (`src/index.native.ts`) and keeps its forks inside the package
   - engine substrate (the memory mirror, emotion model, plasticity, force-sim, universe clock) is built inside the first feature that needs it, then promoted down into a package on reuse, never copied sideways
 - ARCH-28 [o] web↔mobile parity means shared packages plus a forked `ui`: `apps/mobile` mirrors `apps/web` with the same layers and slice names, and `model`, `api` and all of `packages/` are shared verbatim
@@ -235,6 +241,7 @@
   | ENC | `encode` |
   | LINK | `synapse` |
   | CONSOL | `semantic`, `consolidation` |
+  | MEM | `persistence` |
   | RECALL | `reconsolidation` |
   | FORGET | `forgetting` |
   | TWINK | `twinkle` |
@@ -277,6 +284,7 @@
   | `lint:web` | oxlint, steiger, ESLint boundaries or React-hooks diagnostics report anything, or the web boundary probe fails | →~ARCH-21 |
   | `lint:mobile` | ESLint, boundaries included, reports anything, or the mobile boundary probe fails | →~ARCH-21 |
   | `lint:packages`, `lint:packages:probe` | the shared flat config `eslint.config.packages.mjs` reports anything over `packages/**` | →~ARCH-42 |
+  | `lint:package-entries` | a root entry reaches a forbidden React/renderer import, an entry uses `export *`, or a manifest omits an imported package or declares an unused one | →~ARCH-27 |
   | `lint:fsd:layout` | an app-layer segment, root file or mobile screen leaves its allowlist, a generic folder appears, or a pure module is copied across apps | →~ARCH-22 →~ARCH-28 |
   | `lint:api` | `gofmt` is not clean | →~ARCH-37 |
   | `lint:observability` | a vendor telemetry SDK is imported outside its boundary file | →~OBS-1 |
@@ -361,5 +369,6 @@
 
 ## chg
 
+- r3 261103 ARCH-7✎ +`cmd/internal/wiring` shared by both roots ; ARCH-21✎ feature "one user-facing action"→"the view(s) of one user action wherever its request runs", widget "reused across pages"→"binds one controller or composes features", entity "a domain object mirror"→"read-only views of one noun", +passive facts are entity UI ; ARCH-27✎ +`account` mirror package, auth "platform seam"→"session only", React "only through seam entries"→"seam entries plus Zustand hook stores in roots", +named entry exports, +`color` package ; ARCH-34✎ +MEM owns `persistence` ; ARCH-41✎ +`lint:package-entries`
 - r2 261102 ARCH-9✎ opaque DB assertions and late-bound holders→typed transaction behaviors and independently constructed read/recording capabilities ; queue producer ownership stays with each context
 - r1 261102 initial

@@ -1,5 +1,5 @@
 # ONB onboarding
-> r1 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
+> r2 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
 
 ## decisions
 - ONB-1 [o] the demo and onboarding run on one sequence engine (`@cosimosi/sequence`) and differ only in the injected script and data: the demo's fixtures (→=DEMO-4) or the user's real first diary
@@ -85,7 +85,7 @@
 - ONB-15 [o] `@cosimosi/onboarding` (`packages/onboarding`) holds the tour's script, its two unions, the start policy and the signal channel; its dependencies are exactly `@cosimosi/sequence`, `@cosimosi/i18n` and `zustand`, with no peers →!ACCT-2
   - guard: a manifest test pins the list; no transport, fixture package, domain-logic package or read mirror is resolvable, so "the tour created a memory" is unrepresentable
   - a package because the script is byte-identical on both apps (`lint:fsd:layout` R4), and not inside `@cosimosi/sequence`, whose closure stays at `xstate` and `zustand` while captions need `@cosimosi/i18n`
-  - the dependency edge runs `@cosimosi/auth` → `@cosimosi/onboarding` (the reset registry), so this package cannot read auth's signup handoff itself
+  - this package imports neither `@cosimosi/auth` nor `@cosimosi/account`; the app passes the signup handoff in →!ONB-22
 - ONB-16 [o] the tour never acts and relaxes no rule: it issues no RPC, writes no read model, seeds no memory, moves no clock, spends no Twinkle and deletes nothing; every change during a run is the user's own press through the shipped writing flow →!INV-10
   - no onboarding step or anchor may move universe time: the only clock advance during a tour is the real one inside a launch →=TIME-2
   - recall stays paid and consented (→~TWINK-1), the `Diary` stays immutable (→~INV-2), and decoration never touches meaning (→~INV-11, →~DECOR-12)
@@ -131,7 +131,7 @@
   - leaving the universe ends the run: web by unmounting the page; mobile abandons on blur, because the native stack keeps the screen mounted under `/me` and dwell timers would walk the tour behind it
   - the start is taken as the universe comes into view: on mount on web, on focus on mobile, where a replay requested in `/me` returns to the same mounted screen
 - ONB-22 [o] `takeOnboardingStart(signupCompleted)` is the whole exposure policy: a take-once read returning `signup`, `replay` or null →!ONB-3
-  - `signup`: the take-once signup-completion handoff (`packages/auth/src/signup-completion.ts`), passed in as `takeSignupCompletion()`; it wins when both are pending →=ACCT
+  - `signup`: the take-once signup-completion handoff (`packages/account/src/signup-completion.ts`), passed in as `takeSignupCompletion()`; it wins when both are pending →=ACCT
   - `replay`: the `/me` row's request; a pending replay is dropped whether or not it wins, so a request whose route never arrived cannot open a tour in a later session
   - the post-signup colour screen consumes the handoff while shown and re-arms it on release, so the tour still receives its trigger; that screen is not a tour step →~ACCT-33
   - a reload during the first tour ends it, since the handoff lives in module memory; the tour stays one tap away in `/me`
@@ -158,4 +158,5 @@
 - the engine and the tour speak anchors and captions, never rendering vocabulary →=UL
 
 ## chg
+- r2 261103 ONB-15✎ "auth → onboarding reset edge"→"imports neither auth nor account"; ONB-22✎ signup handoff `packages/auth`→`packages/account`
 - r1 261102 initial

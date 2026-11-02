@@ -17,12 +17,12 @@
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
-| ARCH   | 2   | 2      | -       | 0   |
+| ARCH | 3 | 3 | - | 0 |
 | PROD | 1 | 1 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
 | UL | 1 | 1 | - | 0 |
-| MEM    | 2   | 2      | -       | 0   |
+| MEM | 3 | 3 | - | 0 |
 | ENC | 1 | 1 | - | 0 |
 | LINK | 1 | 1 | - | 0 |
 | WRITE | 1 | 1 | - | 0 |
@@ -35,15 +35,15 @@
 | DEL | 1 | 1 | - | 1 |
 | DIARY | 1 | 1 | - | 0 |
 | SOCIAL | 1 | 1 | - | 0 |
-| TWINK | 1 | 1 | - | 0 |
+| TWINK | 2 | 2 | - | 0 |
 | ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 1 | 1 | - | 0 |
-| ONB | 1 | 1 | - | 1 |
+| ONB | 2 | 2 | - | 1 |
 | VIS    | 2   | 2      | -       | 0   |
-| ACCT   | 2   | 2      | -       | 1   |
-| AUTH | 1 | 1 | - | 0 |
-| CLIENT | 1 | 1 | - | 0 |
+| ACCT | 3 | 3 | - | 1 |
+| AUTH | 2 | 2 | - | 0 |
+| CLIENT | 2 | 2 | - | 0 |
 | UI | 1 | 1 | - | 2 |
 | ERR | 2 | 2 | - | 0 |
 | OBS | 1 | 1 | - | 0 |
@@ -53,7 +53,7 @@
 ## review
 | id | st |
 | ------------------------------------- | ---------------- |
-| post-refactor-261102                  | ready@261103     |
+| post-refactor-261102                  | converted@261103 |
 | all-261102                            | converted@261102 |
 | architecture-261102                   | converted@261102 |
 | frontend-rendering-experience-260726 | open@260726 |
@@ -76,13 +76,56 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T165 | Consolidate LLM access through OpenRouter | AI ADMIN | - | todo |
+| T181 | Transactions never borrow a second pooled connection | ARCH | - | todo |
+| T182 | Instanced pick volumes follow their instances | ARCH | - | todo |
+| T183 | Memory graph foreign keys lead with the user | ARCH MEM | - | todo |
+| T184 | The consolidation repair pass enqueues one semanticize job per memory revision | ARCH MEM | - | todo |
+| T185 | Mobile inbound links are delivered once and never after unsubscribe | ARCH ACCT | - | todo |
+| T186 | Each shared-transaction edge has one mechanism | ARCH | T181 | todo |
+| T187 | Memory command services are sized to their use cases | ARCH | T186 | todo |
+| T188 | Receipt replay and clock fallback each exist once | ARCH MEM | T187 | todo |
+| T189 | Required ports are refused at construction | ARCH | T187 | todo |
+| T190 | RPC handlers depend on use-case interfaces and each has a transport test | ARCH ERR | T187 | todo |
+| T191 | Job registration and maintenance live in the queue infrastructure | ARCH MEM AI | T187 | todo |
+| T192 | Both composition roots build workers from one wiring package | ARCH | T189 T191 | todo |
+| T193 | Platform names no product procedure and reads no product value group | ARCH | T192 | todo |
+| T194 | Withdrawal sweeps, directory reads and shutdown respect their budgets | ARCH ACCT | T181 T192 | todo |
+| T195 | Graph-locked transactions issue a constant number of statements | ARCH MEM CONSOL | T184 T188 | todo |
+| T196 | Measure and fix the nearest-neuron candidate search | ARCH MEM | - | todo |
+| T197 | The worker runs concurrent lanes and drains on shutdown | ARCH AI | T181 T191 | todo |
+| T198 | Per-user reads have supporting indexes and the graph lock uses a 64-bit key | ARCH MEM | T183 | todo |
+| T199 | Backend readability sweep: inputs, long functions, dead code and comments | ARCH | T190 T193 T194 T195 | todo |
+| T200 | Shared paid-flow controllers are tested in their package | ARCH CLIENT RECALL | - | todo |
+| T201 | The gist-view paid flow has one controller in the package | ARCH CLIENT | T200 | todo |
+| T202 | Diary archive navigation and the universe screen have shared controllers | ARCH | T201 | todo |
+| T203 | Time overlay, sweep driver, decoration panel and /me tabs share one owner; duplicates are caught | ARCH | T202 | todo |
+| T204 | Package and slice entries publish only what consumers use | ARCH | T201 T203 | todo |
+| T205 | The account-scope generation and reset inventory have one owner | ARCH CLIENT | T204 | todo |
+| T206 | Auth facade lifecycle lives in the session machine | ARCH AUTH | T205 | todo |
+| T207 | Account lifecycle moves into `@cosimosi/account` | ARCH AUTH ACCT ONB CLIENT | T206 | todo |
+| T208 | Passive displays become entity UI | ARCH TWINK | T207 | todo |
+| T209 | Steiger exemptions match real slices and cite ARCH | ARCH | T208 | todo |
+| T210 | Package entries are named, pure and minimal | ARCH | T204 T207 | todo |
+| T211 | Manifests match imports and the workspace uses one TypeScript major | ARCH | T210 | todo |
+| T212 | Universe scene projection and showcase have their own entries; scene assembly is shared | ARCH | T204 | todo |
+| T213 | Color math has one implementation | ARCH | - | todo |
+| T214 | Canvases render only while visible | ARCH | - | todo |
+| T215 | The server keeps a per-user universe revision | ARCH MEM CLIENT | T198 | todo |
+| T216 | Refocus reads the revision before the full universe | ARCH CLIENT | T215 | todo |
+| T217 | A settled scene does no per-frame or per-step rework | ARCH | T182 | todo |
+| T218 | GPU resources are reused and released explicitly | ARCH | T208 T217 | todo |
+| T219 | Demo surfaces are one machine state | ARCH DEMO | T212 | todo |
+| T220 | Same-named slices share an API, and mobile gets the Twinkle panel | ARCH TWINK | T208 | todo |
+| T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 
 ## next
-- create-task review/post-refactor-261102: all 38 adopted, six waves; first create-architecture (FE grain criterion → ARCH) and update-ssot (TWINK-39 balance slice, CLIENT refocus freshness read) before F20/F22/F28
+- implement-task T181 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
-- T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2)
+- T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
 
 ## log
+- 261103 create-task review/post-refactor-261102: T181–T221 (41 tasks, 38 findings); review converted
+- 261103 update-ssot ARCH r3 AUTH r2 ACCT r3 ONB r2 TWINK r2 CLIENT r2 MEM r3 from review/post-refactor-261102 triage decisions (FE grain, account package, entry guard, color package, root wiring, scope generation, universe revision)
 - 261103 design universe and diary: volumetric light and reading UI on web/mobile; temporary comparisons removed; domain rules unchanged; full verification passed
 - 261103 review-code post-refactor-261102 triaged: user adopted all 38; FE grain criterion → ARCH revision (recommended rule), F22 → freshness read on refocus
 - 261102 review-code post-refactor-261102 review complete; 38 proposals (1 P1, 21 P2, 16 P3) with a six-wave plan await triage

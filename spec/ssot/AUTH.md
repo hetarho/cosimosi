@@ -1,5 +1,5 @@
 # AUTH authentication
-> r1 | who the caller is: the client auth session, bearer-token verification, the per-request user identity and the gate between auth and the universe
+> r2 | who the caller is: the client auth session, bearer-token verification, the per-request user identity and the gate between auth and the universe
 
 ## decisions
 - AUTH-1 [o] Supabase Auth is the only identity provider: client sessions are Supabase sessions and the API trusts only Supabase-issued access tokens; what the product stores about an account →=ACCT-12
@@ -92,7 +92,8 @@
 - AUTH-23 [o] a committed withdrawal always ends the local session: `commitWithdrawalAndEndSession` signs out after `Withdraw` succeeds and falls back to `forceLocalSignOut` if the network sign-out fails →=ACCT-40
   - a failed `Withdraw` touches no auth state; a committed one never renders as a failed mutation or leaves a session every RPC refuses
 - AUTH-24 [o] placement →=ARCH
-  - `packages/auth`: session model and machine, facade, adapters, gate mapping, callback parsing, pending-invite holder, signup-completion flag, withdrawal coordinator; `@cosimosi/auth/react`: React bindings and `SessionScopeBoundary`
+  - `packages/auth`: session model and machine, facade, adapters, gate mapping, callback parsing, user-scope reset and completion fence; `@cosimosi/auth/react`: React bindings and `SessionScopeBoundary`
+  - account lifecycle pieces (pending-invite holder, signup-completion flag, withdrawal coordinator) live in `packages/account` →=ACCT-42
   - gate hosts: web `app/routes` (`guards/auth-gate.ts`), mobile `app/navigation/NavigationRoot.tsx` →=CLIENT
   - Go `internal/platform`: `AuthInterceptor`, `SupabaseJWTVerifier`, `UserScope`; context packages consume `UserScope`, never tokens
 
@@ -105,4 +106,5 @@
 - environment, not values: the Supabase project URL and keys, `SUPABASE_JWT_SECRET`, JWT audience and issuer, the token storage choice
 
 ## chg
+- r2 261103 AUTH-24✎ `packages/auth` "session + pending invite, signup flag, withdrawal coordinator"→"session only"; account lifecycle pieces→`packages/account`
 - r1 261102 initial

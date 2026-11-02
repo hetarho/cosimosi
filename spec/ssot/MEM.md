@@ -1,6 +1,6 @@
 # MEM memory aggregate & persistence
 
-> r2 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
+> r3 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
 
 ## decisions
 - MEM-1 [o] `internal/memory` is the core context that owns the memory aggregate: its tables, its queries under `db/queries/memory/` and its only persistence adapter `internal/memory/pg` →=ARCH
@@ -87,11 +87,12 @@
   - a removal reaches clients only as facts disappearing from `GetUniverse`
 - MEM-13 [o] the withdrawal sweep's memory leg `PurgeUser` hard-deletes the user's whole memory-context footprint in one transaction →=ACCT-10
   - the sweep that calls it (trigger, due-ness, leg order) →=ACCT-27
-  - scope: receipts, the release ledger, provenance, activations, synapses, embeddings, memories, neurons, diaries, the `universe_state` row and the user's queue rows
+  - scope: receipts, the release ledger, provenance, activations, synapses, embeddings, memories, neurons, diaries, the `universe_state` and `universe_revisions` rows and the user's queue rows
   - it keeps only the in-flight `withdrawal_sweep` job, so the runner can record its completion; an empty scope or a missing keep-job id is refused
   - it takes no graph lock: it runs only for a withdrawn account past its deadline
 - MEM-14 [o] every graph-mutating transaction takes the per-user graph advisory lock `LockGraphMutation` first; the global order is graph advisory lock → release-group or row locks → graph rows ← `FOR UPDATE` cannot lock an unborn row, and one lock order makes a user's graph writes compose into serial outcomes
   - `LockGraphMutation` is a transaction-scoped `pg_advisory_xact_lock` keyed by `user_id` under a constant class key: it needs no existing row and never blocks another user
+  - the same statement advances the user's universe revision →=MEM-21
   - takers: launch (`PersistEncoded`), `Recall`, `RecallDiaryStars`, `ViewSemantic`, `SyncToToday`, `Release`, `Restore`, `LetGo`, the targeted and opportunistic sweeps, the semanticize completion
   - consolidation runs inside the advancing transaction, under its lock →=CONSOL-1
   - row locks taken under it: the clock row `FOR UPDATE` →=TIME-8, contribution synapses `FOR UPDATE` before `Depress`, the release group `FOR UPDATE` without `SKIP LOCKED` →=DEL
@@ -131,6 +132,10 @@
   - `action_kind` is `recall`, `diary_recall` or `view_semantic`; `request_fingerprint` is the canonical input hash; `response` is the original typed response, replayed verbatim
   - exactly one retained target (CHECK): an `episodic_memory_id` (recall, gist view) or a `diary_id` (whole-diary recall)
   - the target foreign keys cascade: a receipt lives exactly as long as its target, with no retention timer of its own
+- MEM-21 [o] `universe_revisions` holds one counter per user that advances in every graph-mutating transaction, so a client can tell whether its universe snapshot is current without reading it →!MEM-14
+  - the `LockGraphMutation` statement upserts it (first value 1), so every taker advances it and a rollback undoes it; an advance that changes nothing (a receipt replay) costs only a refetch
+  - `GetUniverse` returns the revision read in its snapshot; `GetUniverseRevision` reads it alone and answers 0 when no row exists →=MEM-15
+  - a freshness counter, never shown and never a domain fact →~MEM-4
 
 ## constraints
 - `persistence.graph_write_batch_size` bounds graph-write parameter arrays; each chunk joins the caller's transaction
@@ -139,5 +144,6 @@
 
 ## chg
 
+- r3 261103 MEM-13✎ purge scope +`universe_revisions` ; MEM-14✎ +lock statement advances the universe revision ; MEM-21+ per-user universe revision for client freshness reads
 - r2 261102 MEM-16✎ memory-owned queue→shared infrastructure; MEM-17✎ memory-owned foreign producer policy and lease-token masking→owner schedulers/handlers and explicit registry retry policy, with unchanged persisted identities and fencing
 - r1 261102 initial

@@ -1,5 +1,5 @@
 # TWINK Twinkle economy
-> r1 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
+> r2 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
 
 ## decisions
 - TWINK-1 [o] every recall act costs Twinkle: `Recall` of an episodic memory (reconsolidation) and `ViewSemantic` of a gist both spend, and there is no free-recall count ← everyday recall is carried by the daily `SMALL` grant, not by free uses →!TWINK-5
@@ -187,7 +187,7 @@
   - the way to get more is present but disabled, its reason beside it (`twinkle_charge_action`, `twinkle_charge_unavailable`): absence would read as "this is all there will ever be"; nothing purchases or charges, and no recovery flow points at it →=TWINK-26
   - then the earn guide →=TWINK-33
   - no separate "what is this?" mark beside the figures
-  - mobile has not adopted the panel: a notice-icon action under the figures opens the earn guide dialog (`EarnGuideSheet`), with no held figures and no disabled control; a parity gap, not a waiver →~ARCH
+  - both apps open the same panel with the same three parts; mobile presents it as a bottom sheet, a platform fork rather than a waiver →~ARCH-29
   - the panel's open flag is local widget state; a shortfall opens the same surface through `useEarnRequestStore` →=TWINK-34
 - TWINK-33 [o] the earn guide explains and never transacts: it lists the four repeatable paths (daily `SMALL` refill, writing, achievements, inviting) with figures from generated config, and its one affordance opens `/me`'s achievements tab →!TWINK-3
   - figures: `twinkle.small_daily_amount`, `twinkle.earn_write`, `twinkle.earn_invite_invitee`; the client holds no economy constant
@@ -225,7 +225,7 @@
   - no past day gets a marker: past anchors are unrecoverable client-side, and inventing them would fabricate history
 - TWINK-39 [o] FE placement: the shared substance lives in `packages/twinkle` (balance mirror `useTwinkleBalanceStore`, `useEarnRequestStore`, the pending-spend constructors, the pure `ledger-day` grouping, the `@cosimosi/twinkle/react` query hooks), and apps hold only `ui` →=ARCH
   - `packages/twinkle` holds IO and state only; the pricing formulas stay in `packages/twinkle-logic` and are never duplicated →=TWINK-29
-  - slices on both apps: `features/twinkle-balance-hud`, `features/spend-cost-display`, `features/earn-twinkle`, `features/twinkle-ledger`, `widgets/stardust`; web adds `features/charge-twinkle` (the disabled control) and the panel in `widgets/stardust`
+  - slices on both apps: `entities/twinkle` (the one balance readout: the over-canvas reading and the panel's held figures), `features/spend-cost-display`, `features/earn-twinkle`, `features/twinkle-ledger`, `features/charge-twinkle` (the disabled control), `widgets/stardust` (the overlay and the panel) →~ARCH-21
   - no XState machine for the economy overlay: it issues no request, so its only state is an open flag, which is data →~CLIENT
   - `resetTwinkleUserState()` clears the balance mirror and the earn request at user-scope reset →=CLIENT
   - a pending spend names only the action and its target (`recallSpend`, `gistViewSpend`, `diaryRecallSpend`) and carries no figure
@@ -244,4 +244,5 @@
 - the `twinkle.*` values group holds only coefficients, earn amounts, caps and the page size; formulas, closed sets, the eligible list, dedup-key formats and catalogs (ornament prices →=DECOR, reward tiers →=ACH) are not values
 
 ## chg
+- r2 261103 TWINK-32✎ mobile "earn guide only, a parity gap"→"the same panel as a bottom sheet"; TWINK-39✎ balance readout `features/twinkle-balance-hud`→`entities/twinkle`, `features/charge-twinkle` and the panel "web only"→"both apps"
 - r1 261102 initial

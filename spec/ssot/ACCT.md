@@ -1,6 +1,6 @@
 # ACCT account & access
 
-> r2 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
+> r3 | who the user is to the product and how they come in, stay and leave: per-user isolation, the profile and its time zone, signup and invites, withdrawal, and the entry and my-page surfaces
 
 ## decisions
 - ACCT-1 [o] only an authenticated user reaches their own universe, and every product row is isolated per user by `user_id` →!AUTH
@@ -29,7 +29,7 @@
   - accepted: trimmed, length in Unicode code points within `account.nickname_min_length`..`account.nickname_max_length`, no control character, no Unicode line or paragraph separator
   - refused ⇒ `ACCOUNT_NICKNAME_INVALID` (InvalidArgument)
   - not unique, since no surface shows one user's nickname to another: no availability check, no lookup RPC, no unique index
-  - the TS predicate (`packages/auth/src/nickname.ts`) is advisory and the server is authoritative; both run the case table `packages/auth/fixtures/nickname-validation.json`
+  - the TS predicate (`packages/account/src/nickname.ts`) is advisory and the server is authoritative; both run the case table `packages/account/fixtures/nickname-validation.json`
   - the time zone and the locale are never questions →=ACCT-7/15
 - ACCT-7 [o] the profile time zone `users.timezone` (an IANA name) is detected at signup, never asked, changeable in `/me`, and alone decides the user's "today" ← every real-clock day boundary must agree, and asking adds signup friction
   - "today" = the calendar day in that zone; it is the only real-clock day input: the `SMALL` reset →=TWINK-2, the launch future-date bound →=TIME-13, `SyncStatus.today` and the recall sync target →=TIME-12, the post-sync date a recall cost quote prices
@@ -223,12 +223,12 @@
   - it submits `SignUp` with the trimmed nickname, the detected time zone, the negotiated locale and any held invite token, through `asyncCommandMachine`
   - an abandoned signup deletes nothing: the credential has no profile until the next sign-in
 - ACCT-33 [o] after the first successful nickname write both apps show one colour screen before the universe; what it offers →=MOOD
-  - exposure rides the in-memory, take-once signup-completion handoff (`packages/auth/src/signup-completion.ts`), never the absence of colour rows; nothing records it as seen or skipped
+  - exposure rides the in-memory, take-once signup-completion handoff (`packages/account/src/signup-completion.ts`), never the absence of colour rows; nothing records it as seen or skipped
   - continuing with the recommendations for the rest is always reachable, enters the universe at once, and stores nothing for untouched moods
   - the gate consumes the handoff while the screen shows and re-arms it on release, so the onboarding tour still gets its trigger →=ONB-3
   - the handoff belongs to the new user and is in the user-state reset registry →=CLIENT
 - ACCT-34 [o] invite capture: the token leaves the address bar at once, survives the OAuth round trip, and can attach only to a brand-new account →!ACCT-8
-  - one helper defines the link path, `inviteLinkPath(token)` (`packages/auth`), for capture and for sharing
+  - one helper defines the link path, `inviteLinkPath(token)` (`packages/account`), for capture and for sharing
   - web `/invite/$token` stores the token in the pending-invite holder and replaces itself with `/signup`; mobile captures `cosimosi://invite/<token>` on the inbound-link seam, the token being the whole remainder of the path, and keeps it out of navigation linking
   - holder storage: `sessionStorage` on web, process memory on mobile
   - the holder stays outside the user-state reset registry because it must survive the sign-in; it clears when `SignUp` consumes it or the gate finds an established profile
@@ -263,7 +263,7 @@
 - ACCT-40 [o] withdrawal takes two presses: a start press opens a confirmation that states the retention period, offers Export in place, and then withdraws →!ACCT-10
   - the period is interpolated from `account.withdrawal_retention_days`, never a literal (`withdraw_description`)
   - the offer (`withdraw_export_offer`) asks whether to export the diaries now as CSV or Markdown, with the Export control beside it →=ACCT-41
-  - on confirm: `Withdraw`, then `commitWithdrawalAndEndSession` (`@cosimosi/auth`) ends the session; only a failed `Withdraw` is a failed mutation, and a failed remote sign-out falls back to local teardown
+  - on confirm: `Withdraw`, then `commitWithdrawalAndEndSession` (`@cosimosi/account`) ends the session through the auth facade; only a failed `Withdraw` is a failed mutation, and a failed remote sign-out falls back to local teardown
   - after a withdrawal every request is refused, so no withdrawn session stays on screen
 - ACCT-41 [o] the diary-management tab and the withdrawal confirmation share one Export feature: CSV or Markdown through the account-scoped `Export` RPC →=DIARY-14
   - the tab shows the reassurance line, the format choice and one action (`me_export_*`) →~WRITE-6
@@ -272,7 +272,7 @@
 - ACCT-42 [o] BE placement: one flat Go package `internal/account`, files split by aggregate, with `account/pg` for rows and `account/rpc` for thin handlers →=ARCH
   - domain files import no proto, sqlc, pgx or other context; `account` imports neither `memory` nor `twinkle`, and neither imports `account`
   - every cross-context edge is a consumer-owned port bound at `cmd/api` and `cmd/worker`: the zone, settlement (port, granters, `twinkle.InviteResolver`), withdrawal (`UserDataPurger`, `WithdrawalSweepScheduler`, `CredentialDirectory`, `platform.AccountStatusReader`) and achievement counters
-  - FE shared pieces live in `packages/auth` (nickname rule, pending invite, signup handoff, credential machine, withdrawal teardown) and `packages/api-client/src/account.ts`
+  - FE shared pieces live in `packages/account` (nickname rule, pending invite, signup handoff, signup machine, profile and signup controllers, withdrawal teardown), which depends on `packages/auth` for the session, and `packages/api-client/src/account.ts` →=ARCH-27
   - the app slices `features/{sign-up,account-profile,account-settings,invite-link,withdraw-account,export-diaries}` hold only `ui` (and the export sink) →=ARCH
 - ACCT-43 [o] `cosimosi.account.v1.AccountService` is the whole account wire surface, and no request names a user
   | RPC | kind | rule |
@@ -313,5 +313,6 @@
 
 ## chg
 
+- r3 261103 ACCT-6✎ ACCT-33✎ ACCT-34✎ ACCT-40✎ ACCT-42✎ FE account pieces `packages/auth`→`packages/account`
 - r2 261102 ACCT-22✎ memory-owned withdrawal scheduling→account-owned identity and handler over the infrastructure queue; persisted kind, dedup key and target unchanged
 - r1 261102 initial
