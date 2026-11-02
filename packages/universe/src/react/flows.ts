@@ -4,3 +4,5 @@ export { useWritingFlowController } from './use-writing-flow.ts'
 export { useRecallFlowController } from './use-recall-flow.ts'
 
 export { useDiaryJump } from './use-diary-jump.ts'
+
+export { useGistViewController, type GistViewPorts } from './use-gist-view.ts'

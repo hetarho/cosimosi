@@ -1,31 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-
-import { useTransport } from '@connectrpc/connect-query'
-
 import { useEarnRequestStore } from '@cosimosi/twinkle'
-import { classifyErrorRecovery } from '@cosimosi/errors'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
-import {
-  classifyPaidActionError,
-  createPaidActionSession,
-  requestViewSemantic,
-  type PaidActionAttempt,
-  type PaidActionSession,
-} from '@cosimosi/universe'
-
+import { useGistViewController } from '@cosimosi/universe/react/flows'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useErrorToast } from '@cosimosi/errors/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-// widgets/star-detail ui (RN fork, [R8][G4], A5): the gist-view (요지 보기) surface, priced before
-// it happens. The cost display shows the gist quote and, only on its proceed, the ViewSemantic read
-// fires — the spend the server gate charges — then the pregenerated gist text is revealed read-only
-// ([I2]) and the balance refetched. The paid read carries a client operation id (A2): while in
-// flight the sheet is non-dismissible and re-proceed is suppressed (A4), and an ambiguous-failure
-// retry reuses the id so the server replays the receipt (revealing the paid text without a second
-// debit). A shortfall opens the charge sheet rather than dead-ending (A4). Shares model with web.
+
+// widgets/star-detail ui: the 요지 보기 sheet. The paid read, its operation id, refusal routing and
+// the busy/close rules are the package's gist-view controller; this file is the dialog markup.
 export function GistViewSheet({
   episodicMemoryId,
   onClose,
@@ -33,87 +17,15 @@ export function GistViewSheet({
   episodicMemoryId: string
   onClose: () => void
 }) {
-  const showError = useErrorToast()
-  const transport = useTransport()
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
-  const invalidateBalance = useInvalidateTwinkleBalance()
-  // Every action that can record progress refreshes the achievement read on resolution, which is
-  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
-  const invalidateAchievements = useInvalidateAchievements()
-
-  const [text, setText] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [errorKind, setErrorKind] = useState<'ambiguous' | 'known-refusal' | null>(null)
-  const sessionRef = useRef<PaidActionSession | null>(null)
-  if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
-  const paidSession = sessionRef.current
-  const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
-  // The memory alone. The stage is not part of the target any more — the server picks which rung a
-  // read reaches, so keying the attempt on one would invent a distinction the wire no longer has.
-  const targetKey = episodicMemoryId
-
-  // One operation id per view intent; reset (with the view state) when the target gist changes.
-  useEffect(() => {
-    const nextAttempt = paidSession.begin(targetKey)
-    setText(null)
-    setBusy(false)
-    setErrorKind(null)
-    setAttempt(nextAttempt)
-    return () => paidSession.invalidate(nextAttempt)
-  }, [paidSession, targetKey])
-
-  const proceed = useCallback(async () => {
-    if (!attempt || attempt.targetKey !== targetKey || busy) return
-    const activeAttempt = attempt
-    if (!paidSession.start(activeAttempt)) return
-    setBusy(true)
-    setErrorKind(null)
-    try {
-      const response = await requestViewSemantic(transport, {
-        episodicMemoryId,
-        operationId: activeAttempt.operationId,
-      })
-      if (!paidSession.isActive(activeAttempt)) return
-      setText(response.text)
-      invalidateBalance()
-      // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
-      // achievements are refreshed only on success. A failed action recorded no progress, and refetching
-      // after it could surface an unlock notice that reads as though the failure had earned something.
-      invalidateAchievements()
-    } catch (error) {
-      if (!paidSession.isActive(activeAttempt)) return
-      invalidateBalance()
-      // Ambiguous → keep the id so the retry replays the committed receipt directly (no re-quote);
-      // known refusal → fresh id, re-quote (A2/A5).
-      const kind = classifyPaidActionError(error)
-      showError(error)
-      if (kind === 'known-refusal') {
-        if (paidSession.finish(activeAttempt)) setBusy(false)
-        setAttempt(paidSession.begin(targetKey))
-        if (classifyErrorRecovery(error) === 'earn') requestEarnGuide()
-      }
-      setErrorKind(kind)
-    } finally {
-      if (paidSession.finish(activeAttempt)) setBusy(false)
-    }
-  }, [
-    attempt,
-    targetKey,
-    busy,
-    paidSession,
-    transport,
+  const { text, busy, failed, proceed, retry, close } = useGistViewController({
     episodicMemoryId,
-    invalidateBalance,
-    invalidateAchievements,
+    onClose,
+    onError: useErrorToast(),
+    invalidateBalance: useInvalidateTwinkleBalance(),
+    invalidateAchievements: useInvalidateAchievements(),
     requestEarnGuide,
-    showError,
-  ])
-
-  const close = useCallback(() => {
-    if (busy) return
-    if (attempt) paidSession.invalidate(attempt)
-    onClose()
-  }, [attempt, busy, paidSession, onClose])
+  })
 
   return (
     <Dialog open onClose={close} title={m.gist_view_title()} closeLabel={m.common_dismiss()}>
@@ -129,7 +41,7 @@ export function GistViewSheet({
           </>
         ) : busy ? (
           <Text style={styles.muted}>{m.gist_view_loading()}</Text>
-        ) : errorKind !== null ? (
+        ) : failed ? (
           <View style={styles.body}>
             <Text style={styles.muted}>{m.gist_view_error()}</Text>
             <View style={styles.actions}>
@@ -137,11 +49,7 @@ export function GistViewSheet({
                 {m.twinkle_cost_cancel()}
               </Button>
               {/* Ambiguous → retry replays the same operation id directly; known refusal → re-quote. */}
-              <Button
-                color="primary"
-                size="sm"
-                onPress={errorKind === 'ambiguous' ? proceed : () => setErrorKind(null)}
-              >
+              <Button color="primary" size="sm" onPress={retry}>
                 {m.common_retry()}
               </Button>
             </View>

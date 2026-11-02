@@ -262,3 +262,27 @@ test('prevents both platforms from bypassing shared flow controllers through ali
     2,
   )
 })
+
+test('rejects a paid session or paid request in any app ui file', () => {
+  const root = fixture()
+  put(
+    root,
+    'apps/web/src/widgets/star-detail/ui/GistViewSheet.tsx',
+    "import { createPaidActionSession, requestViewSemantic as read } from '@cosimosi/universe'; export const s = [createPaidActionSession, read];",
+  )
+  put(
+    root,
+    'apps/mobile/src/features/probe-flow/ui/Probe.tsx',
+    "import { requestRecallDiaryStars } from '@cosimosi/universe'; export const r = requestRecallDiaryStars;",
+  )
+  put(
+    root,
+    'apps/web/src/widgets/star-detail/ui/Bound.tsx',
+    "import { useGistViewController } from '@cosimosi/universe/react/flows'; import type { PaidActionAttempt } from '@cosimosi/universe'; export const c = useGistViewController; export type A = PaidActionAttempt;",
+  )
+  const paid = findFsdLayoutProblems(root).filter((problem) =>
+    problem.includes('belong to its package controller'),
+  )
+  assert.equal(paid.length, 2)
+  assert.ok(paid.some((problem) => problem.includes('star-detail/ui/GistViewSheet.tsx')))
+})

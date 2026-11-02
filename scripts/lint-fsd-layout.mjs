@@ -329,6 +329,34 @@ export function findSliceBoundaryProblems(srcAbs, root = repoRoot) {
             `${portableRelative(root, file)} — flow UI must use its shared controller capability`,
           )
       }
+      // A paid flow — its operation-id session and its paid request — belongs to the package
+      // controller that tests it, wherever the view lives; an app ui file only binds that controller.
+      if (
+        /^[^/]+\/[^/]+\/ui\//.test(local) &&
+        ts.isImportDeclaration(node) &&
+        ts.isStringLiteralLike(node.moduleSpecifier) &&
+        node.moduleSpecifier.text.startsWith('@cosimosi/universe') &&
+        !node.importClause?.isTypeOnly
+      ) {
+        const bindings = node.importClause?.namedBindings
+        const paid = new Set([
+          'createPaidActionSession',
+          'requestRecall',
+          'requestRecallDiaryStars',
+          'requestViewSemantic',
+        ])
+        if (
+          bindings &&
+          !ts.isNamespaceImport(bindings) &&
+          bindings.elements.some(
+            (binding) =>
+              !binding.isTypeOnly && paid.has((binding.propertyName ?? binding.name).text),
+          )
+        )
+          problems.push(
+            `${portableRelative(root, file)} — a paid flow's session and request belong to its package controller`,
+          )
+      }
       if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node))
         jsx = true
       if (

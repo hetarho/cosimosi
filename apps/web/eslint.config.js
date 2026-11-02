@@ -64,7 +64,7 @@ export default defineConfig([
     //     `DemoTimePassing`, `UniverseTimeOverlay`).
     //   ref-guarded lazy creation — `if (ref.current === null) ref.current = create()`, where a
     //     `useState` initializer would run twice under StrictMode and orphan a live paid-action
-    //     session or a query client (`RecallFlowSheet`, `GistViewSheet`, `DiaryReaderBlock`,
+    //     session or a query client (`RecallFlowSheet`, `DiaryReaderBlock`,
     //     `query-provider`). This is the `packages/auth` case, in the app.
     //   commit-and-fire effects — presence/exit-animation state and effects that must both notify and
     //     commit in one pass (`DetailPanel`'s held content, the sheets' reset-on-retarget, the
@@ -86,7 +86,6 @@ export default defineConfig([
       'src/widgets/diary-reader/ui/DiaryReaderBlock.tsx',
       'src/widgets/recall-flow/ui/RecallFlowSheet.tsx',
       'src/widgets/star-detail/ui/DetailPanel.tsx',
-      'src/widgets/star-detail/ui/GistViewSheet.tsx',
       'src/widgets/stardust/ui/StardustOverlay.tsx',
       'src/widgets/universe-time/ui/UniverseTimeOverlay.tsx',
     ],
