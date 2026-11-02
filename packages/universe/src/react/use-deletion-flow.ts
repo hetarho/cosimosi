@@ -10,14 +10,23 @@ import { useCompletionScope } from './use-completion-scope.ts'
 import { useReleaseMemory } from './use-release.ts'
 import { useLetGo, useSuggestLetGo } from './use-let-go.ts'
 
+// The deletion flow's three server calls. Tests inject them; hosts use the package's RPC hooks.
+export interface DeletionFlowRequests {
+  release: ReturnType<typeof useReleaseMemory>
+  suggest: ReturnType<typeof useSuggestLetGo>
+  letGo: ReturnType<typeof useLetGo>
+}
+
 export function useDeletionFlowController({
   active = true,
   onError: showError,
   invalidateAchievements,
+  requests,
 }: {
   active?: boolean
   onError(error: unknown): void
   invalidateAchievements(): void
+  requests?: DeletionFlowRequests
 }) {
   const capture = useCompletionScope()
   const target = useDeletionTargetStore((state) => state.target)
@@ -30,9 +39,12 @@ export function useDeletionFlowController({
   // stale async completion can never land on a newly-opened branch.
   const isLoading = phase === 'deleting' || phase === 'suggesting' || phase === 'sealing'
 
-  const release = useReleaseMemory()
-  const suggest = useSuggestLetGo()
-  const letGo = useLetGo()
+  const rpcRelease = useReleaseMemory()
+  const rpcSuggest = useSuggestLetGo()
+  const rpcLetGo = useLetGo()
+  const release = requests?.release ?? rpcRelease
+  const suggest = requests?.suggest ?? rpcSuggest
+  const letGo = requests?.letGo ?? rpcLetGo
 
   const phrase = useDeletionDraftStore((state) => state.phrase)
   const candidates = useDeletionDraftStore((state) => state.candidates)

@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import {
+  createSyncStatusQueryKey,
+  createSyncStatusQueryOptions,
+  type RecallDiaryStarsResponse,
+} from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors/core'
 import { useMachine } from '@cosimosi/state-machine/react'
 
@@ -21,11 +25,19 @@ export interface DiaryJumpPorts {
   invalidateBalance: () => void
   invalidateAchievements: () => void
   requestEarnGuide: () => void
+  // The paid call itself; defaults to the RecallDiaryStars RPC on the ambient transport.
+  request?: (input: DiaryRecallInput) => Promise<RecallDiaryStarsResponse>
+}
+
+export interface DiaryRecallInput {
+  diaryId: string
+  operationId: string
+  syncConsent: boolean
 }
 
 // Archive rendering and navigation stay with each host; paid intent and recovery share one owner.
 export function useDiaryJump(ports: DiaryJumpPorts) {
-  const { onExit, onError, invalidateBalance, invalidateAchievements, requestEarnGuide } = ports
+  const { onExit, onError } = ports
   const session = useMemo(() => createPaidActionSession(), [])
   const scope = useCompletionScope()
   const [snapshot, send, actor] = useMachine(diaryReaderMachine)
@@ -39,6 +51,11 @@ export function useDiaryJump(ports: DiaryJumpPorts) {
   const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
   const spotlight = useSpotlightStore((state) => state.spotlight)
+  // The ports change identity with every host render; the recall reads them at call time.
+  const latest = useRef({ ports, transport })
+  useLayoutEffect(() => {
+    latest.current = { ports, transport }
+  })
   useEffect(() => {
     if (status.error) onError(status.error)
   }, [status.error, onError])
@@ -49,12 +66,12 @@ export function useDiaryJump(ports: DiaryJumpPorts) {
       if (!active || active.targetKey !== diaryId || !session.start(active)) return
       const isCurrent = scope()
       const isActive = () => isCurrent() && session.isActive(active)
+      const { ports: current, transport: activeTransport } = latest.current
+      const request =
+        current.request ??
+        ((input: DiaryRecallInput) => requestRecallDiaryStars(activeTransport, input))
       const issue = () =>
-        requestRecallDiaryStars(transport, {
-          diaryId,
-          operationId: active.operationId,
-          syncConsent: consent,
-        })
+        request({ diaryId, operationId: active.operationId, syncConsent: consent })
       try {
         let response
         try {
@@ -71,19 +88,19 @@ export function useDiaryJump(ports: DiaryJumpPorts) {
         if (first) requestFlyTarget(first)
         spotlight(response.episodicMemoryIds)
         invalidateUniverse()
-        invalidateBalance()
-        invalidateAchievements()
+        current.invalidateBalance()
+        current.invalidateAchievements()
         void queryClient
-          .invalidateQueries({ queryKey: createSyncStatusQueryKey(transport) })
+          .invalidateQueries({ queryKey: createSyncStatusQueryKey(activeTransport) })
           .catch(() => undefined)
         send({ type: 'DONE' })
-        onExit()
+        current.onExit()
       } catch (error) {
         if (!isActive()) return
-        invalidateBalance()
+        current.invalidateBalance()
         if (classifyPaidActionError(error) === 'ambiguous') {
           invalidateUniverse()
-          onError(error)
+          current.onError(error)
           send({ type: 'ERROR' })
           return
         }
@@ -95,8 +112,8 @@ export function useDiaryJump(ports: DiaryJumpPorts) {
           send({ type: 'JUMP', needsSync: true })
           return
         }
-        onError(error)
-        if (recovery === 'earn') requestEarnGuide()
+        current.onError(error)
+        if (recovery === 'earn') current.requestEarnGuide()
       } finally {
         session.finish(active)
       }
@@ -105,18 +122,12 @@ export function useDiaryJump(ports: DiaryJumpPorts) {
       actor,
       session,
       scope,
-      transport,
       announceAdvance,
       requestFlyTarget,
       spotlight,
       invalidateUniverse,
-      invalidateBalance,
-      invalidateAchievements,
       queryClient,
       send,
-      onExit,
-      onError,
-      requestEarnGuide,
     ],
   )
 

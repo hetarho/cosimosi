@@ -18,6 +18,25 @@ describe('newOperationId', () => {
 })
 
 describe('classifyPaidActionError', () => {
+  it('pins the classification of every Connect code and of a non-Connect failure', () => {
+    const knownRefusal = new Set([
+      Code.ResourceExhausted,
+      Code.FailedPrecondition,
+      Code.InvalidArgument,
+      Code.NotFound,
+      Code.AlreadyExists,
+      Code.Unauthenticated,
+    ])
+    const codes = Object.values(Code).filter((value): value is Code => typeof value === 'number')
+    expect(codes).toHaveLength(16)
+    for (const code of codes) {
+      expect(classifyPaidActionError(new ConnectError('failed', code))).toBe(
+        knownRefusal.has(code) ? 'known-refusal' : 'ambiguous',
+      )
+    }
+    expect(classifyPaidActionError(new TypeError('network'))).toBe('ambiguous')
+  })
+
   it('treats pre-commit refusals as known — the next attempt spends fresh (A5)', () => {
     const knownRefusals = [
       Code.ResourceExhausted, // insufficient twinkle

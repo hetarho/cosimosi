@@ -11,6 +11,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
+    "jsx": "react-jsx",
     "types": ["node"],
     "noUnusedLocals": true,
     "noUnusedParameters": true

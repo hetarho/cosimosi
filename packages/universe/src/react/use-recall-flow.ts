@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createMemoryServiceQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import type { RecallResponse } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors/core'
 import { useMachine } from '@cosimosi/state-machine/react'
-import { applyRecallResult, requestRecall, recallAdvanceAnnouncement } from '../recall-star.ts'
+import {
+  applyRecallResult,
+  requestRecall,
+  recallAdvanceAnnouncement,
+  type RecallInput,
+} from '../recall-star.ts'
 import { classifyPaidActionError, createPaidActionSession } from '../paid-action-session.ts'
 import { recallFlowMachine, recallOutcome, type RecallFlowPhase } from '../recall-flow.machine.ts'
 import { useEpisodicMemoryStore } from '../episodic-memory-store.ts'
@@ -15,17 +21,17 @@ import { useAdvanceAnnouncementStore } from '../advance-announcement-store.ts'
 import { currentDecaySpans } from '../current-decay-text.ts'
 import { useCompletionScope } from './use-completion-scope.ts'
 
-export function useRecallFlowController({
-  onError: showError,
-  invalidateBalance,
-  invalidateAchievements,
-  requestEarnGuide,
-}: {
+export interface RecallFlowPorts {
   onError(error: unknown): void
   invalidateBalance(): void
   invalidateAchievements(): void
   requestEarnGuide(): void
-}) {
+  // The paid call itself; defaults to the Recall RPC on the ambient transport. Tests inject it.
+  request?(input: RecallInput): Promise<RecallResponse>
+}
+
+export function useRecallFlowController(ports: RecallFlowPorts) {
+  const { onError: showError } = ports
   const memoryId = useRecallTargetStore((state) => state.memoryId)
   const clearTarget = useRecallTargetStore((state) => state.clear)
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
@@ -43,12 +49,16 @@ export function useRecallFlowController({
   const rewrite = useRecallDraftStore((state) => state.rewrite)
   const result = useRecallDraftStore((state) => state.result)
   const setRewrite = useRecallDraftStore((state) => state.setRewrite)
-  const setResult = useRecallDraftStore((state) => state.setResult)
   const resetDraft = useRecallDraftStore((state) => state.reset)
 
-  const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const transport = useTransport()
   const queryClient = useQueryClient()
+  // The ports change identity with every host render; the confirm reads them at call time instead of
+  // re-binding on each one.
+  const latest = useRef({ ports, transport })
+  useLayoutEffect(() => {
+    latest.current = { ports, transport }
+  })
 
   // Server-authoritative consent gate ([R1a], A1): needsSync comes from the sync-status read, so a
   // client just past/before UTC midnight — or with a skewed clock — never bypasses or spuriously
@@ -63,7 +73,7 @@ export function useRecallFlowController({
   // One controller fences the mounted widget session as well as its current target. The attempt is
   // retained across an ambiguous retry and replaced only for a new intent or known refusal.
   const paidSession = useMemo(() => createPaidActionSession(), [])
-  const { attempt, consented } = snapshot.context
+  const { attempt } = snapshot.context
   const capture = useCompletionScope()
   const invalidateMemory = useCallback(() => {
     // GetUniverse (restored brightness/reshape), the target provenance (a reconsolidation appended
@@ -129,26 +139,29 @@ export function useRecallFlowController({
   }, [send])
 
   const confirmRecall = useCallback(async () => {
-    // Repeat-submit suppression (A4): ignore a re-submit while one request is in flight.
+    // Repeat-submit suppression (A4): ignore a re-submit while one request is in flight. Everything the
+    // attempt depends on is read from the machine and the stores at call time.
+    const { attempt: activeAttempt, consented: consent } = actor.getSnapshot().context
+    const activeMemoryId = useRecallTargetStore.getState().memoryId
     if (
-      !memoryId ||
-      !attempt ||
-      attempt.targetKey !== memoryId ||
+      !activeMemoryId ||
+      !activeAttempt ||
+      activeAttempt.targetKey !== activeMemoryId ||
       actor.getSnapshot().value !== 'rewriting'
     )
       return
     const isCurrent = capture()
-    const activeAttempt = attempt
     if (!paidSession.start(activeAttempt)) return
-    const activeMemoryId = memoryId
+    const { ports: current, transport: activeTransport } = latest.current
+    const issue = current.request ?? ((input: RecallInput) => requestRecall(activeTransport, input))
 
     send({ type: 'RECALL' })
     try {
-      const response = await requestRecall(transport, {
+      const response = await issue({
         episodicMemoryId: activeMemoryId,
-        rewriteText: rewrite,
+        rewriteText: useRecallDraftStore.getState().rewrite,
         operationId: activeAttempt.operationId,
-        syncConsent: consented,
+        syncConsent: consent,
       })
       // Fence: a completion whose operation id is no longer active (the flow was closed/reopened)
       // must not mutate the current flow (A4).
@@ -157,62 +170,45 @@ export function useRecallFlowController({
       // sync interval, and refetch the memory service + balance so the panel/HUD reflect the result.
       applyRecallResult(activeMemoryId, response)
       const advance = recallAdvanceAnnouncement(response)
-      if (advance) announceAdvance(advance)
-      setResult({
+      if (advance) useAdvanceAnnouncementStore.getState().announce(advance)
+      useRecallDraftStore.getState().setResult({
         outcome: recallOutcome(response.reconsolidated),
         currentText: response.currentText,
       })
       invalidateMemory()
-      invalidateBalance()
+      current.invalidateBalance()
       // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
       // achievements are refreshed only on success. A failed action recorded no progress, and refetching
       // after it could surface an unlock notice that reads as though the failure had earned something.
-      invalidateAchievements()
+      current.invalidateAchievements()
       send({ type: 'DONE' })
     } catch (error) {
       if (!isCurrent() || !paidSession.isActive(activeAttempt)) return
-      invalidateBalance()
+      current.invalidateBalance()
       if (classifyPaidActionError(error) === 'ambiguous') {
-        // The recall MAY have committed; keep the operation id and the accepted quote so the diarist's re-confirm replays the committed receipt directly —
-        // never re-quoting, so a now-depleted balance cannot block recovery of what was paid for
-        // (A2/A5). The rewrite text stays in the draft store.
-        showError(error)
+        // The recall MAY have committed; keep the operation id and the accepted quote so the diarist's
+        // re-confirm replays the committed receipt directly — never re-quoting, so a now-depleted
+        // balance cannot block recovery of what was paid for. The rewrite text stays in the draft store.
+        current.onError(error)
         send({ type: 'ERROR' })
         return
       }
       // Known refusal — nothing committed; the next attempt is a fresh spend, so mint a new id.
       // Only an un-consented sync race returns to the consent modal; once consent was given, a
-      // balance/target/conflict refusal re-quotes (charge path) instead of looping consent (A5).
-      const recovery = classifyErrorRecovery(error, consented)
+      // balance/target/conflict refusal re-quotes (charge path) instead of looping consent.
+      const recovery = classifyErrorRecovery(error, consent)
       if (recovery === 'sync-consent') {
         send({ type: 'CONSENT_REQUIRED', attempt: paidSession.begin(activeMemoryId) })
         return
       }
-      showError(error)
-      if (recovery === 'earn') requestEarnGuide()
+      current.onError(error)
+      if (recovery === 'earn') current.requestEarnGuide()
 
       send({ type: 'REQUOTE', attempt: paidSession.begin(activeMemoryId) })
     } finally {
       paidSession.finish(activeAttempt)
     }
-  }, [
-    memoryId,
-    attempt,
-    actor,
-    capture,
-    rewrite,
-    consented,
-    transport,
-    announceAdvance,
-    setResult,
-    invalidateMemory,
-    invalidateBalance,
-    invalidateAchievements,
-    paidSession,
-    requestEarnGuide,
-    showError,
-    send,
-  ])
+  }, [actor, capture, paidSession, send, invalidateMemory])
 
   return {
     phase,

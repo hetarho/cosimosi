@@ -1080,18 +1080,30 @@ importers:
       '@connectrpc/connect-query':
         specifier: ^2.2.0
         version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.101.4(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@cosimosi/client-cache':
+        specifier: workspace:*
+        version: link:../client-cache
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.7)
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
       react:
         specifier: ^19.2.7
         version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

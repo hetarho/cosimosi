@@ -18,10 +18,25 @@ const todayIso = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
+// The writing flow's three server calls. Tests inject them; hosts use the ambient transport's RPCs.
+export interface WritingFlowRequests {
+  split: typeof requestSplitDiary
+  revise: typeof requestReviseSplit
+  launch: typeof requestLaunchStars
+}
+
+const rpcWritingRequests: WritingFlowRequests = {
+  split: requestSplitDiary,
+  revise: requestReviseSplit,
+  launch: requestLaunchStars,
+}
+
 export function useWritingFlowController({
   onError: showError,
+  requests = rpcWritingRequests,
 }: {
   onError(error: unknown): void
+  requests?: WritingFlowRequests
 }) {
   const [snapshot, send, actor] = useMachine(writingFlowMachine)
   const status = snapshot.value as WritingFlowStatus
@@ -78,7 +93,8 @@ export function useWritingFlowController({
     if (actor.getSnapshot().value !== 'writing') return
     const isCurrent = captureIntent()
     send({ type: 'SPLIT' })
-    requestSplitDiary(transport, { body, diaryDate })
+    requests
+      .split(transport, { body, diaryDate })
       .then((response) => {
         if (!isCurrent()) return
         setFromResponse(response)
@@ -89,14 +105,15 @@ export function useWritingFlowController({
         showError(caught)
         send({ type: 'SPLIT_ERR', error: 'split' })
       })
-  }, [transport, body, diaryDate, setFromResponse, showError, send, actor, captureIntent])
+  }, [requests, transport, body, diaryDate, setFromResponse, showError, send, actor, captureIntent])
 
   const runRevise = useCallback(
     (instruction: string) => {
       if (actor.getSnapshot().value !== 'reviewing') return
       const isCurrent = captureIntent()
       send({ type: 'REVISE' })
-      requestReviseSplit(transport, { body, diaryDate, previous: proposal, instruction })
+      requests
+        .revise(transport, { body, diaryDate, previous: proposal, instruction })
         .then((response) => {
           if (!isCurrent()) return
           setFromResponse(response)
@@ -108,7 +125,18 @@ export function useWritingFlowController({
           send({ type: 'REVISE_ERR', error: 'revise' })
         })
     },
-    [transport, body, diaryDate, proposal, setFromResponse, showError, send, actor, captureIntent],
+    [
+      requests,
+      transport,
+      body,
+      diaryDate,
+      proposal,
+      setFromResponse,
+      showError,
+      send,
+      actor,
+      captureIntent,
+    ],
   )
 
   const runLaunch = useCallback(() => {
@@ -116,7 +144,8 @@ export function useWritingFlowController({
     const isCurrent = captureIntent()
     send({ type: 'LAUNCH' })
     const memories = proposal
-    requestLaunchStars(transport, { body, diaryDate, memories })
+    requests
+      .launch(transport, { body, diaryDate, memories })
       .then((response) => {
         if (!isCurrent()) return
         // The server's monotonic guard is authoritative: a past-dated launch saves the diary
@@ -144,6 +173,7 @@ export function useWritingFlowController({
         send({ type: 'LAUNCH_ERR', error: 'launch' })
       })
   }, [
+    requests,
     transport,
     body,
     diaryDate,
