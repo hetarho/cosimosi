@@ -174,9 +174,11 @@ type NeuronPairStrength struct {
 	Strength  float64
 }
 
-// UniverseReader backs the GetUniverse read over the stored universe facts.
+// UniverseReader backs the GetUniverse read over the stored universe facts, and the revision read
+// that tells a client whether those facts moved (MEM-21).
 type UniverseReader interface {
 	GetUniverse(ctx context.Context, scope platform.UserScope) (UniverseFacts, error)
+	GetUniverseRevision(ctx context.Context, scope platform.UserScope) (int64, error)
 }
 
 // SpendSignalRepo is the read port behind the published spend-signal reads (the

@@ -67,6 +67,10 @@ func (s *stubGroups) Universe(_ context.Context, scope platform.UserScope) (memo
 	s.seen(scope)
 	return memory.UniverseFacts{}, nil, s.err
 }
+func (s *stubGroups) UniverseRevision(_ context.Context, scope platform.UserScope) (int64, error) {
+	s.seen(scope)
+	return 0, s.err
+}
 func (s *stubGroups) SyncStatus(_ context.Context, scope platform.UserScope) (memory.SyncStatus, error) {
 	s.seen(scope)
 	return memory.SyncStatus{}, s.err
@@ -122,6 +126,10 @@ func memoryHandlers(server *Server) []rpctest.Handler {
 		}),
 		h("GetUniverse", func(ctx context.Context) error {
 			_, err := server.GetUniverse(ctx, connect.NewRequest(&memoryv1.GetUniverseRequest{}))
+			return err
+		}),
+		h("GetUniverseRevision", func(ctx context.Context) error {
+			_, err := server.GetUniverseRevision(ctx, connect.NewRequest(&memoryv1.GetUniverseRevisionRequest{}))
 			return err
 		}),
 		h("SyncStatus", func(ctx context.Context) error {

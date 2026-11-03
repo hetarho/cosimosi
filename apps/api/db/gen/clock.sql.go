@@ -92,7 +92,13 @@ func (q *Queries) LatestLaunchedUniverseTime(ctx context.Context, userID string)
 }
 
 const lockGraphMutation = `-- name: LockGraphMutation :exec
-SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || $1::text, 0))
+WITH graph_lock AS MATERIALIZED (
+    SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || $1::text, 0)) AS locked
+)
+INSERT INTO universe_revisions (user_id, revision)
+SELECT $1::text, 1
+FROM graph_lock
+ON CONFLICT (user_id) DO UPDATE SET revision = universe_revisions.revision + 1
 `
 
 // Serialize a user's clock birth window: a transaction-scoped advisory lock
@@ -104,6 +110,10 @@ SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || $1::text, 0))
 // the lock (a 32-bit hash of the id alone collided) and it never meets another advisory-lock
 // domain. Taken as the first step of every graph-changing transaction, before
 // release/clock/graph rows.
+//
+// The same statement advances the user's universe revision [MEM-21]: the materialized CTE takes
+// the lock before the upsert reads its row, so the counter moves strictly inside the lock, once
+// per graph-mutating transaction, and a rollback undoes it. The first advance writes 1.
 func (q *Queries) LockGraphMutation(ctx context.Context, userID string) error {
 	_, err := q.db.Exec(ctx, lockGraphMutation, userID)
 	return err

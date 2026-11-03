@@ -1477,6 +1477,7 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 			"release_memories",
 			"release_groups",
 			"universe_state",
+			"universe_revisions",
 			"embeddings",
 			"synapses",
 			"neuron_activations",

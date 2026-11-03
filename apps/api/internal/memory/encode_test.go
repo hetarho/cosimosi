@@ -124,6 +124,10 @@ func (f *fakeUniverseReader) GetUniverse(_ context.Context, _ platform.UserScope
 	return f.facts, f.err
 }
 
+func (f *fakeUniverseReader) GetUniverseRevision(_ context.Context, _ platform.UserScope) (int64, error) {
+	return f.facts.Revision, f.err
+}
+
 type serviceFixture struct {
 	extractor        *fakeExtractor
 	embedder         *fakeEmbedder

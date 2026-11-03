@@ -688,9 +688,12 @@ type GetUniverseResponse struct {
 	// with a one-release fallback to the latest launched memory for a pre-Epic-B
 	// user whose clock row has not been born yet; empty for an empty universe.
 	// Reading never advances the clock [T3].
-	UniverseTime  string `protobuf:"bytes,4,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UniverseTime string `protobuf:"bytes,4,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
+	// The freshness counter read in the same snapshot as the facts above (MEM-21); 0 when no graph
+	// write has touched this universe. Never shown and never a domain fact.
+	UniverseRevision int64 `protobuf:"varint,5,opt,name=universe_revision,json=universeRevision,proto3" json:"universe_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetUniverseResponse) Reset() {
@@ -751,6 +754,93 @@ func (x *GetUniverseResponse) GetUniverseTime() string {
 	return ""
 }
 
+func (x *GetUniverseResponse) GetUniverseRevision() int64 {
+	if x != nil {
+		return x.UniverseRevision
+	}
+	return 0
+}
+
+type GetUniverseRevisionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUniverseRevisionRequest) Reset() {
+	*x = GetUniverseRevisionRequest{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUniverseRevisionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUniverseRevisionRequest) ProtoMessage() {}
+
+func (x *GetUniverseRevisionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUniverseRevisionRequest.ProtoReflect.Descriptor instead.
+func (*GetUniverseRevisionRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{10}
+}
+
+type GetUniverseRevisionResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	UniverseRevision int64                  `protobuf:"varint,1,opt,name=universe_revision,json=universeRevision,proto3" json:"universe_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GetUniverseRevisionResponse) Reset() {
+	*x = GetUniverseRevisionResponse{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUniverseRevisionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUniverseRevisionResponse) ProtoMessage() {}
+
+func (x *GetUniverseRevisionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUniverseRevisionResponse.ProtoReflect.Descriptor instead.
+func (*GetUniverseRevisionResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetUniverseRevisionResponse) GetUniverseRevision() int64 {
+	if x != nil {
+		return x.UniverseRevision
+	}
+	return 0
+}
+
 type EmotionDto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Mood          string                 `protobuf:"bytes,1,opt,name=mood,proto3" json:"mood,omitempty"`
@@ -763,7 +853,7 @@ type EmotionDto struct {
 
 func (x *EmotionDto) Reset() {
 	*x = EmotionDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[10]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -775,7 +865,7 @@ func (x *EmotionDto) String() string {
 func (*EmotionDto) ProtoMessage() {}
 
 func (x *EmotionDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[10]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +878,7 @@ func (x *EmotionDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmotionDto.ProtoReflect.Descriptor instead.
 func (*EmotionDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{10}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EmotionDto) GetMood() string {
@@ -829,7 +919,7 @@ type NeuronActivationDto struct {
 
 func (x *NeuronActivationDto) Reset() {
 	*x = NeuronActivationDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[11]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +931,7 @@ func (x *NeuronActivationDto) String() string {
 func (*NeuronActivationDto) ProtoMessage() {}
 
 func (x *NeuronActivationDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[11]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +944,7 @@ func (x *NeuronActivationDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NeuronActivationDto.ProtoReflect.Descriptor instead.
 func (*NeuronActivationDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{11}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *NeuronActivationDto) GetNeuronId() string {
@@ -914,7 +1004,7 @@ type EpisodicMemoryDto struct {
 
 func (x *EpisodicMemoryDto) Reset() {
 	*x = EpisodicMemoryDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[12]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -926,7 +1016,7 @@ func (x *EpisodicMemoryDto) String() string {
 func (*EpisodicMemoryDto) ProtoMessage() {}
 
 func (x *EpisodicMemoryDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[12]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -939,7 +1029,7 @@ func (x *EpisodicMemoryDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpisodicMemoryDto.ProtoReflect.Descriptor instead.
 func (*EpisodicMemoryDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{12}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *EpisodicMemoryDto) GetId() string {
@@ -1053,7 +1143,7 @@ type NeuronDto struct {
 
 func (x *NeuronDto) Reset() {
 	*x = NeuronDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[13]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1155,7 @@ func (x *NeuronDto) String() string {
 func (*NeuronDto) ProtoMessage() {}
 
 func (x *NeuronDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[13]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1168,7 @@ func (x *NeuronDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NeuronDto.ProtoReflect.Descriptor instead.
 func (*NeuronDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{13}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *NeuronDto) GetId() string {
@@ -1123,7 +1213,7 @@ type SynapseDto struct {
 
 func (x *SynapseDto) Reset() {
 	*x = SynapseDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[14]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1135,7 +1225,7 @@ func (x *SynapseDto) String() string {
 func (*SynapseDto) ProtoMessage() {}
 
 func (x *SynapseDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[14]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1148,7 +1238,7 @@ func (x *SynapseDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SynapseDto.ProtoReflect.Descriptor instead.
 func (*SynapseDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{14}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SynapseDto) GetId() string {
@@ -1214,7 +1304,7 @@ type RecallRequest struct {
 
 func (x *RecallRequest) Reset() {
 	*x = RecallRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1226,7 +1316,7 @@ func (x *RecallRequest) String() string {
 func (*RecallRequest) ProtoMessage() {}
 
 func (x *RecallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1239,7 +1329,7 @@ func (x *RecallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecallRequest.ProtoReflect.Descriptor instead.
 func (*RecallRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{15}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RecallRequest) GetMemoryId() string {
@@ -1292,7 +1382,7 @@ type RecallResponse struct {
 
 func (x *RecallResponse) Reset() {
 	*x = RecallResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1304,7 +1394,7 @@ func (x *RecallResponse) String() string {
 func (*RecallResponse) ProtoMessage() {}
 
 func (x *RecallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1317,7 +1407,7 @@ func (x *RecallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecallResponse.ProtoReflect.Descriptor instead.
 func (*RecallResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{16}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RecallResponse) GetReconsolidated() bool {
@@ -1384,7 +1474,7 @@ type RecallDiaryStarsRequest struct {
 
 func (x *RecallDiaryStarsRequest) Reset() {
 	*x = RecallDiaryStarsRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1396,7 +1486,7 @@ func (x *RecallDiaryStarsRequest) String() string {
 func (*RecallDiaryStarsRequest) ProtoMessage() {}
 
 func (x *RecallDiaryStarsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1409,7 +1499,7 @@ func (x *RecallDiaryStarsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecallDiaryStarsRequest.ProtoReflect.Descriptor instead.
 func (*RecallDiaryStarsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{17}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RecallDiaryStarsRequest) GetDiaryId() string {
@@ -1451,7 +1541,7 @@ type ViewSemanticRequest struct {
 
 func (x *ViewSemanticRequest) Reset() {
 	*x = ViewSemanticRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1463,7 +1553,7 @@ func (x *ViewSemanticRequest) String() string {
 func (*ViewSemanticRequest) ProtoMessage() {}
 
 func (x *ViewSemanticRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1476,7 +1566,7 @@ func (x *ViewSemanticRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewSemanticRequest.ProtoReflect.Descriptor instead.
 func (*ViewSemanticRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{18}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ViewSemanticRequest) GetEpisodicMemoryId() string {
@@ -1507,7 +1597,7 @@ type ViewSemanticResponse struct {
 
 func (x *ViewSemanticResponse) Reset() {
 	*x = ViewSemanticResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[19]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1609,7 @@ func (x *ViewSemanticResponse) String() string {
 func (*ViewSemanticResponse) ProtoMessage() {}
 
 func (x *ViewSemanticResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[19]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1622,7 @@ func (x *ViewSemanticResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewSemanticResponse.ProtoReflect.Descriptor instead.
 func (*ViewSemanticResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{19}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ViewSemanticResponse) GetText() string {
@@ -1563,7 +1653,7 @@ type RecallDiaryStarsResponse struct {
 
 func (x *RecallDiaryStarsResponse) Reset() {
 	*x = RecallDiaryStarsResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[20]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1665,7 @@ func (x *RecallDiaryStarsResponse) String() string {
 func (*RecallDiaryStarsResponse) ProtoMessage() {}
 
 func (x *RecallDiaryStarsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[20]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1678,7 @@ func (x *RecallDiaryStarsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecallDiaryStarsResponse.ProtoReflect.Descriptor instead.
 func (*RecallDiaryStarsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{20}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RecallDiaryStarsResponse) GetDiaryId() string {
@@ -1627,7 +1717,7 @@ type SyncStatusRequest struct {
 
 func (x *SyncStatusRequest) Reset() {
 	*x = SyncStatusRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[21]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1639,7 +1729,7 @@ func (x *SyncStatusRequest) String() string {
 func (*SyncStatusRequest) ProtoMessage() {}
 
 func (x *SyncStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[21]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1652,7 +1742,7 @@ func (x *SyncStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncStatusRequest.ProtoReflect.Descriptor instead.
 func (*SyncStatusRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{21}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{23}
 }
 
 type SyncStatusResponse struct {
@@ -1669,7 +1759,7 @@ type SyncStatusResponse struct {
 
 func (x *SyncStatusResponse) Reset() {
 	*x = SyncStatusResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[22]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1681,7 +1771,7 @@ func (x *SyncStatusResponse) String() string {
 func (*SyncStatusResponse) ProtoMessage() {}
 
 func (x *SyncStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[22]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1694,7 +1784,7 @@ func (x *SyncStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncStatusResponse.ProtoReflect.Descriptor instead.
 func (*SyncStatusResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{22}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SyncStatusResponse) GetToday() string {
@@ -1720,7 +1810,7 @@ type GetProvenanceRequest struct {
 
 func (x *GetProvenanceRequest) Reset() {
 	*x = GetProvenanceRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[23]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1732,7 +1822,7 @@ func (x *GetProvenanceRequest) String() string {
 func (*GetProvenanceRequest) ProtoMessage() {}
 
 func (x *GetProvenanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[23]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1745,7 +1835,7 @@ func (x *GetProvenanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProvenanceRequest.ProtoReflect.Descriptor instead.
 func (*GetProvenanceRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{23}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetProvenanceRequest) GetEpisodicMemoryId() string {
@@ -1766,7 +1856,7 @@ type GetProvenanceResponse struct {
 
 func (x *GetProvenanceResponse) Reset() {
 	*x = GetProvenanceResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[24]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1778,7 +1868,7 @@ func (x *GetProvenanceResponse) String() string {
 func (*GetProvenanceResponse) ProtoMessage() {}
 
 func (x *GetProvenanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[24]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1791,7 +1881,7 @@ func (x *GetProvenanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProvenanceResponse.ProtoReflect.Descriptor instead.
 func (*GetProvenanceResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{24}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetProvenanceResponse) GetEntries() []*ProvenanceEntry {
@@ -1816,7 +1906,7 @@ type ProvenanceEntry struct {
 
 func (x *ProvenanceEntry) Reset() {
 	*x = ProvenanceEntry{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[25]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1828,7 +1918,7 @@ func (x *ProvenanceEntry) String() string {
 func (*ProvenanceEntry) ProtoMessage() {}
 
 func (x *ProvenanceEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[25]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1841,7 +1931,7 @@ func (x *ProvenanceEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProvenanceEntry.ProtoReflect.Descriptor instead.
 func (*ProvenanceEntry) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{25}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ProvenanceEntry) GetKind() string {
@@ -1881,7 +1971,7 @@ type ExportRequest struct {
 
 func (x *ExportRequest) Reset() {
 	*x = ExportRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1893,7 +1983,7 @@ func (x *ExportRequest) String() string {
 func (*ExportRequest) ProtoMessage() {}
 
 func (x *ExportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1906,7 +1996,7 @@ func (x *ExportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportRequest.ProtoReflect.Descriptor instead.
 func (*ExportRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{26}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ExportRequest) GetFormat() ExportFormat {
@@ -1927,7 +2017,7 @@ type ExportResponse struct {
 
 func (x *ExportResponse) Reset() {
 	*x = ExportResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1939,7 +2029,7 @@ func (x *ExportResponse) String() string {
 func (*ExportResponse) ProtoMessage() {}
 
 func (x *ExportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +2042,7 @@ func (x *ExportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportResponse.ProtoReflect.Descriptor instead.
 func (*ExportResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{27}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ExportResponse) GetContent() []byte {
@@ -2002,7 +2092,7 @@ type GetDiariesRequest struct {
 
 func (x *GetDiariesRequest) Reset() {
 	*x = GetDiariesRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2014,7 +2104,7 @@ func (x *GetDiariesRequest) String() string {
 func (*GetDiariesRequest) ProtoMessage() {}
 
 func (x *GetDiariesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2027,7 +2117,7 @@ func (x *GetDiariesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiariesRequest.ProtoReflect.Descriptor instead.
 func (*GetDiariesRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{28}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetDiariesRequest) GetPageSize() int32 {
@@ -2104,7 +2194,7 @@ type GetDiariesResponse struct {
 
 func (x *GetDiariesResponse) Reset() {
 	*x = GetDiariesResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2116,7 +2206,7 @@ func (x *GetDiariesResponse) String() string {
 func (*GetDiariesResponse) ProtoMessage() {}
 
 func (x *GetDiariesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2129,7 +2219,7 @@ func (x *GetDiariesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiariesResponse.ProtoReflect.Descriptor instead.
 func (*GetDiariesResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{29}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetDiariesResponse) GetDiaries() []*DiaryDto {
@@ -2164,7 +2254,7 @@ type DiaryDto struct {
 
 func (x *DiaryDto) Reset() {
 	*x = DiaryDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[30]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2176,7 +2266,7 @@ func (x *DiaryDto) String() string {
 func (*DiaryDto) ProtoMessage() {}
 
 func (x *DiaryDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[30]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2189,7 +2279,7 @@ func (x *DiaryDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiaryDto.ProtoReflect.Descriptor instead.
 func (*DiaryDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{30}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DiaryDto) GetId() string {
@@ -2239,7 +2329,7 @@ type DiarySplitRef struct {
 
 func (x *DiarySplitRef) Reset() {
 	*x = DiarySplitRef{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[31]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2251,7 +2341,7 @@ func (x *DiarySplitRef) String() string {
 func (*DiarySplitRef) ProtoMessage() {}
 
 func (x *DiarySplitRef) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[31]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2264,7 +2354,7 @@ func (x *DiarySplitRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiarySplitRef.ProtoReflect.Descriptor instead.
 func (*DiarySplitRef) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{31}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DiarySplitRef) GetEpisodicMemoryId() string {
@@ -2301,7 +2391,7 @@ type GetDiaryCalendarRequest struct {
 
 func (x *GetDiaryCalendarRequest) Reset() {
 	*x = GetDiaryCalendarRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[32]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2313,7 +2403,7 @@ func (x *GetDiaryCalendarRequest) String() string {
 func (*GetDiaryCalendarRequest) ProtoMessage() {}
 
 func (x *GetDiaryCalendarRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[32]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2326,7 +2416,7 @@ func (x *GetDiaryCalendarRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiaryCalendarRequest.ProtoReflect.Descriptor instead.
 func (*GetDiaryCalendarRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{32}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetDiaryCalendarRequest) GetFrom() string {
@@ -2360,7 +2450,7 @@ type GetDiaryCalendarResponse struct {
 
 func (x *GetDiaryCalendarResponse) Reset() {
 	*x = GetDiaryCalendarResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[33]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2372,7 +2462,7 @@ func (x *GetDiaryCalendarResponse) String() string {
 func (*GetDiaryCalendarResponse) ProtoMessage() {}
 
 func (x *GetDiaryCalendarResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[33]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2385,7 +2475,7 @@ func (x *GetDiaryCalendarResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiaryCalendarResponse.ProtoReflect.Descriptor instead.
 func (*GetDiaryCalendarResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{33}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetDiaryCalendarResponse) GetDays() []*DiaryDayDto {
@@ -2412,7 +2502,7 @@ type DiaryDayDto struct {
 
 func (x *DiaryDayDto) Reset() {
 	*x = DiaryDayDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[34]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2424,7 +2514,7 @@ func (x *DiaryDayDto) String() string {
 func (*DiaryDayDto) ProtoMessage() {}
 
 func (x *DiaryDayDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[34]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2437,7 +2527,7 @@ func (x *DiaryDayDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiaryDayDto.ProtoReflect.Descriptor instead.
 func (*DiaryDayDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{34}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *DiaryDayDto) GetDiaryDate() string {
@@ -2464,7 +2554,7 @@ type DiaryDayMoodDto struct {
 
 func (x *DiaryDayMoodDto) Reset() {
 	*x = DiaryDayMoodDto{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[35]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2476,7 +2566,7 @@ func (x *DiaryDayMoodDto) String() string {
 func (*DiaryDayMoodDto) ProtoMessage() {}
 
 func (x *DiaryDayMoodDto) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[35]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2489,7 +2579,7 @@ func (x *DiaryDayMoodDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiaryDayMoodDto.ProtoReflect.Descriptor instead.
 func (*DiaryDayMoodDto) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{35}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *DiaryDayMoodDto) GetMood() string {
@@ -2515,7 +2605,7 @@ type ReleaseRequest struct {
 
 func (x *ReleaseRequest) Reset() {
 	*x = ReleaseRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[36]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2617,7 @@ func (x *ReleaseRequest) String() string {
 func (*ReleaseRequest) ProtoMessage() {}
 
 func (x *ReleaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[36]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2630,7 @@ func (x *ReleaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseRequest.ProtoReflect.Descriptor instead.
 func (*ReleaseRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{36}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ReleaseRequest) GetDiaryId() string {
@@ -2561,7 +2651,7 @@ type ReleaseResponse struct {
 
 func (x *ReleaseResponse) Reset() {
 	*x = ReleaseResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[37]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2573,7 +2663,7 @@ func (x *ReleaseResponse) String() string {
 func (*ReleaseResponse) ProtoMessage() {}
 
 func (x *ReleaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[37]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2586,7 +2676,7 @@ func (x *ReleaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseResponse.ProtoReflect.Descriptor instead.
 func (*ReleaseResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{37}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ReleaseResponse) GetDiaryId() string {
@@ -2619,7 +2709,7 @@ type RestoreRequest struct {
 
 func (x *RestoreRequest) Reset() {
 	*x = RestoreRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[38]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2631,7 +2721,7 @@ func (x *RestoreRequest) String() string {
 func (*RestoreRequest) ProtoMessage() {}
 
 func (x *RestoreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[38]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2644,7 +2734,7 @@ func (x *RestoreRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreRequest.ProtoReflect.Descriptor instead.
 func (*RestoreRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{38}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *RestoreRequest) GetDiaryId() string {
@@ -2664,7 +2754,7 @@ type RestoreResponse struct {
 
 func (x *RestoreResponse) Reset() {
 	*x = RestoreResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[39]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2676,7 +2766,7 @@ func (x *RestoreResponse) String() string {
 func (*RestoreResponse) ProtoMessage() {}
 
 func (x *RestoreResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[39]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2689,7 +2779,7 @@ func (x *RestoreResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreResponse.ProtoReflect.Descriptor instead.
 func (*RestoreResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{39}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RestoreResponse) GetDiaryId() string {
@@ -2716,7 +2806,7 @@ type SuggestLetGoRequest struct {
 
 func (x *SuggestLetGoRequest) Reset() {
 	*x = SuggestLetGoRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[40]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2728,7 +2818,7 @@ func (x *SuggestLetGoRequest) String() string {
 func (*SuggestLetGoRequest) ProtoMessage() {}
 
 func (x *SuggestLetGoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[40]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2741,7 +2831,7 @@ func (x *SuggestLetGoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuggestLetGoRequest.ProtoReflect.Descriptor instead.
 func (*SuggestLetGoRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{40}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SuggestLetGoRequest) GetEpisodicMemoryId() string {
@@ -2768,7 +2858,7 @@ type SuggestLetGoResponse struct {
 
 func (x *SuggestLetGoResponse) Reset() {
 	*x = SuggestLetGoResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[41]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2780,7 +2870,7 @@ func (x *SuggestLetGoResponse) String() string {
 func (*SuggestLetGoResponse) ProtoMessage() {}
 
 func (x *SuggestLetGoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[41]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2793,7 +2883,7 @@ func (x *SuggestLetGoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuggestLetGoResponse.ProtoReflect.Descriptor instead.
 func (*SuggestLetGoResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{41}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SuggestLetGoResponse) GetCandidates() []*SealCandidate {
@@ -2821,7 +2911,7 @@ type SealCandidate struct {
 
 func (x *SealCandidate) Reset() {
 	*x = SealCandidate{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[42]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2833,7 +2923,7 @@ func (x *SealCandidate) String() string {
 func (*SealCandidate) ProtoMessage() {}
 
 func (x *SealCandidate) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[42]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2846,7 +2936,7 @@ func (x *SealCandidate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SealCandidate.ProtoReflect.Descriptor instead.
 func (*SealCandidate) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{42}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SealCandidate) GetNeuronId() string {
@@ -2880,7 +2970,7 @@ type HeavyState struct {
 
 func (x *HeavyState) Reset() {
 	*x = HeavyState{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[43]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2892,7 +2982,7 @@ func (x *HeavyState) String() string {
 func (*HeavyState) ProtoMessage() {}
 
 func (x *HeavyState) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[43]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2905,7 +2995,7 @@ func (x *HeavyState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeavyState.ProtoReflect.Descriptor instead.
 func (*HeavyState) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{43}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *HeavyState) GetDetected() bool {
@@ -2932,7 +3022,7 @@ type LetGoRequest struct {
 
 func (x *LetGoRequest) Reset() {
 	*x = LetGoRequest{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[44]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2944,7 +3034,7 @@ func (x *LetGoRequest) String() string {
 func (*LetGoRequest) ProtoMessage() {}
 
 func (x *LetGoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[44]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2957,7 +3047,7 @@ func (x *LetGoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LetGoRequest.ProtoReflect.Descriptor instead.
 func (*LetGoRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{44}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *LetGoRequest) GetEpisodicMemoryId() string {
@@ -2983,7 +3073,7 @@ type LetGoResponse struct {
 
 func (x *LetGoResponse) Reset() {
 	*x = LetGoResponse{}
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[45]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2995,7 +3085,7 @@ func (x *LetGoResponse) String() string {
 func (*LetGoResponse) ProtoMessage() {}
 
 func (x *LetGoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[45]
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3008,7 +3098,7 @@ func (x *LetGoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LetGoResponse.ProtoReflect.Descriptor instead.
 func (*LetGoResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{45}
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *LetGoResponse) GetSealedNeuronIds() []string {
@@ -3064,12 +3154,16 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x16previous_universe_time\x18\x04 \x01(\tR\x14previousUniverseTime\x12#\n" +
 	"\runiverse_time\x18\x05 \x01(\tR\funiverseTime\x12\x19\n" +
 	"\bdiary_id\x18\x06 \x01(\tR\adiaryId\"\x14\n" +
-	"\x12GetUniverseRequest\"\xf2\x01\n" +
+	"\x12GetUniverseRequest\"\x9f\x02\n" +
 	"\x13GetUniverseResponse\x12A\n" +
 	"\bmemories\x18\x01 \x03(\v2%.cosimosi.memory.v1.EpisodicMemoryDtoR\bmemories\x127\n" +
 	"\aneurons\x18\x02 \x03(\v2\x1d.cosimosi.memory.v1.NeuronDtoR\aneurons\x12:\n" +
 	"\bsynapses\x18\x03 \x03(\v2\x1e.cosimosi.memory.v1.SynapseDtoR\bsynapses\x12#\n" +
-	"\runiverse_time\x18\x04 \x01(\tR\funiverseTime\"r\n" +
+	"\runiverse_time\x18\x04 \x01(\tR\funiverseTime\x12+\n" +
+	"\x11universe_revision\x18\x05 \x01(\x03R\x10universeRevision\"\x1c\n" +
+	"\x1aGetUniverseRevisionRequest\"J\n" +
+	"\x1bGetUniverseRevisionResponse\x12+\n" +
+	"\x11universe_revision\x18\x01 \x01(\x03R\x10universeRevision\"r\n" +
 	"\n" +
 	"EmotionDto\x12\x12\n" +
 	"\x04mood\x18\x01 \x01(\tR\x04mood\x12\x18\n" +
@@ -3243,13 +3337,14 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\tDiarySort\x12\x1a\n" +
 	"\x16DIARY_SORT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11DIARY_SORT_NEWEST\x10\x01\x12\x15\n" +
-	"\x11DIARY_SORT_OLDEST\x10\x022\x85\f\n" +
+	"\x11DIARY_SORT_OLDEST\x10\x022\x82\r\n" +
 	"\rMemoryService\x12[\n" +
 	"\n" +
 	"SplitDiary\x12%.cosimosi.memory.v1.SplitDiaryRequest\x1a&.cosimosi.memory.v1.SplitDiaryResponse\x12]\n" +
 	"\vReviseSplit\x12&.cosimosi.memory.v1.ReviseSplitRequest\x1a&.cosimosi.memory.v1.SplitDiaryResponse\x12^\n" +
 	"\vLaunchStars\x12&.cosimosi.memory.v1.LaunchStarsRequest\x1a'.cosimosi.memory.v1.LaunchStarsResponse\x12c\n" +
-	"\vGetUniverse\x12&.cosimosi.memory.v1.GetUniverseRequest\x1a'.cosimosi.memory.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12O\n" +
+	"\vGetUniverse\x12&.cosimosi.memory.v1.GetUniverseRequest\x1a'.cosimosi.memory.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12{\n" +
+	"\x13GetUniverseRevision\x12..cosimosi.memory.v1.GetUniverseRevisionRequest\x1a/.cosimosi.memory.v1.GetUniverseRevisionResponse\"\x03\x90\x02\x01\x12O\n" +
 	"\x06Recall\x12!.cosimosi.memory.v1.RecallRequest\x1a\".cosimosi.memory.v1.RecallResponse\x12m\n" +
 	"\x10RecallDiaryStars\x12+.cosimosi.memory.v1.RecallDiaryStarsRequest\x1a,.cosimosi.memory.v1.RecallDiaryStarsResponse\x12a\n" +
 	"\fViewSemantic\x12'.cosimosi.memory.v1.ViewSemanticRequest\x1a(.cosimosi.memory.v1.ViewSemanticResponse\x12`\n" +
@@ -3279,56 +3374,58 @@ func file_cosimosi_memory_v1_memory_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_memory_v1_memory_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_cosimosi_memory_v1_memory_proto_goTypes = []any{
-	(ExportFormat)(0),                // 0: cosimosi.memory.v1.ExportFormat
-	(DiarySort)(0),                   // 1: cosimosi.memory.v1.DiarySort
-	(*SplitDiaryRequest)(nil),        // 2: cosimosi.memory.v1.SplitDiaryRequest
-	(*ReviseSplitRequest)(nil),       // 3: cosimosi.memory.v1.ReviseSplitRequest
-	(*SplitDiaryResponse)(nil),       // 4: cosimosi.memory.v1.SplitDiaryResponse
-	(*ProposedMemory)(nil),           // 5: cosimosi.memory.v1.ProposedMemory
-	(*ProposedNeuron)(nil),           // 6: cosimosi.memory.v1.ProposedNeuron
-	(*LaunchStarsRequest)(nil),       // 7: cosimosi.memory.v1.LaunchStarsRequest
-	(*ConfirmedMemory)(nil),          // 8: cosimosi.memory.v1.ConfirmedMemory
-	(*LaunchStarsResponse)(nil),      // 9: cosimosi.memory.v1.LaunchStarsResponse
-	(*GetUniverseRequest)(nil),       // 10: cosimosi.memory.v1.GetUniverseRequest
-	(*GetUniverseResponse)(nil),      // 11: cosimosi.memory.v1.GetUniverseResponse
-	(*EmotionDto)(nil),               // 12: cosimosi.memory.v1.EmotionDto
-	(*NeuronActivationDto)(nil),      // 13: cosimosi.memory.v1.NeuronActivationDto
-	(*EpisodicMemoryDto)(nil),        // 14: cosimosi.memory.v1.EpisodicMemoryDto
-	(*NeuronDto)(nil),                // 15: cosimosi.memory.v1.NeuronDto
-	(*SynapseDto)(nil),               // 16: cosimosi.memory.v1.SynapseDto
-	(*RecallRequest)(nil),            // 17: cosimosi.memory.v1.RecallRequest
-	(*RecallResponse)(nil),           // 18: cosimosi.memory.v1.RecallResponse
-	(*RecallDiaryStarsRequest)(nil),  // 19: cosimosi.memory.v1.RecallDiaryStarsRequest
-	(*ViewSemanticRequest)(nil),      // 20: cosimosi.memory.v1.ViewSemanticRequest
-	(*ViewSemanticResponse)(nil),     // 21: cosimosi.memory.v1.ViewSemanticResponse
-	(*RecallDiaryStarsResponse)(nil), // 22: cosimosi.memory.v1.RecallDiaryStarsResponse
-	(*SyncStatusRequest)(nil),        // 23: cosimosi.memory.v1.SyncStatusRequest
-	(*SyncStatusResponse)(nil),       // 24: cosimosi.memory.v1.SyncStatusResponse
-	(*GetProvenanceRequest)(nil),     // 25: cosimosi.memory.v1.GetProvenanceRequest
-	(*GetProvenanceResponse)(nil),    // 26: cosimosi.memory.v1.GetProvenanceResponse
-	(*ProvenanceEntry)(nil),          // 27: cosimosi.memory.v1.ProvenanceEntry
-	(*ExportRequest)(nil),            // 28: cosimosi.memory.v1.ExportRequest
-	(*ExportResponse)(nil),           // 29: cosimosi.memory.v1.ExportResponse
-	(*GetDiariesRequest)(nil),        // 30: cosimosi.memory.v1.GetDiariesRequest
-	(*GetDiariesResponse)(nil),       // 31: cosimosi.memory.v1.GetDiariesResponse
-	(*DiaryDto)(nil),                 // 32: cosimosi.memory.v1.DiaryDto
-	(*DiarySplitRef)(nil),            // 33: cosimosi.memory.v1.DiarySplitRef
-	(*GetDiaryCalendarRequest)(nil),  // 34: cosimosi.memory.v1.GetDiaryCalendarRequest
-	(*GetDiaryCalendarResponse)(nil), // 35: cosimosi.memory.v1.GetDiaryCalendarResponse
-	(*DiaryDayDto)(nil),              // 36: cosimosi.memory.v1.DiaryDayDto
-	(*DiaryDayMoodDto)(nil),          // 37: cosimosi.memory.v1.DiaryDayMoodDto
-	(*ReleaseRequest)(nil),           // 38: cosimosi.memory.v1.ReleaseRequest
-	(*ReleaseResponse)(nil),          // 39: cosimosi.memory.v1.ReleaseResponse
-	(*RestoreRequest)(nil),           // 40: cosimosi.memory.v1.RestoreRequest
-	(*RestoreResponse)(nil),          // 41: cosimosi.memory.v1.RestoreResponse
-	(*SuggestLetGoRequest)(nil),      // 42: cosimosi.memory.v1.SuggestLetGoRequest
-	(*SuggestLetGoResponse)(nil),     // 43: cosimosi.memory.v1.SuggestLetGoResponse
-	(*SealCandidate)(nil),            // 44: cosimosi.memory.v1.SealCandidate
-	(*HeavyState)(nil),               // 45: cosimosi.memory.v1.HeavyState
-	(*LetGoRequest)(nil),             // 46: cosimosi.memory.v1.LetGoRequest
-	(*LetGoResponse)(nil),            // 47: cosimosi.memory.v1.LetGoResponse
+	(ExportFormat)(0),                   // 0: cosimosi.memory.v1.ExportFormat
+	(DiarySort)(0),                      // 1: cosimosi.memory.v1.DiarySort
+	(*SplitDiaryRequest)(nil),           // 2: cosimosi.memory.v1.SplitDiaryRequest
+	(*ReviseSplitRequest)(nil),          // 3: cosimosi.memory.v1.ReviseSplitRequest
+	(*SplitDiaryResponse)(nil),          // 4: cosimosi.memory.v1.SplitDiaryResponse
+	(*ProposedMemory)(nil),              // 5: cosimosi.memory.v1.ProposedMemory
+	(*ProposedNeuron)(nil),              // 6: cosimosi.memory.v1.ProposedNeuron
+	(*LaunchStarsRequest)(nil),          // 7: cosimosi.memory.v1.LaunchStarsRequest
+	(*ConfirmedMemory)(nil),             // 8: cosimosi.memory.v1.ConfirmedMemory
+	(*LaunchStarsResponse)(nil),         // 9: cosimosi.memory.v1.LaunchStarsResponse
+	(*GetUniverseRequest)(nil),          // 10: cosimosi.memory.v1.GetUniverseRequest
+	(*GetUniverseResponse)(nil),         // 11: cosimosi.memory.v1.GetUniverseResponse
+	(*GetUniverseRevisionRequest)(nil),  // 12: cosimosi.memory.v1.GetUniverseRevisionRequest
+	(*GetUniverseRevisionResponse)(nil), // 13: cosimosi.memory.v1.GetUniverseRevisionResponse
+	(*EmotionDto)(nil),                  // 14: cosimosi.memory.v1.EmotionDto
+	(*NeuronActivationDto)(nil),         // 15: cosimosi.memory.v1.NeuronActivationDto
+	(*EpisodicMemoryDto)(nil),           // 16: cosimosi.memory.v1.EpisodicMemoryDto
+	(*NeuronDto)(nil),                   // 17: cosimosi.memory.v1.NeuronDto
+	(*SynapseDto)(nil),                  // 18: cosimosi.memory.v1.SynapseDto
+	(*RecallRequest)(nil),               // 19: cosimosi.memory.v1.RecallRequest
+	(*RecallResponse)(nil),              // 20: cosimosi.memory.v1.RecallResponse
+	(*RecallDiaryStarsRequest)(nil),     // 21: cosimosi.memory.v1.RecallDiaryStarsRequest
+	(*ViewSemanticRequest)(nil),         // 22: cosimosi.memory.v1.ViewSemanticRequest
+	(*ViewSemanticResponse)(nil),        // 23: cosimosi.memory.v1.ViewSemanticResponse
+	(*RecallDiaryStarsResponse)(nil),    // 24: cosimosi.memory.v1.RecallDiaryStarsResponse
+	(*SyncStatusRequest)(nil),           // 25: cosimosi.memory.v1.SyncStatusRequest
+	(*SyncStatusResponse)(nil),          // 26: cosimosi.memory.v1.SyncStatusResponse
+	(*GetProvenanceRequest)(nil),        // 27: cosimosi.memory.v1.GetProvenanceRequest
+	(*GetProvenanceResponse)(nil),       // 28: cosimosi.memory.v1.GetProvenanceResponse
+	(*ProvenanceEntry)(nil),             // 29: cosimosi.memory.v1.ProvenanceEntry
+	(*ExportRequest)(nil),               // 30: cosimosi.memory.v1.ExportRequest
+	(*ExportResponse)(nil),              // 31: cosimosi.memory.v1.ExportResponse
+	(*GetDiariesRequest)(nil),           // 32: cosimosi.memory.v1.GetDiariesRequest
+	(*GetDiariesResponse)(nil),          // 33: cosimosi.memory.v1.GetDiariesResponse
+	(*DiaryDto)(nil),                    // 34: cosimosi.memory.v1.DiaryDto
+	(*DiarySplitRef)(nil),               // 35: cosimosi.memory.v1.DiarySplitRef
+	(*GetDiaryCalendarRequest)(nil),     // 36: cosimosi.memory.v1.GetDiaryCalendarRequest
+	(*GetDiaryCalendarResponse)(nil),    // 37: cosimosi.memory.v1.GetDiaryCalendarResponse
+	(*DiaryDayDto)(nil),                 // 38: cosimosi.memory.v1.DiaryDayDto
+	(*DiaryDayMoodDto)(nil),             // 39: cosimosi.memory.v1.DiaryDayMoodDto
+	(*ReleaseRequest)(nil),              // 40: cosimosi.memory.v1.ReleaseRequest
+	(*ReleaseResponse)(nil),             // 41: cosimosi.memory.v1.ReleaseResponse
+	(*RestoreRequest)(nil),              // 42: cosimosi.memory.v1.RestoreRequest
+	(*RestoreResponse)(nil),             // 43: cosimosi.memory.v1.RestoreResponse
+	(*SuggestLetGoRequest)(nil),         // 44: cosimosi.memory.v1.SuggestLetGoRequest
+	(*SuggestLetGoResponse)(nil),        // 45: cosimosi.memory.v1.SuggestLetGoResponse
+	(*SealCandidate)(nil),               // 46: cosimosi.memory.v1.SealCandidate
+	(*HeavyState)(nil),                  // 47: cosimosi.memory.v1.HeavyState
+	(*LetGoRequest)(nil),                // 48: cosimosi.memory.v1.LetGoRequest
+	(*LetGoResponse)(nil),               // 49: cosimosi.memory.v1.LetGoResponse
 }
 var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	4,  // 0: cosimosi.memory.v1.ReviseSplitRequest.previous:type_name -> cosimosi.memory.v1.SplitDiaryResponse
@@ -3336,54 +3433,56 @@ var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	6,  // 2: cosimosi.memory.v1.ProposedMemory.neurons:type_name -> cosimosi.memory.v1.ProposedNeuron
 	8,  // 3: cosimosi.memory.v1.LaunchStarsRequest.memories:type_name -> cosimosi.memory.v1.ConfirmedMemory
 	6,  // 4: cosimosi.memory.v1.ConfirmedMemory.neurons:type_name -> cosimosi.memory.v1.ProposedNeuron
-	14, // 5: cosimosi.memory.v1.GetUniverseResponse.memories:type_name -> cosimosi.memory.v1.EpisodicMemoryDto
-	15, // 6: cosimosi.memory.v1.GetUniverseResponse.neurons:type_name -> cosimosi.memory.v1.NeuronDto
-	16, // 7: cosimosi.memory.v1.GetUniverseResponse.synapses:type_name -> cosimosi.memory.v1.SynapseDto
-	12, // 8: cosimosi.memory.v1.EpisodicMemoryDto.emotion:type_name -> cosimosi.memory.v1.EmotionDto
-	13, // 9: cosimosi.memory.v1.EpisodicMemoryDto.activations:type_name -> cosimosi.memory.v1.NeuronActivationDto
-	27, // 10: cosimosi.memory.v1.GetProvenanceResponse.entries:type_name -> cosimosi.memory.v1.ProvenanceEntry
+	16, // 5: cosimosi.memory.v1.GetUniverseResponse.memories:type_name -> cosimosi.memory.v1.EpisodicMemoryDto
+	17, // 6: cosimosi.memory.v1.GetUniverseResponse.neurons:type_name -> cosimosi.memory.v1.NeuronDto
+	18, // 7: cosimosi.memory.v1.GetUniverseResponse.synapses:type_name -> cosimosi.memory.v1.SynapseDto
+	14, // 8: cosimosi.memory.v1.EpisodicMemoryDto.emotion:type_name -> cosimosi.memory.v1.EmotionDto
+	15, // 9: cosimosi.memory.v1.EpisodicMemoryDto.activations:type_name -> cosimosi.memory.v1.NeuronActivationDto
+	29, // 10: cosimosi.memory.v1.GetProvenanceResponse.entries:type_name -> cosimosi.memory.v1.ProvenanceEntry
 	0,  // 11: cosimosi.memory.v1.ExportRequest.format:type_name -> cosimosi.memory.v1.ExportFormat
 	1,  // 12: cosimosi.memory.v1.GetDiariesRequest.sort:type_name -> cosimosi.memory.v1.DiarySort
-	32, // 13: cosimosi.memory.v1.GetDiariesResponse.diaries:type_name -> cosimosi.memory.v1.DiaryDto
-	33, // 14: cosimosi.memory.v1.DiaryDto.memories:type_name -> cosimosi.memory.v1.DiarySplitRef
-	36, // 15: cosimosi.memory.v1.GetDiaryCalendarResponse.days:type_name -> cosimosi.memory.v1.DiaryDayDto
-	37, // 16: cosimosi.memory.v1.DiaryDayDto.moods:type_name -> cosimosi.memory.v1.DiaryDayMoodDto
-	44, // 17: cosimosi.memory.v1.SuggestLetGoResponse.candidates:type_name -> cosimosi.memory.v1.SealCandidate
-	45, // 18: cosimosi.memory.v1.SuggestLetGoResponse.heavy_state:type_name -> cosimosi.memory.v1.HeavyState
+	34, // 13: cosimosi.memory.v1.GetDiariesResponse.diaries:type_name -> cosimosi.memory.v1.DiaryDto
+	35, // 14: cosimosi.memory.v1.DiaryDto.memories:type_name -> cosimosi.memory.v1.DiarySplitRef
+	38, // 15: cosimosi.memory.v1.GetDiaryCalendarResponse.days:type_name -> cosimosi.memory.v1.DiaryDayDto
+	39, // 16: cosimosi.memory.v1.DiaryDayDto.moods:type_name -> cosimosi.memory.v1.DiaryDayMoodDto
+	46, // 17: cosimosi.memory.v1.SuggestLetGoResponse.candidates:type_name -> cosimosi.memory.v1.SealCandidate
+	47, // 18: cosimosi.memory.v1.SuggestLetGoResponse.heavy_state:type_name -> cosimosi.memory.v1.HeavyState
 	2,  // 19: cosimosi.memory.v1.MemoryService.SplitDiary:input_type -> cosimosi.memory.v1.SplitDiaryRequest
 	3,  // 20: cosimosi.memory.v1.MemoryService.ReviseSplit:input_type -> cosimosi.memory.v1.ReviseSplitRequest
 	7,  // 21: cosimosi.memory.v1.MemoryService.LaunchStars:input_type -> cosimosi.memory.v1.LaunchStarsRequest
 	10, // 22: cosimosi.memory.v1.MemoryService.GetUniverse:input_type -> cosimosi.memory.v1.GetUniverseRequest
-	17, // 23: cosimosi.memory.v1.MemoryService.Recall:input_type -> cosimosi.memory.v1.RecallRequest
-	19, // 24: cosimosi.memory.v1.MemoryService.RecallDiaryStars:input_type -> cosimosi.memory.v1.RecallDiaryStarsRequest
-	20, // 25: cosimosi.memory.v1.MemoryService.ViewSemantic:input_type -> cosimosi.memory.v1.ViewSemanticRequest
-	23, // 26: cosimosi.memory.v1.MemoryService.SyncStatus:input_type -> cosimosi.memory.v1.SyncStatusRequest
-	25, // 27: cosimosi.memory.v1.MemoryService.GetProvenance:input_type -> cosimosi.memory.v1.GetProvenanceRequest
-	28, // 28: cosimosi.memory.v1.MemoryService.Export:input_type -> cosimosi.memory.v1.ExportRequest
-	30, // 29: cosimosi.memory.v1.MemoryService.GetDiaries:input_type -> cosimosi.memory.v1.GetDiariesRequest
-	34, // 30: cosimosi.memory.v1.MemoryService.GetDiaryCalendar:input_type -> cosimosi.memory.v1.GetDiaryCalendarRequest
-	38, // 31: cosimosi.memory.v1.MemoryService.Release:input_type -> cosimosi.memory.v1.ReleaseRequest
-	40, // 32: cosimosi.memory.v1.MemoryService.Restore:input_type -> cosimosi.memory.v1.RestoreRequest
-	42, // 33: cosimosi.memory.v1.MemoryService.SuggestLetGo:input_type -> cosimosi.memory.v1.SuggestLetGoRequest
-	46, // 34: cosimosi.memory.v1.MemoryService.LetGo:input_type -> cosimosi.memory.v1.LetGoRequest
-	4,  // 35: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	4,  // 36: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	9,  // 37: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
-	11, // 38: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
-	18, // 39: cosimosi.memory.v1.MemoryService.Recall:output_type -> cosimosi.memory.v1.RecallResponse
-	22, // 40: cosimosi.memory.v1.MemoryService.RecallDiaryStars:output_type -> cosimosi.memory.v1.RecallDiaryStarsResponse
-	21, // 41: cosimosi.memory.v1.MemoryService.ViewSemantic:output_type -> cosimosi.memory.v1.ViewSemanticResponse
-	24, // 42: cosimosi.memory.v1.MemoryService.SyncStatus:output_type -> cosimosi.memory.v1.SyncStatusResponse
-	26, // 43: cosimosi.memory.v1.MemoryService.GetProvenance:output_type -> cosimosi.memory.v1.GetProvenanceResponse
-	29, // 44: cosimosi.memory.v1.MemoryService.Export:output_type -> cosimosi.memory.v1.ExportResponse
-	31, // 45: cosimosi.memory.v1.MemoryService.GetDiaries:output_type -> cosimosi.memory.v1.GetDiariesResponse
-	35, // 46: cosimosi.memory.v1.MemoryService.GetDiaryCalendar:output_type -> cosimosi.memory.v1.GetDiaryCalendarResponse
-	39, // 47: cosimosi.memory.v1.MemoryService.Release:output_type -> cosimosi.memory.v1.ReleaseResponse
-	41, // 48: cosimosi.memory.v1.MemoryService.Restore:output_type -> cosimosi.memory.v1.RestoreResponse
-	43, // 49: cosimosi.memory.v1.MemoryService.SuggestLetGo:output_type -> cosimosi.memory.v1.SuggestLetGoResponse
-	47, // 50: cosimosi.memory.v1.MemoryService.LetGo:output_type -> cosimosi.memory.v1.LetGoResponse
-	35, // [35:51] is the sub-list for method output_type
-	19, // [19:35] is the sub-list for method input_type
+	12, // 23: cosimosi.memory.v1.MemoryService.GetUniverseRevision:input_type -> cosimosi.memory.v1.GetUniverseRevisionRequest
+	19, // 24: cosimosi.memory.v1.MemoryService.Recall:input_type -> cosimosi.memory.v1.RecallRequest
+	21, // 25: cosimosi.memory.v1.MemoryService.RecallDiaryStars:input_type -> cosimosi.memory.v1.RecallDiaryStarsRequest
+	22, // 26: cosimosi.memory.v1.MemoryService.ViewSemantic:input_type -> cosimosi.memory.v1.ViewSemanticRequest
+	25, // 27: cosimosi.memory.v1.MemoryService.SyncStatus:input_type -> cosimosi.memory.v1.SyncStatusRequest
+	27, // 28: cosimosi.memory.v1.MemoryService.GetProvenance:input_type -> cosimosi.memory.v1.GetProvenanceRequest
+	30, // 29: cosimosi.memory.v1.MemoryService.Export:input_type -> cosimosi.memory.v1.ExportRequest
+	32, // 30: cosimosi.memory.v1.MemoryService.GetDiaries:input_type -> cosimosi.memory.v1.GetDiariesRequest
+	36, // 31: cosimosi.memory.v1.MemoryService.GetDiaryCalendar:input_type -> cosimosi.memory.v1.GetDiaryCalendarRequest
+	40, // 32: cosimosi.memory.v1.MemoryService.Release:input_type -> cosimosi.memory.v1.ReleaseRequest
+	42, // 33: cosimosi.memory.v1.MemoryService.Restore:input_type -> cosimosi.memory.v1.RestoreRequest
+	44, // 34: cosimosi.memory.v1.MemoryService.SuggestLetGo:input_type -> cosimosi.memory.v1.SuggestLetGoRequest
+	48, // 35: cosimosi.memory.v1.MemoryService.LetGo:input_type -> cosimosi.memory.v1.LetGoRequest
+	4,  // 36: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	4,  // 37: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	9,  // 38: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
+	11, // 39: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
+	13, // 40: cosimosi.memory.v1.MemoryService.GetUniverseRevision:output_type -> cosimosi.memory.v1.GetUniverseRevisionResponse
+	20, // 41: cosimosi.memory.v1.MemoryService.Recall:output_type -> cosimosi.memory.v1.RecallResponse
+	24, // 42: cosimosi.memory.v1.MemoryService.RecallDiaryStars:output_type -> cosimosi.memory.v1.RecallDiaryStarsResponse
+	23, // 43: cosimosi.memory.v1.MemoryService.ViewSemantic:output_type -> cosimosi.memory.v1.ViewSemanticResponse
+	26, // 44: cosimosi.memory.v1.MemoryService.SyncStatus:output_type -> cosimosi.memory.v1.SyncStatusResponse
+	28, // 45: cosimosi.memory.v1.MemoryService.GetProvenance:output_type -> cosimosi.memory.v1.GetProvenanceResponse
+	31, // 46: cosimosi.memory.v1.MemoryService.Export:output_type -> cosimosi.memory.v1.ExportResponse
+	33, // 47: cosimosi.memory.v1.MemoryService.GetDiaries:output_type -> cosimosi.memory.v1.GetDiariesResponse
+	37, // 48: cosimosi.memory.v1.MemoryService.GetDiaryCalendar:output_type -> cosimosi.memory.v1.GetDiaryCalendarResponse
+	41, // 49: cosimosi.memory.v1.MemoryService.Release:output_type -> cosimosi.memory.v1.ReleaseResponse
+	43, // 50: cosimosi.memory.v1.MemoryService.Restore:output_type -> cosimosi.memory.v1.RestoreResponse
+	45, // 51: cosimosi.memory.v1.MemoryService.SuggestLetGo:output_type -> cosimosi.memory.v1.SuggestLetGoResponse
+	49, // 52: cosimosi.memory.v1.MemoryService.LetGo:output_type -> cosimosi.memory.v1.LetGoResponse
+	36, // [36:53] is the sub-list for method output_type
+	19, // [19:36] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name
@@ -3394,16 +3493,16 @@ func file_cosimosi_memory_v1_memory_proto_init() {
 	if File_cosimosi_memory_v1_memory_proto != nil {
 		return
 	}
-	file_cosimosi_memory_v1_memory_proto_msgTypes[12].OneofWrappers = []any{}
-	file_cosimosi_memory_v1_memory_proto_msgTypes[13].OneofWrappers = []any{}
-	file_cosimosi_memory_v1_memory_proto_msgTypes[28].OneofWrappers = []any{}
+	file_cosimosi_memory_v1_memory_proto_msgTypes[14].OneofWrappers = []any{}
+	file_cosimosi_memory_v1_memory_proto_msgTypes[15].OneofWrappers = []any{}
+	file_cosimosi_memory_v1_memory_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_memory_v1_memory_proto_rawDesc), len(file_cosimosi_memory_v1_memory_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   46,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

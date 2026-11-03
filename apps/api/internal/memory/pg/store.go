@@ -419,6 +419,10 @@ func getUniverse(ctx context.Context, scope platform.UserScope, queries *dbgen.Q
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}
+	revision, err := universeRevision(queries.GetUniverseRevision(ctx, userID))
+	if err != nil {
+		return memory.UniverseFacts{}, err
+	}
 
 	return memory.UniverseFacts{
 		EpisodicMemories: mapEpisodicMemories(memories),
@@ -426,7 +430,23 @@ func getUniverse(ctx context.Context, scope platform.UserScope, queries *dbgen.Q
 		Activations:      mapNeuronActivations(activations),
 		Synapses:         mapSynapses(synapses),
 		UniverseClock:    clock,
+		Revision:         revision,
 	}, nil
+}
+
+// GetUniverseRevision reads the freshness counter alone; no row (never mutated) reads 0.
+func (s Store) GetUniverseRevision(ctx context.Context, scope platform.UserScope) (int64, error) {
+	if err := s.ready(scope); err != nil {
+		return 0, err
+	}
+	return universeRevision(s.queries.GetUniverseRevision(ctx, scope.UserID()))
+}
+
+func universeRevision(revision int64, err error) (int64, error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return revision, err
 }
 
 func (s Store) ready(scope platform.UserScope) error {

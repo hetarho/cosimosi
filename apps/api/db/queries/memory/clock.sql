@@ -12,8 +12,18 @@ WHERE user_id = $1;
 -- the lock (a 32-bit hash of the id alone collided) and it never meets another advisory-lock
 -- domain. Taken as the first step of every graph-changing transaction, before
 -- release/clock/graph rows.
+--
+-- The same statement advances the user's universe revision [MEM-21]: the materialized CTE takes
+-- the lock before the upsert reads its row, so the counter moves strictly inside the lock, once
+-- per graph-mutating transaction, and a rollback undoes it. The first advance writes 1.
 -- name: LockGraphMutation :exec
-SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || sqlc.arg(user_id)::text, 0));
+WITH graph_lock AS MATERIALIZED (
+    SELECT pg_advisory_xact_lock(hashtextextended('universe_state:' || sqlc.arg(user_id)::text, 0)) AS locked
+)
+INSERT INTO universe_revisions (user_id, revision)
+SELECT sqlc.arg(user_id)::text, 1
+FROM graph_lock
+ON CONFLICT (user_id) DO UPDATE SET revision = universe_revisions.revision + 1;
 
 -- The launch guard's read: FOR UPDATE holds the clock row for the rest of the
 -- launch transaction, so a concurrent launch cannot pass the monotonic guard

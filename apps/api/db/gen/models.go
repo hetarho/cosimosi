@@ -283,6 +283,11 @@ type TwinkleLedgerEntry struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type UniverseRevision struct {
+	UserID   string
+	Revision int64
+}
+
 type UniverseState struct {
 	UserID              string
 	CurrentUniverseTime pgtype.Date

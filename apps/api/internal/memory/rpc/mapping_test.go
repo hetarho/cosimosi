@@ -108,10 +108,15 @@ func TestUniverseResponseMapsFactsAndGroupsActivations(t *testing.T) {
 	}
 	universeTime := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
+	facts.Revision = 7
+
 	got := universeResponse(facts, &universeTime)
 
 	if got.GetUniverseTime() != "2026-05-01" {
 		t.Fatalf("universe time not formatted: %q", got.GetUniverseTime())
+	}
+	if got.GetUniverseRevision() != 7 {
+		t.Fatalf("universe revision not carried from the snapshot: %d", got.GetUniverseRevision())
 	}
 	if len(got.GetMemories()) != 2 {
 		t.Fatalf("want 2 memories, got %d", len(got.GetMemories()))

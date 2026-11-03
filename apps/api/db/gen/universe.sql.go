@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getUniverseRevision = `-- name: GetUniverseRevision :one
+SELECT revision
+FROM universe_revisions
+WHERE user_id = $1
+`
+
+// [MEM-21] The universe's freshness counter. GetUniverse reads it inside its own snapshot; the
+// standalone read answers it alone. No row (a universe never mutated) reads as 0 in the store.
+func (q *Queries) GetUniverseRevision(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRow(ctx, getUniverseRevision, userID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const listUniverseEpisodicMemories = `-- name: ListUniverseEpisodicMemories :many
 SELECT
     id,

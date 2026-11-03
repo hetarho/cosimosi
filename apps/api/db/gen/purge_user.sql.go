@@ -214,6 +214,16 @@ func (q *Queries) PurgeUserTwinkleLedger(ctx context.Context, userID string) err
 	return err
 }
 
+const purgeUserUniverseRevision = `-- name: PurgeUserUniverseRevision :exec
+DELETE FROM universe_revisions
+WHERE user_id = $1
+`
+
+func (q *Queries) PurgeUserUniverseRevision(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, purgeUserUniverseRevision, userID)
+	return err
+}
+
 const purgeUserUniverseState = `-- name: PurgeUserUniverseState :exec
 DELETE FROM universe_state
 WHERE user_id = $1

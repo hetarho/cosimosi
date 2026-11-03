@@ -20,6 +20,7 @@
 | ptl | DESKTOP-VKPLS8P | autopilot | 2026-11-03T00:53Z | 2026-11-03T01:06Z | - |
 
 ## inbox
+- 261103 parked T215 T222: Docker Desktop is not reachable from this WSL session, so DB-backed Go integration tests, `pnpm check:api` (it provisions Postgres through compose) and the Docker `pnpm gen` path cannot run here — start Docker Desktop with WSL integration, then run `pnpm check:api` and `pnpm check:gen` at the batch gate
 - 261103 parked T214: the headless CDP check at the landing hero (walkthrough canvas absent before intersection, rAF stops while hidden) needs a Chromium that runs here — `sudo apt install libnss3 libnspr4 libasound2t64` for the cached Playwright build, then `node` + CDP against `vite preview`
 - 261103 decided ADMIN-19 ERR-12 T222: ADMIN-19 asked for a typed reason when an LLM model save is refused, but ERR-12 registered none → ERR r3/ADMIN r3: empty model `ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse), outside the intersection, an empty one included, `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy), listing or auth failure the existing `ADMIN_MODEL_LISTING_UNAVAILABLE` (alt: one reason for every refusal | InvalidArgument for a non-curated model) ← whether a model is curated depends on the live catalog, not on the argument alone, and only that refusal makes the console refetch
 - 261103 decided T222: how to rewrite the legacy OpenRouter task in the current format → one task in three ordered phases (hermetic adapter, evidence gate, cutover) that blocks after phase 1 while keys, an operator or a reviewer are missing (alt: split the adapter and the cutover into two tasks) ← the user asked for a single T222, and the gate order keeps the direct adapters until an approval exists
@@ -95,7 +96,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T215 | The server keeps a per-user universe revision | ARCH MEM CLIENT | T198 | todo |
 | T216 | Refocus reads the revision before the full universe | ARCH CLIENT | T215 | todo |
 | T217 | A settled scene does no per-frame or per-step rework | ARCH | T182 | todo |
 | T218 | GPU resources are reused and released explicitly | ARCH | T208 T217 | todo |
@@ -105,11 +105,12 @@
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T215 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
+- implement-task T216 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T215 done
 - 261103 T214 done
 - 261103 T213 done
 - 261103 create-task T222: replaces the legacy OpenRouter task (file deleted) in the current format; AI@2 unchanged, ADMIN r3 and ERR r3 consumed
@@ -129,4 +130,3 @@
 - 261103 T201 done
 - 261103 T200 done
 - 261103 T199 done
-- 261103 T198 done

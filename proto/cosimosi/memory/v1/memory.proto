@@ -29,6 +29,11 @@ service MemoryService {
   rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The universe's freshness counter alone (MEM-21), so a client can tell whether its snapshot is
+  // current without reading it. 0 for a universe no graph write has touched.
+  rpc GetUniverseRevision(GetUniverseRevisionRequest) returns (GetUniverseRevisionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
   // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
   rpc Recall(RecallRequest) returns (RecallResponse);
@@ -166,6 +171,15 @@ message GetUniverseResponse {
   // user whose clock row has not been born yet; empty for an empty universe.
   // Reading never advances the clock [T3].
   string universe_time = 4;
+  // The freshness counter read in the same snapshot as the facts above (MEM-21); 0 when no graph
+  // write has touched this universe. Never shown and never a domain fact.
+  int64 universe_revision = 5;
+}
+
+message GetUniverseRevisionRequest {}
+
+message GetUniverseRevisionResponse {
+  int64 universe_revision = 1;
 }
 
 message EmotionDto {

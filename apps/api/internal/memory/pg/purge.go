@@ -42,6 +42,7 @@ func (s Store) PurgeUser(
 		queries.PurgeUserNeurons,
 		queries.PurgeUserDiaries,
 		queries.PurgeUserUniverseState,
+		queries.PurgeUserUniverseRevision,
 	} {
 		if err := purge(ctx, userID); err != nil {
 			return err

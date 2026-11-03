@@ -86,3 +86,10 @@ JOIN neurons AS neuron_b
  AND neuron_b.sealed_at IS NULL
 WHERE s.user_id = $1
 ORDER BY s.neuron_a_id, s.neuron_b_id;
+
+-- [MEM-21] The universe's freshness counter. GetUniverse reads it inside its own snapshot; the
+-- standalone read answers it alone. No row (a universe never mutated) reads as 0 in the store.
+-- name: GetUniverseRevision :one
+SELECT revision
+FROM universe_revisions
+WHERE user_id = $1;

@@ -82,6 +82,7 @@ const hardDeleteQueries = new Set([
   'memory/purge_user.sql#PurgeUserNeurons',
   'memory/purge_user.sql#PurgeUserDiaries',
   'memory/purge_user.sql#PurgeUserUniverseState',
+  'memory/purge_user.sql#PurgeUserUniverseRevision',
   'twinkle/purge_user.sql#PurgeUserTwinkleLedger',
   'twinkle/purge_user.sql#PurgeUserTwinkleBalance',
   // Reverting a kind to its free default removes the applied row: absence IS the default, so this is

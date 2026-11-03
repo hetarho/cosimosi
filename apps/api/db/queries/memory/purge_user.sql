@@ -66,3 +66,7 @@ WHERE user_id = sqlc.arg(user_id);
 -- name: PurgeUserUniverseState :exec
 DELETE FROM universe_state
 WHERE user_id = sqlc.arg(user_id);
+
+-- name: PurgeUserUniverseRevision :exec
+DELETE FROM universe_revisions
+WHERE user_id = sqlc.arg(user_id);

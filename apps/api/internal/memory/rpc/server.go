@@ -36,6 +36,7 @@ type ReleaseUseCases interface {
 
 type ReadUseCases interface {
 	Universe(ctx context.Context, scope platform.UserScope) (memory.UniverseFacts, *time.Time, error)
+	UniverseRevision(ctx context.Context, scope platform.UserScope) (int64, error)
 	SyncStatus(ctx context.Context, scope platform.UserScope) (memory.SyncStatus, error)
 	GetProvenance(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.ProvenanceEntry, error)
 	GetDiaries(ctx context.Context, scope platform.UserScope, query memory.DiaryQuery) (memory.DiaryPage, error)
@@ -146,6 +147,18 @@ func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.Ge
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(universeResponse(facts, universeTime)), nil
+}
+
+func (s *Server) GetUniverseRevision(ctx context.Context, _ *connect.Request[memoryv1.GetUniverseRevisionRequest]) (*connect.Response[memoryv1.GetUniverseRevisionResponse], error) {
+	scope, err := platform.RequireUserScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	revision, err := s.reads.UniverseRevision(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.GetUniverseRevisionResponse{UniverseRevision: revision}), nil
 }
 
 func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.SyncStatusRequest]) (*connect.Response[memoryv1.SyncStatusResponse], error) {
@@ -658,9 +671,10 @@ func universeResponse(facts memory.UniverseFacts, universeTime *time.Time) *memo
 	}
 
 	response := &memoryv1.GetUniverseResponse{
-		Memories: memories,
-		Neurons:  neurons,
-		Synapses: synapses,
+		Memories:         memories,
+		Neurons:          neurons,
+		Synapses:         synapses,
+		UniverseRevision: facts.Revision,
 	}
 	if universeTime != nil {
 		response.UniverseTime = universeTime.Format(time.DateOnly)

@@ -45,6 +45,9 @@ const (
 	// MemoryServiceGetUniverseProcedure is the fully-qualified name of the MemoryService's GetUniverse
 	// RPC.
 	MemoryServiceGetUniverseProcedure = "/cosimosi.memory.v1.MemoryService/GetUniverse"
+	// MemoryServiceGetUniverseRevisionProcedure is the fully-qualified name of the MemoryService's
+	// GetUniverseRevision RPC.
+	MemoryServiceGetUniverseRevisionProcedure = "/cosimosi.memory.v1.MemoryService/GetUniverseRevision"
 	// MemoryServiceRecallProcedure is the fully-qualified name of the MemoryService's Recall RPC.
 	MemoryServiceRecallProcedure = "/cosimosi.memory.v1.MemoryService/Recall"
 	// MemoryServiceRecallDiaryStarsProcedure is the fully-qualified name of the MemoryService's
@@ -94,6 +97,9 @@ type MemoryServiceClient interface {
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
 	// clients into HTTP GET (never shared-CDN-cached; the data is user-scoped).
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
+	// The universe's freshness counter alone (MEM-21), so a client can tell whether its snapshot is
+	// current without reading it. 0 for a universe no graph write has touched.
+	GetUniverseRevision(context.Context, *connect.Request[v1.GetUniverseRevisionRequest]) (*connect.Response[v1.GetUniverseRevisionResponse], error)
 	// 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
 	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
 	Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error)
@@ -165,6 +171,13 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+MemoryServiceGetUniverseProcedure,
 			connect.WithSchema(memoryServiceMethods.ByName("GetUniverse")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getUniverseRevision: connect.NewClient[v1.GetUniverseRevisionRequest, v1.GetUniverseRevisionResponse](
+			httpClient,
+			baseURL+MemoryServiceGetUniverseRevisionProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("GetUniverseRevision")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -250,22 +263,23 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // memoryServiceClient implements MemoryServiceClient.
 type memoryServiceClient struct {
-	splitDiary       *connect.Client[v1.SplitDiaryRequest, v1.SplitDiaryResponse]
-	reviseSplit      *connect.Client[v1.ReviseSplitRequest, v1.SplitDiaryResponse]
-	launchStars      *connect.Client[v1.LaunchStarsRequest, v1.LaunchStarsResponse]
-	getUniverse      *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
-	recall           *connect.Client[v1.RecallRequest, v1.RecallResponse]
-	recallDiaryStars *connect.Client[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse]
-	viewSemantic     *connect.Client[v1.ViewSemanticRequest, v1.ViewSemanticResponse]
-	syncStatus       *connect.Client[v1.SyncStatusRequest, v1.SyncStatusResponse]
-	getProvenance    *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
-	export           *connect.Client[v1.ExportRequest, v1.ExportResponse]
-	getDiaries       *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
-	getDiaryCalendar *connect.Client[v1.GetDiaryCalendarRequest, v1.GetDiaryCalendarResponse]
-	release          *connect.Client[v1.ReleaseRequest, v1.ReleaseResponse]
-	restore          *connect.Client[v1.RestoreRequest, v1.RestoreResponse]
-	suggestLetGo     *connect.Client[v1.SuggestLetGoRequest, v1.SuggestLetGoResponse]
-	letGo            *connect.Client[v1.LetGoRequest, v1.LetGoResponse]
+	splitDiary          *connect.Client[v1.SplitDiaryRequest, v1.SplitDiaryResponse]
+	reviseSplit         *connect.Client[v1.ReviseSplitRequest, v1.SplitDiaryResponse]
+	launchStars         *connect.Client[v1.LaunchStarsRequest, v1.LaunchStarsResponse]
+	getUniverse         *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
+	getUniverseRevision *connect.Client[v1.GetUniverseRevisionRequest, v1.GetUniverseRevisionResponse]
+	recall              *connect.Client[v1.RecallRequest, v1.RecallResponse]
+	recallDiaryStars    *connect.Client[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse]
+	viewSemantic        *connect.Client[v1.ViewSemanticRequest, v1.ViewSemanticResponse]
+	syncStatus          *connect.Client[v1.SyncStatusRequest, v1.SyncStatusResponse]
+	getProvenance       *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
+	export              *connect.Client[v1.ExportRequest, v1.ExportResponse]
+	getDiaries          *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
+	getDiaryCalendar    *connect.Client[v1.GetDiaryCalendarRequest, v1.GetDiaryCalendarResponse]
+	release             *connect.Client[v1.ReleaseRequest, v1.ReleaseResponse]
+	restore             *connect.Client[v1.RestoreRequest, v1.RestoreResponse]
+	suggestLetGo        *connect.Client[v1.SuggestLetGoRequest, v1.SuggestLetGoResponse]
+	letGo               *connect.Client[v1.LetGoRequest, v1.LetGoResponse]
 }
 
 // SplitDiary calls cosimosi.memory.v1.MemoryService.SplitDiary.
@@ -286,6 +300,11 @@ func (c *memoryServiceClient) LaunchStars(ctx context.Context, req *connect.Requ
 // GetUniverse calls cosimosi.memory.v1.MemoryService.GetUniverse.
 func (c *memoryServiceClient) GetUniverse(ctx context.Context, req *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error) {
 	return c.getUniverse.CallUnary(ctx, req)
+}
+
+// GetUniverseRevision calls cosimosi.memory.v1.MemoryService.GetUniverseRevision.
+func (c *memoryServiceClient) GetUniverseRevision(ctx context.Context, req *connect.Request[v1.GetUniverseRevisionRequest]) (*connect.Response[v1.GetUniverseRevisionResponse], error) {
+	return c.getUniverseRevision.CallUnary(ctx, req)
 }
 
 // Recall calls cosimosi.memory.v1.MemoryService.Recall.
@@ -364,6 +383,9 @@ type MemoryServiceHandler interface {
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
 	// clients into HTTP GET (never shared-CDN-cached; the data is user-scoped).
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
+	// The universe's freshness counter alone (MEM-21), so a client can tell whether its snapshot is
+	// current without reading it. 0 for a universe no graph write has touched.
+	GetUniverseRevision(context.Context, *connect.Request[v1.GetUniverseRevisionRequest]) (*connect.Response[v1.GetUniverseRevisionResponse], error)
 	// 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
 	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
 	Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error)
@@ -431,6 +453,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		MemoryServiceGetUniverseProcedure,
 		svc.GetUniverse,
 		connect.WithSchema(memoryServiceMethods.ByName("GetUniverse")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceGetUniverseRevisionHandler := connect.NewUnaryHandler(
+		MemoryServiceGetUniverseRevisionProcedure,
+		svc.GetUniverseRevision,
+		connect.WithSchema(memoryServiceMethods.ByName("GetUniverseRevision")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -521,6 +550,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceLaunchStarsHandler.ServeHTTP(w, r)
 		case MemoryServiceGetUniverseProcedure:
 			memoryServiceGetUniverseHandler.ServeHTTP(w, r)
+		case MemoryServiceGetUniverseRevisionProcedure:
+			memoryServiceGetUniverseRevisionHandler.ServeHTTP(w, r)
 		case MemoryServiceRecallProcedure:
 			memoryServiceRecallHandler.ServeHTTP(w, r)
 		case MemoryServiceRecallDiaryStarsProcedure:
@@ -568,6 +599,10 @@ func (UnimplementedMemoryServiceHandler) LaunchStars(context.Context, *connect.R
 
 func (UnimplementedMemoryServiceHandler) GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetUniverse is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetUniverseRevision(context.Context, *connect.Request[v1.GetUniverseRevisionRequest]) (*connect.Response[v1.GetUniverseRevisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetUniverseRevision is not implemented"))
 }
 
 func (UnimplementedMemoryServiceHandler) Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error) {

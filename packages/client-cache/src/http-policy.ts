@@ -128,6 +128,10 @@ export const memoryRpcCachePolicies = [
     policy: userScopedUnaryReadPolicy,
   },
   {
+    method: MemoryService.method.getUniverseRevision,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
     method: MemoryService.method.getProvenance,
     policy: userScopedUnaryReadPolicy,
   },

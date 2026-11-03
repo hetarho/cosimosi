@@ -478,6 +478,9 @@ func seedWithdrawalTables(
 	exec("universe_state", `
 		INSERT INTO universe_state (user_id, current_universe_time)
 		VALUES ($1, $2)`, userID, now)
+	exec("universe_revisions", `
+		INSERT INTO universe_revisions (user_id, revision)
+		VALUES ($1, 3)`, userID)
 	exec("memory_provenance", `
 		INSERT INTO memory_provenance
 			(id, user_id, episodic_memory_id, kind, source, text, universe_time, semantic_stage)

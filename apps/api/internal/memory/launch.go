@@ -274,6 +274,15 @@ func (s *ReadService) Universe(ctx context.Context, scope platform.UserScope) (U
 	return facts, universeTime, nil
 }
 
+// UniverseRevision reads the universe's freshness counter alone (MEM-21): 0 until the first
+// graph-mutating transaction. It never advances anything.
+func (s *ReadService) UniverseRevision(ctx context.Context, scope platform.UserScope) (int64, error) {
+	if scope.UserID() == "" {
+		return 0, ErrScopeRequired
+	}
+	return s.universe.GetUniverseRevision(ctx, scope)
+}
+
 // resolveNeurons honors the extractor's dedup at persist time ([E10]): a proposed
 // neuron whose (name, type) canonicalized onto an existing neuron references that
 // id; a genuinely new (name, type) is created once and shared across this

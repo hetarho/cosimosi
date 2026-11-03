@@ -196,4 +196,7 @@ type UniverseFacts struct {
 	// as the facts so a concurrent launch cannot skew universe time against them;
 	// nil = the clock row is not born yet (lazy birth).
 	UniverseClock *time.Time
+	// Revision is the universe's freshness counter read in the same snapshot (MEM-21); 0 when no
+	// graph-mutating transaction has run. Never a domain fact.
+	Revision int64
 }
