@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ALTERNATIVE_MOOD_COLORS, MOODS, resetMoodPalette } from '@cosimosi/emotion'
 import { applyMoodColors } from '@cosimosi/emotion/react'
-import { measureAnchor, type SequenceRect } from '@cosimosi/sequence'
 import { useSequenceRun } from '@cosimosi/sequence/react'
 import { VALUES } from '@cosimosi/config'
-import type { AdvanceInterval } from '@cosimosi/universe'
 
 import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
@@ -16,7 +14,6 @@ import {
   demoRunPhase,
   isDemoAnchorInteractive,
   syncDemoRunMachine,
-  tutorialInteractiveAnchors,
 } from '../model/run-machine.ts'
 import { useTutorialRecallPanelSelection } from '../model/recall-panel.ts'
 import {
@@ -25,7 +22,10 @@ import {
   useDemoRun,
   type DemoTasteOrnament,
 } from '../model/use-demo-run.ts'
+import { useDemoGuide } from '../model/use-demo-guide.ts'
 import { useDemoSandbox } from '../model/use-demo-sandbox.ts'
+import { useDemoSurface } from '../model/use-demo-surface.ts'
+import { useScenePresentation } from '../model/use-scene-presentation.ts'
 import { DemoDecorationSheet } from './DemoDecorationSheet.tsx'
 import { DemoEntryReader } from './DemoEntryReader.tsx'
 import { DemoHud } from './DemoHud.tsx'
@@ -42,13 +42,11 @@ import { DemoWritingSheet, type DemoProposedMemory } from './DemoWritingSheet.ts
 // and calls no model, and the demo-scoped import block in the ESLint config is what makes that a
 // closure rather than a promise: with no transport reachable, a server call is not expressible.
 //
-// Two machines run here, one seam between them. The shared sequence engine owns the tour's
-// presentation (caption, highlight, dwell, skip chrome); the demo-local run machine owns the run's
-// PHASE — tutorial step ↔ free play — and every control's availability derives from it alone.
-// `syncDemoRunMachine` in the effect below is the only place they meet.
-
-// A sweep that owes the tour nothing, shared so the empty case allocates once.
-const NO_REPORTS: readonly DemoSignal[] = []
+// Three machines run here. The shared sequence engine owns the tour's presentation (caption,
+// highlight, dwell, skip chrome); the demo-local run machine owns the run's PHASE — tutorial step ↔
+// free play — and every control's availability derives from it alone; the surface machine owns
+// which ONE surface is open. `syncDemoRunMachine` in the effect below is the only place the first
+// two meet. What remains in this component is composition: reading those, handing presses to them.
 
 /** What a time jump reports once its months have run past on screen. */
 const TIME_JUMP_REPORTS: readonly DemoSignal[] = ['time_advanced', 'gist_risen']
@@ -60,7 +58,7 @@ interface DemoEntry {
 }
 
 export function DemoPage({ onSignUp }: { onSignUp: () => void }) {
-  // The reset control re-keys the whole run: a remount rebuilds both machines and redraws the set
+  // The reset control re-keys the whole run: a remount rebuilds every machine and redraws the set
   // exactly the way a fresh visit would, and the unmount cleanup below clears the module-level
   // stores on the way — one code path for "start over" and "arrive", so they cannot drift.
   const [runSeed, setRunSeed] = useState(0)
@@ -87,7 +85,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const runActor = useActorRef(demoRunMachine)
   // The selector builds a fresh object per read, so it MUST compare shallowly — with the default
   // identity compare every subscription check reads as a change, and any effect keyed on `phase`
-  // that also sets state (the re-measure below) becomes an update loop.
+  // that also sets state (the re-measure) becomes an update loop.
   const phase = useSelector(runActor, (snapshot) => demoRunPhase(snapshot.value), shallowEqual)
 
   // The engine advances on the visitor's signals; the phase machine follows it here — completion
@@ -98,221 +96,49 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     syncDemoRunMachine(runActor, { stepIndex: engineStepIndex, outcome: engineOutcome })
   }, [engineOutcome, engineStepIndex, runActor])
 
-  // The write flow rides the product's dialog. Open is PAGE state (the machine owns pressability,
-  // not visibility): the sheet opens with a draft and closes on launch; dismissing it early is
-  // possible only when the write control could reopen it, so a tutorial beat staged inside the
-  // sheet cannot be stranded — its close is simply inert until then.
-  const [sheetOpen, setSheetOpen] = useState(true)
-
-  // The surfaces a picked star opens, all page state for the same reason: which star is selected,
-  // whether its recall walk is up (and whether it has been applied), and which diary is being read.
-  // Only ONE of them is ever on screen — each opens by closing the one it came from, because two
-  // surfaces that both declare themselves modal would stack two scrims and two focus traps.
-  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null)
-  const [recallMemoryId, setRecallMemoryId] = useState<string | null>(null)
-  const [recallApplied, setRecallApplied] = useState(false)
-  const [readingDiaryId, setReadingDiaryId] = useState<string | null>(null)
-
-  // 꾸미기 opens the product-shaped decoration sheet. `decorateTasted` is what makes the decorating
-  // beat a round trip rather than one press: until something has been tried on, the sheet's way out
-  // is inert, and the beat ends when the visitor comes back out to the changed universe.
-  const [decorateOpen, setDecorateOpen] = useState(false)
-  const [decorateTasted, setDecorateTasted] = useState(false)
-
-  // The chrome's layout moves when the phase, the draft or the sheet does — the split rows appear,
-  // the dialog mounts, launched rows arrive — and the engine cannot see any of that (a registry
-  // change is its only signal). Re-measure after those commits, or the ring keeps pointing at the
-  // current control's stale position.
-  const remeasure = run.remeasure
-  const starCount = demo.scene.memories.length
-  const writingState = demo.state.writing
-  // Keyed on primitives only: an object dep that changed identity per render would turn this
-  // effect's own state write (the measure token) into an infinite update loop.
-  const phaseKey = phase.kind === 'tutorial' ? phase.beatId : 'freePlay'
-  useEffect(() => {
-    remeasure()
-  }, [
-    decorateOpen,
-    phaseKey,
-    readingDiaryId,
-    recallMemoryId,
-    remeasure,
-    selectedMemoryId,
+  // The write flow, a picked memory's panel, the recall walk, the diary reader and the decoration
+  // sheet: one machine state, so only one of them is ever on screen. Visibility is page state — the
+  // run machine owns pressability, not visibility.
+  const {
+    actor: surfaceActor,
+    surface,
+    tasted,
     sheetOpen,
-    starCount,
-    writingState,
-  ])
-
-  // The mask's hole: the union box of every control the current beat opens — one lit region cut
-  // out of one covering layer. Measured page-side through the same anchor registry the engine
-  // reads; `run.anchorRect` doubles as the "layout settled / window resized" signal, since the
-  // engine re-measures on both. No hole (the sky beat, an unmeasured mount, free play) means no
-  // mask — a blackout with nothing lit would say "wait", and no beat here means that.
-  const [maskHole, setMaskHole] = useState<SequenceRect | null>(null)
-  const engineRect = run.anchorRect
-  useEffect(() => {
-    if (phaseKey === 'freePlay') {
-      setMaskHole(null)
-      return
-    }
-    const anchors = tutorialInteractiveAnchors(phaseKey)
-    if (!anchors || anchors.length === 0) {
-      setMaskHole(null)
-      return
-    }
-    let live = true
-    void Promise.all(anchors.map((anchor) => measureAnchor(anchor))).then((rects) => {
-      if (!live) return
-      const boxes = rects.filter((rect): rect is SequenceRect => rect !== null)
-      setMaskHole(boxes.length > 0 ? unionSequenceRects(boxes) : null)
-    })
-    return () => {
-      live = false
-    }
-  }, [
-    decorateOpen,
-    engineRect,
-    phaseKey,
-    recallMemoryId,
     selectedMemoryId,
-    sheetOpen,
-    starCount,
-    writingState,
-  ])
-
-  // Three beats do their work across a surface the first press OPENS, so their ring walks with the
-  // visitor instead of staying parked on a button already pressed — and for the recall beat it has
-  // to: pressing 회고하기 closes the panel that held it, so the beat's own anchor stops existing
-  // while the beat is still running. The engine's own anchor stays what the script says; this is a
-  // page-side view override, measured through the same registry.
-  // `none` is a deliberate third state: the last leg of the decorating beat is "come back out", and
-  // the way out is the sheet's own close — a control the shared primitive owns, which this page
-  // cannot wrap in an anchor and must not learn about. So the ring stands down and the caption,
-  // which the engine guarantees, carries that leg alone.
-  const [ringOverride, setRingOverride] = useState<
-    { readonly kind: 'rect'; readonly rect: SequenceRect | null } | { readonly kind: 'none' } | null
-  >(null)
-  useEffect(() => {
-    // The neuron-reuse beat: drawing is only its first press — 쪼개기 and 띄우기 finish the diary.
-    if (phaseKey === 'neuron_reuse' && writingState && sheetOpen) {
-      const target = writingState.splitRevealed ? 'launch-action' : 'split-action'
-      let live = true
-      void measureAnchor(target).then((rect) => {
-        if (live) setRingOverride({ kind: 'rect', rect })
-      })
-      return () => {
-        live = false
-      }
-    }
-    // The recall beat: 회고하기 opens the walk, and the walk's own two presses finish it — send the
-    // sentence back, then come out to the changed universe.
-    if (phaseKey === 'recall' && recallMemoryId) {
-      const target = recallApplied ? 'recall-dismiss-action' : 'recall-confirm-action'
-      let live = true
-      void measureAnchor(target).then((rect) => {
-        if (live) setRingOverride({ kind: 'rect', rect })
-      })
-      return () => {
-        live = false
-      }
-    }
-    // The decorating beat: into the sheet, onto a row, then out of the way for the trip back.
-    if (phaseKey === 'ornament_taster' && decorateOpen) {
-      if (decorateTasted) {
-        setRingOverride({ kind: 'none' })
-        return
-      }
-      let live = true
-      void measureAnchor('ornament-row-action').then((rect) => {
-        if (live) setRingOverride({ kind: 'rect', rect })
-      })
-      return () => {
-        live = false
-      }
-    }
-    setRingOverride(null)
-  }, [
-    decorateOpen,
-    decorateTasted,
-    engineRect,
-    phaseKey,
+    recallMemoryId,
     recallApplied,
-    recallMemoryId,
-    sheetOpen,
-    writingState,
-  ])
-  const guideAnchorRect = ringOverride
-    ? ringOverride.kind === 'rect'
-      ? ringOverride.rect
-      : null
-    : run.anchorRect
+    readingDiaryId,
+    decorateOpen,
+  } = useDemoSurface()
+  const send = surfaceActor.send
 
-  // The scene's own turn to speak. A launch, a recall and a time sweep all play out on the canvas
-  // the tutorial covers, so while one runs the covering lifts, the next beat's line and ring hold
-  // back, and a surface the beat would stage waits its turn — three things off ONE flag, because
-  // they are one decision: nothing may be put in front of the scene while the scene is the answer to
-  // what was just pressed. Pressability never rides it.
-  const [sceneRevealing, setSceneRevealing] = useState(false)
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const openReveal = useCallback(() => {
-    if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
-    revealTimerRef.current = null
-    setSceneRevealing(true)
-  }, [])
-  // The hold is what is left to WATCH once whatever played has finished, which is why the two callers
-  // pass different ones: a sweep has already had the screen for its own duration and needs only the
-  // settled sky read, while a birth or a return had nothing else and the hold is the whole reveal.
-  const closeReveal = useCallback((holdMs: number) => {
-    if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
-    revealTimerRef.current = setTimeout(() => setSceneRevealing(false), holdMs)
-  }, [])
-  useEffect(
-    () => () => {
-      if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
-    },
-    [],
-  )
+  const phaseKey = phase.kind === 'tutorial' ? phase.beatId : 'freePlay'
+  const writingState = demo.state.writing
+  const { maskHole, guideAnchorRect } = useDemoGuide({
+    beat: phaseKey,
+    surface,
+    tasted,
+    splitRevealed: writingState ? writingState.splitRevealed : null,
+    memoryCount: demo.scene.memories.length,
+    engineRect: run.anchorRect,
+    remeasure: run.remeasure,
+  })
+
+  const signal = run.signal
+  const {
+    sceneRevealing,
+    openReveal,
+    closeReveal,
+    sweep,
+    sweepTime,
+    setSweepTime,
+    playSweep,
+    onSweepDone,
+  } = useScenePresentation(signal)
 
   useDemoSandbox(entry.runId, startRun)
 
   const { state, scene, writingDiary } = demo
-  const signal = run.signal
-
-  // The time-passing presentation: a jump commits the clock immediately (the data path never waits
-  // on presentation), then the sweep walks the DISPLAYED date previous → current so the stars dim
-  // in front of the viewer — the product's own sequencing, rendered demo-locally.
-  const [sweep, setSweep] = useState<AdvanceInterval | null>(null)
-  const [sweepTime, setSweepTime] = useState<string | null>(null)
-  // What the sweep in flight owes the tour when it LANDS. A beat whose work is a stretch of time is
-  // done when that time has actually passed on screen, not when the button went down: reported at
-  // press time it hands the next beat's line to the covered stretch, where a caption-only beat
-  // spends its whole dwell unread. A ref because the sweep's own presentation is the only thing
-  // waiting on it — nothing renders from it, so a state write would buy a re-render per jump.
-  const sweepReportsRef = useRef<readonly DemoSignal[]>(NO_REPORTS)
-  const playSweep = useCallback(
-    (previous: string, current: string, reports: readonly DemoSignal[] = NO_REPORTS) => {
-      // Nothing to walk means nothing to wait for; whatever the press owed is owed now.
-      if (current <= previous) {
-        for (const report of reports) signal(report)
-        return
-      }
-      sweepReportsRef.current = reports
-      openReveal()
-      // The displayed clock starts at `previous` in the SAME commit the sweep begins, or the first
-      // frame would flash the committed final date before the rAF loop walks back and forward.
-      setSweepTime(previous)
-      setSweep({ previous, current })
-    },
-    [openReveal, signal],
-  )
-  const onSweepDone = useCallback(() => {
-    setSweep(null)
-    setSweepTime(null)
-    closeReveal(VALUES.demo.sweepSettleMs)
-    const reports = sweepReportsRef.current
-    sweepReportsRef.current = NO_REPORTS
-    for (const report of reports) signal(report)
-  }, [closeReveal, signal])
 
   const onDiaryRead = useCallback(() => signal('diary_read'), [signal])
 
@@ -320,8 +146,8 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     // With a draft already on screen the draw is a no-op in the model, so this press only brings
     // the sheet back — the reopen path for a dismissed dialog.
     demo.drawDiary()
-    setSheetOpen(true)
-  }, [demo])
+    send({ type: 'OPEN_WRITING' })
+  }, [demo, send])
 
   const onRevealSplit = useCallback(() => {
     demo.revealSplit()
@@ -341,7 +167,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     const launches = !!draft && !demo.state.launchedDiaryIds.includes(draft.id)
     const previous = demo.state.clock
     demo.launchDiary()
-    setSheetOpen(false)
+    send({ type: 'CLOSE_WRITING' })
     if (!launches || !draft) return
     if (draft.diaryDate > previous) {
       playSweep(previous, draft.diaryDate)
@@ -352,12 +178,14 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       closeReveal(VALUES.demo.revealHoldMs)
     }
     signal('launched')
-  }, [closeReveal, demo, openReveal, playSweep, signal])
+  }, [closeReveal, demo, openReveal, playSweep, send, signal])
 
+  // Dismissing the sheet early is possible only when the write control could reopen it, so a
+  // tutorial beat staged inside the sheet cannot be stranded — its close is simply inert until then.
   const onSheetClose = useCallback(() => {
     if (!isDemoAnchorInteractive(phase, 'write-action')) return
-    setSheetOpen(false)
-  }, [phase])
+    send({ type: 'CLOSE_WRITING' })
+  }, [phase, send])
 
   const onAdvanceDays = useCallback(
     (grain: 'day' | 'week' | 'month') => {
@@ -377,11 +205,10 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // reported on the way OUT, not on the confirm: the reshaped, re-brightened star is the point, and
   // it plays on a canvas the result surface is standing on. So the covering lifts as the flow closes
   // and the next caption arrives with it, exactly as a launch does.
-  const onRecallRequested = useCallback((memoryId: string) => {
-    setSelectedMemoryId(null)
-    setRecallApplied(false)
-    setRecallMemoryId(memoryId)
-  }, [])
+  const onRecallRequested = useCallback(
+    (memoryId: string) => send({ type: 'REQUEST_RECALL', memoryId }),
+    [send],
+  )
 
   const onRecallConfirm = useCallback(() => {
     if (!recallMemoryId || recallApplied) return
@@ -389,29 +216,28 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     // so the surface that asked for it steps DOWN for the reveal and comes back up with the result.
     // Watching your own memory come back through the sheet you sent it from shows nothing.
     demo.recall(recallMemoryId)
-    setRecallApplied(true)
+    send({ type: 'RECALL_APPLIED' })
     openReveal()
     closeReveal(VALUES.demo.revealHoldMs)
-  }, [closeReveal, demo, openReveal, recallApplied, recallMemoryId])
+  }, [closeReveal, demo, openReveal, recallApplied, recallMemoryId, send])
 
   const onRecallClose = useCallback(() => {
     const applied = recallApplied
-    setRecallMemoryId(null)
-    setRecallApplied(false)
+    send({ type: 'CLOSE_RECALL' })
     // Only a walk that actually sent something back finishes the beat; dismissing it early leaves the
     // beat where it was, and the staging below puts its panel up again.
     if (applied) signal('recalled')
-  }, [recallApplied, signal])
+  }, [recallApplied, send, signal])
 
   // A tried-on ornament applies at once — a selection simply IS the sky now ([Z8] discharged by
   // absence: no preview, no save, no total). Nothing is reported here: what finishes the decorating
   // beat is the trip back out to the universe, which is where the change is actually seen.
   const onApplyOrnament = useCallback(
-    (surface: DemoTasteOrnament, rendererKey: string | null) => {
-      demo.taste({ [surface]: rendererKey })
-      setDecorateTasted(true)
+    (ornament: DemoTasteOrnament, rendererKey: string | null) => {
+      demo.taste({ [ornament]: rendererKey })
+      send({ type: 'TASTED' })
     },
-    [demo],
+    [demo, send],
   )
   const onApplyPalette = useCallback(
     (on: boolean) => {
@@ -421,15 +247,15 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       if (on) applyMoodColors(MOODS.map((mood) => ({ mood, color: ALTERNATIVE_MOOD_COLORS[mood] })))
       else resetMoodPalette()
       demo.taste({ palette: on })
-      setDecorateTasted(true)
+      send({ type: 'TASTED' })
     },
-    [demo],
+    [demo, send],
   )
 
   const onCloseDecoration = useCallback(() => {
-    setDecorateOpen(false)
+    send({ type: 'CLOSE_DECORATION' })
     signal('decorate_closed')
-  }, [signal])
+  }, [send, signal])
 
   // The drawn diary through the product's review shapes: each proposed memory carries the name and
   // mood the split decided, the diary passage it was encoded from (its stage-0 words) and the
@@ -474,29 +300,33 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         !isDemoAnchorInteractive(phase, 'entry-open-action')
       )
         return
-      setSelectedMemoryId(memoryId)
+      send({ type: 'SELECT_MEMORY', memoryId })
     },
-    [phase, tutorialRecallMemoryId],
+    [phase, send, tutorialRecallMemoryId],
   )
 
   // The recall beat opens with its star already picked. The beat's WORK stays the visitor's — the
   // recall is theirs to press ([O2]) — but which star it is about is the scenario's, and asking a
   // visitor to find it among a cluster of look-alikes is a search task the caption cannot help with.
   // If the staged panel is dismissed before that work starts, selection is re-armed immediately;
-  // otherwise the mask would be left pointing at a control that no longer exists. The writing sheet
-  // arrives under the same tutorial rule, already open on beat 1.
+  // otherwise the mask would be left pointing at a control that no longer exists.
   // The staging is wanted while the beat still has work to do and the scene is not mid-reveal. The
   // second half is read off the DOMAIN fact rather than a flag: a memory that has been returned to
   // needs no panel opened over it, so the staging cannot put the dismissed panel back on the way out.
   const stagingWanted =
     !sceneRevealing && (state.memoryFacts[tutorialRecallMemoryId]?.recallCount ?? 0) === 0
+  const stageStar = useCallback(
+    (memoryId: string | null) =>
+      send(memoryId ? { type: 'SELECT_MEMORY', memoryId } : { type: 'CLOSE_MEMORY' }),
+    [send],
+  )
   useTutorialRecallPanelSelection(
     phaseKey,
     selectedMemoryId,
     recallMemoryId,
     tutorialRecallMemoryId,
     stagingWanted,
-    setSelectedMemoryId,
+    stageStar,
   )
 
   const findMemory = (memoryId: string | null) =>
@@ -516,9 +346,8 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       entry.memories.some((member) => member.episodicMemoryId === selectedMemoryId),
     )
     if (!diary) return
-    setSelectedMemoryId(null)
-    setReadingDiaryId(diary.id)
-  }, [diaries, selectedMemoryId])
+    send({ type: 'OPEN_DIARY', diaryId: diary.id })
+  }, [diaries, selectedMemoryId, send])
 
   const displayTime = sweepTime ?? scene.universeTime
 
@@ -541,13 +370,13 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         displayTime={displayTime}
         onDraw={onDraw}
         onAdvanceDays={onAdvanceDays}
-        onOpenDecoration={() => setDecorateOpen(true)}
+        onOpenDecoration={() => send({ type: 'OPEN_DECORATION' })}
         onSignUp={onSignUp}
         onReset={onReset}
       />
 
-      {/* A picked star, and the two surfaces it hands off to. Each opens by closing the one before
-          it, so the canvas is never under two scrims at once. */}
+      {/* A picked star, and the two surfaces it hands off to — states of one machine, so the canvas
+          is never under two scrims at once. */}
       <DemoStarPanel
         memory={selectedMemory}
         phase={phase}
@@ -556,7 +385,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         isRecallTarget={selectedMemoryId === tutorialRecallMemoryId}
         onRecall={() => selectedMemoryId && onRecallRequested(selectedMemoryId)}
         onOpenDiary={onOpenDiary}
-        onClose={() => setSelectedMemoryId(null)}
+        onClose={() => send({ type: 'CLOSE_MEMORY' })}
       />
       <DemoRecallSheet
         // Down while the scene speaks, up again for the reading that came back.
@@ -570,13 +399,13 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         onConfirm={onRecallConfirm}
         onClose={onRecallClose}
       />
-      <DemoEntryReader diary={readingDiary} onClose={() => setReadingDiaryId(null)} />
+      <DemoEntryReader diary={readingDiary} onClose={() => send({ type: 'CLOSE_DIARY' })} />
 
       <DemoDecorationSheet
         open={decorateOpen}
         phase={phase}
         taste={state.taste}
-        canClose={phaseKey !== 'ornament_taster' || decorateTasted}
+        canClose={phaseKey !== 'ornament_taster' || tasted}
         onApplyOrnament={onApplyOrnament}
         onApplyPalette={onApplyPalette}
         onClose={onCloseDecoration}
@@ -617,13 +446,4 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       />
     </main>
   )
-}
-
-// The union box of every measured rect — the mask's lit region when a beat opens a control cluster.
-function unionSequenceRects(rects: readonly SequenceRect[]): SequenceRect {
-  const x = Math.min(...rects.map((rect) => rect.x))
-  const y = Math.min(...rects.map((rect) => rect.y))
-  const right = Math.max(...rects.map((rect) => rect.x + rect.width))
-  const bottom = Math.max(...rects.map((rect) => rect.y + rect.height))
-  return { x, y, width: right - x, height: bottom - y }
 }

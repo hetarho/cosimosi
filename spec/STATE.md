@@ -96,17 +96,17 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T219 | Demo surfaces are one machine state | ARCH DEMO | T212 | todo |
 | T220 | Same-named slices share an API, and mobile gets the Twinkle panel | ARCH TWINK | T208 | todo |
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T219 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
+- implement-task T220 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T219 done
 - 261103 T218 done
 - 261103 T217 done
 - 261103 T216 done
@@ -126,4 +126,3 @@
 - 261103 T205 done
 - 261103 T204 done
 - 261103 T203 done
-- 261103 T202 done

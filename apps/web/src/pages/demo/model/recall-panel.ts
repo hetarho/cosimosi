@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type SetStateAction } from 'react'
+import { useEffect } from 'react'
 
 import type { DemoBeatId } from '@cosimosi/demo'
 
@@ -35,7 +35,7 @@ export function useTutorialRecallPanelSelection(
   recallMemoryId: string | null,
   tutorialRecallMemoryId: string,
   stagingWanted: boolean,
-  setSelectedMemoryId: Dispatch<SetStateAction<string | null>>,
+  setSelectedMemoryId: (memoryId: string | null) => void,
 ): void {
   useEffect(() => {
     const next = tutorialRecallPanelSelection(
