@@ -126,3 +126,5 @@ export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-mem
 export { useNeuronStore, type NeuronState } from './neuron-store.ts'
 export { useSynapseStore, type SynapseState } from './synapse-store.ts'
 export { resetUniverseUserState } from './user-state-reset.ts'
+
+export type { RecallPassagePart } from './recall-draft-store.ts'

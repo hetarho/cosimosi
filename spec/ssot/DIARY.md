@@ -15,7 +15,7 @@
   - web route `/diary` (the universe is `/universe`); mobile screen `ROUTES.diaryReader` with deep-link prefix `diary`
   - it holds only the caller's own diaries; every read is user-scoped →=ACCT-1
   - one archive, two shapes: the list (default) →~DIARY-7 and the month calendar →~DIARY-12
-  - the reader never mutates a diary →!DIARY-4, and nothing on it spends except the whole-diary recall →!DIARY-11
+  - the reader never mutates a diary →!DIARY-4, and every reader action is free, including seeing its stars →!DIARY-11
 - DIARY-3 [o] an opened diary shows its still-live split memories and offers a free way to see those stars in the universe
   - one chip per member, its name and mood colour; a diary with no live member disables the jump
   - the jump uses the member ids already read with the diary: no quote, spend, recall, reinforcement or clock sync
@@ -68,7 +68,7 @@
   - guard: `DiaryFilter` has one text field, a predicate over `diaries.body`; no port, row or DTO in the archive reads has a field for memory text; `ORDER BY` reads only `diary_date` and `id`
   - no server-side snippet and no highlight offsets on any message
   - FE guard: the highlighter is `highlightSegments(diaryBody, query)`; the keyword reaches a card or an opened entry only through the injected `renderBodyText` seam over the diary body, so no query reaches a `CurrentText` render; split chips are never marked; marking never moves the visible window
-- DIARY-11 [o] the archive never advances universe time and never spends: listing, previewing, sorting, filtering, searching, the calendar and reading the original are free and effect-free; the whole-diary recall is the only exception →!DIARY-3
+- DIARY-11 [o] the archive never advances universe time and never spends: listing, previewing, sorting, filtering, searching, the calendar and reading the original are free and effect-free; seeing the stars is read-only navigation too →!DIARY-3
   - the general rule, viewing never advances time →=TIME-3
   - guard: `GetDiaries` and `GetDiaryCalendar` receive no clock port, no `SpendGate` and no `EconomyTx` and open no transaction; `diaries.sql` holds no `INSERT`, `UPDATE` or `DELETE`
   - both are `NO_SIDE_EFFECTS` and classified exactly once with `userScopedUnaryReadPolicy` (`packages/client-cache/src/http-policy.ts`: authenticated GET, never shared-CDN cacheable); a missing or duplicate classification fails the transport before I/O →~ARCH
@@ -157,14 +157,9 @@
   - previous/next selection stays in `universeNavigationMachine`; the member collection is account-scoped data and clears on sign-out and a new jump
   - missing or deleted members are skipped; selecting outside the collection or closing ends its navigation controls
   - member navigation never re-runs a paid restoration or a recall
-- DIARY-23 [o] the jump's control state is one XState machine, `diaryReaderMachine` (`packages/universe`), with empty context; browsing, conditions, the calendar and the quote are data →=ARCH
-  | state | meaning | exits |
-  |---|---|---|
-  | `browsing` | archive shown, jump idle (resting state) | `JUMP` needing sync → `confirming`; `JUMP` otherwise → `recalling` |
-  | `confirming` | consent modal open | `ACCEPT` → `recalling`; `REJECT` → `browsing` |
-  | `recalling` | `RecallDiaryStars` in flight, no cancel | `DONE` → `flying`; `ERROR` → `browsing`; `CONSENT_REQUIRED` → `confirming` |
-  | `flying` | terminal; the reader unmounts on the route change | - |
-  - the target diary id, the quote, the operation attempt and the result live outside the machine (widget state, Query, shared stores)
+- DIARY-23 [o] diary membership is shared account-scoped data; selection and camera travel belong to `universeNavigationMachine` →=ARCH
+  - archive conditions, paging and calendar state remain data; no separate quote/consent/recall machine belongs to the see-stars jump
+  - both platforms bind the same `useDiaryJump` and `useDiaryMemoryNavigation` controllers; only their UI primitives differ
 - DIARY-24 [o] the calendar is a view of `/diary`, not a destination: one toggle swaps the list body for the month grid and every other reader affordance stays mounted →!DIARY-12
   - the toggle (`calendar_list_view_action` / `calendar_view_action`, group `calendar_view_label`) sits at the header's right end and names the shape the page is in; a press anywhere on it lands on the other view; no new route or screen
   - the header, the restore way back, the conditions, the deep-link consumer and the deletion mount survive the switch; only the order control is withheld in the calendar

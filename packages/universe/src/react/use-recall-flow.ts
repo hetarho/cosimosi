@@ -44,9 +44,11 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
   const phase = snapshot.value as RecallFlowPhase
 
   // Reconstruction is free; stored-text restoration alone passes through the quote phase.
+  const parts = useRecallDraftStore((state) => state.parts)
+  const answers = useRecallDraftStore((state) => state.answers)
+  const prepareDraft = useRecallDraftStore((state) => state.prepare)
   const rewrite = useRecallDraftStore((state) => state.rewrite)
   const result = useRecallDraftStore((state) => state.result)
-  const setRewrite = useRecallDraftStore((state) => state.setRewrite)
   const resetDraft = useRecallDraftStore((state) => state.reset)
 
   const transport = useTransport()
@@ -120,7 +122,22 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
     syncStatusQuery.isLoading,
   ])
 
-  // Close/reject are inert while a paid recall is in flight (A4) — the close button, backdrop, and
+  useEffect(() => {
+    if (mode === 'recall' && phase === 'rewriting' && parts === null && memory) {
+      prepareDraft(currentDecaySpans(memory, universeTime))
+    }
+  }, [mode, phase, parts, memory, universeTime, prepareDraft])
+
+  const setAnswer = useCallback(
+    (index: number, value: string) => {
+      const current = actor.getSnapshot()
+      if (current.value !== 'rewriting' || current.context.submitted) return
+      useRecallDraftStore.getState().setAnswer(index, value)
+    },
+    [actor],
+  )
+
+  // Close/reject are inert while either mutation is in flight (A4) — the close button, backdrop, and
   // Escape cannot dismiss `reconsolidating`; the machine also drops CLOSE there.
   const close = useCallback(() => {
     if (phase === 'reconsolidating') return
@@ -153,6 +170,11 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
       !activeAttempt ||
       activeAttempt.targetKey !== `${useRecallTargetStore.getState().mode}:${activeMemoryId}` ||
       actor.getSnapshot().value !== 'rewriting'
+    )
+      return
+    if (
+      useRecallTargetStore.getState().mode === 'recall' &&
+      useRecallDraftStore.getState().rewrite.trim() === ''
     )
       return
     const isCurrent = capture()
@@ -233,7 +255,11 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
     memoryId,
     result,
     rewrite,
-    setRewrite,
+    parts,
+    answers,
+    setAnswer,
+    canConfirm: parts !== null && rewrite.trim() !== '',
+    inputLocked: snapshot.context.submitted,
     close,
     reject,
     acceptSync,

@@ -4,3 +4,5 @@
 export { useRecallDraftStore, type RecallDraftState } from './recall-draft-store.ts'
 export { useDeletionDraftStore, type DeletionDraftState } from './deletion-draft-store.ts'
 export { useProposalStore, type ProposalState } from './proposal-store.ts'
+
+export { useDiaryMemoryNavigationStore } from './diary-memory-navigation-store.ts'

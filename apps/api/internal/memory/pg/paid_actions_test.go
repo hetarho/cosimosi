@@ -245,3 +245,53 @@ func TestRecallRefusesUnconsentedSyncEndToEnd(t *testing.T) {
 		t.Fatalf("consented recall failed: %v", err)
 	}
 }
+
+func TestRestoreMemoryTextReplaysStoredTextWithoutReconstructionEndToEnd(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	base := "test-restore-text-" + time.Now().Format("150405.000000000")
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := NewStore(pool.PgxPool())
+	seedRecallGraph(t, ctx, store, scope, base, time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC))
+	var original string
+	if err := pool.PgxPool().QueryRow(ctx, `SELECT current_text FROM episodic_memories WHERE user_id = $1 AND id = $2`, userID, base+"-m1").Scan(&original); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.PgxPool().Exec(ctx, `UPDATE episodic_memories SET forgetting_offset_days = 180 WHERE user_id = $1 AND id = $2`, userID, base+"-m1"); err != nil {
+		t.Fatal(err)
+	}
+	service := newRecallService(t, store)
+	cmd := memory.RestoreMemoryTextCommand{OperationID: base + "-op", MemoryID: base + "-m1", SyncConsent: true}
+	first, err := service.RestoreMemoryText(ctx, scope, cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.RestoreMemoryText(ctx, scope, cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Reconsolidated || first.CurrentText != original || second.CurrentText != first.CurrentText || second.RecallCount != first.RecallCount {
+		t.Fatalf("restoration or replay changed the stored narrative: %+v / %+v", first, second)
+	}
+	var offset float64
+	var count int32
+	if err := pool.PgxPool().QueryRow(ctx, `SELECT forgetting_offset_days, recall_count FROM episodic_memories WHERE user_id = $1 AND id = $2`, userID, base+"-m1").Scan(&offset, &count); err != nil {
+		t.Fatal(err)
+	}
+	if offset != 0 || count != first.RecallCount {
+		t.Fatalf("restoration anchors = %v / %d", offset, count)
+	}
+	var kind string
+	if err := pool.PgxPool().QueryRow(ctx, `SELECT action_kind FROM memory_paid_action_receipts WHERE user_id = $1 AND operation_id = $2`, userID, cmd.OperationID).Scan(&kind); err != nil {
+		t.Fatal(err)
+	}
+	if kind != string(memory.PaidActionRestoreMemoryText) {
+		t.Fatalf("restoration receipt kind = %q", kind)
+	}
+}

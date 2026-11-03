@@ -13,7 +13,12 @@ import {
   universeNavigationMachine,
   useSpotlightStore,
 } from '@cosimosi/universe/scene'
-import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
+import {
+  useEpisodicMemoryStore,
+  useNeuronStore,
+  useSynapseStore,
+  usePendingFlyTargetStore,
+} from '@cosimosi/universe'
 
 import { useUniverseScene, type UniverseSceneState } from './use-universe-scene.ts'
 
@@ -89,10 +94,25 @@ function mountScene(navigationActorRef: ReturnType<typeof createActor>) {
 
 describe('useUniverseScene — pick resolution (R006)', () => {
   beforeEach(() => {
+    usePendingFlyTargetStore.getState().clear()
     useEpisodicMemoryStore.getState().clear()
     useNeuronStore.getState().clear()
     useSynapseStore.getState().clear()
   })
+
+  it.each([false, true])(
+    'flies to an archive target and selects it only when requested (%s)',
+    async (select) => {
+      const actor = createActor(universeNavigationMachine).start()
+      usePendingFlyTargetStore.getState().request('server-b', select)
+      const { view } = mountScene(actor)
+      await waitFor(() => expect(actor.getSnapshot().context.travelNodeId).toBe('server-b'))
+      expect(actor.getSnapshot().context.selectedNodeId).toBe(select ? 'server-b' : null)
+      expect(usePendingFlyTargetStore.getState()).toMatchObject({ nodeId: null, select: false })
+      view.unmount()
+      actor.stop()
+    },
+  )
 
   it('keeps an optimistic memory in the graph and resolves its pick through the current store', async () => {
     const actor = createActor(universeNavigationMachine).start()

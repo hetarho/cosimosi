@@ -26,6 +26,7 @@ import {
   type StarDetailPhase,
 } from '@cosimosi/universe'
 import { parseGistNodeId, type universeNavigationMachine } from '@cosimosi/universe/scene'
+import { useDiaryMemoryNavigation } from '@cosimosi/universe/react'
 import { StarPreviewActivity } from '@cosimosi/universe-render'
 
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
@@ -63,6 +64,8 @@ export function DetailPanel({
   /** Emits the letting-go intent for this memory (the deletion flow is owned downstream). */
   onLetGo: (episodicMemoryId: string) => void
 }) {
+  const diaryNavigation = useDiaryMemoryNavigation(navigationActorRef)
+  const clearDiaryNavigation = diaryNavigation.clear
   const selectedNodeId = useSelector(
     navigationActorRef,
     (snapshot) => snapshot.context.selectedNodeId,
@@ -96,10 +99,10 @@ export function DetailPanel({
     }
   }, [selectedNodeId, kind, send])
 
-  const clearSelection = useCallback(
-    () => navigationActorRef.send({ type: 'CLEAR_SELECTION' }),
-    [navigationActorRef],
-  )
+  const clearSelection = useCallback(() => {
+    clearDiaryNavigation()
+    navigationActorRef.send({ type: 'CLEAR_SELECTION' })
+  }, [navigationActorRef, clearDiaryNavigation])
 
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')
@@ -134,6 +137,34 @@ export function DetailPanel({
         {/* Hidden, not unmounted, behind the provenance view: the star preview keeps its renderer
             for the panel's whole life and only parks while another phase is shown. */}
         <View style={phase === 'meta' ? styles.body : styles.parked}>
+          {diaryNavigation.active ? (
+            <View style={styles.memberNavigation}>
+              <Button
+                variant="text"
+                color="neutral"
+                size="sm"
+                disabled={!diaryNavigation.hasPrevious}
+                onPress={diaryNavigation.previous}
+              >
+                {m.diary_memory_previous()}
+              </Button>
+              <Text accessibilityLiveRegion="polite" style={styles.memberPosition}>
+                {m.diary_memory_position({
+                  current: diaryNavigation.position,
+                  total: diaryNavigation.total,
+                })}
+              </Text>
+              <Button
+                variant="text"
+                color="neutral"
+                size="sm"
+                disabled={!diaryNavigation.hasNext}
+                onPress={diaryNavigation.next}
+              >
+                {m.diary_memory_next()}
+              </Button>
+            </View>
+          ) : null}
           <StarPreviewActivity active={phase === 'meta'}>
             <StarMeta
               selection={selection}
@@ -308,6 +339,13 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing[4],
   },
   title: { flex: 1, color: tokens.color.text, fontSize: tokens.fontSize.lg, fontWeight: '500' },
+  memberNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacing[2],
+  },
+  memberPosition: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs },
   body: { gap: tokens.spacing[5] },
   parked: { display: 'none' },
   actions: {

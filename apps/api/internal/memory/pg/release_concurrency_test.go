@@ -32,16 +32,16 @@ func (b graphBarrierEarn) EarnDiary(ctx context.Context, _ platform.UserScope, _
 	}
 }
 
-// graphBarrierSpend is an economy whose debit parks until the test releases it, holding the recall
+// graphBarrierProgress is an economy whose progress report parks until the test releases it, holding the recall
 // transaction open inside its economy effect.
-type graphBarrierSpend struct {
+type graphBarrierProgress struct {
 	memory.NoEconomy
 	once    sync.Once
 	entered chan struct{}
 	proceed chan struct{}
 }
 
-func (b *graphBarrierSpend) SpendMemory(ctx context.Context, _ platform.UserScope, _ memory.SpendIntent) error {
+func (b *graphBarrierProgress) RecordProgress(ctx context.Context, _ platform.UserScope, _ string, _ int) error {
 	b.once.Do(func() { close(b.entered) })
 	select {
 	case <-b.proceed:
@@ -294,7 +294,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		cleanupMemoryTestRows(t, pool, userID)
 		scope, _ := platform.NewUserScope(userID)
 		g := seedReleaseGraph(t, ctx, store, scope, base, day)
-		barrier := &graphBarrierSpend{
+		barrier := &graphBarrierProgress{
 			entered: make(chan struct{}),
 			proceed: make(chan struct{}),
 		}
@@ -310,9 +310,9 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		select {
 		case <-barrier.entered:
 		case err := <-recallErr:
-			t.Fatalf("RecallDiaryStars failed before SpendGate barrier: %v", err)
+			t.Fatalf("RecallDiaryStars failed before progress barrier: %v", err)
 		case <-ctx.Done():
-			t.Fatalf("RecallDiaryStars never reached SpendGate barrier: %v", ctx.Err())
+			t.Fatalf("RecallDiaryStars never reached progress barrier: %v", ctx.Err())
 		}
 		go func() {
 			_, err := releaseService.Release(ctx, scope, g.d1)

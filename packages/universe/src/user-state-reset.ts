@@ -5,6 +5,7 @@ import { useDeletionTargetStore } from './deletion-target-store.ts'
 import { useDeletionDraftStore } from './deletion-draft-store.ts'
 import { useDiaryDraftStore } from './diary-draft-store.ts'
 import { useDiaryStore } from './diary-store.ts'
+import { useDiaryMemoryNavigationStore } from './diary-memory-navigation-store.ts'
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 import { useLatentConsumedStore } from './latent-consumed-store.ts'
 import { useLaunchedNeuronsStore } from './launched-neurons-store.ts'
@@ -34,6 +35,7 @@ export function resetUniverseUserState(): void {
   useSynapseStore.getState().clear()
   useUniverseClockStore.getState().clear()
   useDiaryStore.getState().clear()
+  useDiaryMemoryNavigationStore.getState().clear()
   useReleasedGroupsStore.getState().reset()
   useRecallTargetStore.getState().clear()
   useOpenDiaryTargetStore.getState().clear()

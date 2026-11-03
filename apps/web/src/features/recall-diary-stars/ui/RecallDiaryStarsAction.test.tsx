@@ -28,9 +28,9 @@ describe('RecallDiaryStarsAction (web)', () => {
     expect(render(0)).toMatch(/disabled=""/)
   })
 
-  it('marks itself as the one door that spends, and still quotes no amount ([D11])', () => {
+  it('offers free navigation with no currency badge or amount', () => {
     const html = render(2)
-    expect(html).toContain(m.twinkle_balance_general_label())
+    expect(html).not.toContain(m.twinkle_balance_general_label())
     // No price: the quote belongs to the jump dialog, never to a row.
     expect(html.replace(/<[^>]*>/g, '')).not.toMatch(/\d/)
   })

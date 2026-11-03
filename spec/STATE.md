@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| rcui | DESKTOP-VKPLS8P | autopilot | 2026-11-03T05:42Z | 2026-11-03T05:42Z | - |
+| rcui | DESKTOP-VKPLS8P | autopilot | 2026-11-03T05:42Z | 2026-11-03T06:09Z | - |
 
 ## inbox
 - 261103 decided RECALL TWINK DIARY: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
@@ -53,7 +53,7 @@
 | ENC | 1 | 1 | - | 0 |
 | LINK | 1 | 1 | - | 0 |
 | WRITE | 1 | 1 | - | 0 |
-| TIME | 1 | 1 | - | 0 |
+| TIME | 2 | 2 | - | 0 |
 | RECALL | 3 | 3 | - | 1 |
 | FORGET | 2 | 2 | - | 0 |
 | CONSOL | 1 | 1 | - | 0 |
@@ -102,16 +102,16 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T224 | Fill only lost runs and browse a diary's stars in order | RECALL DIARY | T223 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
-- implement-task T223, then T224 (the requested recall and diary-star UX)
 - T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
+- 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
 - 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decoration-tour)

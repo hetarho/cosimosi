@@ -229,7 +229,7 @@ func TestViewSemanticReplaysCommittedReceipt(t *testing.T) {
 		t.Fatalf("view replay = %+v, want the committed first result %+v", second, first)
 	}
 	if len(fixture.spendGate.intents) != 1 {
-		t.Fatalf("view spend intents = %d, want 0 for free recall", len(fixture.spendGate.intents))
+		t.Fatalf("view spend intents = %d, want 1 for one paid gist view", len(fixture.spendGate.intents))
 	}
 
 	// The stage is server-derived, so a memory can rise between the lost response and the retry.

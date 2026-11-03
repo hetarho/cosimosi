@@ -225,7 +225,7 @@
 
 - RECALL-34 [o] `RestoreMemoryText` (원문 되살리기) restores access to one memory's stored `current_text` without asking the diarist to rewrite it
   - distinct from reading the immutable `Diary` in the archive and from undoing a deletion; it does not roll a reconstructed narrative back to the diary's creation text
-  - quote → consent if needed → transactional spend and reinforcement → the unchanged complete stored text; no prediction-error provider, reconsolidation, seed change or provenance rewrite
+  - consent if needed → quote → transactional spend and reinforcement → the unchanged complete stored text; the restored memory's forgetting offset is cleared; no prediction-error provider, reconsolidation, seed change or provenance rewrite
   - request `{memory_id, operation_id, sync_consent}`; response uses the recall result shape with `reconsolidated = false`
   - the spend and all effects commit together; missing, foreign, deleted or unaffordable targets apply nothing; retries replay a distinct `restore_memory_text` receipt
   - the star detail menu offers this action separately from the free recall footer; both platforms use the shared controller

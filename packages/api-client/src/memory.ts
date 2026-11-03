@@ -135,15 +135,6 @@ export async function readUniverseRevision(transport: Transport): Promise<bigint
 // The server-authoritative sync-status read ([R1a]): the client drives the sync-consent decision
 // from `needsSync` here, never a local Date. Free/GET-eligible, so it caches like the other reads;
 // a recall/diary-recall that advances the clock invalidates it alongside GetUniverse.
-export function createSyncStatusQueryKey(transport?: Transport) {
-  return createConnectQueryKey({
-    schema: MemoryService.method.syncStatus,
-    input: {},
-    transport,
-    cardinality: 'finite',
-  })
-}
-
 export function createSyncStatusQueryOptions(transport: Transport) {
   return createQueryOptions(MemoryService.method.syncStatus, {}, { transport })
 }

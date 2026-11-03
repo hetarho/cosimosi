@@ -24,9 +24,9 @@ describe('RecallDiaryStarsAction (mobile)', () => {
     expect(disabledState(0)).toBe(true)
   })
 
-  it('marks itself as the one door that spends, and still quotes no amount ([D11])', () => {
+  it('offers free navigation with no currency badge or amount', () => {
     const view = render(<RecallDiaryStarsAction liveCount={2} onInitiate={jest.fn()} />)
-    expect(view.getByText(m.twinkle_balance_general_label())).toBeTruthy()
+    expect(view.queryByText(m.twinkle_balance_general_label())).toBeNull()
     // No price: the quote belongs to the jump dialog, never to a row.
     expect(view.queryByText(/\d/)).toBeNull()
   })

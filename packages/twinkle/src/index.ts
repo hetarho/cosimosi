@@ -11,7 +11,6 @@ export {
 export {
   spendCostLabel,
   restoreMemoryTextSpend,
-  diaryRecallSpend,
   gistViewSpend,
   recallSpend,
   type PendingSpend,

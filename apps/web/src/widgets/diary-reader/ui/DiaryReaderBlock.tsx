@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 
 import type { GetDiariesInput } from '@cosimosi/api-client'
 import type { Diary } from '@cosimosi/memory'
-import { useEarnRequestStore } from '@cosimosi/twinkle'
 import {
   BackIcon,
   Button,
@@ -14,30 +13,17 @@ import {
 } from '@cosimosi/ui'
 import { useDeletionTargetStore } from '@cosimosi/universe'
 
-import { useInvalidateAchievements } from '@cosimosi/achievement/react'
-import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
-import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
 import { DiaryEntry, DiaryList } from '../../../features/read-diary-list/index.ts'
 import { SearchDiary } from '../../../features/search-diary/index.ts'
 import { HighlightedBody } from './HighlightedBody.tsx'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
-import { SpendCostDisplay } from '../../../features/spend-cost-display/index.ts'
-import { diaryRecallSpend } from '@cosimosi/twinkle'
 import { DiaryCalendar } from '../../../features/diary-calendar/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast } from '@cosimosi/errors/react'
 import { useDiaryArchiveNavigation, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useDiaryJump } from '@cosimosi/universe/react/flows'
 
-// widgets/diary-reader ([D2][D3]): the archive block. It composes the free read (read-diary-list)
-// with the one paid action (recall-diary-stars) and owns the jump machine + the quote/consent
-// sequencing: quote → consent (driven by the server sync-status read, never a local Date, A1) →
-// RecallDiaryStars (carrying a client operation id + explicit consent, A2/A3) → announce the
-// acceleration, fly the camera to a recovered star, invalidate the reads, and hand back to the
-// universe. The jump is non-dismissible while recalling (A4) — header back / Dialog close / cancel
-// are inert — and a late completion is fenced to the active operation. It hardcodes no price (CC3)
-// and navigates only through the `onExit` seam its app-layer host supplies.
+// The archive reads immutable diaries and opens their existing memory members without a mutation.
 export function DiaryReaderBlock({
   onExit,
   query,
@@ -60,7 +46,6 @@ export function DiaryReaderBlock({
   month?: string
   onMonthChange: (month: string) => void
 }) {
-  const showError = useErrorToast()
   // Opened entry, conditions, calendar month, the picked day and deep-link paging are the package's
   // archive navigation; this block renders them.
   const {
@@ -81,26 +66,8 @@ export function DiaryReaderBlock({
     setMoodsOpen,
   } = useDiaryArchiveNavigation({ query, onQueryChange, view, month })
 
-  const invalidateBalance = useInvalidateTwinkleBalance()
-  const invalidateAchievements = useInvalidateAchievements()
-  const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
-  const {
-    phase,
-    jumpDiaryId,
-    proceedQuote,
-    acceptSync,
-    rejectSync,
-    cancelQuote,
-    exit,
-    initiateJump,
-  } = useDiaryJump({
-    onExit,
-    onError: showError,
-    invalidateBalance,
-    invalidateAchievements,
-    requestEarnGuide,
-  })
+  const { exit, initiateJump } = useDiaryJump({ onExit })
 
   const openedEntry = useCallback(
     (diary: Diary, dismiss: () => void) => (
@@ -130,7 +97,7 @@ export function DiaryReaderBlock({
                 liveCount={diary.memories.length}
                 onInitiate={() => {
                   dismiss()
-                  initiateJump(diary.id)
+                  initiateJump(diary)
                 }}
               />
             }
@@ -162,7 +129,6 @@ export function DiaryReaderBlock({
           className="-ml-3"
           leadingIcon={<BackIcon />}
           onClick={exit}
-          disabled={phase === 'recalling'}
         >
           {m.diary_reader_back()}
         </Button>
@@ -251,7 +217,7 @@ export function DiaryReaderBlock({
 
       {/* A day picked on the calendar, opened over it. Mounted by the WIDGET rather than handed to
           `DiaryCalendar`: the grid has no action slot by design, and this modal carries both the
-          paid jump and the delete ([D12] keeps the calendar itself free of either). */}
+          free jump and the delete ([D12] keeps the calendar itself free of either). */}
       {dayModalDate && (
         <Dialog
           open
@@ -271,29 +237,6 @@ export function DiaryReaderBlock({
                 <div key={diary.id}>{openedEntry(diary, () => closeDay())}</div>
               ))}
             </div>
-          )}
-        </Dialog>
-      )}
-
-      {jumpDiaryId && phase === 'confirming' && (
-        <ConfirmTimeSyncDialog open onAccept={acceptSync} onReject={rejectSync} />
-      )}
-      {jumpDiaryId && phase !== 'confirming' && (
-        <Dialog
-          open
-          onClose={cancelQuote}
-          title={m.diary_reader_recall_action()}
-          closeLabel={m.common_dismiss()}
-        >
-          {phase === 'browsing' ? (
-            <SpendCostDisplay
-              pending={diaryRecallSpend(jumpDiaryId)}
-              onProceed={proceedQuote}
-              onCancel={cancelQuote}
-              onEarn={requestEarnGuide}
-            />
-          ) : (
-            <p className="text-sm text-text-muted">{m.diary_reader_jumping()}</p>
           )}
         </Dialog>
       )}

@@ -45,7 +45,7 @@ async function openToRewrite(result: { current: ReturnType<typeof useRecallFlowC
   await waitFor(() => expect(result.current.phase).not.toBe('idle'))
   if (result.current.phase === 'confirmingSync') act(() => result.current.acceptSync())
   if (result.current.phase === 'quoting') act(() => result.current.acceptQuote())
-  act(() => result.current.setRewrite('a new telling'))
+  act(() => useRecallDraftStore.setState({ rewrite: 'a new telling' }))
   expect(result.current.phase).toBe('rewriting')
 }
 

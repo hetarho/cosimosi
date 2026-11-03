@@ -104,6 +104,8 @@ export function useUniverseScene({
     if (!flyTargetNodeId || !nodeIndex) return
     const index = nodeIndex.neurons[flyTargetNodeId] ?? nodeIndex.episodicMemories[flyTargetNodeId]
     if (index === undefined) return
+    if (usePendingFlyTargetStore.getState().select)
+      actorRef.send({ type: 'SELECT', nodeId: flyTargetNodeId })
     actorRef.send({ type: 'FLY', nodeId: flyTargetNodeId })
     clearFlyTarget()
   }, [flyTargetNodeId, nodeIndex, actorRef, clearFlyTarget])

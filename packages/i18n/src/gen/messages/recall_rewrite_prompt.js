@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Recall_Rewrite_PromptInputs */
 
 const en_recall_rewrite_prompt = /** @type {(inputs: Recall_Rewrite_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Write it again as you remember it now.`)
+	return /** @type {LocalizedString} */ (`Fill only the faded parts as you remember them. Reconstructing a memory is free.`)
 };
 
 const ko_recall_rewrite_prompt = /** @type {(inputs: Recall_Rewrite_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`그날을 지금 기억나는 대로 다시 적어 보세요.`)
+	return /** @type {LocalizedString} */ (`흐려진 부분만 지금 기억나는 대로 채워 보세요. 회고하기는 무료예요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Write it again as you remember it now." |
+* | "Fill only the faded parts as you remember them. Reconstructing a memory is free." |
 *
 * @param {Recall_Rewrite_PromptInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

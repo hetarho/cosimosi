@@ -208,7 +208,7 @@
   | `Link` | `연결` | grow synapses from shared neurons and temporal proximity; never memory to memory, never from emotion →=LINK | Go `LinkService.LinkLaunched` |
   | `Recall` | `회상 (재공고화)` / `회고하기` | recall one episodic memory: `Reinforce`, and `Reconsolidate` on a prediction error →=RECALL | - |
   | `RestoreMemoryText` | `원문 되살리기` | paid recovery of stored current-memory text without a rewrite →=RECALL-34 | distinct from deletion undo |
-  | `RecallDiaryStars` | `이 일기로 태어난 별 보기` | recall every still-live memory of one diary without a rewrite: each is reinforced, none reconsolidated →=DIARY-3 | one transaction →=DIARY-21 |
+  | `RecallDiaryStars` | compatibility reinforcement | recall every still-live memory of one diary without a rewrite: each is reinforced, none reconsolidated →=DIARY-3 | free compatibility transaction; the archive navigates existing membership →=DIARY-21/22 |
   | `Reinforce` | `강화` | the per-memory recall effects: reset anchors, `Potentiate` co-activated synapses, raise strength, nudge neighbours →=RECALL-3 | a step of `Recall` (Go `reinforce`), idempotent per recall; no `batch_id` exists |
   | `Reconsolidate` | `재공고화` | on a prediction error only: new `CurrentText`, the remaining `SemanticStages` regenerated, `Reshape` →=RECALL-6 | gated by `PredictionError` |
   | `ViewSemantic` | `의미기억 열람` / `요지 보기` | view one gist stage: paid, never rewriting, never advancing the clock →=RECALL-8 | spend kind `GIST_VIEW` |

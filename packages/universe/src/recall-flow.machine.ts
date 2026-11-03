@@ -7,6 +7,7 @@ export interface RecallFlowContext {
   attempt: PaidActionAttempt | null
   consented: boolean
   restore: boolean
+  submitted: boolean
 }
 export type RecallFlowEvent =
   | { type: 'OPEN'; needsSync: boolean; restore?: boolean; attempt?: PaidActionAttempt }
@@ -35,17 +36,20 @@ export const recallFlowMachine = setup({
       attempt: event.type === 'OPEN' ? (event.attempt ?? null) : null,
       consented: false,
       restore: event.type === 'OPEN' && Boolean(event.restore),
+      submitted: false,
     })),
     consent: assign({ consented: true }),
-    reset: assign({ attempt: null, consented: false, restore: false }),
+    submitted: assign({ submitted: true }),
+    reset: assign({ attempt: null, consented: false, restore: false, submitted: false }),
     retry: assign(({ context, event }) => ({
       attempt: 'attempt' in event ? (event.attempt ?? context.attempt) : context.attempt,
+      submitted: false,
     })),
   },
 }).createMachine({
   id: 'recallFlow',
   initial: 'idle',
-  context: { attempt: null, consented: false, restore: false },
+  context: { attempt: null, consented: false, restore: false, submitted: false },
   states: {
     idle: {
       on: {
@@ -76,7 +80,7 @@ export const recallFlowMachine = setup({
     },
     rewriting: {
       on: {
-        RECALL: 'reconsolidating',
+        RECALL: { target: 'reconsolidating', actions: 'submitted' },
         CLOSE: { target: 'idle', actions: 'reset' },
         SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },

@@ -128,7 +128,7 @@
   - legacy rows (NULL stage, possibly blank text) stay untouched: history is never repaired by mutation, the regen path re-materializes the ladder instead →=CONSOL
   - index `memory_provenance_timeline (user_id, episodic_memory_id, universe_time, created_at)` backs the ordered read
   - deleted only with its memory (`ON DELETE CASCADE` in the retention sweep) or by the withdrawal purge →!MEM-11
-- MEM-20 [o] `memory_paid_action_receipts` holds one immutable receipt per `(user_id, operation_id)`, committed in the same transaction as the paid action's debit and effects →=RECALL
+- MEM-20 [o] `memory_paid_action_receipts` holds one immutable receipt per `(user_id, operation_id)`, committed in the same transaction as the memory action's effects and any debit →=RECALL
   - `action_kind` is `recall`, `diary_recall`, `view_semantic` or `restore_memory_text`; `request_fingerprint` is the canonical input hash; `response` is the original typed response, replayed verbatim
   - exactly one retained target (CHECK): an `episodic_memory_id` (recall, gist view) or a `diary_id` (whole-diary recall)
   - the target foreign keys cascade: a receipt lives exactly as long as its target, with no retention timer of its own

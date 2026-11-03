@@ -1,5 +1,5 @@
 # TIME universe time
-> r1 | the diary-driven universe clock: what advances it, what reads it as "now", and how an advance is consented to and shown
+> r2 | the diary-driven universe clock: what advances it, what reads it as "now", and how an advance is consented to and shown
 
 ## decisions
 - TIME-1 [o] a diary dated before the universe clock is saved but launches no `EpisodicMemory`, and the clock stays unmoved →!INV-10
@@ -14,13 +14,13 @@
   - the FE `isPastDated` (`packages/universe`) only predicts the outcome for the pre-launch notice →=WRITE
   - a past-dated save is not a launch: no Twinkle earn →=TWINK-3, no achievement counter →=ACH, no invite settlement →=ACCT
   - consequence: days written late but in date order each launch; a diary older than the clock (a retrospective years back) never raises memories
-- TIME-2 [o] the clock advances on exactly two triggers: a launch moves it to the diary date with no warning, a recall moves it to today only with the user's consent ← moving forward to a diary date loses nothing, syncing to today closes off unwritten past dates
+- TIME-2 [o] the clock advances on a launch to the diary date, or a memory recovery to today with consent; recovery includes free reconstruction and paid stored-text restoration ← moving forward to a diary date loses nothing, syncing to today closes off unwritten past dates
   - launch: the advance is the last step of the launch transaction, atomic with the launch rows →=ENC
-  - recall: `Recall` and `RecallDiaryStars` (→~DIARY-3) sync to today inside their own transaction →!TIME-15, gated by consent →!TIME-16
+  - recall: `Recall`, `RestoreMemoryText` and compatibility `RecallDiaryStars` (→~DIARY-3) sync to today inside their own transaction →!TIME-15, gated by consent →!TIME-16
   - `ViewSemantic` never advances the clock and takes no consent; its transaction surface has no clock advance →=RECALL-8
   - nothing else moves the clock: no read →=TIME-3, no cron or worker job →=TIME-4, no admin action, no onboarding step →=ONB
   - `SyncToToday` is a service capability, not a user action: no RPC and no button sync the clock on their own
-  - every advance returns its interval: `previous_universe_time` / `universe_time` on `LaunchStarsResponse`, `RecallResponse`, `RecallDiaryStarsResponse` (empty `previous` = unborn clock) →~TIME-19
+  - every advance returns its interval: `previous_universe_time` / `universe_time` on `LaunchStarsResponse`, `RecallResponse` (also used by restoration), `RecallDiaryStarsResponse` (empty `previous` = unborn clock) →~TIME-19
 - TIME-3 [o] viewing never advances time: while the user only looks, the universe stays at its last clock value and nothing forgets →!INV-10
   - coming back after real-world days or weeks and only viewing leaves every memory exactly as bright as it was; forgetting follows universe time, never real time →=FORGET-1
   - viewing metadata and the current (forgotten) text is free and effect-free →~RECALL-1
@@ -154,4 +154,5 @@
 - the demo never mounts `UniverseTimeOverlay` and never reaches the real clock; its time jumps reuse the pure sweep helpers →=DEMO
 
 ## chg
+- r2 261103 TIME-2✎ named recall triggers→also consent-gated `RestoreMemoryText`; diary-star navigation advances nothing
 - r1 261102 initial

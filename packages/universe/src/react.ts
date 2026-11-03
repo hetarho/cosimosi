@@ -24,3 +24,5 @@ export { useReleaseMemory } from './react/use-release.ts'
 export { useRestoreMemory } from './react/use-restore.ts'
 export { useUniverse, type UniverseReadState } from './react/use-universe.ts'
 export { useCompletionScope } from './react/use-completion-scope.ts'
+
+export { useDiaryMemoryNavigation } from './react/use-diary-memory-navigation.ts'

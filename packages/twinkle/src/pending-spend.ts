@@ -22,11 +22,6 @@ export function gistViewSpend(episodicMemoryId: string): PendingSpend {
   return { kind: SpendKind.GIST_VIEW, episodicMemoryId }
 }
 
-// The sum of a diary's recall costs ([D3]) — the batch quote the diary reader composes.
-export function diaryRecallSpend(diaryId: string): PendingSpend {
-  return { kind: SpendKind.DIARY_RECALL, diaryId }
-}
-
 export function restoreMemoryTextSpend(episodicMemoryId: string): PendingSpend {
   return { kind: SpendKind.RESTORE_MEMORY_TEXT, episodicMemoryId }
 }

@@ -13,13 +13,8 @@ import { restoreMemoryTextSpend } from '@cosimosi/twinkle'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
 
-// widgets/recall-flow ([R1]): the summon-and-rewrite flow as a modal over the running canvas (no
-// renderer remount, A1). It composes features/recall-star + the confirm-time-sync affordance,
-// owns the flow machine + the draft store, and enforces the sequencing consent → Recall (receipt +
-// sync + recall atomic, server-side) → acceleration/reveal. The consent decision is driven by the
-// server sync-status read, never a local Date (A1); the paid call carries a client operation id so
-// a response-loss retry replays the committed result without re-spending (A2), and the in-flight
-// state is non-dismissible + fenced so a late completion cannot mutate a closed/reopened flow (A4).
+// The shared action controller fences both intents: free reconstruction uses blank inputs,
+// stored-text restoration uses a quote and no rewrite. The canvas stays mounted under the host.
 export function RecallFlowSheet() {
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const {
@@ -27,8 +22,11 @@ export function RecallFlowSheet() {
     mode,
     memoryId,
     result,
-    rewrite,
-    setRewrite,
+    parts,
+    answers,
+    setAnswer,
+    canConfirm,
+    inputLocked,
     close,
     reject,
     acceptSync,
@@ -59,7 +57,7 @@ export function RecallFlowSheet() {
           memoryId &&
           (phase !== 'quoting' ? (
             <>
-              <CurrentMemoryText spans={spans} />
+              {mode === 'restore' ? <CurrentMemoryText spans={spans} /> : null}
               {mode === 'restore' ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-text-muted">{m.memory_restore_description()}</p>
@@ -69,8 +67,11 @@ export function RecallFlowSheet() {
                 </div>
               ) : (
                 <RecallRewrite
-                  value={rewrite}
-                  onChange={setRewrite}
+                  parts={parts}
+                  answers={answers}
+                  onAnswer={setAnswer}
+                  canConfirm={canConfirm}
+                  inputLocked={inputLocked}
                   onConfirm={confirmRecall}
                   busy={phase === 'reconsolidating'}
                 />

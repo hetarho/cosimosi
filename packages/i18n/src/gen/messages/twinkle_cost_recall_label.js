@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Twinkle_Cost_Recall_LabelInputs */
 
 const en_twinkle_cost_recall_label = /** @type {(inputs: Twinkle_Cost_Recall_LabelInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Stardust to recall`)
+	return /** @type {LocalizedString} */ (`Stardust to restore stored words`)
 };
 
 const ko_twinkle_cost_recall_label = /** @type {(inputs: Twinkle_Cost_Recall_LabelInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`회상에 드는 별가루`)
+	return /** @type {LocalizedString} */ (`원문 되살리기에 드는 별가루`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Stardust to recall" |
+* | "Stardust to restore stored words" |
 *
 * @param {Twinkle_Cost_Recall_LabelInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

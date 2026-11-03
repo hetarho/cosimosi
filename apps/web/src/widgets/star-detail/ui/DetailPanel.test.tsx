@@ -9,6 +9,7 @@ import { createActor } from 'xstate'
 import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { useEpisodicMemoryStore } from '@cosimosi/universe'
+import { useDiaryMemoryNavigationStore } from '@cosimosi/universe/testing'
 import { universeNavigationMachine } from '@cosimosi/universe/scene'
 
 import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
@@ -58,6 +59,7 @@ const memory = {
 
 beforeEach(() => {
   setActiveLocale(defaultLocale)
+  useDiaryMemoryNavigationStore.getState().clear()
   preview.mounts = 0
   useEpisodicMemoryStore.getState().clear()
   useEpisodicMemoryStore.getState().reconcile([memory])
@@ -80,12 +82,43 @@ function renderPanel(onRecallRequested = vi.fn()) {
     />,
   )
   act(() => navigation.send({ type: 'SELECT', nodeId: memory.id }))
-  return { onRecallRequested }
+  return { onRecallRequested, navigation }
 }
 
 const shownPreview = () => screen.getByTestId('star-preview').getAttribute('data-active')
 
 describe('DetailPanel star preview', () => {
+  it('browses all diary members and clears the controls on close', async () => {
+    const user = userEvent.setup()
+    useDiaryMemoryNavigationStore.getState().start(['m1', 'm2', 'm3'])
+    useEpisodicMemoryStore
+      .getState()
+      .reconcile([
+        memory,
+        { ...memory, id: 'm2', name: 'Second scene' },
+        { ...memory, id: 'm3', name: 'Third scene' },
+      ])
+    const { navigation } = renderPanel()
+    expect(
+      (screen.getByRole('button', { name: m.diary_memory_previous() }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+    await user.click(screen.getByRole('button', { name: m.diary_memory_next() }))
+    expect(navigation.getSnapshot().context).toMatchObject({
+      selectedNodeId: 'm2',
+      travelNodeId: 'm2',
+    })
+    expect(screen.getByText(m.diary_memory_position({ current: 2, total: 3 }))).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: m.diary_memory_next() }))
+    expect(
+      (screen.getByRole('button', { name: m.diary_memory_next() }) as HTMLButtonElement).disabled,
+    ).toBe(true)
+    expect(preview.mounts).toBe(1)
+    await user.click(screen.getByRole('button', { name: m.common_dismiss() }))
+    expect(useDiaryMemoryNavigationStore.getState().memoryIds).toEqual([])
+    navigation.stop()
+  })
+
   it('keeps one preview across meta → provenance → meta, parked while hidden', async () => {
     const user = userEvent.setup()
     renderPanel()

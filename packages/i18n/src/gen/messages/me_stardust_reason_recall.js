@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Me_Stardust_Reason_RecallInputs */
 
 const en_me_stardust_reason_recall = /** @type {(inputs: Me_Stardust_Reason_RecallInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`While recalling`)
+	return /** @type {LocalizedString} */ (`Restoring stored words`)
 };
 
 const ko_me_stardust_reason_recall = /** @type {(inputs: Me_Stardust_Reason_RecallInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`회상하며`)
+	return /** @type {LocalizedString} */ (`기억을 되살리며`)
 };
 
 /**
 * | output |
 * | --- |
-* | "While recalling" |
+* | "Restoring stored words" |
 *
 * @param {Me_Stardust_Reason_RecallInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

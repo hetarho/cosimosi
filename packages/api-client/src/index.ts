@@ -22,7 +22,6 @@ export {
   createMemoryClient,
   createMemoryMockTransport,
   createMemoryServiceQueryKey,
-  createSyncStatusQueryKey,
   createSyncStatusQueryOptions,
   readUniverseRevision,
   type DiaryDayDto,
