@@ -14,7 +14,13 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| rcui | DESKTOP-VKPLS8P | autopilot | 2026-11-03T05:42Z | 2026-11-03T05:42Z | - |
+
 ## inbox
+- 261103 decided RECALL TWINK DIARY: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
 - 261103 parked T222: phase 2 evidence gate — needs an OpenRouter key and the Anthropic and DeepSeek keys for the baselines (`COSIMOSI_LIVE_LLM_EVAL=1 go test -run TestLiveLLMEvaluation ./internal/ai/openrouter/`), an operator to confirm prompt logging is off on the production workspace, a named reviewer to score fidelity and approve rows in `internal/ai/openrouter/EVALUATION.md`, and a recheck of the OpenRouter docs (this run made no web lookups)
 - 261103 decided T221: two apps' `shared/testing/index.ts` barrels failed `lint:fsd:layout` as normalized-equivalent pure modules once web gained the segment → the layout guard skips a `shared` module that only re-exports, its target modules still compared (alt: give web's barrel a different shape | keep the fakes under `pages/test`) ← every barrel normalizes alike, the guard already exempts barrels from its ui rule, and reshaping a file to dodge a guard is the evasion it forbids
 - 261103 decided T221: "engram" appears legitimately as the research-strand id (UL-93) → the new `lint:language` rule scans app and package source, comments included, excluding only the landing, the blog and the copy catalogues (alt: rename the strand id | forbid only identifiers) ← MKT-22 shares the id with the blog, and the task asks for comments to be scanned
@@ -39,24 +45,24 @@
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
 | ARCH | 4 | 4 | - | 0 |
-| PROD | 1 | 1 | - | 0 |
+| PROD | 2 | 2 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
-| UL | 1 | 1 | - | 0 |
-| MEM | 4 | 4 | - | 0 |
+| UL | 2 | 2 | - | 0 |
+| MEM | 5 | 5 | - | 0 |
 | ENC | 1 | 1 | - | 0 |
 | LINK | 1 | 1 | - | 0 |
 | WRITE | 1 | 1 | - | 0 |
 | TIME | 1 | 1 | - | 0 |
-| RECALL | 2   | 2      | -       | 1   |
-| FORGET | 1 | 1 | - | 0 |
+| RECALL | 3 | 3 | - | 1 |
+| FORGET | 2 | 2 | - | 0 |
 | CONSOL | 1 | 1 | - | 0 |
 | MOOD | 1 | 1 | - | 0 |
 | DECOR | 1 | 1 | - | 0 |
 | DEL | 1 | 1 | - | 1 |
-| DIARY | 1 | 1 | - | 0 |
+| DIARY | 2 | 2 | - | 0 |
 | SOCIAL | 1 | 1 | - | 0 |
-| TWINK | 2 | 2 | - | 0 |
+| TWINK | 3 | 3 | - | 0 |
 | ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 5 | 1 | DEMO-14✎ DEMO-22✎ DEMO-25✎ DEMO-26✎ DEMO-27✎ DEMO-29✎ DEMO-31✎ | 0 |
@@ -96,14 +102,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
+| T223 | Separate free reconstruction from paid stored-text recovery | RECALL TWINK FORGET PROD UL MEM | - | doing@261103.rcui |
+| T224 | Fill only lost runs and browse a diary's stars in order | RECALL DIARY | T223 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
+- implement-task T223, then T224 (the requested recall and diary-star UX)
 - T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
 - 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decoration-tour)
 - 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decoration-tour)
 - 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recall-feedback)

@@ -1,5 +1,5 @@
 # UL ubiquitous language
-> r1 | the canonical vocabulary, one name per concept across code, DB, proto, specs and conversation, and the rules that keep its science, poetic and rendering registers apart
+> r2 | the canonical vocabulary, one name per concept across code, DB, proto, specs and conversation, and the rules that keep its science, poetic and rendering registers apart
 
 ## decisions
 - UL-1 [o] one concept has one name in every layer: Go types, DB tables, proto, the FE domain mirror, specs, planning and conversation all use the canonical name in this file ← a second name for one concept splits the model and slips past its guards
@@ -207,6 +207,7 @@
   | launch | `별 띄우기` | commit a confirmed split in one transaction, the clock advance last →=ENC | Go `PersistEncoded`, RPC `LaunchStars`; a past-dated launch saves only the `Diary` →=TIME-1 |
   | `Link` | `연결` | grow synapses from shared neurons and temporal proximity; never memory to memory, never from emotion →=LINK | Go `LinkService.LinkLaunched` |
   | `Recall` | `회상 (재공고화)` / `회고하기` | recall one episodic memory: `Reinforce`, and `Reconsolidate` on a prediction error →=RECALL | - |
+  | `RestoreMemoryText` | `원문 되살리기` | paid recovery of stored current-memory text without a rewrite →=RECALL-34 | distinct from deletion undo |
   | `RecallDiaryStars` | `이 일기로 태어난 별 보기` | recall every still-live memory of one diary without a rewrite: each is reinforced, none reconsolidated →=DIARY-3 | one transaction →=DIARY-21 |
   | `Reinforce` | `강화` | the per-memory recall effects: reset anchors, `Potentiate` co-activated synapses, raise strength, nudge neighbours →=RECALL-3 | a step of `Recall` (Go `reinforce`), idempotent per recall; no `batch_id` exists |
   | `Reconsolidate` | `재공고화` | on a prediction error only: new `CurrentText`, the remaining `SemanticStages` regenerated, `Reshape` →=RECALL-6 | gated by `PredictionError` |
@@ -219,7 +220,7 @@
   | `LetGo` | `놓아주기` | seal the user-approved neurons, permanently →=DEL-16 | the memory stays live, a silent engram →=DEL-4 |
   | `SyncToToday` | - | advance the clock to the user's today; idempotent within a day →=TIME-15 | no RPC, no button →=TIME-2 |
   | `Earn` | `별가루 적립` | credit `GENERAL` Twinkle on an earn path →=TWINK-3 | no generic `Earn(reason)`: one entry point per reason →=TWINK-19 |
-  | `Spend` | `별가루 소모` | debit Twinkle for a recall, a gist view, a whole-diary recall or an ornament purchase →=TWINK-4 | Go `CheckAndSpend` behind the `SpendGate` →=TWINK-15 |
+  | `Spend` | `별가루 소모` | debit Twinkle for stored-text restoration, a gist view or an ornament purchase →=TWINK-4 | Go `CheckAndSpend` behind the `SpendGate` →=TWINK-15 |
   | `SignUp` | `가입` | create the account from a nickname, the detected time zone and locale, binding an optional invite link; credits nothing →=ACCT-19 | - |
   | `SettleSignup` | - | settle a signup after a launch that is not past-dated: judge the valid signup, pay both invite legs, credit the signup bonus; the first pays, later calls replay as no-ops →=ACCT-21 | called through `SignupSettlementPort`; valid signup →=ACCT-20 |
   | `Withdraw` | `탈퇴` | stamp the account's soft delete and schedule its sweep at the deadline →=ACCT-22 | window `account.withdrawal_retention_days` |
@@ -329,4 +330,5 @@
 - this domain owns names only: a term's grounding →=SCI, its rules belong to the domain its row points to, its copy to the message catalogues
 
 ## chg
+- r2 261103 UL-20✎ paid recall→free reconstruction and separate paid `RestoreMemoryText`
 - r1 261102 initial

@@ -1,5 +1,5 @@
 # FORGET forgetting
-> r1 | how an unrecalled memory dims and loses words in universe time, what that costs to recall, and how the loss is shown — access lost, never erased
+> r2 | how an unrecalled memory dims and loses words in universe time, what that costs to recall, and how the loss is shown — access lost, never erased
 
 ## decisions
 - FORGET-1 [o] an `EpisodicMemory` left unrecalled dims and loses words together: brightness and decay stage are read-time pure functions of one elapsed universe-day clock and one slow factor, so a dimmer star is never at a shallower stage →!TIME-10
@@ -20,14 +20,10 @@
   - reading never mutates a stored fact; the forgetting model's only write is filling decay-stage text slots →~FORGET-11
   - the advance write surface that fill runs on exposes no delete and no `Diary` write →=CONSOL
   - a soft-deleted memory decays for nobody: it leaves the read and every forgetting computation →=DEL-3
-- FORGET-4 [o] the deeper a memory's decay, the more its recall costs: forgetting emits an accessibility weight `AccessibilityCostWeight(DecayDepth(…))`, never a price →=TWINK-4
-  - `DecayDepth` is the continuous stage fraction over the same slow-stretched clock: elapsed / (`stage_interval_days` × maxStage × slow), clamped to [0, 1]; 0 = fresh, 1 = at or past the deepest stage
-  - the weight eases convexly from `forgetting.cost_weight_floor` at depth 0 to `forgetting.cost_weight_cap` at depth 1 with curvature `forgetting.cost_weight_curve`, clamped to [floor, cap], strictly increasing in between
-  - the floor is non-zero, so a fresh recall is never free →~TWINK-1; the cap keeps a silent engram recallable at a bounded price →!FORGET-2
-  - every price constant and the price curve live in the Twinkle economy (`twinkle.recall_*`); no price sits in `forgetting.*` and no accessibility formula in `internal/twinkle`
-  - the server derives the weight from the stored anchors at the clock the recall syncs to, both for the shown quote and at spend time (`recallAccessibilitySignal`) →~TIME-15; clients never price a recall
-  - episodic-recall axis only: the gist-view price follows the gist stage in the opposite direction →=RECALL-8
-  - a whole-diary recall prices each live memory with its own weight from one pre-recall snapshot →=DIARY-3
+- FORGET-4 [o] deeper forgetting increases the cost of restoring stored memory text, while user-written recall is free →=TWINK-4
+  - restoration uses `AccessibilityCostWeight(DecayDepth(...))` with the existing floor, cap and curve values; the depth is offset-inclusive elapsed / (stage interval × max stage × slow factor), clamped to [0, 1]
+  - quote and debit derive the weight at the same post-sync clock; forgetting owns weights, the economy owns prices
+  - free reconstruction and paid restoration both reset the readability anchors; the original diary remains immutable
 - FORGET-5 [o] recall restores a memory wholly: brightness, decay stage and the gist timer recover together, and while it is left alone all three progress together →=RECALL-2
   - recovery is a re-derivation, not a function: the recall writes its anchors (`last_recalled_universe_time` = the post-sync clock, `semanticize_timer_reset_at`) →=RECALL-3, and the next read derives brightness 1.0, stage 0 (the whole current text) and the floor weight
   - the gist-timer half →=CONSOL-9
@@ -112,4 +108,5 @@
 - universe dates are zone-free: forgetting math never reads a time zone →=TIME-7
 
 ## chg
+- r2 261103 FORGET-4✎ paid reconstruction and diary jump→free reconstruction/navigation with separate paid stored-text restoration
 - r1 261102 initial

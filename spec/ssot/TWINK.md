@@ -1,11 +1,11 @@
 # TWINK Twinkle economy
-> r2 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
+> r3 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
 
 ## decisions
-- TWINK-1 [o] every recall act costs Twinkle: `Recall` of an episodic memory (reconsolidation) and `ViewSemantic` of a gist both spend, and there is no free-recall count ← everyday recall is carried by the daily `SMALL` grant, not by free uses →!TWINK-5
-  - free and never priced: the meta info (shape, mood, written date, strength, forgetting state) and the forgotten current text shown when an episodic memory is opened →=RECALL-1
-  - free means the action never calls the spend gate; it is a use-case gating decision, never a zero point on a price curve →~TWINK-4
-  - the other free surfaces →=TWINK-4
+- TWINK-1 [o] reconstructing a memory through `Recall` is free; retrieving its stored text through `RestoreMemoryText` spends Twinkle
+  - free recall calls neither affordability nor spend, shows no quote, and works at zero balance →=RECALL-1
+  - metadata, forgotten text, archive reading and navigation among a diary's stars are free
+  - the gist view remains a paid stored-text read →=RECALL-8
 - TWINK-2 [o] Twinkle has two kinds, told apart by what they may buy, not by how they were obtained: `SMALL` (작은 별가루) pays only for recall and refills daily with no carry-over; `GENERAL` (별가루) pays for anything and carries forever →~TWINK-8
   - `SMALL`: a fixed daily grant `twinkle.small_daily_amount`; unspent remainder is discarded when the day turns; it pays only the recall family (`RECALL`, `GIST_VIEW`, `DIARY_RECALL`) →!TWINK-13
   - `GENERAL`: every earn credits it →~TWINK-19; it pays every purpose, present and future
@@ -20,20 +20,14 @@
   - signup bonus: `twinkle.earn_signup_bonus` once per account, settled after a launch that raises a memory (the first pays, later attempts replay as no-ops), never at signup or login, independent of any invite →=ACCT-11
   - beyond the five, an operator may gift `GENERAL` (`admin_grant`): a discretionary support grant, not a path a user can pursue →=ADMIN
   - payment is not a v2 earn path →=TWINK-26
-- TWINK-4 [o] four actions spend Twinkle: an episodic recall (dearer the deeper its forgetting), a gist view (cheaper the deeper its gist), an ornament purchase (`GENERAL` only) and the whole-diary recall (the sum of its memories' recall costs)
-  - recall: `RecallCost(accessibilityCost)` = `twinkle.recall_base_cost` + `twinkle.recall_depth_coefficient` × the accessibility weight, rounded, capped at `twinkle.recall_max_cost`; non-decreasing in forgetting depth
-  - the weight is forgetting's (`AccessibilityCostWeight`), derived server-side at the clock the recall syncs to, identically for the quote and the spend; no accessibility formula lives in `internal/twinkle`, no price in `forgetting.*`, and clients never price a recall →!FORGET-4
-  - the cap keeps a silent memory recallable within a plausible balance; a recall restores accessibility, so the next recall of that memory prices lower →~FORGET-5
-  - gist view: `GistViewCost(stage)` = `twinkle.gist_base_cost` minus `twinkle.gist_stage_discount` per stage past 1, floored at `twinkle.gist_min_cost`; non-increasing in stage, cheap and never free; a stage below 1 prices as 1 →~RECALL-8
-  - the gist view is priced at the memory's own viewable stage (its risen stage bounded by the stored stage texts), derived server-side for both quote and spend; no client names the stage it is priced at
-  - purchase: the catalog total of one decoration save, computed by the store context and passed through; one ledger row per save, never one per ornament →~DECOR-8
-  - whole-diary recall: the sum of the per-member `RecallCost`; each member spends its own `recall` row, all priced from one pre-recall snapshot at the post-sync clock, so in-batch reinforcement cannot reprice the batch and the charge equals the quote →~DIARY-3/21
-  - free: reading, searching and filtering the original diary →=DIARY-10/11; release and restore are never priced →=DEL
-  - the curve shapes, clamps and spend order are code; only their coefficients are `twinkle.*` values
-- TWINK-5 [o] the daily `SMALL` grant always covers everyday rumination, so the cost gate bites only excess recall, and decoration spending can never eat today's recall ← this is why two kinds exist →!MOOD-5
-  - pinned as a relation, not a magic number: `small_daily_amount ≥ expected daily ruminations × the cheapest recall`, asserted over the generated constants by `TestCoreLoopProtectionRelationship` (assumption: 5 everyday recalls; cheapest = `RecallCost` at the forgetting cost-weight floor)
-  - an everyday recall affordable from `SMALL` reaches its proceed step without touching the shortfall path →~TWINK-34
-  - the structural half: no purpose outside the recall family can draw `SMALL` →!TWINK-13
+- TWINK-4 [o] three actions spend Twinkle: stored-memory text restoration, gist viewing and ornament purchasing
+  - restoration uses the existing `RecallCost` curve and `twinkle.recall_*` values, non-decreasing with forgetting depth; its quote and debit use the same pre-action accessibility signal →=FORGET-4
+  - gist pricing, purchase pricing, currency draw order and all curve coefficients remain as defined by their existing contracts
+  - `Recall` and `RecallDiaryStars` are free and never call the gate; seeing a diary's stars is navigation only
+  - original-diary archive reading/search/export and deletion/undo remain free; restoration concerns the star's memory representation, never rewrites the diary
+- TWINK-5 [o] free reconstruction cannot be blocked by spending elsewhere; the daily `SMALL` grant supports paid stored-text retrieval
+  - the existing grant/cheapest-price relationship remains asserted, with restoration as its priced action
+  - `SMALL` remains unavailable to ornament purchases
 - TWINK-6 [o] an invite pays only for a valid signup: a distinct live inviter, at least one launched `EpisodicMemory` by the invitee, a verified invitee email, and fewer than `twinkle.invite_reward_max_per_inviter` earlier rewarded invites by that inviter ← a launch costs each fake account an LLM round-trip, and the lifetime cap bounds one inviter's farming
   - the concrete gate (the four conditions, their order, the email-verification source and each failure mode) →=ACCT-20; the settlement path, only the post-commit launch hook and never a wire handler →=ACCT-21; invite binding →~ACCT-8
   - failing any condition pays neither leg; past the cap a link still binds, but neither leg pays; the signup bonus is independent of all of it →=ACCT-11
@@ -244,5 +238,6 @@
 - the `twinkle.*` values group holds only coefficients, earn amounts, caps and the page size; formulas, closed sets, the eligible list, dedup-key formats and catalogs (ornament prices →=DECOR, reward tiers →=ACH) are not values
 
 ## chg
+- r3 261103 TWINK-1✎ TWINK-4✎ TWINK-5✎ paid reconstruction and diary jump→free reconstruction/navigation with separate paid stored-text restoration
 - r2 261103 TWINK-32✎ mobile "earn guide only, a parity gap"→"the same panel as a bottom sheet"; TWINK-39✎ balance readout `features/twinkle-balance-hud`→`entities/twinkle`, `features/charge-twinkle` and the panel "web only"→"both apps"
 - r1 261102 initial

@@ -1,5 +1,5 @@
 # PROD product
-> r1 | what cosimosi is and for whom, its actors and pages, the core concepts and end-to-end flows, and what is in scope, deferred or excluded
+> r2 | what cosimosi is and for whom, its actors and pages, the core concepts and end-to-end flows, and what is in scope, deferred or excluded
 
 ## decisions
 - PROD-1 [o] cosimosi is a diary app whose diaries become a living 3D "memory universe": each diary splits into episodic memories (stars) built from neurons, and the universe changes by rules drawn from how memory works ← rules taken from memory science rather than invented ones make the changes both beautiful and true
@@ -60,12 +60,12 @@
   | birth | a diary splits at event boundaries into named, mood-tagged memories; a known element reuses its neuron, a new one wakes a latent star | →=ENC |
   | connection | co-fired neurons bind; memories sharing a neuron are linked; embedding similarity never links | →=LINK |
   | time | the clock is diary-driven: a launch or a recall moves it, viewing stops it, and forgetting and consolidation progress at the advance with no batch | →=TIME |
-  | recall | viewing the meta and the forgotten text is free; recalling spends Twinkle and is reconsolidation: rewrite, and only a real difference changes the text and the shape | →=RECALL |
-  | forgetting | an unrecalled memory dims and loses words, stops at a floor, costs more to recall the deeper it fades, and recovers wholly on recall | →=FORGET |
+  | recall | viewing the meta and the forgotten text is free; recalling is free reconstruction: rewrite, and only a real difference changes the text and the shape | →=RECALL |
+  | forgetting | an unrecalled memory dims and loses words, stops at a floor, costs more to restore from storage the deeper it fades, and recovers wholly on recall | →=FORGET |
   | sleep | while time advances, related memories replay, weak synapses downscale and gist versions rise into the neocortex | →=CONSOL |
 - PROD-13 [o] the core loop is write, launch, let time pass, recall: what the user recalls grows, and the universe's colour follows it; spending elsewhere never blocks the day's recall →=TWINK-5
   - only looking changes nothing: no time passes and nothing fades →!INV-10
-  - `SMALL` Twinkle refills daily for recall; `GENERAL` Twinkle comes from writing, achievements, invites and the signup bonus →=TWINK-3
+  - `SMALL` Twinkle refills daily for stored-text restoration; `GENERAL` Twinkle comes from writing, achievements, invites and the signup bonus →=TWINK-3
 - PROD-14 [o] the product in scope now
   | area | what the user gets | owner |
   |---|---|---|
@@ -108,4 +108,5 @@
 - time: only looking → nothing changes; launch | recall → clock advance → forgetting and consolidation over the interval
 
 ## chg
+- r2 261103 PROD-12✎ PROD-13✎ paid recall→free reconstruction and paid stored-text restoration
 - r1 261102 initial

@@ -1,14 +1,14 @@
 # RECALL recall & reconsolidation
 
-> r2 | remembering an episodic memory (Recall, Reinforce, Reconsolidate), the read-only gist view (ViewSemantic), what the 변천사 records, and the star-detail panel and recall flow that surface them
+> r3 | remembering an episodic memory (Recall, Reinforce, Reconsolidate), the read-only gist view (ViewSemantic), what the 변천사 records, and the star-detail panel and recall flow that surface them
 
 ## decisions
-- RECALL-1 [o] viewing is free and recalling is the paid act: a memory's meta and its forgotten current text cost nothing, while 회고하기 rewrites the memory and spends Twinkle ← remembering is reconstruction, not replay (Roediger & Karpicke 2006)
-  - free: the meta (shape, emotion, written date, strength, forgetting state) and the decay-eroded current text; reading them advances no clock, spends nothing and resets nothing →=TIME-3
-  - paid: 회고하기 on an episodic memory →~TWINK-1; a `SemanticMemory` is viewed, never recalled →!RECALL-8
-  - no recall shows or restores the original: the `Diary` is reached only through 원본 일기 보기 →=DIARY-5
-  - target: a live episodic memory of the caller; soft-deleted ⇒ `MEMORY_RECALL_MEMORY_UNAVAILABLE`, missing or foreign ⇒ `MEMORY_RECALL_MEMORY_NOT_FOUND` →~RECALL-14
-  - a recall is a rewrite: a blank rewrite (whitespace only) is refused (`MEMORY_RECALL_INPUT_REQUIRED`); the flow's confirm stays disabled until text is entered
+- RECALL-1 [o] 회고하기 is free reconstruction: the diarist fills only the lost runs of the decay-eroded memory, and `Recall` never checks or spends Twinkle
+  - legible runs stay read-only; consecutive lost words form one blank; every blank must contain non-whitespace text before confirm
+  - the client submits the assembled complete narrative, preserving legible runs; no original words are inserted into blanks, and the immutable `Diary` is never shown here
+  - a vivid memory has no blanks and can be reinforced as it reads; metadata and forgotten text remain free
+  - paid restoration of the stored text is a separate action →!RECALL-34
+  - target: a live episodic memory of the caller; blank input, foreign and deleted targets retain their typed refusals →=RECALL-14
 - RECALL-2 [o] a recall restarts the memory's forgetting clock: brightness returns to full and the decay stage to 0, short only by a net positive neighbour offset the memory still carries →~FORGET-5
   - recall writes anchors, not pixels: `last_recalled_universe_time` = the post-sync clock; brightness and stage are read-time functions of it →~FORGET-1
   - at stage 0 the whole current text returns: recovery is a re-render, never a rewrite →~INV-8
@@ -73,26 +73,19 @@
   - the creation entry keeps reading `SourceText` after reconsolidation moved the current text, so where the memory was born stays readable
   - distortion is never announced: no flag, no warning; the diarist finds it by opening the 변천사
   - storage →=MEM; the `GetProvenance` read →!DIARY-13
-- RECALL-11 [o] a recall prepares under a short graph lock, compares outside the transaction, then commits all effects atomically →!TIME-15
-  - preparation: graph lock → receipt replay →!RECALL-13 → validate consent and the post-sync target without advancing → load live target → authoritative affordability check without a debit. An initially unaffordable request calls no provider.
-  - release the preparation transaction before `PredictionError.Differs`; no graph lock or database connection is retained while waiting for the provider
-  - commit: graph lock → receipt replay → consent-gated sync → load live target → verify the compared representation revision and text → authoritative spend → reinforce → reconsolidate if it differs → achievement counters → receipt
-  - a changed source refuses with `MEMORY_RECALL_SOURCE_CHANGED` / FailedPrecondition; the client re-quotes a fresh intent. A concurrent duplicate may compare twice, but the commit-time receipt check allows only one debit and one effect.
-  - balance and consent may change during the comparison, so the commit repeats both checks. Any refusal or error rolls all effects back, sync included: nothing charged, no anchor moved, no clock advanced.
-  - every effect is computed at the post-sync clock; preparation never reserves money or promises a charge
-  - the result carries the branch, re-render inputs (`current_text`, `seed`, `recall_count`, `effective_strength`) and sync interval; regenerated gist texts arrive on a later read
-  - whole-diary recall needs no provider and remains one transaction →=DIARY-21
-- RECALL-12 [o] a recall is priced from the memory's accessibility at the post-sync clock: the spend carries a depth signal, never a price, and the quote reads the same signal at the same clock →=FORGET-4
-  - signal: `AccessibilityCostWeight(DecayDepth(...))` over the offset-inclusive elapsed days and `EffectiveStrength`, from the pre-recall snapshot at the clock the sync lands on →~TIME-15
-  - the quote reads (`RecallAccessibility`, `DiaryRecallAccessibilities`) evaluate at `max(clock or its baseline, today)` without writing the advance, so the shown cost and the charge price one decay state →=TWINK-4
-  - `LiveDiaryRecallAnchors` returns a diary's still-live memories with only the anchors their price derives from (no text, no gist) in one batch read; the whole-diary recall and its quote both read it, so every member prices from one snapshot →~DIARY-21
-  - `SpendGate` declares a read-only `CheckCanSpend` preparation and an authoritative `CheckAndSpend(scope, tx, SpendIntent)` commit, shared by recall and the gist view; only the commit method debits, inside the caller's transaction
-  - `SpendIntent` = kind (`recall` or `view_gist`), memory id, operation id and the kind's signal (accessibility weight or gist rung); it has no amount field
-  - a short balance ⇒ `MEMORY_INSUFFICIENT_TWINKLE` and the whole action rolls back
-  - `AllowAllSpendGate` charges nothing and binds only in economy-less roots (tests); `cmd/api` binds the real gate, which prices the signal and keys the debit on operation id + memory id →=TWINK
-- RECALL-13 [o] every paid memory action (recall, whole-diary recall, gist view) is idempotent on a client operation id: a retry with the same id and input replays the committed response, with no second spend or effect →~MEM
+- RECALL-11 [o] a free recall prepares under a short graph lock, compares outside the transaction, then commits atomically →!TIME-15
+  - preparation: graph lock → receipt replay → consent validation without advancing → load live target; no affordability check
+  - comparison holds no graph lock or database connection
+  - commit: graph lock → receipt replay → consented sync → load and revalidate representation revision/text → reinforce → reconsolidate if different → achievement counters → receipt
+  - a changed source refuses with `MEMORY_RECALL_SOURCE_CHANGED`; failures roll back every effect
+  - neither preparation nor commit calls an economy spend method; zero balance never blocks recall
+- RECALL-12 [o] stored-text restoration is priced from the memory's accessibility at the post-sync clock →=FORGET-4
+  - the quote and `RestoreMemoryText` derive the same offset-inclusive forgetting weight from pre-action anchors; clients supply no price
+  - `SpendGate` retains its read-only affordability check and transactional debit for paid restoration and the gist view; free `Recall` and `RecallDiaryStars` never invoke either
+  - legacy economy curve and ledger names (`RecallCost`, `recall`) identify restoration pricing; historical rows and idempotent receipts remain readable
+- RECALL-13 [o] every mutating memory action (free recall, compatibility whole-diary recall, paid restoration and gist view) is idempotent on a client operation id: a retry with the same id and input replays the committed response, with no second spend or effect →~MEM
   - `operation_id` is required: missing ⇒ `MEMORY_OPERATION_ID_REQUIRED`
-  - receipt: one row in `memory_paid_action_receipts` per `(user_id, operation_id)`, `action_kind` `recall` | `diary_recall` | `view_semantic`, a canonical request fingerprint and the typed response as domain JSON (never proto)
+  - receipt: one row in `memory_paid_action_receipts` per `(user_id, operation_id)`, `action_kind` `recall` | `diary_recall` | `view_semantic` | `restore_memory_text`, a canonical request fingerprint and the typed response as domain JSON (never proto)
   - fingerprint: recall = memory id + rewrite; whole-diary recall = diary id; gist view = memory id only, so a memory that rose a rung between a lost response and its retry still replays what was paid for
   - the fingerprint hashes length-prefixed parts, so no field boundary is ambiguous
   - same id with another kind or fingerprint ⇒ `MEMORY_OPERATION_CONFLICT`; the client mints a fresh id
@@ -159,7 +152,7 @@
   - `star_meta_hint_forgetting_state`: how far the text has blurred; loses words a stage at a time, reads whole again after a recall
   - web: the hint opens on press as well as hover, above its row; native: all four stay inline beneath their readings
   - a hint describes only what the read-time functions do, never a mechanism the code lacks; reading it costs, advances and changes nothing
-- RECALL-23 [o] the footer holds one control, 회고하기; the four occasional acts sit behind one menu in the top-right corner of the star's preview frame ← five buttons in a row read as a control surface, not a star
+- RECALL-23 [o] the footer holds free 회고하기; 원문 되살리기 and the occasional acts sit behind one menu in the top-right corner of the star's preview frame ← five buttons in a row read as a control surface, not a star
   | action | place | hands off to |
   | ------------------------------------------------- | ------ | ------------------------------------------------------------------------------- |
   | 회고하기 (`star_detail_recall`) | footer | the recall flow, through `useRecallTargetStore` →~RECALL-27 |
@@ -190,38 +183,22 @@
   - the read's states stay distinct: loading (`star_provenance_loading`), retrying (`star_provenance_retrying`), error with retry (`star_provenance_error`), success
   - an error never renders as an empty history; `star_provenance_empty` appears only on a successful empty payload, a fallback since the creation entry is always there
   - the view is the list and a back control; it re-renders no star shape
-- RECALL-27 [o] 회고하기 opens the recall flow for one episodic memory over the running canvas, never remounting the renderer: consent if needed, then the cost quote, then the faded text and the rewrite, then one `Recall` →!RECALL-9
-  - opened through the one-slot `useRecallTargetStore`: the panel records the memory id, the flow opens on it and clears it on close
-  - the cost gate fronts the spend: the server quote (`QuoteSpend`) shows before the rewrite, which reveals only on proceed; the client never prices →~FORGET-4
-  - the cost display itself →=TWINK
-  - the prompt is the memory's decay-eroded current text (`currentDecaySpans`); the original `Diary` is never shown →!RECALL-1
-  - the rewrite is session-only (the recall draft store): no draft persistence, no per-keystroke call; confirm sends it whole, once
-  - the flow calls no clock or sync itself
-  - copy: `recall_flow_title`, `recall_rewrite_prompt` (an invitation to write the day again as remembered, not an edit form), `recall_rewrite_label`, `recall_rewrite_placeholder`, `recall_confirm`, `recall_reconsolidating`
-- RECALL-28 [o] the flow's control state is `recallFlowMachine` (`packages/universe`) with empty context; the target id, the rewrite and the result live in Zustand stores →=ARCH
-  | state | meaning | exits |
-  | ----------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
-  | `idle` | closed | `OPEN{needsSync}` → `confirmingSync` when true, else `rewriting` |
-  | `confirmingSync` | the sync-consent modal →=TIME-18 | `ACCEPT` → `rewriting`; `REJECT` or `CLOSE` → `idle`, clock unmoved |
-  | `rewriting` | cost gate, then faded text and rewrite | `RECALL` → `reconsolidating`; `CLOSE` → `idle` |
-  | `reconsolidating` | the one `Recall` in flight | `DONE` → `result`; `ERROR` → `rewriting`; `CONSENT_REQUIRED` → `confirmingSync` |
-  | `result` | the outcome | `CLOSE` or `RESET` → `idle` |
-  - `SESSION_INVALIDATED` returns any active phase to `idle` when the target or session changes
-  - `reconsolidating` takes no `CLOSE`: an in-flight recall cannot be dismissed →!RECALL-29
-  - the cost gate is a widget-local step inside `rewriting` (a shown → proceeded flag), not a machine phase
-  - `OPEN` waits for the `SyncStatus` read, so the consent branch is decided from the server clock
-  - the user-scope reset clears the target and draft stores →=CLIENT
-- RECALL-29 [o] a paid flow mints one operation id per intent and reuses it only to recover an ambiguous failure →!RECALL-13
-  | failure (by Connect code) | meaning | next attempt |
-  | ------------------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------------- |
-  | ResourceExhausted, FailedPrecondition, InvalidArgument, NotFound, AlreadyExists, Unauthenticated | known refusal, nothing committed | fresh id, fresh quote |
-  | any other code or a non-Connect error | ambiguous, may have committed | same id; the server replays the receipt |
-  - `createPaidActionSession` (`packages/universe`) serves the recall flow, the gist view and the whole-diary recall alike
-  - `start` is synchronous, so a second tap cannot send twice; a completion applies only while its attempt is active
-  - retarget, sign-out (target cleared) and unmount invalidate the session, so a late completion mutates nothing
-  - while the paid call is in flight the surface is non-dismissible: Escape, backdrop, close and re-submit are inert
-  - ambiguous recall failure: keep the id and the passed cost gate, back to `rewriting` with the rewrite intact, so re-confirm replays without re-quoting a now-lower balance
-  - known refusal: re-arm the cost gate and re-quote; a shortfall opens the earn guide →=TWINK; a missing-consent refusal re-opens consent →!RECALL-9
+- RECALL-27 [o] 회고하기 opens over the running canvas: sync consent if needed, then the forgotten passage with editable lost runs, then one free `Recall` →!RECALL-9
+  - the target and session-only blank answers live in the target/draft stores; closing or changing the target clears them
+  - the displayed spans are captured for the editing session; a background refresh never moves blanks under a draft
+  - legible text cannot be edited; blank answers assemble the complete narrative for the existing comparison contract
+  - no quote, balance requirement or earn-guide branch belongs to free recall
+  - the same host may present the distinct paid restoration intent, with its own title, quote, explanation and confirmation, and no rewrite inputs →!RECALL-34
+- RECALL-28 [o] `recallFlowMachine` owns the flow phase, intent identity and consent; text, blank answers and results live in the draft store →=ARCH
+  - free intent: idle → consent when needed → rewriting → reconsolidating → result
+  - restoration intent: idle → consent when needed → quoting → confirmation → reconsolidating → result
+  - in-flight actions cannot be dismissed or submitted twice; target change, scope reset and unmount fence stale completions
+  - `SyncStatus` decides consent; both apps share the same machine and controller
+- RECALL-29 [o] mutating memory actions keep an operation id per intent and reuse it only to recover an ambiguous failure →!RECALL-13
+  - the receipt contract applies to free recall as well as paid restoration and gist viewing
+  - ambiguous failure keeps the submitted input and id; known refusal mints a fresh id
+  - free recall returns to its inputs without quoting or opening an earn guide; restoration re-quotes after a known refusal
+  - consent refusal reopens consent; scope changes and unmount fence late completions
 - RECALL-30 [o] the client never decides the branch: the result reflects the server's `reconsolidated` flag, and the distortion is never announced →!RECALL-6
   - reconsolidated: `recall_result_reconsolidated` (the memory now stays as written) above the new current text
   - reinforced: `recall_result_reinforced`, saying plainly the memory is vivid again and unchanged
@@ -246,9 +223,16 @@
   - as built each member's reinforce counts the other members as neighbours, so siblings sharing semantic neurons nudge each other within one recall
   - the offset survives the members' own recalls →~FORGET-5, so siblings sharing two or more semantic neurons leave the recall reading older than wholly recalled
 
+- RECALL-34 [o] `RestoreMemoryText` (원문 되살리기) restores access to one memory's stored `current_text` without asking the diarist to rewrite it
+  - distinct from reading the immutable `Diary` in the archive and from undoing a deletion; it does not roll a reconstructed narrative back to the diary's creation text
+  - quote → consent if needed → transactional spend and reinforcement → the unchanged complete stored text; no prediction-error provider, reconsolidation, seed change or provenance rewrite
+  - request `{memory_id, operation_id, sync_consent}`; response uses the recall result shape with `reconsolidated = false`
+  - the spend and all effects commit together; missing, foreign, deleted or unaffordable targets apply nothing; retries replay a distinct `restore_memory_text` receipt
+  - the star detail menu offers this action separately from the free recall footer; both platforms use the shared controller
+
 ## flow
-- recall flow: 회고하기 → `SyncStatus.needs_sync`(false | true: consent(reject: cancel | accept)) → cost quote(cancel | proceed) → rewrite → `Recall` → result → acceleration
-- `Recall`: lock → receipt replay(match: stored response) → sync → load → spend → compare → reinforce → (differs: reconsolidate) → achievement counters → receipt
+- recall flow: 회고하기 → `SyncStatus.needs_sync`(false | true: consent(reject: cancel | accept)) → fill lost runs → `Recall` → result → acceleration
+- `Recall`: lock → receipt replay(match: stored response) → sync → load → compare → reinforce → (differs: reconsolidate) → achievement counters → receipt
 - gist view: gist body → gist quote(cancel | proceed) → `ViewSemantic`(lock → receipt replay → rung(none: refused) → spend → text) → read-only text
 
 ## constraints
@@ -257,6 +241,7 @@
 - the demo never mounts `RecallFlowSheet` and never calls `Recall`, `ViewSemantic` or `GetProvenance`; its recall runs locally over fixtures →=DEMO
 
 ## chg
+- r3 261103 RECALL-1✎ RECALL-11✎ RECALL-12✎ RECALL-27✎ RECALL-28✎ RECALL-29✎ RECALL-34+ paid reconstruction and diary jump→free reconstruction/navigation with separate paid stored-text restoration
 
 - r2 261102 RECALL-11✎ provider inside graph transaction→read-only preparation, unlocked comparison and source-revalidated atomic commit; RECALL-12✎ spend-only port→read-only affordability plus commit; RECALL-14✎ add changed-source refusal
 - r1 261102 initial

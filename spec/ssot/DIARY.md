@@ -1,5 +1,5 @@
 # DIARY diary archive
-> r1 | the free, time-frozen archive of the immutable `Diary`: reading, split view, search, filters and calendar, the one paid whole-diary recall, the provenance read and the CSV/MD export
+> r2 | the free, time-frozen archive of the immutable `Diary`: reading, split view, search, filters and calendar, the free diary-star navigation, the provenance read and the CSV/MD export
 
 ## decisions
 - DIARY-1 [o] selecting a star opens its detail: metadata only, free, with no clock advance and no reinforcement; an episodic star's detail leads to recall, to its provenance history and to its original diary
@@ -16,14 +16,11 @@
   - it holds only the caller's own diaries; every read is user-scoped →=ACCT-1
   - one archive, two shapes: the list (default) →~DIARY-7 and the month calendar →~DIARY-12
   - the reader never mutates a diary →!DIARY-4, and nothing on it spends except the whole-diary recall →!DIARY-11
-- DIARY-3 [o] an opened diary shows which episodic memories it split into and offers one paid action, the whole-diary recall `RecallDiaryStars` (`diary_reader_recall_action`): every still-live memory born from that diary is recalled at once, and none is rewritten
-  - split view: one chip per still-live memory, its name with a dot in its mood colour (`moodColor`) →~ENC-2
-  - cost: the sum of the per-memory recall costs, each priced by that memory's decay depth →=TWINK-4
-  - each memory takes the recall-effects bundle: brightness, decay stage and gist timer recover, strength rises, neighbours shift →=RECALL →~FORGET-5
-  - never a reconsolidation: no `current_text` change, no `seed` change, no provenance row; rewriting happens per star only →!INV-8
-  - the clock syncs to today inside the recall's own transaction, only with the user's consent, through the shared consent modal →=TIME-15/16/18
-  - a diary with no still-live memory has nothing to recall: the action is disabled and the server refuses
-  - server contract →!DIARY-21; client flow →!DIARY-22
+- DIARY-3 [o] an opened diary shows its still-live split memories and offers a free way to see those stars in the universe
+  - one chip per member, its name and mood colour; a diary with no live member disables the jump
+  - the jump uses the member ids already read with the diary: no quote, spend, recall, reinforcement or clock sync
+  - the first member is selected and framed; previous/next controls traverse the same diary's live members in order, show the position, and are disabled at the ends
+  - switching members changes selection, camera target and spotlight together, with no additional charge or mutation
 - DIARY-4 [o] the original `Diary` is immutable and read verbatim: no system path, recall or reconsolidation rewrites it, and the reader never edits, deletes or re-splits one ← the star is a lossy, rewritten trace and the diary the objective record; that contrast is the product's emotional core
   - the invariant →=INV-2; recall leaves the diary untouched →~RECALL-7
   - the one exception is the user's own full delete: the diary leaves the archive at release and the sweep hard-deletes it after the restore window →=DEL-1/2
@@ -152,25 +149,14 @@
   - changing any condition starts a fresh keyset page, scrolls to the top and closes the opened entry
   - web: conditions live in the URL (`q`, `moods`, `from`, `to`, `sort`, `memories`), validated or dropped by `parseDiarySearch`, written with `replace` through an update function, so a shared link reproduces the archive and Back leaves it; mobile keeps the same shape in screen state
   - conditions are data, not control state: no XState machine; `useDiaryConditions` holds only uncommitted drafts →~DIARY-23
-- DIARY-21 [o] `RecallDiaryStars(diary_id, operation_id, sync_consent)` is one transaction that commits wholly or not at all: lock, receipt replay, consented sync, live-memory load, every spend, every reinforce, receipt →!DIARY-3
-  - order: per-user lock → receipt replay → sync to today (consent gate) → load the diary's still-live memories → spend each → reinforce each → achievement counters → receipt →~TIME-15
-  - zero still-live memories for the caller (released, never launched, or another user's diary) ⇒ `MEMORY_RECALL_NO_LIVE_MEMORIES` (NotFound) before any spend or receipt; the sync rolls back with it →~ACCT-1
-  - every member is priced from one pre-recall snapshot at the post-sync clock, before any reinforce, so the charge equals the quote →=TWINK-4
-  - each member spends under its own dedup key (operation id + member id); one denial (`MEMORY_INSUFFICIENT_TWINKLE`, ResourceExhausted) aborts all →=TWINK
-  - a retry of a committed `operation_id` with the same `diary_id` replays the stored response before the consent gate; the same id with another input ⇒ `MEMORY_OPERATION_CONFLICT`; the receipt mechanism →=RECALL
-  - request: `diary_id` and `operation_id`, both required (`MEMORY_RECALL_INPUT_REQUIRED`, `MEMORY_OPERATION_ID_REQUIRED`), plus `sync_consent`; response `{diary_id, episodic_memory_ids, previous_universe_time, universe_time}`; affected ids, price and interval are server-derived
-  - not `NO_SIDE_EFFECTS`; never calls the prediction-error compare or `Reconsolidate`
-  - each member counts as one recall for achievements →=ACH
-- DIARY-22 [o] the jump asks before it spends: quote, consent when the clock is behind, one recall, then arrival in the universe; leaving at any step before the recall moves no clock and spends nothing →!DIARY-21
-  - the quote is fetched once, in the jump dialog (`QuoteSpend(kind=SPEND_KIND_DIARY_RECALL, diary_id)`), with cost, coverage and shortfall; no card shows a price and the client computes none →=TWINK
-  - the action is disabled when the diary has no still-live memory
-  - proceeding reads `SyncStatus.needs_sync` fresh; true ⇒ the shared consent modal, reject ⇒ cancel →=TIME-18
-  - while recalling (`diary_reader_jumping`) the way back, dialog close and cancel are inert, and only the active attempt's result applies
-  - one operation id per attempt (`createPaidActionSession`): an ambiguous failure re-issues once with the same id, then returns to the quote keeping it; a known refusal re-quotes under a fresh id →=ERR
-  - a missing-consent refusal reopens the consent modal; once consent was given, no other refusal loops back to it →~TIME-16
-  - insufficient Twinkle ⇒ the earn guide →=TWINK
-  - success: the acceleration plays over the returned interval →=TIME-19; the reader navigates to the universe, parks the first recalled memory for the camera (`pending-fly-target-store`) and names every recalled memory in `spotlight-store`, ids only →=VIS
-  - recovered brightness, decay and gist timer surface on the next `GetUniverse` read, never from client math; balance, achievements and `SyncStatus` are invalidated
+- DIARY-21 [o] the compatibility `RecallDiaryStars` RPC reinforces a diary's live memories without a rewrite and without an economy check or debit
+  - it retains user scoping, sync consent, atomic writes and idempotent receipts
+  - the archive's see-stars navigation does not call this mutation →!DIARY-3
+- DIARY-22 [o] the archive's see-stars action navigates directly from the existing live split membership
+  - it records the ordered ids for the universe, requests a camera flight to the first, and exits the reader; it makes no mutation or quote RPC
+  - previous/next selection stays in `universeNavigationMachine`; the member collection is account-scoped data and clears on sign-out and a new jump
+  - missing or deleted members are skipped; selecting outside the collection or closing ends its navigation controls
+  - member navigation never re-runs a paid restoration or a recall
 - DIARY-23 [o] the jump's control state is one XState machine, `diaryReaderMachine` (`packages/universe`), with empty context; browsing, conditions, the calendar and the quote are data →=ARCH
   | state | meaning | exits |
   |---|---|---|
@@ -229,4 +215,5 @@
 - the demo has no archive route and calls no archive RPC; its read-only opened-entry twin belongs to the demo →=DEMO
 
 ## chg
+- r2 261103 DIARY-3✎ DIARY-21✎ DIARY-22✎ paid reconstruction and diary jump→free reconstruction/navigation with separate paid stored-text restoration
 - r1 261102 initial

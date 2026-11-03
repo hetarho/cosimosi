@@ -1,6 +1,6 @@
 # MEM memory aggregate & persistence
 
-> r4 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
+> r5 | the memory aggregate's persistent shape: tables, aggregate boundaries, database-enforced invariants, and the isolation, locking and retention rules of the `internal/memory` context
 
 ## decisions
 - MEM-1 [o] `internal/memory` is the core context that owns the memory aggregate: its tables, its queries under `db/queries/memory/` and its only persistence adapter `internal/memory/pg` →=ARCH
@@ -129,7 +129,7 @@
   - index `memory_provenance_timeline (user_id, episodic_memory_id, universe_time, created_at)` backs the ordered read
   - deleted only with its memory (`ON DELETE CASCADE` in the retention sweep) or by the withdrawal purge →!MEM-11
 - MEM-20 [o] `memory_paid_action_receipts` holds one immutable receipt per `(user_id, operation_id)`, committed in the same transaction as the paid action's debit and effects →=RECALL
-  - `action_kind` is `recall`, `diary_recall` or `view_semantic`; `request_fingerprint` is the canonical input hash; `response` is the original typed response, replayed verbatim
+  - `action_kind` is `recall`, `diary_recall`, `view_semantic` or `restore_memory_text`; `request_fingerprint` is the canonical input hash; `response` is the original typed response, replayed verbatim
   - exactly one retained target (CHECK): an `episodic_memory_id` (recall, gist view) or a `diary_id` (whole-diary recall)
   - the target foreign keys cascade: a receipt lives exactly as long as its target, with no retention timer of its own
 - MEM-21 [o] `universe_revisions` holds one counter per user that advances in every graph-mutating transaction, so a client can tell whether its universe snapshot is current without reading it →!MEM-14
@@ -143,6 +143,7 @@
 - `universe_state` is the clock's table →=TIME; its `consolidated_through` watermark →=CONSOL
 
 ## chg
+- r5 261103 MEM-20✎ three receipt kinds→also `restore_memory_text`; free recall keeps idempotency
 
 - r4 261103 MEM-9✎ index `embeddings_vector_hnsw` serves the dedup read→no approximate index, exact per-user scan
 - r3 261103 MEM-13✎ purge scope "`universe_state` row"→"`universe_state` and `universe_revisions` rows" ; MEM-14✎ lock statement "lock only"→"lock and advance the universe revision" ; MEM-21+ per-user universe revision
