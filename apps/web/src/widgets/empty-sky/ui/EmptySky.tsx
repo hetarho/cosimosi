@@ -15,6 +15,7 @@ import { UNIVERSE_ARRIVAL_CAMERA_POSITION, generateLatentField } from '@cosimosi
 import { LatentStarField } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 
+import { useDocumentVisible } from '../../../shared/lib/document-visibility.ts'
 import { EMPTY_SKY_MOODS, EMPTY_SKY_RATE, EMPTY_SKY_WEIGHTS } from '../config/illustration.ts'
 
 // The committed raster of this same sky. It is an address, not a tuning value.
@@ -33,6 +34,9 @@ const POSTER = '/landing-hero.png'
 function EmptySkyCanvas() {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
+  // A ground stays mounted for the page's whole life, so a hidden tab parks its loop rather than
+  // leaving the device to idle at full rate.
+  const documentVisible = useDocumentVisible()
 
   const stops = useMemo<readonly GradientStop[]>(
     () =>
@@ -65,6 +69,7 @@ function EmptySkyCanvas() {
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
       cameraPosition={UNIVERSE_ARRIVAL_CAMERA_POSITION}
+      active={documentVisible}
     >
       <SkySphere stops={stops} reducedMotion={reducedMotion} rateRef={rateRef} />
       <LatentStarField field={field} reducedMotion={reducedMotion} />

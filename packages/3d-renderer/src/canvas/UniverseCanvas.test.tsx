@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -15,9 +15,11 @@ vi.mock('@react-three/fiber', async () => {
     extend: () => undefined,
     Canvas: ({
       gl,
+      frameloop,
     }: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       gl: (props: Record<string, unknown>) => any
+      frameloop: string
     }) => {
       const renderer = useRef<unknown>(null)
       if (!renderer.current) {
@@ -26,7 +28,7 @@ vi.mock('@react-three/fiber', async () => {
       }
       // Scene children are deliberately dropped: R3F renders them through its own reconciler into
       // the three scene graph, never into the DOM.
-      return <div data-testid="r3f-canvas" />
+      return <div data-testid="r3f-canvas" data-frameloop={frameloop} />
     },
   }
 })
@@ -121,5 +123,59 @@ describe('UniverseCanvas (web) device lifecycle', () => {
     view.unmount()
     vi.runAllTimers()
     expect(disposeSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('UniverseCanvas (web) active input', () => {
+  beforeEach(() => {
+    cleanup()
+    disposeSpy.mockClear()
+    glFactoryCalls.count = 0
+  })
+
+  // The host defers its dispose one macrotask; let it land before the next case clears the spy.
+  afterEach(async () => {
+    cleanup()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  const frameloop = (view: ReturnType<typeof render>) =>
+    view.getByTestId('r3f-canvas').getAttribute('data-frameloop')
+
+  it('renders nothing before init, then runs while active', async () => {
+    const view = render(
+      <UniverseCanvas>
+        <group />
+      </UniverseCanvas>,
+    )
+    expect(frameloop(view)).toBe('never')
+    await act(async () => {})
+    expect(frameloop(view)).toBe('always')
+  })
+
+  it('parks the loop while inactive and resumes on the same device', async () => {
+    const view = render(
+      <UniverseCanvas active={false}>
+        <group />
+      </UniverseCanvas>,
+    )
+    await act(async () => {})
+    expect(frameloop(view)).toBe('never')
+
+    view.rerender(
+      <UniverseCanvas active>
+        <group />
+      </UniverseCanvas>,
+    )
+    expect(frameloop(view)).toBe('always')
+
+    view.rerender(
+      <UniverseCanvas active={false}>
+        <group />
+      </UniverseCanvas>,
+    )
+    expect(frameloop(view)).toBe('never')
+    expect(glFactoryCalls.count).toBe(1)
+    expect(disposeSpy).not.toHaveBeenCalled()
   })
 })

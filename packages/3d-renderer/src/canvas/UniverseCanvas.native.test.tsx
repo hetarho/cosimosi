@@ -296,6 +296,25 @@ describe('UniverseCanvas (native) device lifecycle', () => {
     expect(spies.setFrameloop).toHaveBeenLastCalledWith('never')
   })
 
+  it('parks the loop while inactive and resumes on the same device', async () => {
+    const view = render(<UniverseCanvas active={false}>{SCENE_A}</UniverseCanvas>)
+    await vi.waitFor(() => expect(spies.renderers).toHaveLength(1))
+    await completeR3FBringUp()
+    // An inactive host brought up in the foreground still starts parked.
+    expect(spies.setFrameloop).toHaveBeenLastCalledWith('never')
+
+    view.rerender(<UniverseCanvas active>{SCENE_A}</UniverseCanvas>)
+    expect(spies.setFrameloop).toHaveBeenLastCalledWith('always')
+
+    // Foregrounding never overrides the host's own choice.
+    view.rerender(<UniverseCanvas active={false}>{SCENE_A}</UniverseCanvas>)
+    emitAppState('background')
+    emitAppState('active')
+    expect(spies.setFrameloop).toHaveBeenLastCalledWith('never')
+    expect(spies.createRoot).toHaveBeenCalledTimes(1)
+    expect(spies.dispose).not.toHaveBeenCalled()
+  })
+
   it('leaves no app-state listener behind on unmount', async () => {
     const view = render(<UniverseCanvas>{SCENE_A}</UniverseCanvas>)
     await vi.waitFor(() => expect(spies.appState.listeners.size).toBe(1))

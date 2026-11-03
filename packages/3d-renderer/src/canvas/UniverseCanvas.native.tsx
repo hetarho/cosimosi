@@ -44,9 +44,10 @@ function resolvePixelRatio(dpr: number | [number, number]): number {
  *
  * `currentState` reads `null` before RN has resolved it (Android cold start). That is a not-yet,
  * not a background: pausing on it would leave a cold-started app blank until the first change event.
+ * The host's own `active` input parks the loop on top of that.
  */
-function frameloopFor(status: AppStateStatus | null): 'always' | 'never' {
-  return status === null || status === 'active' ? 'always' : 'never'
+function frameloopFor(status: AppStateStatus | null, active: boolean): 'always' | 'never' {
+  return active && (status === null || status === 'active') ? 'always' : 'never'
 }
 
 /** The live values the device effect must not re-key on — see the effect split below. */
@@ -90,6 +91,7 @@ export function UniverseCanvas({
   forceWebGL = false,
   toneMapping = VALUES.rendering.toneMapping,
   exposure = VALUES.rendering.toneMappingExposure,
+  active = true,
 }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)
@@ -97,6 +99,9 @@ export function UniverseCanvas({
   const canvasRef = useRef<CanvasRef>(null)
   const renderer = useRef<THREE.WebGPURenderer | null>(null)
   const r3fState = useRef<RootState | null>(null)
+  // Read by `onCreated` and the AppState subscription, which outlive the render that set it.
+  const activeRef = useRef(active)
+  activeRef.current = active
 
   const live = useRef<LiveConfig>({
     dpr,
@@ -217,9 +222,9 @@ export function UniverseCanvas({
         if (cancelled) return
         r3fState.current = state
         applyLiveConfig.current()
-        // A device brought up while the app is already backgrounded must not start rendering; the
-        // subscription below only sees CHANGES, so the initial state is read here.
-        state.setFrameloop(frameloopFor(AppState.currentState))
+        // A device brought up while the app is already backgrounded (or the host inactive) must not
+        // start rendering; the subscription below only sees CHANGES, so the initial state is read here.
+        state.setFrameloop(frameloopFor(AppState.currentState, activeRef.current))
       },
     })
 
@@ -256,10 +261,15 @@ export function UniverseCanvas({
   // mid-session (a backend switch) is picked up through the ref rather than by re-subscribing.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
-      r3fState.current?.setFrameloop(frameloopFor(status))
+      r3fState.current?.setFrameloop(frameloopFor(status, activeRef.current))
     })
     return () => subscription.remove()
   }, [])
+
+  // The same imperative path for the host's own visibility: no device effect, no re-subscription.
+  useEffect(() => {
+    r3fState.current?.setFrameloop(frameloopFor(AppState.currentState, active))
+  }, [active])
 
   if (initError) throw initError
   return <Canvas ref={canvasRef} style={styles.fill} />

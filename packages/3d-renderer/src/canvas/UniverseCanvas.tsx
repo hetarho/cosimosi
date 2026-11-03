@@ -64,6 +64,12 @@ export interface UniverseCanvasProps {
   readonly toneMapping?: ToneMappingKey
   /** Exposure multiplier applied before the curve; defaults to `rendering.tone_mapping_exposure`. */
   readonly exposure?: number
+  /**
+   * Whether the render loop runs. `false` parks it at frameloop `never` — no frames, no GPU work —
+   * while the device, the scene graph and the sim stay alive, so resuming is the next frame rather
+   * than a rebuild. A host passes its own visibility here (offscreen, hidden document).
+   */
+  readonly active?: boolean
 }
 
 /**
@@ -72,8 +78,8 @@ export interface UniverseCanvasProps {
  *
  * Init follows the standard R3F + WebGPU pattern (Anderson Mancini's r3f-webgpu starter): the
  * WebGPURenderer initializes asynchronously, so the canvas must render NOTHING until init
- * completes. We start with `frameloop="never"` and flip to `"always"` only inside
- * `renderer.init().then(...)`. Rendering before init leaves the renderer unsized and its render
+ * completes. We start with `frameloop="never"` and allow `"always"` only once
+ * `renderer.init().then(...)` has resolved, and then only while `active`. Rendering before init leaves the renderer unsized and its render
  * targets created at the default 300×150, which never matches the real swapchain — every frame
  * then throws a WebGPU validation error ("resolve target size … does not match … attachments")
  * and the canvas goes black. `onCreated` applies the measured size up front, and antialiasing is
@@ -90,10 +96,12 @@ export function UniverseCanvas({
   transparent = false,
   toneMapping = VALUES.rendering.toneMapping,
   exposure = VALUES.rendering.toneMappingExposure,
+  active = true,
 }: UniverseCanvasProps) {
   const [initError, setInitError] = useState<unknown>(null)
-  const active = useRef(true)
-  const [frameloop, setFrameloop] = useState<'never' | 'always'>('never')
+  const mounted = useRef(true)
+  const [ready, setReady] = useState(false)
+  const frameloop = ready && active ? 'always' : 'never'
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null)
   const releaseRenderer = useRef<(() => void) | null>(null)
   const pendingDispose = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,7 +114,7 @@ export function UniverseCanvas({
     if (!renderer) return
     renderer.toneMapping = resolveToneMapping(toneMapping)
     renderer.toneMappingExposure = exposure
-  }, [toneMapping, exposure, frameloop])
+  }, [toneMapping, exposure, ready])
 
   // Releasing the device is ours to do: R3F's unmount path (`unmountComponentAtNode`) only reaches
   // for `renderLists?.dispose()` and `forceContextLoss?.()`, both WebGL-shaped and both absent from
@@ -117,13 +125,13 @@ export function UniverseCanvas({
   // the `gl` factory whenever a renderer already exists. Disposing inline would therefore hand the
   // dev build a disposed device on remount. A real unmount has no remount to cancel the timer.
   useEffect(() => {
-    active.current = true
+    mounted.current = true
     if (pendingDispose.current !== null) {
       clearTimeout(pendingDispose.current)
       pendingDispose.current = null
     }
     return () => {
-      active.current = false
+      mounted.current = false
       pendingDispose.current = setTimeout(() => {
         pendingDispose.current = null
         const renderer = rendererRef.current
@@ -165,17 +173,17 @@ export function UniverseCanvas({
           .then(() => renderer.init())
           .then(() => {
             if (!lifetime.finish()) return
-            if (!active.current || rendererRef.current !== renderer) {
+            if (!mounted.current || rendererRef.current !== renderer) {
               lifetime.release()
               if (rendererRef.current === renderer) rendererRef.current = null
               return
             }
-            setFrameloop('always')
+            setReady(true)
           })
           .catch((error: unknown) => {
             lifetime.release()
             lifetime.finish()
-            if (active.current && rendererRef.current === renderer) setInitError(error)
+            if (mounted.current && rendererRef.current === renderer) setInitError(error)
           })
         return renderer
       }}

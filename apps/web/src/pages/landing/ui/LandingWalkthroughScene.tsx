@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -24,6 +24,8 @@ import { starChannels } from '@cosimosi/universe/scene'
 import { tokens, useReducedMotion } from '@cosimosi/ui'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
+
+import { useDocumentVisible } from '../../../shared/lib/document-visibility.ts'
 
 // Where each star stands, by launch order — a staged group portrait, not a simulation. The camera is
 // the production rig (fixed at z=90), so nearness is the slot's z; a handful of stars has no
@@ -58,14 +60,16 @@ export interface LandingWalkthroughSceneProps {
   readonly skyStops: readonly EmotionSlice[]
 }
 
-function WalkthroughCanvas({ memories, universeTime, skyStops }: LandingWalkthroughSceneProps) {
+// Mounted only without reduced motion (see `LandingWalkthroughScene`), so the body always animates.
+function WalkthroughCanvas({
+  memories,
+  universeTime,
+  skyStops,
+  active,
+}: LandingWalkthroughSceneProps & { readonly active: boolean }) {
   const { skin } = useSkin()
-  const reducedMotion = useReducedMotion()
 
-  const source = useMemo(
-    () => createStarShapeBodySource(DEFAULT_STAR_SHAPE, { animate: !reducedMotion }),
-    [reducedMotion],
-  )
+  const source = useMemo(() => createStarShapeBodySource(DEFAULT_STAR_SHAPE, { animate: true }), [])
   const positions = useMemo<CoordinateBufferRef>(
     () => ({
       current: Float32Array.from(
@@ -105,8 +109,9 @@ function WalkthroughCanvas({ memories, universeTime, skyStops }: LandingWalkthro
       dpr={[1, VALUES.rendering.maxPixelRatio]}
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
+      active={active}
     >
-      <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
+      <SkySphere stops={skyStops} effect={skin.sky.effect} />
       {/* Keyed by count: the steps grow the cast 3 → 7, and remounting on that change is simpler
           and safer than trusting an instanced buffer to resize in place. */}
       <InstancedNodeLayer
@@ -179,19 +184,54 @@ function WalkthroughSceneFallback() {
   return null
 }
 
+/**
+ * Whether the stage box is on screen, and whether it ever has been. Without an observer (a test DOM,
+ * an old engine) the box counts as on screen, so the scene degrades to always-on, never to absent.
+ */
+function useStageInView(element: RefObject<HTMLDivElement | null>) {
+  const [view, setView] = useState({ inView: false, seen: false })
+  const observable = typeof IntersectionObserver !== 'undefined'
+
+  useEffect(() => {
+    const target = element.current
+    if (!target || !observable) return
+    const observer = new IntersectionObserver((entries) => {
+      const inView = entries.some((entry) => entry.isIntersecting)
+      setView((previous) => ({ inView, seen: previous.seen || inView }))
+    })
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [element, observable])
+
+  return observable ? view : ALWAYS_IN_VIEW
+}
+
+const ALWAYS_IN_VIEW = { inView: true, seen: true } as const
+
+// The poster is the stage until the visitor first reaches it; the canvas mounts over it then and
+// stays mounted, so scrolling past and back resumes the same device instead of rebuilding it. The
+// loop runs only while the stage is on screen in a visible document. Reduced motion keeps the poster
+// alone: the scene's whole difference from it is motion.
 export function LandingWalkthroughScene(props: LandingWalkthroughSceneProps) {
+  const stage = useRef<HTMLDivElement | null>(null)
+  const reducedMotion = useReducedMotion()
+  const documentVisible = useDocumentVisible()
+  const { inView, seen } = useStageInView(stage)
+
   return (
-    <div className="relative size-full">
+    <div ref={stage} className="relative size-full">
       <div className="absolute inset-0">
         <WalkthroughPoster {...props} />
       </div>
-      <div className="absolute inset-0">
-        <ObservedErrorBoundary fallback={WalkthroughSceneFallback}>
-          <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-            <WalkthroughCanvas {...props} />
-          </SkinProvider>
-        </ObservedErrorBoundary>
-      </div>
+      {reducedMotion || !seen ? null : (
+        <div className="absolute inset-0">
+          <ObservedErrorBoundary fallback={WalkthroughSceneFallback}>
+            <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
+              <WalkthroughCanvas {...props} active={inView && documentVisible} />
+            </SkinProvider>
+          </ObservedErrorBoundary>
+        </div>
+      )}
     </div>
   )
 }
