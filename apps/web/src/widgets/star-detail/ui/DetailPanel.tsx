@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
-import { Button, Dialog, IconButton, Menu, StarActionsIcon } from '@cosimosi/ui'
+import { Button, Dialog, IconButton, Menu, StarActionsIcon, cx } from '@cosimosi/ui'
 import { useWornOrnaments } from '@cosimosi/store/react'
 import {
   currentDecaySpans,
@@ -13,6 +13,7 @@ import {
   type StarDetailPhase,
 } from '@cosimosi/universe'
 import { parseGistNodeId, type universeNavigationMachine } from '@cosimosi/universe/scene'
+import { StarPreviewActivity } from '@cosimosi/universe-render'
 
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
@@ -122,8 +123,10 @@ export function DetailPanel({
         title: selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron(),
         body: (
           <>
-            {phase === 'meta' && (
-              <div className="flex flex-col gap-5">
+            {/* Hidden, not unmounted, behind the provenance view: the star preview keeps its
+                renderer for the panel's whole life and only parks while another phase is shown. */}
+            <div className={cx('flex flex-col gap-5', phase !== 'meta' && 'hidden')}>
+              <StarPreviewActivity active={phase === 'meta'}>
                 <StarMeta
                   selection={selection}
                   universeTime={universeTime}
@@ -174,22 +177,22 @@ export function DetailPanel({
                     ) : undefined
                   }
                 />
-                {selection.kind === 'episodic' && (
-                  <>
-                    <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
-                    <div className="flex justify-end border-t border-border pt-5">
-                      <Button
-                        color="primary"
-                        size="md"
-                        onClick={() => onRecallRequested(selection.memory.id)}
-                      >
-                        {m.star_detail_recall()}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+              </StarPreviewActivity>
+              {selection.kind === 'episodic' && (
+                <>
+                  <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
+                  <div className="flex justify-end border-t border-border pt-5">
+                    <Button
+                      color="primary"
+                      size="md"
+                      onClick={() => onRecallRequested(selection.memory.id)}
+                    >
+                      {m.star_detail_recall()}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
 
             {phase === 'provenance' && (
               <div className="flex flex-col gap-4">

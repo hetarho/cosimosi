@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -45,6 +45,23 @@ export interface StarPreviewProps {
   readonly reducedMotion?: boolean
 }
 
+const PreviewActive = createContext(true)
+
+/**
+ * Parks every star preview beneath it while `active` is false. A panel that hides its preview
+ * behind another view keeps it mounted under this, so returning costs a frame rather than a second
+ * WebGPU device — and the component between the panel and the preview stays as it was.
+ */
+export function StarPreviewActivity({
+  active,
+  children,
+}: {
+  readonly active: boolean
+  readonly children: ReactNode
+}) {
+  return <PreviewActive.Provider value={active}>{children}</PreviewActive.Provider>
+}
+
 /**
  * One episodic memory's star, rendered on its own — the same body, channels and light the universe
  * gives it, in a frame small enough to sit inside a panel.
@@ -59,9 +76,10 @@ export interface StarPreviewProps {
  * clip it, so it reads as a window onto the sky rather than a rectangle cut out of the surface.
  */
 export function StarPreview(props: StarPreviewProps) {
+  const active = useContext(PreviewActive)
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <PreviewScene {...props} />
+      <PreviewScene {...props} active={active} />
     </SkinProvider>
   )
 }
@@ -74,7 +92,8 @@ function PreviewScene({
   universeTime,
   shape = DEFAULT_STAR_SHAPE,
   reducedMotion = false,
-}: StarPreviewProps) {
+  active,
+}: StarPreviewProps & { readonly active: boolean }) {
   const { skin } = useSkin()
   const source = useMemo(
     () => createStarShapeBodySource(shape, { animate: !reducedMotion }),
@@ -102,6 +121,7 @@ function PreviewScene({
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
       dpr={[1, VALUES.rendering.maxPixelRatio]}
+      active={active}
     >
       <SpinGroup periodSeconds={SPIN_SECONDS} paused={reducedMotion}>
         <InstancedNodeLayer

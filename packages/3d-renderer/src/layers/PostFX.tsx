@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'
 import { pass, vec4 } from 'three/tsl'
@@ -15,6 +15,10 @@ export interface BloomParams {
 // the WebGPU path and degrades on WebGL2. Takes the render loop with a positive-priority
 // useFrame (R3F's default render yields to it). The canvas host initializes the renderer
 // up-front, so the pipeline drives the synchronous render() each frame.
+//
+// The scene pass and the bloom node own render targets, so they are built once per renderer,
+// scene, camera and output mode, and released with the pipeline: a new skin's bloom tuning moves
+// the bloom node's uniforms instead of allocating a second set of targets.
 export function PostFX({
   bloom: params,
   transparent = false,
@@ -26,10 +30,11 @@ export function PostFX({
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
 
-  const pipeline = useMemo(() => {
+  const chain = useMemo(() => {
     const composer = new RenderPipeline(renderer)
     const scenePass = pass(scene, camera)
-    const bloomPass = bloom(scenePass, params.strength, params.radius, params.threshold)
+    // Tuned below, before the first frame renders through it.
+    const bloomPass = bloom(scenePass)
     // Opaque host (default): add bloom over the scene as-is (alpha comes out saturated → the
     // canvas is opaque). Transparent host: the scene pass is cleared to zero alpha (the canvas
     // sets `setClearColor(…, 0)`), so keep that coverage as the OUTPUT alpha and add bloom only
@@ -39,11 +44,24 @@ export function PostFX({
     composer.outputNode = transparent
       ? vec4(scenePass.rgb.add(bloomPass.rgb), scenePass.a)
       : scenePass.add(bloomPass)
-    return composer
-  }, [renderer, scene, camera, params, transparent])
+    return { composer, scenePass, bloomPass }
+  }, [renderer, scene, camera, transparent])
 
-  useEffect(() => () => pipeline.dispose(), [pipeline])
-  useFrame(() => pipeline.render(), 1)
+  useLayoutEffect(() => {
+    chain.bloomPass.strength.value = params.strength
+    chain.bloomPass.radius.value = params.radius
+    chain.bloomPass.threshold.value = params.threshold
+  }, [chain, params.strength, params.radius, params.threshold])
+
+  useEffect(
+    () => () => {
+      chain.composer.dispose()
+      chain.bloomPass.dispose()
+      chain.scenePass.dispose()
+    },
+    [chain],
+  )
+  useFrame(() => chain.composer.render(), 1)
 
   return null
 }

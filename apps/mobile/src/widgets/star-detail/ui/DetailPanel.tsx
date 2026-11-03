@@ -25,6 +25,7 @@ import {
   type StarDetailPhase,
 } from '@cosimosi/universe'
 import { parseGistNodeId, type universeNavigationMachine } from '@cosimosi/universe/scene'
+import { StarPreviewActivity } from '@cosimosi/universe-render'
 
 import { useMachine, useSelector } from '@cosimosi/state-machine/react'
 import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
@@ -129,8 +130,10 @@ export function DetailPanel({
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
-        {phase === 'meta' && (
-          <>
+        {/* Hidden, not unmounted, behind the provenance view: the star preview keeps its renderer
+            for the panel's whole life and only parks while another phase is shown. */}
+        <View style={phase === 'meta' ? styles.body : styles.parked}>
+          <StarPreviewActivity active={phase === 'meta'}>
             <StarMeta
               selection={selection}
               universeTime={universeTime}
@@ -175,22 +178,22 @@ export function DetailPanel({
                 ) : undefined
               }
             />
-            {selection.kind === 'episodic' && (
-              <>
-                <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
-                <View style={styles.actions}>
-                  <Button
-                    color="primary"
-                    size="md"
-                    onPress={() => onRecallRequested(selection.memory.id)}
-                  >
-                    {m.star_detail_recall()}
-                  </Button>
-                </View>
-              </>
-            )}
-          </>
-        )}
+          </StarPreviewActivity>
+          {selection.kind === 'episodic' && (
+            <>
+              <CurrentMemoryText spans={currentDecaySpans(selection.memory, universeTime)} />
+              <View style={styles.actions}>
+                <Button
+                  color="primary"
+                  size="md"
+                  onPress={() => onRecallRequested(selection.memory.id)}
+                >
+                  {m.star_detail_recall()}
+                </Button>
+              </View>
+            </>
+          )}
+        </View>
 
         {phase === 'provenance' && (
           <>
@@ -299,6 +302,7 @@ const styles = StyleSheet.create({
   },
   title: { flex: 1, color: tokens.color.text, fontSize: tokens.fontSize.lg, fontWeight: '500' },
   body: { gap: tokens.spacing[5] },
+  parked: { display: 'none' },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

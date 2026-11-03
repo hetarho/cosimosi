@@ -21,7 +21,7 @@
 
 ## inbox
 - 261103 parked T215 T222: Docker Desktop is not reachable from this WSL session, so DB-backed Go integration tests, `pnpm check:api` (it provisions Postgres through compose) and the Docker `pnpm gen` path cannot run here — start Docker Desktop with WSL integration, then run `pnpm check:api` and `pnpm check:gen` at the batch gate
-- 261103 parked T214: the headless CDP check at the landing hero (walkthrough canvas absent before intersection, rAF stops while hidden) needs a Chromium that runs here — `sudo apt install libnss3 libnspr4 libasound2t64` for the cached Playwright build, then `node` + CDP against `vite preview`
+- 261103 parked T214 T218: the headless CDP checks (landing hero: walkthrough canvas absent before intersection, rAF stops while hidden; T218: web renderer memory across 20 rebuilds) needs a Chromium that runs here — `sudo apt install libnss3 libnspr4 libasound2t64` for the cached Playwright build, then `node` + CDP against `vite preview`
 - 261103 decided ADMIN-19 ERR-12 T222: ADMIN-19 asked for a typed reason when an LLM model save is refused, but ERR-12 registered none → ERR r3/ADMIN r3: empty model `ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse), outside the intersection, an empty one included, `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy), listing or auth failure the existing `ADMIN_MODEL_LISTING_UNAVAILABLE` (alt: one reason for every refusal | InvalidArgument for a non-curated model) ← whether a model is curated depends on the live catalog, not on the argument alone, and only that refusal makes the console refetch
 - 261103 decided T222: how to rewrite the legacy OpenRouter task in the current format → one task in three ordered phases (hermetic adapter, evidence gate, cutover) that blocks after phase 1 while keys, an operator or a reviewer are missing (alt: split the adapter and the cutover into two tasks) ← the user asked for a single T222, and the gate order keeps the direct adapters until an approval exists
 - 261103 decided UI-30 T210: F29 deletes the unused background seam that UI-30 still defined → UI-30 [x] (r2) and the seam, `useBackground` and their exports removed (alt: keep the seam as reserved API | give it a consumer) ← no surface reads it, and ARCH-27 forbids entries publishing what nothing imports
@@ -96,18 +96,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T218 | GPU resources are reused and released explicitly | ARCH | T208 T217 | todo |
 | T219 | Demo surfaces are one machine state | ARCH DEMO | T212 | todo |
 | T220 | Same-named slices share an API, and mobile gets the Twinkle panel | ARCH TWINK | T208 | todo |
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T218 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
+- implement-task T219 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T218 done
 - 261103 T217 done
 - 261103 T216 done
 - 261103 T215 done
@@ -127,4 +127,3 @@
 - 261103 T204 done
 - 261103 T203 done
 - 261103 T202 done
-- 261103 T201 done

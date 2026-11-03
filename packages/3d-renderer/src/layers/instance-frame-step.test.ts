@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu'
 import { describe, expect, it, vi } from 'vitest'
 
-import { uploadInstanceAttribute } from './instance-attributes.ts'
+import { instanceAttributeCapacity, uploadInstanceAttribute } from './instance-attributes.ts'
 import type { ComposeInstancesInput, InstancePositionMapper } from './instance-compose.ts'
 import {
   createInstanceFrameKey,
@@ -109,6 +109,43 @@ describe('uploadInstanceAttribute', () => {
     )
     expect(geometry.getAttribute('tint')).toBe(attribute)
     expect(attribute.version).toBe(version + 1)
-    expect(Array.from(attribute.array)).toEqual(Array.from(brighter))
+    expect(Array.from(attribute.array.slice(0, 3))).toEqual(Array.from(brighter))
+  })
+
+  it('sizes to the next power of two and reuses the buffer for a count change within it', () => {
+    const geometry = new THREE.BufferGeometry()
+    uploadInstanceAttribute(geometry, { name: 'tint', array: new Float32Array(5 * 3), itemSize: 3 })
+    const attribute = geometry.getAttribute('tint') as THREE.InstancedBufferAttribute
+    expect(attribute.count).toBe(8)
+
+    // One more memory, then one fewer: still inside the capacity, so the GPU buffer stays.
+    const grown = new Float32Array(6 * 3).fill(0.5)
+    expect(uploadInstanceAttribute(geometry, { name: 'tint', array: grown, itemSize: 3 })).toBe(
+      false,
+    )
+    expect(geometry.getAttribute('tint')).toBe(attribute)
+    expect(Array.from(attribute.array.slice(0, 18))).toEqual(Array.from(grown))
+    uploadInstanceAttribute(geometry, { name: 'tint', array: new Float32Array(4 * 3), itemSize: 3 })
+    expect(geometry.getAttribute('tint')).toBe(attribute)
+
+    // Outgrowing it replaces the attribute and releases the old buffer.
+    const dispose = vi.spyOn(attribute, 'dispose')
+    expect(
+      uploadInstanceAttribute(geometry, {
+        name: 'tint',
+        array: new Float32Array(9 * 3),
+        itemSize: 3,
+      }),
+    ).toBe(true)
+    expect(dispose).toHaveBeenCalledTimes(1)
+    expect((geometry.getAttribute('tint') as THREE.InstancedBufferAttribute).count).toBe(16)
+  })
+})
+
+describe('instanceAttributeCapacity', () => {
+  it('rounds a count up to a power of two', () => {
+    expect([0, 1, 2, 3, 4, 5, 8, 9].map(instanceAttributeCapacity)).toEqual([
+      1, 1, 2, 4, 4, 8, 8, 16,
+    ])
   })
 })
