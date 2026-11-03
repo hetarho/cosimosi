@@ -1,9 +1,14 @@
 import { useEffect, useMemo } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
+import {
+  createGetUniverseQueryOptions,
+  readUniverseRevision,
+  type GetUniverseResponse,
+} from '@cosimosi/api-client'
+import { clientCacheTimings, subscribeRevisionGatedRefocus } from '@cosimosi/client-cache'
 import { createUniverseMapper, type UniverseSnapshot } from '@cosimosi/memory'
 
 import { useDeletionTargetStore } from '../deletion-target-store.ts'
@@ -25,10 +30,24 @@ export interface UniverseReadState {
 // A fetch failure (401/500/network) throws to the widget's error boundary via throwOnError
 // so it surfaces a retry instead of an indistinguishable empty universe; the stores are
 // cleared when there is no universe so a prior user's data can't linger after sign-out.
+// A refocus reads the revision alone and refetches only when it moved (CLIENT-39).
 export function useUniverse(): UniverseReadState {
   const transport = useTransport()
+  const queryClient = useQueryClient()
   const queryOptions = useMemo(() => createGetUniverseQueryOptions(transport), [transport])
   const query = useQuery({ ...queryOptions, throwOnError: true })
+  useEffect(
+    () =>
+      subscribeRevisionGatedRefocus<GetUniverseResponse>({
+        queryClient,
+        queryKey: queryOptions.queryKey,
+        // The universe read sets no stale time of its own, so it is fresh for the client default.
+        staleTime: clientCacheTimings.defaultStaleMs,
+        revisionOf: (data) => data.universeRevision,
+        readRevision: () => readUniverseRevision(transport),
+      }),
+    [queryClient, queryOptions.queryKey, transport],
+  )
   const mapUniverse = useMemo(() => createUniverseMapper(), [])
   const serverUniverse = useMemo(
     () => (query.data ? mapUniverse(query.data) : null),

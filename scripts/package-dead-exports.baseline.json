@@ -39,7 +39,6 @@
   "@cosimosi/client-cache": [
     "accountRpcCachePolicies",
     "assertClientCacheData",
-    "clientCacheTimings",
     "createClientCacheDefaultOptions",
     "createClientCacheRpcPolicyInterceptor",
     "createRpcCachePolicyInterceptor",

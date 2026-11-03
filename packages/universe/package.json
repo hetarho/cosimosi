@@ -23,6 +23,7 @@
     "@cosimosi/account": "workspace:*",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
+    "@cosimosi/client-cache": "workspace:*",
     "@cosimosi/color": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
@@ -44,7 +45,6 @@
   },
   "devDependencies": {
     "@connectrpc/connect-query": "^2.2.0",
-    "@cosimosi/client-cache": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.13.2",

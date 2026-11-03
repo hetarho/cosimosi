@@ -1104,6 +1104,9 @@ importers:
       '@cosimosi/auth':
         specifier: workspace:*
         version: link:../auth
+      '@cosimosi/client-cache':
+        specifier: workspace:*
+        version: link:../client-cache
       '@cosimosi/color':
         specifier: workspace:*
         version: link:../color
@@ -1147,9 +1150,6 @@ importers:
       '@connectrpc/connect-query':
         specifier: ^2.2.0
         version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.101.4(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@cosimosi/client-cache':
-        specifier: workspace:*
-        version: link:../client-cache
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.7)

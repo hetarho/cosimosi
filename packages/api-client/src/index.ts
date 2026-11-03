@@ -24,6 +24,7 @@ export {
   createMemoryServiceQueryKey,
   createSyncStatusQueryKey,
   createSyncStatusQueryOptions,
+  readUniverseRevision,
   type DiaryDayDto,
   type DiaryDto,
   DiarySort,

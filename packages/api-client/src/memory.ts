@@ -106,6 +106,9 @@ export function createGetUniverseQueryKey(transport?: Transport) {
 export function createGetUniverseQueryOptions(transport: Transport) {
   return {
     ...createQueryOptions(MemoryService.method.getUniverse, {}, { transport }),
+    // A refocus asks `GetUniverseRevision` first and refetches only when it moved (CLIENT-39): the
+    // snapshot grows with the account, the revision read does not.
+    refetchOnWindowFocus: false,
     // The whole scene invalidates off this response's identity — the domain mapping, the projected
     // graph, the sim worker, the sky material, every instance buffer. protobuf-es allocates a fresh
     // `Message` per response, so without this the cheapest event in the system (a refocus refetch
@@ -121,6 +124,12 @@ export function createGetUniverseQueryOptions(transport: Transport) {
         ? previous
         : next,
   }
+}
+
+// The universe's freshness counter alone (MEM-21): 0 until the first graph write.
+export async function readUniverseRevision(transport: Transport): Promise<bigint> {
+  const response = await createMemoryClient(transport).getUniverseRevision({})
+  return response.universeRevision
 }
 
 // The server-authoritative sync-status read ([R1a]): the client drives the sync-consent decision

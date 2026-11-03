@@ -30,6 +30,7 @@ export {
   type ResolveClientCacheQueryClientOptions,
   type ResolveClientCacheTransportOptions,
 } from './provider.ts'
+export { subscribeRevisionGatedRefocus, type RevisionGatedRefocusOptions } from './refocus.ts'
 export { assertClientCacheData } from './render-state.ts'
 export {
   createClientCacheTestContext,

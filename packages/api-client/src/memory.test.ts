@@ -79,6 +79,8 @@ describe('memory transport facade', () => {
     expect(typeof options.queryFn).toBe('function')
     expect(options.queryKey).toEqual(createGetUniverseQueryKey(transport))
     expect(createMemoryServiceQueryKey()[1].serviceName).toContain('MemoryService')
+    // A refocus goes through the revision gate instead (CLIENT-39).
+    expect(options.refetchOnWindowFocus).toBe(false)
   })
 
   it('hands back the previous GetUniverse response when a refetch changed nothing (R003)', async () => {
