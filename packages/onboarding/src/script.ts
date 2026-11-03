@@ -15,9 +15,8 @@ import type { OnboardingAnchor, OnboardingSignal } from './anchors.ts'
 // for an empty first universe AND for a replay over a full one. It is the structural form of the
 // engine's "a script carries no data payload".
 //
-// Step 8 is the deliberate stopping point. A recall costs stardust and requires consent, so the tour
-// NAMES it and stops rather than walking a first-minute user into a spend — expressed as a missing
-// union member (`anchors.ts`), never as a conditional step.
+// Step 8 names recall without opening another flow. Reconstruction is free; stored-text restoration
+// is a separate paid action. Neither action is part of the tour's signal union (`anchors.ts`).
 export const ONBOARDING_SCRIPT: SequenceScript<OnboardingAnchor, OnboardingSignal> = defineScript<
   OnboardingAnchor,
   OnboardingSignal

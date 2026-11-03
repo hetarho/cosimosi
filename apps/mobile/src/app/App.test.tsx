@@ -476,14 +476,16 @@ describe('mobile auth gate', () => {
       expect(screen.getByText(m.sequence_skip_action())).toBeTruthy()
       expect(takeSignupCompletion()).toBe(false)
 
-      // A user who presses 일기 쓰기 while the welcome step is still reading is AHEAD of the caption,
-      // not wrong. The report is held in the channel until the step that waits for it arrives; dropping
-      // it would leave step 2 waiting forever for an opening that already happened.
+      // Opening the writing flow during the welcome caption must carry through to the draft step.
+      // The host consumes the channel report and holds it until the matching step arrives.
       // Keyed on the split action rather than the sheet title, which is the same sentence as the
       // affordance that opened it.
       fireEvent.press(screen.getByText(m.universe_home_write()))
       await waitFor(() => expect(screen.getByText(m.writing_flow_split_action())).toBeTruthy())
-      expect(useOnboardingSignalStore.getState().pending?.signal).toBe('writing-flow-opened')
+      expect(useOnboardingSignalStore.getState().pending).toBeNull()
+      await waitFor(() => expect(screen.getByText(m.sequence_tour_draft_caption())).toBeTruthy(), {
+        timeout: VALUES.sequence.captionDwellMs + 2000,
+      })
     } finally {
       view.unmount()
       fakes.dispose()

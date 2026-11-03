@@ -18,8 +18,7 @@ import { useRecallDraftStore } from '@cosimosi/universe/testing'
 import { ErrorToastContext } from '@cosimosi/errors/react'
 import { RecallFlowSheet } from './RecallFlowSheet.tsx'
 
-// The cost gate's quote hook is mocked to a fixed covered quote so the flow reaches the rewrite
-// phase without a QuoteSpend round-trip — the quote branch is pinned by the SpendCostDisplay test.
+// Only stored-text restoration quotes a price; free reconstruction must never use this hook.
 jest.mock('@cosimosi/twinkle/react', () => ({
   useInvalidateTwinkleBalance: () => jest.fn(async () => undefined),
   useSpendQuote: jest.fn(),
@@ -42,6 +41,14 @@ const vividMemory: EpisodicMemory = {
   forgettingOffsetDays: 0,
   currentText: 'the whole vivid afternoon',
   semanticStage: 0,
+}
+
+const fadedMemory: EpisodicMemory = {
+  ...vividMemory,
+  baseStrength: 0,
+  createdUniverseTime: '2026-05-18',
+  currentText: 'I met Ada at Seoul today.',
+  decayStages: ['I xxxx at xxxx today.'],
 }
 
 // Every client this suite creates is cleared after each test: clearing cancels the cache's
@@ -129,6 +136,7 @@ describe('RecallFlowSheet (mobile)', () => {
   })
 
   it('renders the real faded prompt and applies the returned current text, carrying the operation id (R006/A2/A7)', async () => {
+    useEpisodicMemoryStore.getState().setAll([fadedMemory])
     let recallRequest: Record<string, unknown> | undefined
     const transport = createRouterTransport(({ service }) => {
       service(MemoryService, {
@@ -150,23 +158,22 @@ describe('RecallFlowSheet (mobile)', () => {
     useRecallTargetStore.getState().request('m1')
     const view = renderSheet(transport)
 
-    // The cost gate shows first; proceed reveals the rewrite surface.
-    await waitFor(() => expect(view.getByText(m.twinkle_cost_proceed())).toBeTruthy())
-    fireEvent.press(view.getByText(m.twinkle_cost_proceed()))
-
-    // R006: the faded prompt is the memory's real current decay text — never the unavailable copy.
-    await waitFor(() => expect(view.getByText('the whole vivid afternoon')).toBeTruthy())
+    await waitFor(() =>
+      expect(view.getByLabelText(m.recall_blank_label({ position: 1 }))).toBeTruthy(),
+    )
+    expect(view.getByText('I ')).toBeTruthy()
+    expect(view.getByText(' at ')).toBeTruthy()
+    expect(view.queryByText(m.twinkle_cost_proceed())).toBeNull()
+    expect(mockUseSpendQuote).not.toHaveBeenCalled()
+    expect(view.queryByText(fadedMemory.currentText)).toBeNull()
     expect(view.queryByText(m.star_detail_text_unavailable())).toBeNull()
 
-    fireEvent.changeText(
-      view.getByPlaceholderText(m.recall_rewrite_placeholder()),
-      'a reworded afternoon',
-    )
+    fireEvent.changeText(view.getByLabelText(m.recall_blank_label({ position: 1 })), 'met a friend')
+    fireEvent.changeText(view.getByLabelText(m.recall_blank_label({ position: 2 })), 'home')
     fireEvent.press(view.getByText(m.recall_confirm()))
 
-    // A7: the result shows the returned current text; A2: the paid call carried an operation id and
-    // the (not-needed) consent flag.
     await waitFor(() => expect(view.getByText('a reworded afternoon')).toBeTruthy())
+    expect(recallRequest?.rewriteText).toBe('I met a friend at home today.')
     expect(typeof recallRequest?.operationId).toBe('string')
     expect(recallRequest?.operationId).not.toBe('')
     expect(recallRequest?.syncConsent).toBe(false)
@@ -199,12 +206,7 @@ describe('RecallFlowSheet (mobile)', () => {
     useRecallTargetStore.getState().request('m1')
     const view = renderSheet(transport)
 
-    await waitFor(() => expect(view.getByText(m.twinkle_cost_proceed())).toBeTruthy())
-    fireEvent.press(view.getByText(m.twinkle_cost_proceed()))
-    await waitFor(() =>
-      expect(view.getByPlaceholderText(m.recall_rewrite_placeholder())).toBeTruthy(),
-    )
-    fireEvent.changeText(view.getByPlaceholderText(m.recall_rewrite_placeholder()), 'rewrite')
+    await waitFor(() => expect(view.getByText(m.recall_no_missing_words())).toBeTruthy())
     const confirm = view.getByText(m.recall_confirm())
     fireEvent.press(confirm)
     fireEvent.press(confirm)
