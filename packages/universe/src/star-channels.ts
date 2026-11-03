@@ -14,7 +14,7 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 // The pure four-channel projection of an episodic memory onto its big-star body (§3.4). Same
 // stored facts always draw the same star: size = EffectiveStrength [V3], brightness =
 // EffectiveBrightness [V2] (the read-time forgetting fade — a star unrecalled in universe-time dims
-// toward the silent-engram floor, never to 0 [F1][F2]), color = the primary emotion via the emotion
+// toward the brightness floor, never to 0 [F1][F2]), color = the primary emotion via the emotion
 // palette seam and nothing else [I3][M3], shape = the stored seed passed through as immutable input
 // [V5][A7]. No `three`, no rendering-vocab dependency — a deterministic function over domain facts.
 export interface StarChannels {
@@ -33,7 +33,7 @@ export function starChannels(memory: EpisodicMemory, universeTime: string | null
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
   // The real read-time forgetting fade: universe-days since last recall (offset-inclusive), slowed by
   // arousal and connection strength; its range already IS [star_brightness_min, max], so it maps
-  // straight to the brightness channel, floored at the silent-engram min [V2][F1][F2].
+  // straight to the brightness channel, floored at the brightness-floor min [V2][F1][F2].
   const elapsed = effectiveElapsedDays(
     universeTime,
     memory.lastRecalledUniverseTime,
@@ -51,7 +51,7 @@ export function starChannels(memory: EpisodicMemory, universeTime: string | null
 
 // EffectiveBrightness already returns [forgetting.brightness_floor, 1] with the floor aligned to
 // star_brightness_min, so it IS the render range — clamp it in place, do NOT re-lerp a [0,1]
-// fraction (that would lift the silent-engram floor off star_brightness_min). A2/[F2].
+// fraction (that would lift the brightness floor off star_brightness_min). A2/[F2].
 function starBrightness(elapsedDays: number, arousal: number, strength: number): number {
   const { rendering } = VALUES
   return clampToRange(

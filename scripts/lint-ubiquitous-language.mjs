@@ -107,6 +107,18 @@ const forbiddenSynonyms = [
     pattern: /\b(?:AMemory|MemoryEntity|MemoryModel|MemoryObject)\b/,
     message: 'use EpisodicMemory or SemanticMemory — say which layer',
   },
+  // "engram" is the inspiration register's word (UL-2): in code, identifiers AND comments, a memory
+  // is an EpisodicMemory, a component a Neuron, the dim floor the brightness floor. The register's
+  // own surfaces keep it — the landing's research cards, the blog, and the copy catalogues — where
+  // `engram` is a research-strand id that names the theory, never a memory (UL-93's row).
+  {
+    pattern: /engram/i,
+    message: 'say EpisodicMemory (a memory), Neuron (a component) or the brightness floor',
+    scope: {
+      roots: APP_AND_PACKAGE_SOURCE,
+      exclude: ['apps/web/src/pages/landing', 'apps/blog/src', 'packages/i18n/messages'],
+    },
+  },
   // The two tiers are SMALL and GENERAL by purpose, not basic/additional by provenance ([G2a]).
   {
     pattern: /\bBasicBalance\b/,
@@ -309,6 +321,8 @@ const SYNONYM_PROBE_FILES = [
   { path: 'apps/web/src/probe4.ts', text: 'export function equip() {}\n' },
   { path: 'apps/web/src/probe5.ts', text: "export const label = '장착'\n" },
   { path: 'apps/web/src/probe6.ts', text: "export const label = '보관함'\n" },
+  // In a comment, not an identifier: the synonym rules read the whole text, comments included.
+  { path: 'packages/universe/src/probe.ts', text: '// the silent engram keeps a whisper\n' },
   {
     path: 'apps/api/internal/memory/probe.go',
     text: 'package memory\n\ntype MemoryCell struct{}\n',
@@ -332,6 +346,11 @@ const SYNONYM_PROBE_ALLOWED = [
   {
     path: 'apps/api/internal/twinkle/pg/probe.go',
     text: 'package pg\n\ntype R struct{ FromBasic int }\n',
+  },
+  // The research-strand id on the landing's own cards names the theory, never a memory.
+  {
+    path: 'apps/web/src/pages/landing/config/probe.ts',
+    text: "export const strand = { id: 'engram', blogAnchor: '/blog/#engram' }\n",
   },
 ]
 

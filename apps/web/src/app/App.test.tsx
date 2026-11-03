@@ -14,7 +14,7 @@ import { setClientCacheData } from '@cosimosi/client-cache'
 import { defaultLocale, setActiveLocale } from '../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
-import { createTestHarnessFakes } from '../pages/test/index.ts'
+import { createTestHarnessFakes } from '../shared/testing/index.ts'
 import App from './App.tsx'
 import { WEB_LOCALE_RESET, WEB_USER_STATE_RESETS } from './providers/user-state-resets.ts'
 import { createAppRouter } from './routes/index.ts'

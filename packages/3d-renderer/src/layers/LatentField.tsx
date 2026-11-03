@@ -179,7 +179,7 @@ export function createLatentMaterial({ color, drift, time }: LatentMaterialOptio
   return mat
 }
 
-// Shared R3F layer: the gray latent-neuron field — the not-yet-recruited "silent engram"
+// Shared R3F layer: the gray latent-neuron field — the not-yet-recruited neurons'
 // backdrop [E7a][V7]. A single InstancedMesh whose transforms are written ONCE at init (and
 // only rewritten when the field/consumed set changes), never per frame — the field is ambient,
 // not a force-sim node, so it neither reads the coordinate buffer nor attracts real nodes [I5].

@@ -1,14 +1,7 @@
 {
   "web": {
     "entities/emotion": ["RANDOM_MOOD_COLOR_SWATCH"],
-    "features/pin-universe-view": ["UniverseViewToggleProps"],
-    "pages/test": [
-      "CreateTestHarnessFakesOptions",
-      "PHASE_ONE_TEST_CAPABILITIES",
-      "TestHarnessFakes",
-      "createTestHarnessFakes",
-      "platformTestPanels"
-    ]
+    "features/pin-universe-view": ["UniverseViewToggleProps"]
   },
   "mobile": {}
 }

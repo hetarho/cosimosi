@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import {
   AICapability,
-  createAdminClient,
   createGetAIConfigQueryOptions,
   createListProviderKeysQueryOptions,
   createListProviderModelsQueryOptions,
@@ -15,6 +14,11 @@ import { Badge, Button, Select, TextField } from '@cosimosi/ui'
 
 import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
+import {
+  useClearProviderKey,
+  useSetAIConfig,
+  useSetProviderKey,
+} from '../api/ai-config-mutations.ts'
 // Provider API keys are managed once per provider (not per capability). Each capability then selects
 // among the keyed providers. The key input is WRITE-ONLY — only "set/unset" + a masked hint shows.
 export function ProviderKeysSection() {
@@ -47,21 +51,17 @@ export function ProviderKeysSection() {
 }
 
 function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChanged: () => void }) {
-  const transport = useTransport()
-  const client = useMemo(() => createAdminClient(transport), [transport])
   const showError = useErrorToast()
   const [apiKey, setApiKey] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const run = (action: () => Promise<unknown>) => {
-    setBusy(true)
-    action()
-      .then(() => {
-        setApiKey('')
-        onChanged()
-      })
-      .catch(showError)
-      .finally(() => setBusy(false))
+  const setKey = useSetProviderKey()
+  const clearKey = useClearProviderKey()
+  const busy = setKey.isPending || clearKey.isPending
+  const settled = {
+    onSuccess: () => {
+      setApiKey('')
+      onChanged()
+    },
+    onError: showError,
   }
 
   return (
@@ -102,7 +102,7 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
           size="sm"
           loading={busy}
           disabled={apiKey.trim() === ''}
-          onClick={() => run(() => client.setProviderKey({ provider: provider.provider, apiKey }))}
+          onClick={() => setKey.mutate({ provider: provider.provider, apiKey }, settled)}
         >
           {m.admin_ai_save()}
         </Button>
@@ -115,7 +115,7 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
             // Reset: if a key is stored, remove it (encrypted row deleted); otherwise just clear the
             // untyped input. Either way the row returns to "no key".
             if (provider.keySet) {
-              run(() => client.clearProviderKey({ provider: provider.provider }))
+              clearKey.mutate({ provider: provider.provider }, settled)
             } else {
               setApiKey('')
             }
@@ -185,12 +185,11 @@ function CapabilityRow({
   onChanged: () => void
 }) {
   const transport = useTransport()
-  const client = useMemo(() => createAdminClient(transport), [transport])
   const showError = useErrorToast()
   const [provider, setProvider] = useState(selection?.provider ?? '')
   const [model, setModel] = useState(selection?.model ?? '')
   const [customEntry, setCustomEntry] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const setConfig = useSetAIConfig()
   const [saved, setSaved] = useState(false)
 
   // The vendor's live model list for the selected provider — advisory input help only. A failed
@@ -290,19 +289,20 @@ function CapabilityRow({
             <Button
               color="primary"
               size="sm"
-              loading={busy}
+              loading={setConfig.isPending}
               disabled={provider === ''}
               onClick={() => {
-                setBusy(true)
                 setSaved(false)
-                client
-                  .setAIConfig({ capability, provider, model })
-                  .then(() => {
-                    setSaved(true)
-                    onChanged()
-                  })
-                  .catch(showError)
-                  .finally(() => setBusy(false))
+                setConfig.mutate(
+                  { capability, provider, model },
+                  {
+                    onSuccess: () => {
+                      setSaved(true)
+                      onChanged()
+                    },
+                    onError: showError,
+                  },
+                )
               }}
             >
               {m.admin_ai_save()}

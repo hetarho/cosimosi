@@ -110,7 +110,7 @@ export const deletionFlowMachine = setup({
     sealing: {
       on: { DONE: 'done', ERROR: { target: 'approving', actions: 'setError' } },
     },
-    // The star vanished (delete) or persists as a silent engram (let-go); the sheet closes.
+    // The star vanished (delete) or persists as a content-less trace at the brightness floor (let-go); the sheet closes.
     done: {
       on: { RESET: { target: 'idle', actions: 'clearTarget' } },
     },

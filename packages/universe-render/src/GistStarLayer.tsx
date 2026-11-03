@@ -28,7 +28,7 @@ export interface GistStarLayerProps {
    *  ONE choice for the whole layer rather than one per memory ([V5]). Unknown keys resolve to the
    *  shipped body, so a retired shape never blanks the neocortex. */
   readonly shape?: string
-  /** Engram id → sim node slot (the node index's episodic map) — the x, y source per frame. */
+  /** EpisodicMemory id → sim node slot (the node index's episodic map) — the x, y source per frame. */
   readonly memoryIndexById: Readonly<Record<string, number>>
   /** A gist pick: read-only, routes to the ViewSemantic surface ([R8]) — never 회고하기. It names
    *  the memory alone; the server decides which rung that read reaches and what it costs. */

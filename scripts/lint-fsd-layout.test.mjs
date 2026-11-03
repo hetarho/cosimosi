@@ -252,6 +252,26 @@ test('rejects normalized-equivalent modules whose exported identifier was rename
   assert.ok(problems.some((problem) => problem.includes('normalized-equivalent pure module')))
 })
 
+test('leaves two re-export-only barrels alone while still comparing what they export', () => {
+  const root = fixture()
+  put(root, 'apps/web/src/shared/testing/index.ts', "export { createWebFakes } from './fakes.ts'\n")
+  put(
+    root,
+    'apps/mobile/src/shared/testing/index.ts',
+    "export { createMobileFakes } from './fakes.ts'\n",
+  )
+  assert.deepEqual(findFsdLayoutProblems(root), [])
+
+  const implementation = 'export function createFakes() { return { id: 1 } }\n'
+  put(root, 'apps/web/src/shared/testing/fakes.ts', implementation)
+  put(root, 'apps/mobile/src/shared/testing/fakes.ts', implementation)
+  assert.ok(
+    findFsdLayoutProblems(root).some((problem) =>
+      problem.includes('shared/testing/fakes.ts — byte-identical'),
+    ),
+  )
+})
+
 test('rejects a slice index that re-exports a package symbol, on both platforms', () => {
   const root = fixture()
   for (const app of ['web', 'mobile']) {

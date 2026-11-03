@@ -38,7 +38,10 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-import { buildEngramDemoScene, type EngramDemoScene } from '../lib/engram-demo-scene.ts'
+import {
+  buildEpisodicMemoryDemoScene,
+  type EpisodicMemoryDemoScene,
+} from '../lib/episodic-memory-demo-scene.ts'
 
 /**
  * The live universe with real product chrome floating over it.
@@ -200,7 +203,7 @@ function setWeight(
 }
 
 function UniversePanel() {
-  const scene = useMemo(() => buildEngramDemoScene(), [])
+  const scene = useMemo(() => buildEpisodicMemoryDemoScene(), [])
   const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() =>
     initialWeights(scene.memories),
   )
@@ -239,7 +242,7 @@ function UniversePanel() {
           behind a transparent canvas: 3D universe (z-0) · glass chrome (z-10). */}
       <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-border bg-bg">
         <div className="absolute inset-0 z-0">
-          <EngramUniverseCanvas scene={scene} effect={effect.key} emotions={emotions} />
+          <EpisodicMemoryUniverseCanvas scene={scene} effect={effect.key} emotions={emotions} />
         </div>
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
@@ -448,18 +451,18 @@ function BackgroundSwitcher({
   )
 }
 
-// A self-contained slice of the product universe for design work: it loads a fixed set of engram
-// cells (8 episodic memories anchored to a handful of neurons) into the shared read-model stores
+// A self-contained slice of the product universe for design work: it loads a fixed set of episodic
+// memories (8 of them, anchored to a handful of neurons) into the shared read-model stores
 // and renders the real render layers over a static coordinate buffer — no force-sim, no backend.
 // So the memory stars, cell-star neurons, synapse filaments, and emotion nebula all draw from
 // genuine domain facts. The emotion sky is a real body enclosing the scene (the BackSide sphere),
 // shaded by the chosen recipe off the universe's palette. The skin still tunes camera + bloom.
-function EngramUniverseCanvas({
+function EpisodicMemoryUniverseCanvas({
   scene,
   effect,
   emotions,
 }: {
-  scene: EngramDemoScene
+  scene: EpisodicMemoryDemoScene
   effect: SkyEffectKey
   emotions: readonly EmotionSlice[]
 }) {

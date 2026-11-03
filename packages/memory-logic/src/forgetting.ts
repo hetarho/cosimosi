@@ -122,7 +122,7 @@ export function decayDepth(
 
 // accessibilityCostWeight turns a memory's normalized forgetting depth into an accessibility/cost
 // weight ([F4]), mirroring the Go implementation for golden-parity: a monotone convex ease from
-// costWeightFloor (depth 0 — cheapest, never free [G1]) to costWeightCap (depth 1 — silent engram,
+// costWeightFloor (depth 0 — cheapest, never free [G1]) to costWeightCap (depth 1 — the brightness floor,
 // expensive but bounded, never unreachable [I1][F2]). It emits a weight, not a Twinkle price (the
 // pricing layer prices it; the client uses this only to preview the recall cost). Curve shape + clamp
 // are code.

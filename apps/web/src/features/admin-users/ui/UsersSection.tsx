@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import {
-  createAdminClient,
   createListTwinkleGrantsQueryOptions,
   createListUsersQueryOptions,
   type AdminUser,
@@ -14,15 +13,16 @@ import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { useErrorToast } from '@cosimosi/errors/react'
 import { m } from '../../../shared/i18n/index.ts'
+import { useAdminUserAction, type AdminUserAction } from '../api/user-mutations.ts'
 // The user list (metadata only, [I2]): search + paginate accounts, grant stardust (별가루 증정), and
 // promote/revoke admins inline; the grant history below is the accountability record. No memory
 // content is ever shown — only identity, balance, and non-content counts.
 export function UsersSection() {
   const transport = useTransport()
-  const client = useMemo(() => createAdminClient(transport), [transport])
   const [search, setSearch] = useState({ page: 0, query: '' })
   const [queryDraft, setQueryDraft] = useState('')
-  const [pending, setPending] = useState(false)
+  const userAction = useAdminUserAction()
+  const pending = userAction.isPending
   const searchCommitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const searchSettling = queryDraft !== search.query
 
@@ -51,9 +51,9 @@ export function UsersSection() {
   }
 
   const showError = useErrorToast()
-  const runAction = (action: () => Promise<unknown>): Promise<boolean> => {
-    setPending(true)
-    return action()
+  const runAction = (action: AdminUserAction): Promise<boolean> =>
+    userAction
+      .mutateAsync(action)
       .then(() => {
         refresh()
         return true
@@ -62,8 +62,6 @@ export function UsersSection() {
         showError(error)
         return false
       })
-      .finally(() => setPending(false))
-  }
 
   // A failed list read must not render as "no users" — same rule as the jobs/usage boards.
   if (usersQuery.isError) {
@@ -88,7 +86,6 @@ export function UsersSection() {
               user={user}
               disabled={pending || searchSettling}
               onAction={runAction}
-              client={client}
             />
           ))}
         </div>
@@ -140,12 +137,10 @@ function UserRow({
   user,
   disabled,
   onAction,
-  client,
 }: {
   user: AdminUser
   disabled: boolean
-  onAction: (action: () => Promise<unknown>) => Promise<boolean>
-  client: ReturnType<typeof createAdminClient>
+  onAction: (action: AdminUserAction) => Promise<boolean>
 }) {
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
@@ -169,9 +164,13 @@ function UserRow({
     // One id per submit: transport-level retries of this call dedup server-side (the id is the
     // grant's idempotency key). A second click is deliberately a new grant, not a retry.
     const grantId = crypto.randomUUID()
-    const succeeded = await onAction(() =>
-      client.grantStardust({ userId: user.userId, amount: BigInt(value), note, grantId }),
-    )
+    const succeeded = await onAction({
+      kind: 'grant-stardust',
+      userId: user.userId,
+      amount: BigInt(value),
+      note,
+      grantId,
+    })
     if (!succeeded) return
     setAmount('')
     setNote('')
@@ -233,7 +232,7 @@ function UserRow({
             color="danger"
             size="sm"
             disabled={disabled}
-            onClick={() => void onAction(() => client.revokeAdmin({ userId: user.userId }))}
+            onClick={() => void onAction({ kind: 'revoke-admin', userId: user.userId })}
           >
             {m.admin_users_revoke()}
           </Button>
@@ -243,7 +242,7 @@ function UserRow({
             color="neutral"
             size="sm"
             disabled={disabled}
-            onClick={() => void onAction(() => client.grantAdmin({ userId: user.userId }))}
+            onClick={() => void onAction({ kind: 'grant-admin', userId: user.userId })}
           >
             {m.admin_users_promote()}
           </Button>

@@ -44,7 +44,7 @@ type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 // widgets/star-detail (RN fork, [D1]): the read-only bottom sheet that opens over the running
 // canvas when a node is selected — no renderer remount (A1), no three/visual entity (§3.4). Reads
 // the selected id from the canvas navigation machine (the single selection owner, §3.2) and owns
-// only its own view phase. Composes the three read features + the three hand-off buttons; it
+// only its own view phase. Composes the entity readings + the hand-off actions; it
 // performs no recall, spend, or navigation itself (A5/A6/A8). Shares model/api with web verbatim.
 export function DetailPanel({
   navigationActorRef,

@@ -1,7 +1,7 @@
 // Slice-local visual grammar (NOT tuning — tuning scalars live in generated @cosimosi/config).
 // The latent field's look is content, the way the cell-star color and skin palettes are code.
 
-/** Dim, cool gray — the "not-yet-lit" engram: no emotion, no identity, barely there [E7a][V7]. */
+/** Dim, cool gray — the "not-yet-lit" latent neuron: no emotion, no identity, barely there [E7a][V7]. */
 export const LATENT_STAR_COLOR = '#6b768f'
 
 /** How far a mote may wander from its place, in world units. Sized to be SEEN: a mote crossing this

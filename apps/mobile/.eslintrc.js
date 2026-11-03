@@ -13,7 +13,7 @@ const sameSliceRules = slicedLayers.map((layer) => ({
   allow: { to: { type: layer, captured: { slice: '{{ from.captured.slice }}' } } },
 }))
 
-// The ONLY sanctioned same-layer cross-import (§3.1): an entity reaches another entity via its
+// The ONLY sanctioned same-layer cross-import (ARCH-21): an entity reaches another entity via its
 // `@x` public API. `entities-x` is the `@x` folder as its own element (owner slice captured),
 // so a rendering entity may import any `entities/*/@x/*` while the mirror's own internals stay
 // private, and the `@x` file itself may reach only its owner slice's modules.
@@ -60,8 +60,7 @@ module.exports = {
   extends: '@react-native',
   plugins: ['boundaries'],
   // The probe-fixture patterns keep gate runs hermetic: a live `.probe-ws-*` workspace under the
-  // app root, or a crashed probe's leftovers, must never fail an unrelated scan (quality-gates
-  // §Probe hermeticity).
+  // app root, or a crashed probe's leftovers, must never fail an unrelated scan (ARCH-43).
   ignorePatterns: ['**/.probe-*/**', '**/__boundary_probe_*/**'],
   settings: {
     'boundaries/elements': [

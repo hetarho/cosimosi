@@ -115,7 +115,7 @@ export function shortfallFor(
 // recallCost prices a 회고 (recall) from the accessibility/cost weight the forgetting math
 // computes ([F4][G4]) — CC3: decay owns "how decayed → how inaccessible", this module alone
 // owns "how inaccessible → how many Twinkle". Non-decreasing in the weight and clamped to
-// twinkle.recallMaxCost so a silent engram stays recallable within a plausible balance ([G5]).
+// twinkle.recallMaxCost so a memory at the brightness floor stays recallable within a plausible balance ([G5]).
 export function recallCost(accessibilityCost: number): number {
   const depth = Math.max(0, accessibilityCost)
   const cost = Math.round(

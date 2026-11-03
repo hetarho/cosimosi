@@ -88,6 +88,22 @@ function countStatements(source, path) {
   return statements
 }
 
+// A segment's public API that only re-exports holds no implementation to promote: two apps' barrels
+// look alike after identifier normalization because every barrel does. Its target modules are still
+// compared on their own.
+function isReExportBarrel(path) {
+  const source = readFileSync(path, 'utf8')
+  const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  return (
+    file.statements.length > 0 &&
+    file.statements.every(
+      (statement) =>
+        (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) ||
+        ts.isImportDeclaration(statement),
+    )
+  )
+}
+
 // A `ui` file is subject to R4 when it could actually be promoted: no platform marker, and more than
 // a shell's worth of code. Both halves are load-bearing — without the first the rule would demand
 // promoting a genuinely forked component, and without the second it would demand promoting a
@@ -244,7 +260,7 @@ export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
         continue
       }
       const comparable =
-        PURE_MODULE_SEGMENT.test(modulePath) ||
+        (PURE_MODULE_SEGMENT.test(modulePath) && !isReExportBarrel(webPath)) ||
         (UI_SEGMENT.test(modulePath) &&
           uiSegmentIsPureModule(webPath) &&
           uiSegmentIsPureModule(mobilePath))

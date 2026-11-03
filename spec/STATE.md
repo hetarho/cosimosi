@@ -20,6 +20,8 @@
 | ptl | DESKTOP-VKPLS8P | autopilot | 2026-11-03T00:53Z | 2026-11-03T01:06Z | - |
 
 ## inbox
+- 261103 decided T221: two apps' `shared/testing/index.ts` barrels failed `lint:fsd:layout` as normalized-equivalent pure modules once web gained the segment → the layout guard skips a `shared` module that only re-exports, its target modules still compared (alt: give web's barrel a different shape | keep the fakes under `pages/test`) ← every barrel normalizes alike, the guard already exempts barrels from its ui rule, and reshaping a file to dodge a guard is the evasion it forbids
+- 261103 decided T221: "engram" appears legitimately as the research-strand id (UL-93) → the new `lint:language` rule scans app and package source, comments included, excluding only the landing, the blog and the copy catalogues (alt: rename the strand id | forbid only identifiers) ← MKT-22 shares the id with the blog, and the task asks for comments to be scanned
 - 261103 decided T220: the shared web/mobile ui-logic ratchet rose 1061 → 1095 once the aligned names paired files it could not compare before (`UniversePage` 13, the caption constant and the earn guide 2 each) and the TWINK-32 mobile panel added its fork → baseline rewritten to the measured counts (alt: lift the overlay controller into a package first | keep the old file names) ← the growth is existing composition made visible plus a fork ARCH-28 allows; lifting the overlay controller would cross the achievement and universe packages
 - 261103 decided ARCH-28 T220: the slice API parity guard enforces a rule ARCH did not state → ARCH r4: same-named slices export the same names from `index.ts`, platform-only additions listed in `scripts/slice-api-platform-only.json` (alt: keep the rule in the test only | fold it into `lint:fsd:layout`) ← a rule later changes must obey belongs in the SSOT, and a separate guard keeps the layout lint about placement
 - 261103 parked T215 T222: Docker Desktop is not reachable from this WSL session, so DB-backed Go integration tests, `pnpm check:api` (it provisions Postgres through compose) and the Docker `pnpm gen` path cannot run here — start Docker Desktop with WSL integration, then run `pnpm check:api` and `pnpm check:gen` at the batch gate
@@ -98,15 +100,15 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T221 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
+- implement-task T222 phase 1 (hermetic OpenRouter adapter); phase 2 needs keys, an operator and a named reviewer
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T221 done
 - 261103 T220 done
 - 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
 - 261103 T219 done
@@ -126,4 +128,3 @@
 - 261103 T208 done
 - 261103 T207 done
 - 261103 T206 done
-- 261103 T205 done

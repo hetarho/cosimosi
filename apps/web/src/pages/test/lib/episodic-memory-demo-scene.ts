@@ -6,7 +6,7 @@ import type { EpisodicMemory, Neuron, NeuronActivation, Synapse } from '@cosimos
 // static coordinate buffer (the demo has no force-sim — the render layers read this buffer per
 // frame exactly like production) and are spaced to the scale the sim actually settles at under
 // `force_sim.link_distance`/`center_strength`, so design work here reads like the real universe
-// rather than a tighter cluster. Every engram-cell body draws with real domain facts:
+// rather than a tighter cluster. Every body draws with real domain facts:
 // star size/brightness from strength, tint from mood, filaments over neuron↔neuron synapses.
 // Deterministic: same scene every mount, so design work compares like-for-like.
 
@@ -151,7 +151,7 @@ const UNIVERSE_TIME = '2026-01-28'
 const TAU = Math.PI * 2
 const MEMORY_RING_RADIUS = 16
 
-export interface EngramDemoScene {
+export interface EpisodicMemoryDemoScene {
   readonly neurons: readonly Neuron[]
   readonly memories: readonly EpisodicMemory[]
   readonly synapses: readonly Synapse[]
@@ -164,7 +164,7 @@ export interface EngramDemoScene {
   readonly universeTime: string
 }
 
-export function buildEngramDemoScene(): EngramDemoScene {
+export function buildEpisodicMemoryDemoScene(): EpisodicMemoryDemoScene {
   const positionById = new Map<NeuronId, readonly [number, number, number]>(
     NEURON_SEEDS.map((neuron) => [neuron.id, neuron.position]),
   )
@@ -220,7 +220,7 @@ export function buildEngramDemoScene(): EngramDemoScene {
   const firstMemoryIndex = neurons.length
   MEMORY_SEEDS.forEach((memory, i) => {
     // Push each memory out to a visible ring, then lean it toward its neurons' centroid so the
-    // filament + nebula read coherently against the anchoring engram cells.
+    // filament + nebula read coherently against the anchoring neurons.
     const centroid = centroidOf(memory.activations, positionById)
     const angle = (i / MEMORY_SEEDS.length) * TAU + 0.4
     const ring = MEMORY_RING_RADIUS + (i % 3) * 2.5

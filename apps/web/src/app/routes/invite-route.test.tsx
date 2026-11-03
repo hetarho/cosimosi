@@ -8,7 +8,7 @@ import { pendingInvite } from '@cosimosi/account'
 import { m } from '../../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
-import { createTestHarnessFakes } from '../../pages/test/index.ts'
+import { createTestHarnessFakes } from '../../shared/testing/index.ts'
 import App from '../App.tsx'
 import { createAppRouter } from './index.ts'
 

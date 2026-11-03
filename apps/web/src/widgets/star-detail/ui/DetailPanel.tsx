@@ -34,7 +34,7 @@ interface DetailView {
 // widgets/star-detail ([D1]): the read-only surface that opens over the running canvas when a node
 // is selected — it never remounts the renderer (A1) and imports no three/visual entity (§3.4).
 // It reads the selected id from the canvas navigation machine (the single selection owner, §3.2)
-// and owns only its own view phase (starDetailMachine). It composes the three read features + every
+// and owns only its own view phase (starDetailMachine). It composes the entity readings + every
 // hand-off; it performs no recall, spend, or navigation itself (A5/A6/A8). The host is the shared
 // `Dialog`, which is a centred modal on a wide screen and a bottom sheet on a narrow one.
 //

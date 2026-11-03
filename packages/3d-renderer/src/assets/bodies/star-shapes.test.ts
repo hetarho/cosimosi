@@ -115,7 +115,7 @@ describe('star shape catalogue', () => {
 
 // The one thing forgetting is allowed to take besides light is MOVEMENT (see `starLife`). The curve
 // itself only resolves on a GPU, so what is guarded here is the contract around it: a star at the
-// silent-engram floor keeps a whisper of movement rather than freezing into a prop, and it never
+// brightness floor keeps a whisper of movement rather than freezing into a prop, and it never
 // moves more than a memory just returned to.
 describe('forgetting and movement', () => {
   it('leaves a forgotten star quiet but not frozen', () => {

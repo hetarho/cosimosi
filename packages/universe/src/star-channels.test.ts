@@ -57,7 +57,7 @@ describe('starChannels', () => {
     const ancient = starChannels(memory(), '2035-01-01').brightness
     expect(aged).toBeLessThan(fresh)
     expect(aged).toBeGreaterThanOrEqual(rendering.starBrightnessMin)
-    // The silent engram: a fully-decayed star bottoms at the render floor (approached asymptotically),
+    // The brightness floor: a fully-decayed star bottoms at the render floor (approached asymptotically),
     // never 0 / never removed.
     expect(ancient).toBeCloseTo(rendering.starBrightnessMin, 5)
     expect(ancient).toBeGreaterThan(0)

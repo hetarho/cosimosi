@@ -34,12 +34,12 @@ const SURFACE_CONTRAST = 0.35
 // not product tuning in values.yaml.
 export const STAR_EMISSIVE_GAIN = 0.95
 
-/** The movement a star at the silent-engram floor keeps — quiet, but not frozen. */
+/** The movement a star at the brightness floor keeps — quiet, but not frozen. */
 export const LIFE_FLOOR = 0.16
 
 /**
  * How much life a star still has, from its brightness channel — 1 for a memory just returned to,
- * falling to `LIFE_FLOOR` for one at the silent-engram floor.
+ * falling to `LIFE_FLOOR` for one at the brightness floor.
  *
  * This is the one thing forgetting is allowed to take besides light. Size belongs to strength and
  * hue and chroma belong to the emotion, so a fading star cannot shrink and cannot pale — but its
@@ -108,7 +108,7 @@ function createStarMaterial(animate: boolean): THREE.MeshBasicNodeMaterial {
 
   // Color is emotion only [I3]: the per-instance tint, given a subtle seed-keyed surface shimmer for
   // texture, then scaled by the brightness channel — the read-time forgetting fade, floored at the
-  // silent-engram minimum [V2][F2].
+  // brightness-floor minimum [V2][F2].
   const shimmer = fbm(field.mul(2)).mul(0.5).add(0.5).mul(SURFACE_CONTRAST)
   material.colorNode = tint
     .mul(float(1).add(shimmer))
