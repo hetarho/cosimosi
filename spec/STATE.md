@@ -27,11 +27,12 @@
 - 261103 decided MEM-9 T196: the explore's measurement showed the global HNSW index unused by the per-user dedup read and costly on writes → dropped it (migration 00031) and amended MEM-9 to an exact per-user scan (alt: keep the index | SET LOCAL hnsw.iterative_scan) ← recall stays 100% and latency unchanged, which the exit criterion requires; T198 moves to 00032
 - 261103 decided T203 T207: R4 refuses a byte-identical `pages/me/model/tabs.ts` in both apps, so the `/me` tab list gets ONE owner instead → `ME_TABS` in `packages/auth` (moves to `packages/account` with T207), both pages import it (alt: keep identical copies | differ the files to evade R4) ← one tab list is the point of the finding, and R4 forbids the copy
 - 261103 parked T198: both stacks' production `.env` need `DATABASE_URL=…?default_query_exec_mode=cache_describe` (session pooler 5432, DEPLOY.md §3) — an operator change on the VPS outside the repository
+- 261103 decided ARCH-28 T220: the slice API parity guard enforces a rule ARCH did not state → ARCH r4: same-named slices export the same names from `index.ts`, platform-only additions listed in `scripts/slice-api-platform-only.json` (alt: keep the rule in the test only | fold it into `lint:fsd:layout`) ← a rule later changes must obey belongs in the SSOT, and a separate guard keeps the layout lint about placement
 
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
-| ARCH | 3 | 3 | - | 0 |
+| ARCH | 4 | 4 | - | 0 |
 | PROD | 1 | 1 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
@@ -118,7 +119,6 @@
 - 261103 T206 done
 - 261103 T205 done
 - 261103 T204 done
-- 261103 T203 done
 - 261103 T202 done
 - 261103 T201 done
 - 261103 T200 done
@@ -126,3 +126,4 @@
 - 261103 T198 done
 - 261103 T197 done
 - 261103 T196 done
+- 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
