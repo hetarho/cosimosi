@@ -96,7 +96,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T217 | A settled scene does no per-frame or per-step rework | ARCH | T182 | todo |
 | T218 | GPU resources are reused and released explicitly | ARCH | T208 T217 | todo |
 | T219 | Demo surfaces are one machine state | ARCH DEMO | T212 | todo |
 | T220 | Same-named slices share an API, and mobile gets the Twinkle panel | ARCH TWINK | T208 | todo |
@@ -104,11 +103,12 @@
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T217 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
+- implement-task T218 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T217 done
 - 261103 T216 done
 - 261103 T215 done
 - 261103 T214 done
@@ -128,4 +128,3 @@
 - 261103 T203 done
 - 261103 T202 done
 - 261103 T201 done
-- 261103 T200 done

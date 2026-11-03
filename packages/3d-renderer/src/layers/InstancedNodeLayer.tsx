@@ -3,17 +3,17 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
 
 import type { VisualBodyKind, VisualBodySource } from '../asset-source.ts'
+import { uploadInstanceAttribute } from './instance-attributes.ts'
 import {
-  composeInstances,
   invalidatePickVolume,
   type ComposeInstancesInput,
   type InstancePositionMapper,
 } from './instance-compose.ts'
 import {
   createInstanceFrameKey,
-  recordInstanceFrame,
+  instanceBufferVersion,
   resetInstanceFrame,
-  sameInstanceFrame,
+  stepInstanceFrame,
 } from './instance-frame-gate.ts'
 
 export { COORDINATE_STRIDE, type InstancePositionMapper } from './instance-compose.ts'
@@ -79,6 +79,12 @@ export interface InstancedNodeLayerProps {
   /** Per-frame derived positions; when absent, instances read contiguous buffer slots. */
   readonly getInstancePosition?: InstancePositionMapper
   /**
+   * Whether the mapper is animating this frame (reading the clock, not only the buffer). Read per
+   * frame; while it reports false the layer keys on the buffer version and skips clean frames like
+   * any contiguous layer. Omitted, a mapped layer is assumed to animate and recomposes every frame.
+   */
+  readonly isPositionAnimating?: () => boolean
+  /**
    * For a layer that animates its instances through arrays this layer cannot see (`channels.scales`
    * mutated in place, say): bump it on every frame those arrays change and hold it still otherwise,
    * and the clean-frame skip works for that layer too. A ref, not a prop value — a 60 fps counter
@@ -112,6 +118,7 @@ export function InstancedNodeLayer({
   scale = 1,
   channels,
   getInstancePosition,
+  isPositionAnimating,
   animationRevision,
   onNodeClick,
   onNodeDoubleClick,
@@ -122,6 +129,13 @@ export function InstancedNodeLayer({
   // The vertex-scale attribute, resolved when it is attached instead of looked up by name every
   // frame; `null` until the layout effect below attaches one.
   const vertexScaleRef = useRef<THREE.InstancedBufferAttribute | null>(null)
+  // What the vertex-scale attribute was last built from.
+  const vertexScaleSource = useRef<{
+    attribute: string | undefined
+    scales: ArrayLike<number> | null
+    count: number
+    scale: number
+  }>({ attribute: undefined, scales: null, count: -1, scale: Number.NaN })
   // What the matrices currently on the GPU were composed from, and this frame's candidate. Both
   // are stable scratch objects: the hot loop compares and records field-wise, never allocating.
   const composedFrame = useMemo(() => createInstanceFrameKey(), [])
@@ -228,7 +242,20 @@ export function InstancedNodeLayer({
     for (const channel of channels?.attributes ?? []) {
       added = uploadInstanceAttribute(mesh.geometry, channel) || added
     }
-    if (channels?.vertexScaleAttribute) {
+    // The vertex scales mirror `scales`; the frame loop keeps their hidden-slot zeroes in sync, so
+    // they are rebuilt only when what they mirror moved (a brightness-only update leaves them).
+    const vertexSource = vertexScaleSource.current
+    const vertexScalesCurrent =
+      vertexSource.attribute === channels?.vertexScaleAttribute &&
+      vertexSource.scales === (channels?.scales ?? null) &&
+      vertexSource.count === count &&
+      vertexSource.scale === scale &&
+      mesh.geometry.getAttribute(vertexSource.attribute ?? '') !== undefined
+    if (channels?.vertexScaleAttribute && !vertexScalesCurrent) {
+      vertexSource.attribute = channels.vertexScaleAttribute
+      vertexSource.scales = channels.scales ?? null
+      vertexSource.count = count
+      vertexSource.scale = scale
       const vertexScales = new Float32Array(count)
       for (let i = 0; i < count; i++) {
         vertexScales[i] = channels.scales?.[i] ?? scale
@@ -265,21 +292,21 @@ export function InstancedNodeLayer({
       resetInstanceFrame(composedFrame)
       return
     }
-    // Projection layers (the gist rise) derive positions from the clock, so nothing outside the
-    // clock says whether they moved — they always recompose. Everyone else skips a clean frame.
-    frame.bufferVersion = getInstancePosition ? Number.NaN : (positions.version ?? Number.NaN)
+    // A projection layer (the gist rise) reads the clock only while it animates; settled, its
+    // positions follow the buffer and the buffer's version vouches for them.
+    frame.bufferVersion = instanceBufferVersion(
+      positions.version,
+      getInstancePosition !== undefined,
+      isPositionAnimating?.() ?? true,
+    )
     frame.buffer = buffer
-    frame.channels = channels ?? null
+    // Keyed on the scales, the only channel a matrix reads: a brightness-only change re-uploads
+    // its attribute and leaves the matrices alone.
+    frame.channels = channels?.scales ?? null
     frame.count = count
     frame.firstNodeIndex = firstNodeIndex
     frame.scale = scale
     frame.animationRevision = animationRevision?.current ?? 0
-    if (sameInstanceFrame(composedFrame, frame)) {
-      mesh.count = count
-      mesh.visible = true
-      return
-    }
-    recordInstanceFrame(composedFrame, frame)
 
     const vertexScaleAttribute = vertexScaleRef.current
     compose.buffer = buffer
@@ -290,7 +317,7 @@ export function InstancedNodeLayer({
     compose.vertexScales = (vertexScaleAttribute?.array as Float32Array | undefined) ?? null
     compose.getInstancePosition = getInstancePosition
     compose.elapsed = state.clock.elapsedTime
-    const vertexScalesChanged = composeInstances(mesh, compose)
+    const vertexScalesChanged = stepInstanceFrame(mesh, frame, composedFrame, compose)
     if (vertexScalesChanged && vertexScaleAttribute) vertexScaleAttribute.needsUpdate = true
   })
 
@@ -344,28 +371,6 @@ export function InstancedNodeLayer({
       }
     />
   )
-}
-
-function uploadInstanceAttribute(
-  geometry: THREE.BufferGeometry,
-  channel: InstanceAttributeChannel,
-): boolean {
-  const existing = geometry.getAttribute(channel.name) as THREE.InstancedBufferAttribute | undefined
-  if (existing && existing.array.length === channel.array.length) {
-    ;(existing.array as Float32Array).set(channel.array)
-    existing.needsUpdate = true
-    return false
-  }
-
-  // A count change keeps the memoized body geometry, so the previous attribute is still attached —
-  // dispose its GPU buffer before replacing it, or it leaks (the body's disposal cleanup runs only
-  // on unmount/body swap, not on a count change).
-  existing?.dispose()
-  geometry.setAttribute(
-    channel.name,
-    new THREE.InstancedBufferAttribute(channel.array, channel.itemSize),
-  )
-  return true
 }
 
 function disposeBody(object: THREE.Object3D) {

@@ -4,9 +4,17 @@
 // Elapsed is floored at 0: a not-yet-launched universe (null "now") or a future reference reads
 // as no elapsed time, and a non-parseable input coerces to 0 rather than propagating NaN.
 export function elapsedUniverseDays(fromUniverseTime: string, universeTime: string | null): number {
-  if (!universeTime) return 0
-  const from = Date.parse(fromUniverseTime)
-  const now = Date.parse(universeTime)
-  if (Number.isNaN(from) || Number.isNaN(now)) return 0
-  return Math.max(0, (now - from) / 86_400_000)
+  return elapsedUniverseDaysMs(Date.parse(fromUniverseTime), universeTimeMs(universeTime))
+}
+
+// The same measure over timestamps already parsed with `universeTimeMs`, for a caller that holds
+// many anchors against one clock and would otherwise re-parse every anchor at every clock step.
+export function elapsedUniverseDaysMs(fromMs: number, nowMs: number): number {
+  if (Number.isNaN(fromMs) || Number.isNaN(nowMs)) return 0
+  return Math.max(0, (nowMs - fromMs) / 86_400_000)
+}
+
+/** A universe timestamp as epoch milliseconds; NaN for a missing or unparseable one (no elapsed time). */
+export function universeTimeMs(universeTime: string | null): number {
+  return universeTime ? Date.parse(universeTime) : Number.NaN
 }

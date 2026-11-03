@@ -4,7 +4,9 @@ import { moodColor } from '@cosimosi/emotion'
 import {
   effectiveBrightness,
   effectiveElapsedDays,
+  effectiveElapsedDaysMs,
   effectiveStrength,
+  universeTimeMs,
 } from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
@@ -38,17 +40,98 @@ export function starChannels(memory: EpisodicMemory, universeTime: string | null
     memory.createdUniverseTime,
     memory.forgettingOffsetDays,
   )
-  const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
   return {
     size: lerpClamp(rendering.starSizeMin, rendering.starSizeMax, strength),
-    // EffectiveBrightness already returns [forgetting.brightness_floor, 1] with the floor aligned to
-    // star_brightness_min, so it IS the render range — clamp it in place, do NOT re-lerp a [0,1]
-    // fraction (that would lift the silent-engram floor off star_brightness_min). A2/[F2].
-    brightness: clampToRange(brightness, rendering.starBrightnessMin, rendering.starBrightnessMax),
+    brightness: starBrightness(elapsed, memory.emotion.arousal, strength),
     // Linear light: a colorNode attribute bypasses the sRGB decode three applies to `.color.set(hex)`.
     color: hexToLinearRgb(moodColor(memory.emotion.mood)),
     seed: normalizeSeed(memory.seed, memory.id),
   }
+}
+
+// EffectiveBrightness already returns [forgetting.brightness_floor, 1] with the floor aligned to
+// star_brightness_min, so it IS the render range — clamp it in place, do NOT re-lerp a [0,1]
+// fraction (that would lift the silent-engram floor off star_brightness_min). A2/[F2].
+function starBrightness(elapsedDays: number, arousal: number, strength: number): number {
+  const { rendering } = VALUES
+  return clampToRange(
+    effectiveBrightness(elapsedDays, arousal, strength),
+    rendering.starBrightnessMin,
+    rendering.starBrightnessMax,
+  )
+}
+
+/**
+ * The half of a memory set's star channels the clock cannot move, laid out in instance order: size,
+ * colour and seed, plus each brightness anchor parsed once. `starBrightnessChannel` answers the half
+ * that does move, so a time sweep recomputes one float per star and nothing else. A slot whose
+ * memory is missing stays zero in every channel.
+ */
+export interface StarStaticChannels {
+  readonly count: number
+  readonly scales: Float32Array
+  /** Linear RGB, stride 3. */
+  readonly tint: Float32Array
+  readonly seed: Float32Array
+  readonly present: Uint8Array
+  readonly anchorMs: Float64Array
+  readonly offsetDays: Float64Array
+  readonly arousal: Float64Array
+  readonly strength: Float64Array
+}
+
+export function starStaticChannels(
+  memories: readonly (EpisodicMemory | undefined)[],
+): StarStaticChannels {
+  const { rendering } = VALUES
+  const count = memories.length
+  const statics = {
+    count,
+    scales: new Float32Array(count),
+    tint: new Float32Array(count * 3),
+    seed: new Float32Array(count),
+    present: new Uint8Array(count),
+    anchorMs: new Float64Array(count),
+    offsetDays: new Float64Array(count),
+    arousal: new Float64Array(count),
+    strength: new Float64Array(count),
+  }
+  for (let i = 0; i < count; i++) {
+    const memory = memories[i]
+    if (!memory) continue
+    const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
+    const color = hexToLinearRgb(moodColor(memory.emotion.mood))
+    statics.present[i] = 1
+    statics.scales[i] = lerpClamp(rendering.starSizeMin, rendering.starSizeMax, strength)
+    statics.tint[i * 3] = color[0]
+    statics.tint[i * 3 + 1] = color[1]
+    statics.tint[i * 3 + 2] = color[2]
+    statics.seed[i] = normalizeSeed(memory.seed, memory.id)
+    statics.anchorMs[i] = Date.parse(memory.lastRecalledUniverseTime ?? memory.createdUniverseTime)
+    statics.offsetDays[i] = memory.forgettingOffsetDays
+    statics.arousal[i] = memory.emotion.arousal
+    statics.strength[i] = strength
+  }
+  return statics
+}
+
+/** Each star's brightness at `universeTime`, the same value `starChannels` gives one memory. */
+export function starBrightnessChannel(
+  statics: StarStaticChannels,
+  universeTime: string | null,
+): Float32Array {
+  const nowMs = universeTimeMs(universeTime)
+  const brightness = new Float32Array(statics.count)
+  for (let i = 0; i < statics.count; i++) {
+    if (!statics.present[i]) continue
+    const elapsed = effectiveElapsedDaysMs(
+      nowMs,
+      statics.anchorMs[i] ?? Number.NaN,
+      statics.offsetDays[i] ?? 0,
+    )
+    brightness[i] = starBrightness(elapsed, statics.arousal[i] ?? 0, statics.strength[i] ?? 0)
+  }
+  return brightness
 }
 
 // Map a [0,1] fraction into a visual range; a non-finite input (from a skewed/corrupt DTO field the

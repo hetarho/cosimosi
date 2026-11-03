@@ -16,6 +16,7 @@ import {
 import {
   createArrivalLatchState,
   stepArrivalLatch,
+  type ArrivalLatchFrame,
   type NavigationPoseMode,
 } from './navigation-latch.ts'
 
@@ -87,6 +88,10 @@ interface RigControls {
 const WORLD_UP = new Vector3(0, 0, 1)
 /** Orientation error below which the return glide counts as landed, in radians (~0.6°). */
 const SETTLED_ANGLE = 0.01
+/** The pinned step's view before its first frame reads one. */
+const IDLE_PINNED_VIEW: PinnedView = { center: [0, 0, 0], held: false }
+
+type Mutable<T> = { -readonly [Key in keyof T]: T[Key] }
 
 // Shared R3F layer: the product navigation rig, in either of the two shapes a viewer can hold the
 // universe in.
@@ -139,16 +144,59 @@ export function NavigationRig({
   const liveOffset = useMemo(() => createPinnedOffset(), [])
   const goalRotation = useMemo(() => new Matrix4(), [])
   const goalQuaternion = useMemo(() => new Quaternion(), [])
-  const pinnedMemory = useRef<PinnedMemory>({
-    home: createPinnedOffset(),
-    hasHome: false,
-    settled: false,
-    held: false,
-    firstFrame: true,
-  })
+  const pinnedMemory = useMemo<PinnedMemory>(
+    () => ({
+      home: createPinnedOffset(),
+      hasHome: false,
+      settled: false,
+      held: false,
+      firstFrame: true,
+    }),
+    [],
+  )
   const envelope = useMemo<PinnedEnvelope>(
     () => ({ maxTiltUp: pinnedTiltUp, maxTiltDown: pinnedTiltDown, minDistance, maxDistance }),
     [pinnedTiltUp, pinnedTiltDown, minDistance, maxDistance],
+  )
+  // The two per-frame step inputs, built once per configuration and rewritten field-wise each
+  // frame, so the frame loop allocates no option objects (§3.3).
+  const latchFrame = useMemo<Mutable<ArrivalLatchFrame>>(
+    () => ({ mode: 'idle', targetId: null, withinEpsilon: false, delta: 0, arriveTimeoutSeconds }),
+    [arriveTimeoutSeconds],
+  )
+  const pinnedStep = useMemo<Mutable<PinnedStep>>(
+    () => ({
+      controls: null,
+      camera,
+      delta: 0,
+      view: IDLE_PINNED_VIEW,
+      envelope,
+      lookTarget,
+      pinnedCenter,
+      cameraGoal,
+      memory: pinnedMemory,
+      instant: false,
+      openingElevation: pinnedOpeningElevation,
+      liveOffset,
+      goalRotation,
+      goalQuaternion,
+      returnLambda: pinnedReturnLambda,
+      arriveEpsilon,
+    }),
+    [
+      camera,
+      envelope,
+      lookTarget,
+      pinnedCenter,
+      cameraGoal,
+      pinnedMemory,
+      pinnedOpeningElevation,
+      liveOffset,
+      goalRotation,
+      goalQuaternion,
+      pinnedReturnLambda,
+      arriveEpsilon,
+    ],
   )
 
   useEffect(() => {
@@ -192,8 +240,8 @@ export function NavigationRig({
     camera.quaternion.copy(heldQuaternion)
     controlsRef.current = controls
     // A mode swap starts from the view it inherits rather than from a pose chosen in a previous one.
-    pinnedMemory.current.hasHome = false
-    pinnedMemory.current.settled = false
+    pinnedMemory.hasHome = false
+    pinnedMemory.settled = false
     // The trackball maps pointer motion through the element's on-screen size, so a canvas resize
     // must be announced or the rotation math drifts. OrbitControls measures the element itself and
     // has nothing to be told.
@@ -213,6 +261,7 @@ export function NavigationRig({
     minDistance,
     pinned,
     pinnedDampingFactor,
+    pinnedMemory,
     pinnedRotateSpeed,
     pinnedTiltDown,
     pinnedTiltUp,
@@ -223,36 +272,21 @@ export function NavigationRig({
     const controls = controlsRef.current
     // Spent here rather than inside the pinned step, so a rig that opened free has already used its
     // opening frame by the time a viewer swaps into pinned and expects to watch the camera move.
-    const opening = pinnedMemory.current.firstFrame
-    pinnedMemory.current.firstFrame = false
+    const opening = pinnedMemory.firstFrame
+    pinnedMemory.firstFrame = false
 
     if (pose.mode === 'idle' || !pose.target) {
-      stepArrivalLatch(latch.current, {
-        mode: 'idle',
-        targetId: pose.targetId,
-        withinEpsilon: false,
-        delta,
-        arriveTimeoutSeconds,
-      })
+      latchFrame.mode = 'idle'
+      latchFrame.targetId = pose.targetId
+      latchFrame.withinEpsilon = false
+      latchFrame.delta = delta
+      stepArrivalLatch(latch.current, latchFrame)
       if (pinned) {
-        stepPinnedView({
-          controls,
-          camera,
-          delta,
-          view: getPinnedView(),
-          envelope,
-          lookTarget,
-          pinnedCenter,
-          cameraGoal,
-          memory: pinnedMemory.current,
-          instant: opening,
-          openingElevation: pinnedOpeningElevation,
-          liveOffset,
-          goalRotation,
-          goalQuaternion,
-          returnLambda: pinnedReturnLambda,
-          arriveEpsilon,
-        })
+        pinnedStep.controls = controls
+        pinnedStep.delta = delta
+        pinnedStep.view = getPinnedView()
+        pinnedStep.instant = opening
+        stepPinnedView(pinnedStep)
         return
       }
       if (controls) {
@@ -284,18 +318,13 @@ export function NavigationRig({
     // settles inside the epsilon shell, re-arms on drift out of it OR on a retarget (target id
     // change — even across an unobserved idle frame), and force-arrives past
     // arriveTimeoutSeconds so a glide can never strand the rig with controls disabled.
-    const withinEpsilon =
+    latchFrame.mode = pose.mode
+    latchFrame.targetId = pose.targetId
+    latchFrame.withinEpsilon =
       camera.position.distanceTo(cameraGoal) < arriveEpsilon &&
       lookTarget.distanceTo(targetVec) < arriveEpsilon
-    if (
-      stepArrivalLatch(latch.current, {
-        mode: pose.mode,
-        targetId: pose.targetId,
-        withinEpsilon,
-        delta,
-        arriveTimeoutSeconds,
-      })
-    ) {
+    latchFrame.delta = delta
+    if (stepArrivalLatch(latch.current, latchFrame)) {
       onArrived?.()
     }
   })

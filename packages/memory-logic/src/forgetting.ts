@@ -1,7 +1,7 @@
 import { VALUES } from '@cosimosi/config'
 
 import { slowFactor } from './effective-values.ts'
-import { elapsedUniverseDays } from './universe-time.ts'
+import { elapsedUniverseDaysMs, universeTimeMs } from './universe-time.ts'
 
 // Forgetting decay ([F]) — the read-time math that dims a memory and erases its words as universe time
 // passes without recall. Pure and IO-free, mirroring the Go internal/memory implementation byte-for-
@@ -69,9 +69,21 @@ export function effectiveElapsedDays(
   created: string,
   offsetDays: number,
 ): number {
-  const anchor = lastRecalled ?? created
-  const elapsed = elapsedUniverseDays(anchor, now)
-  return Math.max(0, elapsed + offsetDays)
+  return effectiveElapsedDaysMs(
+    universeTimeMs(now),
+    Date.parse(lastRecalled ?? created),
+    offsetDays,
+  )
+}
+
+// The same clock over pre-parsed timestamps (`universeTimeMs`): the anchor is parsed once per memory,
+// the clock once per step.
+export function effectiveElapsedDaysMs(
+  nowMs: number,
+  anchorMs: number,
+  offsetDays: number,
+): number {
+  return Math.max(0, elapsedUniverseDaysMs(anchorMs, nowMs) + offsetDays)
 }
 
 // decayStage is the discrete forgetting stage 0..maxStage a memory has reached — a monotone

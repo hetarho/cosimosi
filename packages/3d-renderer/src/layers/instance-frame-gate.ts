@@ -4,11 +4,15 @@
  * unit-testable function rather than something only a running WebGPU device can exercise.
  *
  * Everything that can move an instance's matrix rides in one key: the presented coordinate
- * buffer's version, the appearance channels' identity, the slot window (count + offset), the flat
+ * buffer's version, the identity of the appearance input the matrices read, the slot window (count + offset), the flat
  * scale, and an explicit revision a layer bumps when it animates through its own arrays. Nothing
- * derived from the clock belongs here — a layer that animates per frame opts out entirely
- * (see the mapper rule in `InstancedNodeLayer`).
+ * derived from the clock belongs here — a position mapper that is animating opts out for as long
+ * as it animates (`instanceBufferVersion`).
  */
+
+import type * as THREE from 'three/webgpu'
+
+import { composeInstances, type ComposeInstancesInput } from './instance-compose.ts'
 export interface InstanceFrameKey {
   /** The presented buffer's version. NaN for an unversioned buffer — see `createInstanceFrameKey`. */
   bufferVersion: number
@@ -19,6 +23,7 @@ export interface InstanceFrameKey {
    * cannot collide that way, and for a versioned producer it moves in lockstep with the version.
    */
   buffer: Float32Array | null
+  /** The appearance input the matrices depend on, by identity (for instanced nodes: the scales). */
   channels: object | null
   count: number
   firstNodeIndex: number
@@ -57,6 +62,40 @@ export function sameInstanceFrame(last: InstanceFrameKey, candidate: InstanceFra
     last.scale === candidate.scale &&
     last.animationRevision === candidate.animationRevision
   )
+}
+
+/**
+ * The buffer version a frame is keyed on. A position mapper derives positions from the buffer, and
+ * from the clock only while it animates; settled, it is a pure function of the buffer, so the
+ * buffer's own version vouches for it. While it animates, NaN opts the layer out of skipping.
+ */
+export function instanceBufferVersion(
+  version: number | undefined,
+  mapped: boolean,
+  mapperAnimating: boolean,
+): number {
+  if (mapped && mapperAnimating) return Number.NaN
+  return version ?? Number.NaN
+}
+
+/**
+ * One frame of an instanced layer once `frame` is filled: an unchanged key shows the matrices
+ * already on the GPU, anything else composes them and records the key. Returns null for a skipped
+ * frame, otherwise whether the vertex-scale attribute changed and needs an upload.
+ */
+export function stepInstanceFrame(
+  mesh: THREE.InstancedMesh,
+  frame: InstanceFrameKey,
+  composed: InstanceFrameKey,
+  compose: ComposeInstancesInput,
+): boolean | null {
+  if (sameInstanceFrame(composed, frame)) {
+    mesh.count = frame.count
+    mesh.visible = true
+    return null
+  }
+  recordInstanceFrame(composed, frame)
+  return composeInstances(mesh, compose)
 }
 
 /** Record the frame just composed. Field-wise, so the hot loop allocates nothing. */

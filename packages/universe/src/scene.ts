@@ -40,7 +40,13 @@ export {
   type RecentMemory,
 } from './pick-awaken-seed.ts'
 export { generateLatentField, type LatentField, type LatentFieldParams } from './latent-field.ts'
-export { starChannels, type StarChannels } from './star-channels.ts'
+export {
+  starBrightnessChannel,
+  starChannels,
+  starStaticChannels,
+  type StarChannels,
+  type StarStaticChannels,
+} from './star-channels.ts'
 export {
   gistNodeId,
   gistStageOffset,

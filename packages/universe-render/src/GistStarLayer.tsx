@@ -69,6 +69,8 @@ export type GistRiseState = {
   hydrated: boolean
   byInstance: RiseEntry[]
   indexed: GistRenderSnapshot | null
+  /** Entries of `byInstance` still rising; zero means every position follows the buffer alone. */
+  rising: number
 }
 
 export interface GistRenderSnapshot {
@@ -116,7 +118,22 @@ export function createGistRenderSnapshot(
 }
 
 export function createGistRiseState(): GistRiseState {
-  return { seen: new Map(), stageSeen: new Map(), hydrated: false, byInstance: [], indexed: null }
+  return {
+    seen: new Map(),
+    stageSeen: new Map(),
+    hydrated: false,
+    byInstance: [],
+    indexed: null,
+    rising: 0,
+  }
+}
+
+/**
+ * Whether the layer's positions read the clock this frame. A snapshot the index has not caught up
+ * with counts as rising, so the layer recomposes rather than trusting a count built for another order.
+ */
+export function isGistRiseAnimating(state: GistRiseState, snapshot: GistRenderSnapshot): boolean {
+  return state.indexed !== snapshot || state.rising > 0
 }
 
 export function reconcileGistRiseState(
@@ -164,6 +181,7 @@ export function reconcileGistRiseState(
   state.byInstance = snapshot.instances.map(
     (instance) => state.seen.get(instance.nodeId) ?? SETTLED,
   )
+  state.rising = state.byInstance.reduce((rising, entry) => rising + (entry === SETTLED ? 0 : 1), 0)
   state.indexed = snapshot
   return risen
 }
@@ -204,7 +222,10 @@ export function mapGistInstancePosition(
     riseState.seen.set(instance.nodeId, SETTLED)
     // The index is a projection of `seen`, so it settles with it — otherwise every later frame
     // would keep re-reading the finished {start, startOffset} record and redo the ease math forever.
-    if (indexed) riseState.byInstance[index] = SETTLED
+    if (indexed) {
+      riseState.byInstance[index] = SETTLED
+      riseState.rising = Math.max(0, riseState.rising - 1)
+    }
     out[2] = liveZ + instance.zOffset
     return true
   }
@@ -268,6 +289,11 @@ export function GistStarLayer({
     },
     [snapshot],
   )
+  // Settled, every gist rides its memory's slot, so the layer skips frames the buffer did not move.
+  const isPositionAnimating = useCallback(
+    () => isGistRiseAnimating(riseRef.current, snapshot),
+    [snapshot],
+  )
 
   const handleSelect = useCallback(
     (index: number) => {
@@ -286,6 +312,7 @@ export function GistStarLayer({
       positions={positions}
       channels={snapshot.channels}
       getInstancePosition={getInstancePosition}
+      isPositionAnimating={isPositionAnimating}
       onNodeClick={onSelect ? handleSelect : undefined}
     />
   )

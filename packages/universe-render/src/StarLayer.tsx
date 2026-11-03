@@ -12,7 +12,13 @@ import {
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
 
-import { SPOTLIGHT_STAR_LIFT, starChannels, useSpotlightStore } from '@cosimosi/universe/scene'
+import {
+  SPOTLIGHT_STAR_LIFT,
+  starBrightnessChannel,
+  starStaticChannels,
+  useSpotlightStore,
+  type StarStaticChannels,
+} from '@cosimosi/universe/scene'
 import { useEpisodicMemoryStore } from '@cosimosi/universe'
 
 export interface StarLayerProps {
@@ -29,11 +35,44 @@ export interface StarLayerProps {
   readonly onFly?: (index: number) => void
 }
 
+/**
+ * One sweep step's channels: the memory set's static arrays as they are, and a brightness the
+ * clock (and the spotlight) decided. Keeping `scales`, tint and seed by identity is what lets the
+ * layer upload brightness alone and leave every matrix where it was composed.
+ */
+export function starLayerChannels(
+  statics: StarStaticChannels,
+  ids: readonly string[],
+  universeTime: string | null,
+  spotlitIds: readonly string[],
+): InstanceChannels {
+  const brightness = starBrightnessChannel(statics, universeTime)
+  // A spotlight is presentation, not a second reading of the memory: it lifts the brightness these
+  // stars are DRAWN at so they out-run the scene dim (SpotlightDim), and touches nothing stored.
+  // The lift lands on colour alone — `starLife` clamps at 1, so a lifted star keeps its own motion
+  // and forgetting stays the only thing that can still a body.
+  if (spotlitIds.length > 0) {
+    const spotlit = new Set(spotlitIds)
+    for (let i = 0; i < ids.length; i++) {
+      if (spotlit.has(ids[i] ?? '')) brightness[i] = (brightness[i] ?? 0) * SPOTLIGHT_STAR_LIFT
+    }
+  }
+  return {
+    scales: statics.scales,
+    attributes: [
+      { name: STAR_INSTANCE_TINT, array: statics.tint, itemSize: 3 },
+      { name: STAR_INSTANCE_BRIGHTNESS, array: brightness, itemSize: 1 },
+      { name: STAR_INSTANCE_SEED, array: statics.seed, itemSize: 1 },
+    ],
+    vertexScaleAttribute: STAR_INSTANCE_SCALE,
+  }
+}
+
 // The instanced R3F binding for the episodic-memory big star: it reads the domain mirror via
 // @x, projects each memory to its four channels (model/), and feeds them as per-instance
-// attributes to the shader body through the asset-source port. Channels recompute only when
-// the read model / universe time changes — never per frame (§3.3); the coordinate buffer is
-// read per frame inside the layer, never here.
+// attributes to the shader body through the asset-source port. The static channels recompute when
+// the read model changes and brightness when universe time does — never per frame (§3.3); the
+// coordinate buffer is read per frame inside the layer, never here.
 export function StarLayer({
   positions,
   shape = DEFAULT_STAR_SHAPE,
@@ -51,40 +90,11 @@ export function StarLayer({
   const ids = useEpisodicMemoryStore((state) => state.ids)
   const spotlitIds = useSpotlightStore((state) => state.memoryIds)
 
-  const channels = useMemo<InstanceChannels>(() => {
-    const count = ids.length
-    const scales = new Float32Array(count)
-    const tint = new Float32Array(count * 3)
-    const brightness = new Float32Array(count)
-    const seed = new Float32Array(count)
-    // A spotlight is presentation, not a second reading of the memory: it lifts the brightness these
-    // stars are DRAWN at so they out-run the scene dim (SpotlightDim), and touches nothing stored.
-    // The lift lands on colour alone — `starLife` clamps at 1, so a lifted star keeps its own motion
-    // and forgetting stays the only thing that can still a body.
-    const spotlit = spotlitIds.length > 0 ? new Set(spotlitIds) : null
-    for (let i = 0; i < count; i++) {
-      const memory = byId[ids[i]]
-      if (!memory) continue
-      const channel = starChannels(memory, universeTime)
-      scales[i] = channel.size
-      tint[i * 3] = channel.color[0]
-      tint[i * 3 + 1] = channel.color[1]
-      tint[i * 3 + 2] = channel.color[2]
-      brightness[i] = spotlit?.has(memory.id)
-        ? channel.brightness * SPOTLIGHT_STAR_LIFT
-        : channel.brightness
-      seed[i] = channel.seed
-    }
-    return {
-      scales,
-      attributes: [
-        { name: STAR_INSTANCE_TINT, array: tint, itemSize: 3 },
-        { name: STAR_INSTANCE_BRIGHTNESS, array: brightness, itemSize: 1 },
-        { name: STAR_INSTANCE_SEED, array: seed, itemSize: 1 },
-      ],
-      vertexScaleAttribute: STAR_INSTANCE_SCALE,
-    }
-  }, [byId, ids, universeTime, spotlitIds])
+  const statics = useMemo(() => starStaticChannels(ids.map((id) => byId[id])), [byId, ids])
+  const channels = useMemo(
+    () => starLayerChannels(statics, ids, universeTime, spotlitIds),
+    [statics, ids, universeTime, spotlitIds],
+  )
 
   return (
     <InstancedNodeLayer

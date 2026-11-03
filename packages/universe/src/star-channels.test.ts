@@ -1,9 +1,14 @@
 import { VALUES } from '@cosimosi/config'
 import { createEmotion, type Mood } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { normalizeSeed, starChannels } from './star-channels.ts'
+import {
+  normalizeSeed,
+  starBrightnessChannel,
+  starChannels,
+  starStaticChannels,
+} from './star-channels.ts'
 
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
@@ -95,5 +100,52 @@ describe('normalizeSeed', () => {
   it('falls back to a stable id hash when the seed is absent', () => {
     expect(normalizeSeed(null, 'memory-1')).toBe(normalizeSeed(null, 'memory-1'))
     expect(normalizeSeed(null, 'a')).not.toBe(normalizeSeed(null, 'b'))
+  })
+})
+
+describe('split star channels', () => {
+  const memories = [
+    memory({ id: 'a', baseStrength: 0.2, emotion: createEmotion('SAD') }),
+    undefined,
+    memory({
+      id: 'c',
+      baseStrength: 0.8,
+      recallCount: 2,
+      lastRecalledUniverseTime: '2026-01-20',
+      forgettingOffsetDays: 3,
+    }),
+  ]
+
+  it('gives every present memory the values starChannels gives it, at every time', () => {
+    const statics = starStaticChannels(memories)
+    for (const universeTime of [null, '2026-01-01', '2026-03-15', '2027-06-01']) {
+      const brightness = starBrightnessChannel(statics, universeTime)
+      memories.forEach((source, index) => {
+        if (!source) {
+          expect(statics.scales[index]).toBe(0)
+          expect(brightness[index]).toBe(0)
+          return
+        }
+        const channel = starChannels(source, universeTime)
+        expect(statics.scales[index]).toBe(new Float32Array([channel.size])[0])
+        expect(brightness[index]).toBe(new Float32Array([channel.brightness])[0])
+        expect(statics.seed[index]).toBe(new Float32Array([channel.seed])[0])
+        expect(Array.from(statics.tint.slice(index * 3, index * 3 + 3))).toEqual(
+          Array.from(new Float32Array(channel.color)),
+        )
+      })
+    }
+  })
+
+  it('parses each anchor once per memory set and the clock once per step', () => {
+    const parse = vi.spyOn(Date, 'parse')
+    const statics = starStaticChannels(memories)
+    expect(parse).toHaveBeenCalledTimes(2)
+    parse.mockClear()
+    for (const universeTime of ['2026-02-01', '2026-02-02', '2026-02-03']) {
+      starBrightnessChannel(statics, universeTime)
+    }
+    expect(parse).toHaveBeenCalledTimes(3)
+    parse.mockRestore()
   })
 })

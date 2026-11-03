@@ -3,7 +3,7 @@ import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import type { NavigationPose, PinnedView } from '@cosimosi/3d-renderer'
-import { FORCE_SIM_COORDINATE_STRIDE, forceSimCoordinateOffset } from '@cosimosi/force-sim'
+import { forceSimCoordinateOffset } from '@cosimosi/force-sim'
 import { useActorRef } from '@cosimosi/state-machine/react'
 import type { OrnamentKind } from '@cosimosi/store'
 import { useWornOrnaments } from '@cosimosi/store/react'
@@ -25,6 +25,7 @@ import {
 } from '@cosimosi/universe'
 import { useUniverse } from '@cosimosi/universe/react'
 
+import { createLayoutCentroid, measureLayoutCentroid } from './layout-centroid.ts'
 import {
   useSceneAssembly,
   type SceneAssembly,
@@ -139,6 +140,7 @@ export function useUniverseScene({
     () => ({ center: [0, 0, 0] as [number, number, number], held: false }),
     [],
   )
+  const centroid = useMemo(() => createLayoutCentroid(), [])
   const getPinnedView = useCallback((): PinnedView => {
     const buffer = bridge.coordinates.current
     const snapshot = actorRef.getSnapshot()
@@ -163,26 +165,14 @@ export function useUniverseScene({
       return pinnedView
     }
     pinnedView.held = false
-    // The middle of the stars is the centre of mass of the live layout, read in place each frame:
-    // it is emergent like every position here ([I5]), so it is measured rather than stored, and a
-    // universe still settling keeps the last centre instead of snapping to the origin and back.
-    if (buffer && buffer.length >= FORCE_SIM_COORDINATE_STRIDE) {
-      const count = Math.floor(buffer.length / FORCE_SIM_COORDINATE_STRIDE)
-      let x = 0
-      let y = 0
-      let z = 0
-      for (let i = 0; i < count; i++) {
-        const offset = i * FORCE_SIM_COORDINATE_STRIDE
-        x += buffer[offset] ?? 0
-        y += buffer[offset + 1] ?? 0
-        z += buffer[offset + 2] ?? 0
-      }
-      pinnedView.center[0] = x / count
-      pinnedView.center[1] = y / count
-      pinnedView.center[2] = z / count
-    }
+    // The middle of the stars is the centre of mass of the live layout, measured only when the
+    // presented coordinates moved.
+    measureLayoutCentroid(centroid, buffer, bridge.coordinates.version)
+    pinnedView.center[0] = centroid.center[0]
+    pinnedView.center[1] = centroid.center[1]
+    pinnedView.center[2] = centroid.center[2]
     return pinnedView
-  }, [actorRef, bridge, nodeIndex, pinnedView])
+  }, [actorRef, bridge, centroid, nodeIndex, pinnedView])
 
   const onArrived = useCallback(() => actorRef.send({ type: 'ARRIVED' }), [actorRef])
   const sendNodeCommand = useCallback(

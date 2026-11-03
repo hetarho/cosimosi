@@ -11,6 +11,7 @@ import {
   createGistRenderSnapshot,
   createGistRiseState,
   gistSelectionAt,
+  isGistRiseAnimating,
   mapGistInstancePosition,
   reconcileGistRiseState,
   type GistRenderSnapshot,
@@ -209,6 +210,26 @@ describe('gist render snapshot', () => {
     expect(mapGistInstancePosition(advanced, riseState, 1, riseBuffer, out, 100)).toBe(true)
     expect(out[2]).toBe(22 + risenBeta.zOffset)
     expect(riseState.byInstance[1]).toBe(riseState.seen.get(risenBeta.nodeId))
+  })
+
+  it('reports animating only while a rise is in progress, so a settled layer can skip frames', () => {
+    const riseState = createGistRiseState()
+    const seeded = createGistRenderSnapshot([alpha], slots)
+    // Before any reconcile the layer cannot vouch for an order it has not indexed.
+    expect(isGistRiseAnimating(riseState, seeded)).toBe(true)
+    reconcileGistRiseState(riseState, seeded, true)
+    // Hydration settles silently: every position follows the buffer alone.
+    expect(isGistRiseAnimating(riseState, seeded)).toBe(false)
+
+    const advanced = createGistRenderSnapshot([alpha, instance('beta', 2)], slots)
+    reconcileGistRiseState(riseState, advanced, true)
+    expect(isGistRiseAnimating(riseState, advanced)).toBe(true)
+
+    const out = new Float32Array(3)
+    mapGistInstancePosition(advanced, riseState, 1, buffer.slice(), out, 0)
+    expect(isGistRiseAnimating(riseState, advanced)).toBe(true)
+    mapGistInstancePosition(advanced, riseState, 1, buffer.slice(), out, 100)
+    expect(isGistRiseAnimating(riseState, advanced)).toBe(false)
   })
 
   it('falls back to the id map for a snapshot the index has not caught up with', () => {

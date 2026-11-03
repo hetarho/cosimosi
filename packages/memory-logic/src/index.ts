@@ -6,6 +6,7 @@ export {
   decayStage,
   decayStageText,
   effectiveElapsedDays,
+  effectiveElapsedDaysMs,
 } from './forgetting.ts'
 export { neighborForgettingDelta, reshape } from './reconsolidation.ts'
 export {
@@ -14,7 +15,7 @@ export {
   gistZOffset,
   semanticize,
 } from './semanticization.ts'
-export { elapsedUniverseDays } from './universe-time.ts'
+export { elapsedUniverseDays, universeTimeMs } from './universe-time.ts'
 export {
   applyTemporalBonus,
   effectiveSynapseStrength,
