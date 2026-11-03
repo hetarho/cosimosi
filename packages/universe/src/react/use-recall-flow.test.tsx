@@ -44,7 +44,7 @@ async function openToRewrite(result: { current: ReturnType<typeof useRecallFlowC
   act(() => useRecallTargetStore.getState().request('memory-1'))
   await waitFor(() => expect(result.current.phase).not.toBe('idle'))
   if (result.current.phase === 'confirmingSync') act(() => result.current.acceptSync())
-  act(() => result.current.acceptQuote())
+  if (result.current.phase === 'quoting') act(() => result.current.acceptQuote())
   act(() => result.current.setRewrite('a new telling'))
   expect(result.current.phase).toBe('rewriting')
 }
@@ -58,6 +58,34 @@ describe('useRecallFlowController', () => {
     useRecallDraftStore.getState().reset()
   })
   afterEach(() => vi.restoreAllMocks())
+
+  it('opens free reconstruction without accepting a quote', async () => {
+    const { result } = renderRecallFlow(async () => recalled)
+    act(() => useRecallTargetStore.getState().request('memory-1'))
+    await waitFor(() => expect(result.current.phase).toBe('rewriting'))
+    expect(result.current.mode).toBe('recall')
+  })
+
+  it('quotes restoration and calls its dedicated RPC without a user rewrite', async () => {
+    const restore = vi.fn<(input: unknown) => RecallResponse>(() => recalled)
+    const recall = vi.fn(() => recalled)
+    const { wrapper } = createFlowHarness({ memory: { restoreMemoryText: restore, recall } })
+    const ports = {
+      onError: vi.fn(),
+      invalidateBalance: vi.fn(),
+      invalidateAchievements: vi.fn(),
+      requestEarnGuide: vi.fn(),
+    }
+    const { result } = renderHook(() => useRecallFlowController(ports), { wrapper })
+    act(() => useRecallTargetStore.getState().request('memory-1', 'restore'))
+    await waitFor(() => expect(result.current.phase).toBe('quoting'))
+    act(() => result.current.acceptQuote())
+    await act(() => result.current.confirmRecall())
+    expect(result.current.phase).toBe('result')
+    expect(restore).toHaveBeenCalledOnce()
+    expect(recall).not.toHaveBeenCalled()
+    expect(restore.mock.calls[0]?.[0]).not.toHaveProperty('rewriteText')
+  })
 
   it('keeps the operation id after an ambiguous failure, so the retry replays the receipt', async () => {
     const { ports, result } = renderRecallFlow(() =>
@@ -82,9 +110,9 @@ describe('useRecallFlowController', () => {
     await openToRewrite(result)
 
     await act(() => result.current.confirmRecall())
-    expect(result.current.phase).toBe('quoting')
-    expect(ports.requestEarnGuide).toHaveBeenCalledOnce()
-    act(() => result.current.acceptQuote())
+    expect(result.current.phase).toBe('rewriting')
+    expect(ports.requestEarnGuide).not.toHaveBeenCalled()
+    if (result.current.phase === 'quoting') act(() => result.current.acceptQuote())
     await act(() => result.current.confirmRecall())
 
     const [first, second] = ports.request.mock.calls.map(([input]) => input.operationId)

@@ -105,7 +105,7 @@ func NewLaunchService(deps LaunchDeps) (*LaunchService, error) {
 	}, nil
 }
 
-// PaidActionService runs the three paid actions: recall, whole-diary recall and gist view.
+// PaidActionService runs free reconstruction and transactional stored-text retrieval.
 type PaidActionService struct {
 	graphClock
 	recalls         RecallRepo

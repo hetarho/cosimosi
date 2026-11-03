@@ -8,7 +8,14 @@ export {
   type LedgerDay,
   type RefillMarker,
 } from './ledger-day.ts'
-export { diaryRecallSpend, gistViewSpend, recallSpend, type PendingSpend } from './pending-spend.ts'
+export {
+  spendCostLabel,
+  restoreMemoryTextSpend,
+  diaryRecallSpend,
+  gistViewSpend,
+  recallSpend,
+  type PendingSpend,
+} from './pending-spend.ts'
 export {
   twinkleTotal,
   useTwinkleBalanceStore,

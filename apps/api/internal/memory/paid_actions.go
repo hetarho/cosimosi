@@ -37,9 +37,10 @@ var (
 type PaidActionKind string
 
 const (
-	PaidActionRecall       PaidActionKind = "recall"
-	PaidActionDiaryRecall  PaidActionKind = "diary_recall"
-	PaidActionViewSemantic PaidActionKind = "view_semantic"
+	PaidActionRestoreMemoryText PaidActionKind = "restore_memory_text"
+	PaidActionRecall            PaidActionKind = "recall"
+	PaidActionDiaryRecall       PaidActionKind = "diary_recall"
+	PaidActionViewSemantic      PaidActionKind = "view_semantic"
 )
 
 // PaidActionReceipt is one committed paid action's idempotency record: the client

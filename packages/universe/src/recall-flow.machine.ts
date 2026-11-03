@@ -6,9 +6,10 @@ export type RecallFlowPhase =
 export interface RecallFlowContext {
   attempt: PaidActionAttempt | null
   consented: boolean
+  restore: boolean
 }
 export type RecallFlowEvent =
-  | { type: 'OPEN'; needsSync: boolean; attempt?: PaidActionAttempt }
+  | { type: 'OPEN'; needsSync: boolean; restore?: boolean; attempt?: PaidActionAttempt }
   | { type: 'ACCEPT' }
   | { type: 'PROCEED' }
   | { type: 'REJECT' }
@@ -24,14 +25,19 @@ export type RecallFlowEvent =
 // Interaction phase and intent identity have one owner. Text/results remain in the draft store.
 export const recallFlowMachine = setup({
   types: { events: {} as RecallFlowEvent, context: {} as RecallFlowContext },
-  guards: { needsSync: ({ event }) => event.type === 'OPEN' && event.needsSync },
+  guards: {
+    needsSync: ({ event }) => event.type === 'OPEN' && event.needsSync,
+    restore: ({ context, event }) =>
+      event.type === 'OPEN' ? Boolean(event.restore) : context.restore,
+  },
   actions: {
     start: assign(({ event }) => ({
       attempt: event.type === 'OPEN' ? (event.attempt ?? null) : null,
       consented: false,
+      restore: event.type === 'OPEN' && Boolean(event.restore),
     })),
     consent: assign({ consented: true }),
-    reset: assign({ attempt: null, consented: false }),
+    reset: assign({ attempt: null, consented: false, restore: false }),
     retry: assign(({ context, event }) => ({
       attempt: 'attempt' in event ? (event.attempt ?? context.attempt) : context.attempt,
     })),
@@ -39,19 +45,23 @@ export const recallFlowMachine = setup({
 }).createMachine({
   id: 'recallFlow',
   initial: 'idle',
-  context: { attempt: null, consented: false },
+  context: { attempt: null, consented: false, restore: false },
   states: {
     idle: {
       on: {
         OPEN: [
           { target: 'confirmingSync', guard: 'needsSync', actions: 'start' },
-          { target: 'quoting', actions: 'start' },
+          { target: 'quoting', guard: 'restore', actions: 'start' },
+          { target: 'rewriting', actions: 'start' },
         ],
       },
     },
     confirmingSync: {
       on: {
-        ACCEPT: { target: 'quoting', actions: 'consent' },
+        ACCEPT: [
+          { target: 'quoting', guard: 'restore', actions: 'consent' },
+          { target: 'rewriting', actions: 'consent' },
+        ],
         REJECT: { target: 'idle', actions: 'reset' },
         CLOSE: { target: 'idle', actions: 'reset' },
         SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
@@ -71,12 +81,15 @@ export const recallFlowMachine = setup({
         SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },
     },
-    // Ambiguous failure retains the paid intent and accepted quote; a known refusal re-quotes.
+    // Only restoration needs a quote; both intents retain their identity after ambiguous failure.
     reconsolidating: {
       on: {
         DONE: 'result',
         ERROR: 'rewriting',
-        REQUOTE: { target: 'quoting', actions: 'retry' },
+        REQUOTE: [
+          { target: 'quoting', guard: 'restore', actions: 'retry' },
+          { target: 'rewriting', actions: 'retry' },
+        ],
         CONSENT_REQUIRED: { target: 'confirmingSync', actions: 'retry' },
         SESSION_INVALIDATED: { target: 'idle', actions: 'reset' },
       },

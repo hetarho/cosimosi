@@ -567,7 +567,7 @@
   "admin_provider_empty": "No providers to show.",
   "twinkle_earn_body": "This is how stardust gathers.",
   "twinkle_earn_daily_title": "Today's refill",
-  "twinkle_earn_daily_body": "Small stardust fills again when the day turns. It is only for recalling.",
+  "twinkle_earn_daily_body": "Small stardust refills daily for restoring stored words and reading gists. Reconstructing a memory is free.",
   "twinkle_earn_write_title": "Writing a diary",
   "twinkle_earn_write_body": "When a diary becomes a star, stardust gathers.",
   "twinkle_earn_achievement_title": "Achievements",
@@ -869,5 +869,10 @@
   "demo_reset_action": "Start over",
   "demo_taster_palette_action": "The colour a feeling gets",
   "demo_decorate_default": "Default",
-  "demo_decorate_palette_alt": "A different set"
+  "demo_decorate_palette_alt": "A different set",
+  "memory_restore_title": "Restore stored words",
+  "memory_restore_description": "Use stardust to restore this memory’s stored words before they faded. This does not rewrite the memory.",
+  "memory_restore_confirm": "Restore stored words",
+  "memory_restore_result": "The stored memory is clear again.",
+  "memory_restore_cost_label": "Stardust to restore stored words"
 }

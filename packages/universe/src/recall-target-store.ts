@@ -5,12 +5,14 @@ import { create } from 'zustand'
 // opens on a non-null id, then clears it when the flow closes. A one-slot request, not a queue.
 export interface RecallTargetState {
   readonly memoryId: string | null
-  request: (memoryId: string) => void
+  readonly mode: 'recall' | 'restore'
+  request: (memoryId: string, mode?: 'recall' | 'restore') => void
   clear: () => void
 }
 
 export const useRecallTargetStore = create<RecallTargetState>()((set) => ({
   memoryId: null,
-  request: (memoryId) => set({ memoryId }),
-  clear: () => set({ memoryId: null }),
+  mode: 'recall',
+  request: (memoryId, mode = 'recall') => set({ memoryId, mode }),
+  clear: () => set({ memoryId: null, mode: 'recall' }),
 }))

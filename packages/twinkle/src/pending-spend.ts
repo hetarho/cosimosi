@@ -26,3 +26,23 @@ export function gistViewSpend(episodicMemoryId: string): PendingSpend {
 export function diaryRecallSpend(diaryId: string): PendingSpend {
   return { kind: SpendKind.DIARY_RECALL, diaryId }
 }
+
+export function restoreMemoryTextSpend(episodicMemoryId: string): PendingSpend {
+  return { kind: SpendKind.RESTORE_MEMORY_TEXT, episodicMemoryId }
+}
+
+// Hosts supply their locale seam; action-to-label selection stays shared across platforms.
+export function spendCostLabel(
+  kind: SpendKind,
+  copy: {
+    memory_restore_cost_label(): string
+    twinkle_cost_gist_label(): string
+    twinkle_cost_diary_label(): string
+    twinkle_cost_recall_label(): string
+  },
+): string {
+  if (kind === SpendKind.RESTORE_MEMORY_TEXT) return copy.memory_restore_cost_label()
+  if (kind === SpendKind.GIST_VIEW) return copy.twinkle_cost_gist_label()
+  if (kind === SpendKind.DIARY_RECALL) return copy.twinkle_cost_diary_label()
+  return copy.twinkle_cost_recall_label()
+}

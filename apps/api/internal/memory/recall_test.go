@@ -304,16 +304,10 @@ func TestRecallNoErrorBranchReinforcesOnly(t *testing.T) {
 	if fixture.predictionError.calls != 1 || fixture.predictionError.gotCurrent != "original account" || fixture.predictionError.gotRewrite != "original account, reworded" {
 		t.Fatalf("compare = %+v, want one call over (current, rewrite)", fixture.predictionError)
 	}
-	// A2: one recall spend intent for the target, carrying the post-sync
-	// accessibility signal — and the recall's own transaction handle, so the real
-	// gate's debit joins this transaction.
-	wantIntent := RecallSpendIntent("op-1", "m1", recallAccessibilitySignal(recallAnchorOf(fixture.launches.recallStars["m1"]), fixtureToday()))
-	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0] != wantIntent {
-		t.Fatalf("spend intents = %+v, want one %+v", fixture.spendGate.intents, wantIntent)
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatal("free reconstruction must not spend Twinkle")
 	}
-	if len(fixture.spendGate.txs) != 1 || fixture.spendGate.txs[0] == nil {
-		t.Fatal("the recall spend must carry the recall transaction handle")
-	}
+
 }
 
 func TestRecallErrorBranchReconsolidates(t *testing.T) {
@@ -422,7 +416,7 @@ func TestRecallNeighborSelectionByCount(t *testing.T) {
 	}
 }
 
-func TestRecallSpendDenialResetsNothing(t *testing.T) {
+func TestRestoreMemoryTextSpendDenialResetsNothing(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	previous := recallTestClock()
@@ -430,7 +424,7 @@ func TestRecallSpendDenialResetsNothing(t *testing.T) {
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 	fixture.seedRecallable("m1", EpisodicMemory{CurrentText: "x", Seed: seededSeed(1), BaseStrength: 0.5}, nil, nil)
 
-	_, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true})
+	_, err := fixture.paid.RestoreMemoryText(context.Background(), testScope(t), RestoreMemoryTextCommand{OperationID: "op-1", MemoryID: "m1", SyncConsent: true})
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle", err)
 	}
@@ -499,8 +493,8 @@ func TestRecallDiaryStarsReinforcesEveryLiveMemory(t *testing.T) {
 	if len(fixture.launches.recall.anchorResets) != 2 || len(fixture.launches.committed.synapses) != 2 {
 		t.Fatalf("reinforce = %d anchors / %d synapses, want 2 / 2", len(fixture.launches.recall.anchorResets), len(fixture.launches.committed.synapses))
 	}
-	if len(fixture.spendGate.intents) != 2 {
-		t.Fatalf("spend intents = %d, want one per memory", len(fixture.spendGate.intents))
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatalf("free diary recall spent %d times", len(fixture.spendGate.intents))
 	}
 }
 

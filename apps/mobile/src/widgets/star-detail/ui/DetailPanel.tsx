@@ -20,6 +20,7 @@ import {
   resolveSelection,
   starDetailMachine,
   useEpisodicMemoryStore,
+  useRecallTargetStore,
   useNeuronStore,
   useUniverseClockStore,
   type StarDetailPhase,
@@ -156,6 +157,12 @@ export function DetailPanel({
                         value: 'provenance',
                         label: m.star_detail_provenance(),
                         onSelect: () => send({ type: 'SHOW_PROVENANCE' }),
+                      },
+                      {
+                        value: 'restore-text',
+                        label: m.memory_restore_title(),
+                        onSelect: () =>
+                          useRecallTargetStore.getState().request(selection.memory.id, 'restore'),
                       },
                       {
                         value: 'diary',

@@ -156,6 +156,8 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 // recall/gist-view quote an episodic memory, the diary batch quotes a diary.
 func quoteTarget(msg *twinklev1.QuoteSpendRequest) (twinkle.SpendKind, string, error) {
 	switch msg.GetKind() {
+	case twinklev1.SpendKind_SPEND_KIND_RESTORE_MEMORY_TEXT:
+		return twinkle.SpendKindRecall, msg.GetEpisodicMemoryId(), nil
 	case twinklev1.SpendKind_SPEND_KIND_RECALL:
 		return twinkle.SpendKindRecall, msg.GetEpisodicMemoryId(), nil
 	case twinklev1.SpendKind_SPEND_KIND_GIST_VIEW:

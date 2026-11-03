@@ -10,7 +10,7 @@ function actor() {
 describe('recallFlowMachine', () => {
   it('requires quote acceptance before recall and keeps consent in the chart', () => {
     const flow = actor()
-    flow.send({ type: 'OPEN', needsSync: true })
+    flow.send({ type: 'OPEN', needsSync: true, restore: true })
     expect(flow.getSnapshot().context.consented).toBe(false)
     flow.send({ type: 'ACCEPT' })
     expect(flow.getSnapshot().context.consented).toBe(true)
@@ -27,7 +27,7 @@ describe('recallFlowMachine', () => {
     const flow = actor()
     const first = { operationId: 'one', targetKey: 'memory', epoch: 1 }
     const next = { operationId: 'two', targetKey: 'memory', epoch: 2 }
-    flow.send({ type: 'OPEN', needsSync: false, attempt: first })
+    flow.send({ type: 'OPEN', needsSync: false, restore: true, attempt: first })
     flow.send({ type: 'PROCEED' })
     flow.send({ type: 'RECALL' })
     flow.send({ type: 'ERROR' })
@@ -43,8 +43,7 @@ describe('recallFlowMachine', () => {
     const flow = actor()
     expect(flow.getSnapshot().value).toBe('idle')
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'RECALL' })
     expect(flow.getSnapshot().value).toBe('reconsolidating')
@@ -59,8 +58,7 @@ describe('recallFlowMachine', () => {
     flow.send({ type: 'OPEN', needsSync: true })
     expect(flow.getSnapshot().value).toBe('confirmingSync')
     flow.send({ type: 'ACCEPT' })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     expect(flow.getSnapshot().value).toBe('rewriting')
   })
 
@@ -74,8 +72,7 @@ describe('recallFlowMachine', () => {
   it('a failed recall returns to a retriable rewriting', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'RECALL' })
     flow.send({ type: 'ERROR' })
     expect(flow.getSnapshot().value).toBe('rewriting')
@@ -86,8 +83,7 @@ describe('recallFlowMachine', () => {
   it('closes to idle from a dismissible pre-spend phase', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'CLOSE' })
     expect(flow.getSnapshot().value).toBe('idle')
@@ -96,8 +92,7 @@ describe('recallFlowMachine', () => {
   it('is non-dismissible while reconsolidating (A4): CLOSE is ignored', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'RECALL' })
     expect(flow.getSnapshot().value).toBe('reconsolidating')
     flow.send({ type: 'CLOSE' })
@@ -107,8 +102,7 @@ describe('recallFlowMachine', () => {
   it('invalidates an in-flight flow when its target or owning session changes', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'RECALL' })
     flow.send({ type: 'SESSION_INVALIDATED' })
     expect(flow.getSnapshot().value).toBe('idle')
@@ -117,14 +111,12 @@ describe('recallFlowMachine', () => {
   it('an unconsented-sync race re-shows the consent modal (A5)', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     flow.send({ type: 'RECALL' })
     flow.send({ type: 'CONSENT_REQUIRED' })
     expect(flow.getSnapshot().value).toBe('confirmingSync')
     flow.send({ type: 'ACCEPT' })
-    expect(flow.getSnapshot().value).toBe('quoting')
-    flow.send({ type: 'PROCEED' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
     expect(flow.getSnapshot().value).toBe('rewriting')
   })
 })

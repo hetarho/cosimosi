@@ -21,6 +21,12 @@ type paidStub struct {
 	err                               error
 }
 
+func (s *paidStub) RestoreMemoryText(_ context.Context, scope platform.UserScope, cmd memory.RestoreMemoryTextCommand) (memory.RecallResult, error) {
+	s.calls++
+	s.scope, s.operation, s.target, s.consent = scope.UserID(), cmd.OperationID, cmd.MemoryID, cmd.SyncConsent
+	return memory.RecallResult{CurrentText: "stored text", Sync: memory.SyncResult{Current: time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)}}, s.err
+}
+
 func (s *paidStub) Recall(_ context.Context, scope platform.UserScope, cmd memory.RecallCommand) (memory.RecallResult, error) {
 	operation, target, rewrite, consent := cmd.OperationID, cmd.MemoryID, cmd.RewriteText, cmd.SyncConsent
 	s.calls++

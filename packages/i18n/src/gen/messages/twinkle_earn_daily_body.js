@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Twinkle_Earn_Daily_BodyInputs */
 
 const en_twinkle_earn_daily_body = /** @type {(inputs: Twinkle_Earn_Daily_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Small stardust fills again when the day turns. It is only for recalling.`)
+	return /** @type {LocalizedString} */ (`Small stardust refills daily for restoring stored words and reading gists. Reconstructing a memory is free.`)
 };
 
 const ko_twinkle_earn_daily_body = /** @type {(inputs: Twinkle_Earn_Daily_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`작은 별가루는 하루가 바뀌면 다시 채워져요. 회상에만 써요.`)
+	return /** @type {LocalizedString} */ (`작은 별가루는 매일 다시 채워져요. 원문을 되살리거나 요지를 읽을 때 사용할 수 있어요. 회고하기는 무료예요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Small stardust fills again when the day turns. It is only for recalling." |
+* | "Small stardust refills daily for restoring stored words and reading gists. Reconstructing a memory is free." |
 *
 * @param {Twinkle_Earn_Daily_BodyInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

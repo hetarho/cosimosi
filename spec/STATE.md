@@ -102,7 +102,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T223 | Separate free reconstruction from paid stored-text recovery | RECALL TWINK FORGET PROD UL MEM | - | doing@261103.rcui |
 | T224 | Fill only lost runs and browse a diary's stars in order | RECALL DIARY | T223 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
@@ -113,6 +112,7 @@
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
 - 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decoration-tour)
 - 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decoration-tour)

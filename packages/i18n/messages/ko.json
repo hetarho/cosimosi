@@ -567,7 +567,7 @@
   "admin_provider_empty": "표시할 공급자가 없어요.",
   "twinkle_earn_body": "별가루는 이렇게 모여요.",
   "twinkle_earn_daily_title": "매일 채워지는 몫",
-  "twinkle_earn_daily_body": "작은 별가루는 하루가 바뀌면 다시 채워져요. 회상에만 써요.",
+  "twinkle_earn_daily_body": "작은 별가루는 매일 다시 채워져요. 원문을 되살리거나 요지를 읽을 때 사용할 수 있어요. 회고하기는 무료예요.",
   "twinkle_earn_write_title": "일기 쓰기",
   "twinkle_earn_write_body": "일기 하나가 별이 되면 별가루가 쌓여요.",
   "twinkle_earn_achievement_title": "업적",
@@ -869,5 +869,10 @@
   "demo_reset_action": "처음부터 다시",
   "demo_taster_palette_action": "감정의 색",
   "demo_decorate_default": "기본",
-  "demo_decorate_palette_alt": "다른 색으로"
+  "demo_decorate_palette_alt": "다른 색으로",
+  "memory_restore_title": "원문 되살리기",
+  "memory_restore_description": "별가루를 사용해 흐려지기 전의 저장된 기억을 그대로 되살려요. 내용을 다시 쓰지는 않아요.",
+  "memory_restore_confirm": "원문 되살리기",
+  "memory_restore_result": "저장된 기억을 그대로 되살렸어요.",
+  "memory_restore_cost_label": "원문 되살리기에 필요한 별가루"
 }

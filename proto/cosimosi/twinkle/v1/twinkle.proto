@@ -50,6 +50,7 @@ enum SpendKind {
   SPEND_KIND_RECALL = 1;
   SPEND_KIND_GIST_VIEW = 2;
   SPEND_KIND_DIARY_RECALL = 3;
+  SPEND_KIND_RESTORE_MEMORY_TEXT = 4;
 }
 
 message QuoteSpendRequest {

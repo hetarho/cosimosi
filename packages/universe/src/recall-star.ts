@@ -38,7 +38,11 @@ export async function requestRecall(
 // reconsolidation [V5]) seed, and the returned current_text (the new narrative on reconsolidation,
 // unchanged on reinforce). Applying current_text keeps the mirror from lagging the server after a
 // reconsolidation. A failed recall never calls this because there is nothing to apply.
-export function applyRecallResult(memoryId: string, response: RecallResponse): void {
+export function applyRecallResult(
+  memoryId: string,
+  response: RecallResponse,
+  restored = false,
+): void {
   const store = useEpisodicMemoryStore.getState()
   const existing = store.byId[memoryId]
   if (!existing) return
@@ -48,6 +52,7 @@ export function applyRecallResult(memoryId: string, response: RecallResponse): v
     recallCount: response.recallCount,
     lastRecalledUniverseTime: response.universeTime,
     currentText: response.currentText,
+    forgettingOffsetDays: restored ? 0 : existing.forgettingOffsetDays,
   }
   const all = store.ids
     .map((id) => (id === memoryId ? updated : store.byId[id]))
@@ -66,4 +71,15 @@ export function recallAdvanceAnnouncement(response: RecallResponse): AdvanceAnno
   }
   if (interval.previous === null || interval.previous === interval.current) return null
   return { interval, revealNeuronIds: [] }
+}
+
+export async function requestRestoreMemoryText(
+  transport: ApiTransport,
+  input: RecallInput,
+): Promise<RecallResponse> {
+  return createMemoryClient(transport).restoreMemoryText({
+    memoryId: input.episodicMemoryId,
+    operationId: input.operationId,
+    syncConsent: input.syncConsent,
+  })
 }

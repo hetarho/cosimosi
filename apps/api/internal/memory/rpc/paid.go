@@ -12,6 +12,7 @@ import (
 
 // PaidUseCases is the transport's paid-action capability, independent of encoding and archive reads.
 type PaidUseCases interface {
+	RestoreMemoryText(ctx context.Context, scope platform.UserScope, cmd memory.RestoreMemoryTextCommand) (memory.RecallResult, error)
 	Recall(ctx context.Context, scope platform.UserScope, cmd memory.RecallCommand) (memory.RecallResult, error)
 	RecallDiaryStars(ctx context.Context, scope platform.UserScope, cmd memory.RecallDiaryStarsCommand) (memory.RecallDiaryStarsResult, error)
 	ViewSemantic(ctx context.Context, scope platform.UserScope, operationID string, memoryID string) (memory.ViewSemanticResult, error)
@@ -78,4 +79,16 @@ func (s *PaidServer) ViewSemantic(ctx context.Context, req *connect.Request[memo
 		Text:         result.Text,
 		ReachedStage: int32(result.ReachedStage),
 	}), nil
+}
+
+func (s *PaidServer) RestoreMemoryText(ctx context.Context, req *connect.Request[memoryv1.RestoreMemoryTextRequest]) (*connect.Response[memoryv1.RecallResponse], error) {
+	scope, err := platform.RequireUserScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.paid.RestoreMemoryText(ctx, scope, memory.RestoreMemoryTextCommand{OperationID: req.Msg.GetOperationId(), MemoryID: req.Msg.GetMemoryId(), SyncConsent: req.Msg.GetSyncConsent()})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.RecallResponse{CurrentText: result.CurrentText, Seed: result.Seed, RecallCount: result.RecallCount, EffectiveStrength: float32(result.EffectiveStrength), PreviousUniverseTime: dateValue(result.Sync.Previous), UniverseTime: result.Sync.Current.Format(time.DateOnly)}), nil
 }

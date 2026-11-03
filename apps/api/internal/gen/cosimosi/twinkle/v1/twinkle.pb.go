@@ -27,10 +27,11 @@ const (
 type SpendKind int32
 
 const (
-	SpendKind_SPEND_KIND_UNSPECIFIED  SpendKind = 0
-	SpendKind_SPEND_KIND_RECALL       SpendKind = 1
-	SpendKind_SPEND_KIND_GIST_VIEW    SpendKind = 2
-	SpendKind_SPEND_KIND_DIARY_RECALL SpendKind = 3
+	SpendKind_SPEND_KIND_UNSPECIFIED         SpendKind = 0
+	SpendKind_SPEND_KIND_RECALL              SpendKind = 1
+	SpendKind_SPEND_KIND_GIST_VIEW           SpendKind = 2
+	SpendKind_SPEND_KIND_DIARY_RECALL        SpendKind = 3
+	SpendKind_SPEND_KIND_RESTORE_MEMORY_TEXT SpendKind = 4
 )
 
 // Enum value maps for SpendKind.
@@ -40,12 +41,14 @@ var (
 		1: "SPEND_KIND_RECALL",
 		2: "SPEND_KIND_GIST_VIEW",
 		3: "SPEND_KIND_DIARY_RECALL",
+		4: "SPEND_KIND_RESTORE_MEMORY_TEXT",
 	}
 	SpendKind_value = map[string]int32{
-		"SPEND_KIND_UNSPECIFIED":  0,
-		"SPEND_KIND_RECALL":       1,
-		"SPEND_KIND_GIST_VIEW":    2,
-		"SPEND_KIND_DIARY_RECALL": 3,
+		"SPEND_KIND_UNSPECIFIED":         0,
+		"SPEND_KIND_RECALL":              1,
+		"SPEND_KIND_GIST_VIEW":           2,
+		"SPEND_KIND_DIARY_RECALL":        3,
+		"SPEND_KIND_RESTORE_MEMORY_TEXT": 4,
 	}
 )
 
@@ -681,12 +684,13 @@ const file_cosimosi_twinkle_v1_twinkle_proto_rawDesc = "" +
 	"\voccurred_on\x18\a \x01(\tR\n" +
 	"occurredOn\x12\x1f\n" +
 	"\voccurred_at\x18\b \x01(\tR\n" +
-	"occurredAt*u\n" +
+	"occurredAt*\x99\x01\n" +
 	"\tSpendKind\x12\x1a\n" +
 	"\x16SPEND_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11SPEND_KIND_RECALL\x10\x01\x12\x18\n" +
 	"\x14SPEND_KIND_GIST_VIEW\x10\x02\x12\x1b\n" +
-	"\x17SPEND_KIND_DIARY_RECALL\x10\x03*m\n" +
+	"\x17SPEND_KIND_DIARY_RECALL\x10\x03\x12\"\n" +
+	"\x1eSPEND_KIND_RESTORE_MEMORY_TEXT\x10\x04*m\n" +
 	"\x0fLedgerEntryKind\x12!\n" +
 	"\x1dLEDGER_ENTRY_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16LEDGER_ENTRY_KIND_EARN\x10\x01\x12\x1b\n" +

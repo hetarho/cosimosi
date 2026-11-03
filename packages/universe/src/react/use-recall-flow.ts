@@ -8,6 +8,7 @@ import { useMachine } from '@cosimosi/state-machine/react'
 import {
   applyRecallResult,
   requestRecall,
+  requestRestoreMemoryText,
   recallAdvanceAnnouncement,
   type RecallInput,
 } from '../recall-star.ts'
@@ -26,13 +27,15 @@ export interface RecallFlowPorts {
   invalidateBalance(): void
   invalidateAchievements(): void
   requestEarnGuide(): void
-  // The paid call itself; defaults to the Recall RPC on the ambient transport. Tests inject it.
+  // Tests may inject the mutation; production selects the RPC from the explicit intent.
   request?(input: RecallInput): Promise<RecallResponse>
 }
 
 export function useRecallFlowController(ports: RecallFlowPorts) {
   const { onError: showError } = ports
   const memoryId = useRecallTargetStore((state) => state.memoryId)
+  const mode = useRecallTargetStore((state) => state.mode)
+  const intentKey = memoryId ? `${mode}:${memoryId}` : null
   const clearTarget = useRecallTargetStore((state) => state.clear)
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
   const memory = useEpisodicMemoryStore((state) => (memoryId ? state.byId[memoryId] : undefined))
@@ -40,12 +43,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
   const [snapshot, send, actor] = useMachine(recallFlowMachine)
   const phase = snapshot.value as RecallFlowPhase
 
-  // The cost gate ([G4], A5): 회고하기 is priced before it happens. The display shows the
-  // recall quote first; only on its proceed does the rewrite reveal. A basic-affordable recall
-  // proceeds straight through (A9); a shortfall opens the charge sheet (A4).
-  // Every action that can record progress refreshes the achievement read on resolution, which is
-  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
-
+  // Reconstruction is free; stored-text restoration alone passes through the quote phase.
   const rewrite = useRecallDraftStore((state) => state.rewrite)
   const result = useRecallDraftStore((state) => state.result)
   const setRewrite = useRecallDraftStore((state) => state.setRewrite)
@@ -87,7 +85,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
   useEffect(() => {
     // A route/store retarget (including sign-out clearing the target) ends this session even while
     // the dialog is non-dismissible. The captured request may finish, but it can no longer apply.
-    if (attempt && attempt.targetKey !== memoryId) {
+    if (attempt && attempt.targetKey !== intentKey) {
       paidSession.invalidate(attempt)
 
       resetDraft()
@@ -102,11 +100,18 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
     if (memoryId && phase === 'idle' && !syncStatusQuery.isLoading) {
       resetDraft()
 
-      send({ type: 'OPEN', needsSync, attempt: paidSession.begin(memoryId) })
+      send({
+        type: 'OPEN',
+        needsSync,
+        restore: mode === 'restore',
+        attempt: paidSession.begin(`${mode}:${memoryId}`),
+      })
     }
   }, [
     attempt,
     memoryId,
+    mode,
+    intentKey,
     phase,
     needsSync,
     paidSession,
@@ -146,14 +151,20 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
     if (
       !activeMemoryId ||
       !activeAttempt ||
-      activeAttempt.targetKey !== activeMemoryId ||
+      activeAttempt.targetKey !== `${useRecallTargetStore.getState().mode}:${activeMemoryId}` ||
       actor.getSnapshot().value !== 'rewriting'
     )
       return
     const isCurrent = capture()
     if (!paidSession.start(activeAttempt)) return
     const { ports: current, transport: activeTransport } = latest.current
-    const issue = current.request ?? ((input: RecallInput) => requestRecall(activeTransport, input))
+    const restoring = useRecallTargetStore.getState().mode === 'restore'
+    const issue =
+      current.request ??
+      ((input: RecallInput) =>
+        restoring
+          ? requestRestoreMemoryText(activeTransport, input)
+          : requestRecall(activeTransport, input))
 
     send({ type: 'RECALL' })
     try {
@@ -168,7 +179,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
       if (!isCurrent() || !paidSession.isActive(activeAttempt)) return
       // Server-authoritative: apply the returned representation (incl. current_text, A7), play the
       // sync interval, and refetch the memory service + balance so the panel/HUD reflect the result.
-      applyRecallResult(activeMemoryId, response)
+      applyRecallResult(activeMemoryId, response, restoring)
       const advance = recallAdvanceAnnouncement(response)
       if (advance) useAdvanceAnnouncementStore.getState().announce(advance)
       useRecallDraftStore.getState().setResult({
@@ -176,7 +187,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
         currentText: response.currentText,
       })
       invalidateMemory()
-      current.invalidateBalance()
+      if (restoring) current.invalidateBalance()
       // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
       // achievements are refreshed only on success. A failed action recorded no progress, and refetching
       // after it could surface an unlock notice that reads as though the failure had earned something.
@@ -184,7 +195,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
       send({ type: 'DONE' })
     } catch (error) {
       if (!isCurrent() || !paidSession.isActive(activeAttempt)) return
-      current.invalidateBalance()
+      if (restoring) current.invalidateBalance()
       if (classifyPaidActionError(error) === 'ambiguous') {
         // The recall MAY have committed; keep the operation id and the accepted quote so the diarist's
         // re-confirm replays the committed receipt directly — never re-quoting, so a now-depleted
@@ -193,18 +204,24 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
         send({ type: 'ERROR' })
         return
       }
-      // Known refusal — nothing committed; the next attempt is a fresh spend, so mint a new id.
+      // A known refusal starts a fresh intent; free reconstruction needs no quote.
       // Only an un-consented sync race returns to the consent modal; once consent was given, a
       // balance/target/conflict refusal re-quotes (charge path) instead of looping consent.
       const recovery = classifyErrorRecovery(error, consent)
       if (recovery === 'sync-consent') {
-        send({ type: 'CONSENT_REQUIRED', attempt: paidSession.begin(activeMemoryId) })
+        send({
+          type: 'CONSENT_REQUIRED',
+          attempt: paidSession.begin(`${restoring ? 'restore' : 'recall'}:${activeMemoryId}`),
+        })
         return
       }
       current.onError(error)
-      if (recovery === 'earn') current.requestEarnGuide()
+      if (restoring && recovery === 'earn') current.requestEarnGuide()
 
-      send({ type: 'REQUOTE', attempt: paidSession.begin(activeMemoryId) })
+      send({
+        type: 'REQUOTE',
+        attempt: paidSession.begin(`${restoring ? 'restore' : 'recall'}:${activeMemoryId}`),
+      })
     } finally {
       paidSession.finish(activeAttempt)
     }
@@ -212,6 +229,7 @@ export function useRecallFlowController(ports: RecallFlowPorts) {
 
   return {
     phase,
+    mode,
     memoryId,
     result,
     rewrite,

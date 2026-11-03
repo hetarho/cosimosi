@@ -35,10 +35,12 @@ service MemoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
-  // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
+  // Free reconstruction; advances the clock with consent and may rewrite the memory.
   rpc Recall(RecallRequest) returns (RecallResponse);
+  // Paid recovery of unchanged stored memory text, without a user rewrite or AI comparison.
+  rpc RestoreMemoryText(RestoreMemoryTextRequest) returns (RecallResponse);
   // 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
-  // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
+  // Free compatibility mutation: advances the clock with consent and reinforces its live members.
   rpc RecallDiaryStars(RecallDiaryStarsRequest) returns (RecallDiaryStarsResponse);
   // 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
   // It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
@@ -252,6 +254,12 @@ message SynapseDto {
 // The memory + what the user wrote back. rewrite_text is the ONLY content field the client
 // sends — no seed, brightness, strength, decay, price, or diary field exists, so the
 // reshape/bump/anchors/price are all server-derived (ARCH-31, [W4a] structural defense).
+message RestoreMemoryTextRequest {
+  string memory_id = 1;
+  string operation_id = 2;
+  bool sync_consent = 3;
+}
+
 message RecallRequest {
   string memory_id = 1;
   string rewrite_text = 2;

@@ -9,7 +9,7 @@ import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
 import { RecallRewrite } from '../../../features/recall-star/index.ts'
 import { RecallResult } from './RecallResult.tsx'
 import { SpendCostDisplay } from '../../../features/spend-cost-display/index.ts'
-import { recallSpend } from '@cosimosi/twinkle'
+import { restoreMemoryTextSpend } from '@cosimosi/twinkle'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
 
@@ -24,6 +24,7 @@ export function RecallFlowSheet() {
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const {
     phase,
+    mode,
     memoryId,
     result,
     rewrite,
@@ -47,23 +48,37 @@ export function RecallFlowSheet() {
   }
 
   return (
-    <Dialog open onClose={close} title={m.recall_flow_title()} closeLabel={m.common_dismiss()}>
+    <Dialog
+      open
+      onClose={close}
+      title={mode === 'restore' ? m.memory_restore_title() : m.recall_flow_title()}
+      closeLabel={m.common_dismiss()}
+    >
       <div className="flex flex-col gap-4">
         {(phase === 'quoting' || phase === 'rewriting' || phase === 'reconsolidating') &&
           memoryId &&
           (phase !== 'quoting' ? (
             <>
               <CurrentMemoryText spans={spans} />
-              <RecallRewrite
-                value={rewrite}
-                onChange={setRewrite}
-                onConfirm={confirmRecall}
-                busy={phase === 'reconsolidating'}
-              />
+              {mode === 'restore' ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-text-muted">{m.memory_restore_description()}</p>
+                  <Button disabled={phase === 'reconsolidating'} onClick={confirmRecall}>
+                    {phase === 'reconsolidating' ? m.common_loading() : m.memory_restore_confirm()}
+                  </Button>
+                </div>
+              ) : (
+                <RecallRewrite
+                  value={rewrite}
+                  onChange={setRewrite}
+                  onConfirm={confirmRecall}
+                  busy={phase === 'reconsolidating'}
+                />
+              )}
             </>
           ) : (
             <SpendCostDisplay
-              pending={recallSpend(memoryId)}
+              pending={restoreMemoryTextSpend(memoryId)}
               onProceed={acceptQuote}
               onCancel={close}
               onEarn={requestEarnGuide}
@@ -71,6 +86,7 @@ export function RecallFlowSheet() {
           ))}
         {phase === 'result' && result && (
           <>
+            {mode === 'restore' ? <p>{m.memory_restore_result()}</p> : null}
             <RecallResult outcome={result.outcome} currentText={result.currentText} />
             <div className="flex justify-end">
               <Button color="neutral" onClick={close}>

@@ -156,7 +156,7 @@ func (s *PaidActionService) prepareRecall(ctx context.Context, scope platform.Us
 		if replayed, err = replayIfReceipted(ctx, scope, tx, PaidActionRecall, operationID, fingerprint, &result); err != nil || replayed {
 			return err
 		}
-		_, target, err := s.syncTarget(ctx, scope, tx, today, syncConsent)
+		_, _, err = s.syncTarget(ctx, scope, tx, today, syncConsent)
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func (s *PaidActionService) prepareRecall(ctx context.Context, scope platform.Us
 		if prepared.DeletedAt != nil {
 			return ErrRecallMemoryUnavailable
 		}
-		return tx.CheckMemorySpend(ctx, scope, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(prepared), target)))
+		return nil
 	})
 	if err != nil {
 		return EpisodicMemory{}, nil, err
@@ -178,8 +178,8 @@ func (s *PaidActionService) prepareRecall(ctx context.Context, scope platform.Us
 	return prepared, nil, nil
 }
 
-// commitRecall is the commit transaction: it repeats the receipt, consent and spend checks, refuses a
-// source that changed since preparation, and applies sync + spend + reinforce + (reconsolidate) +
+// commitRecall is the commit transaction: it repeats the receipt and consent checks, refuses a
+// source that changed since preparation, and applies sync + reinforce + (reconsolidate) +
 // provenance + the receipt wholly or not at all.
 func (s *PaidActionService) commitRecall(ctx context.Context, scope platform.UserScope, cmd RecallCommand, fingerprint string, today time.Time, prepared EpisodicMemory, differs bool) (RecallResult, error) {
 	operationID, memoryID, rewriteText, syncConsent := cmd.OperationID, cmd.MemoryID, cmd.RewriteText, cmd.SyncConsent
@@ -218,18 +218,11 @@ func (s *PaidActionService) commitRecall(ctx context.Context, scope platform.Use
 			return ErrRecallSourceChanged
 		}
 
-		// 3. Spend Twinkle for the recall: the intent carries the post-sync accessibility
-		// signal + the operation id (its dedup key) and joins this transaction, so a denial
-		// aborts the whole recall, resetting and charging nothing.
-		// One pre-recall snapshot serves both the price and the 망각·회복 judgement, taken before
-		// the reinforce below resets the anchors.
+		// Recovery is measured before the free recall resets its anchors.
 		anchor := recallAnchorOf(memory)
 		recovered := 0
 		if recallRecoversDecay(anchor, sync.Current) {
 			recovered = 1
-		}
-		if err := tx.SpendMemory(ctx, scope, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
-			return err
 		}
 		// 5. Reinforce on either branch ([R2][R3][R5][F5]).
 		effects, err := s.reinforce(ctx, scope, tx, memoryID, sync.Current)
@@ -274,7 +267,7 @@ func (s *PaidActionService) commitRecall(ctx context.Context, scope platform.Use
 }
 
 // RecallDiaryStars is the no-rewrite whole-diary recall ([D3]): after UI consent, sync,
-// spend the recall of each still-live memory born from the diary, and Reinforce each — in
+// Reinforce every still-live memory born from the diary without an economy check — in
 // ONE transaction. It never calls PredictionError or Reconsolidate, writes no current_text,
 // and changes no seed ([R4][R6][I8]).
 func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform.UserScope, cmd RecallDiaryStarsCommand) (RecallDiaryStarsResult, error) {
@@ -319,15 +312,9 @@ func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform
 		if len(anchors) == 0 {
 			return ErrRecallNoLiveMemories
 		}
-		// Spend first, for EVERY memory, from the one pre-recall anchor snapshot: each
-		// SpendIntent targets one memory and carries that memory's own accessibility signal,
-		// so the diary's cost is the sum of the per-memory recalls ([D3]) — priced exactly as
-		// the diary quote priced it (a reinforce nudges neighbor offsets, so pricing after
-		// reinforcing a sibling would drift from the quote). Each spend's dedup key is
-		// operation-id + member-id, so a replayed diary recall re-charges no member. A
-		// denial aborts the whole transaction — atomic, resets nothing.
+		// All recovery measurements use the same pre-recall snapshot.
 		ids := make([]string, 0, len(anchors))
-		// The 망각·회복 judgement rides along the pricing pass, on the same pre-recall snapshot:
+		// The 망각·회복 judgement rides along the measurement pass, on the same pre-recall snapshot:
 		// once the reinforce below resets each anchor the depth is gone, and there is no recompute
 		// path afterwards.
 		recovered := 0
@@ -336,16 +323,13 @@ func (s *PaidActionService) RecallDiaryStars(ctx context.Context, scope platform
 			if recallRecoversDecay(anchor, sync.Current) {
 				recovered++
 			}
-			if err := tx.SpendMemory(ctx, scope, RecallSpendIntent(operationID, anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
-				return err
-			}
 		}
 		for _, id := range ids {
 			if _, err := s.reinforce(ctx, scope, tx, id, sync.Current); err != nil {
 				return err
 			}
 		}
-		// A whole-diary recall counts each member, matching the ledger's one-row-per-member shape.
+		// A whole-diary recall counts each member, once per member.
 		if err := s.recordRecallProgress(ctx, scope, tx, len(ids), recovered); err != nil {
 			return err
 		}

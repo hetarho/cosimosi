@@ -1,15 +1,8 @@
-import { SpendKind } from '@cosimosi/api-client'
-import type { PendingSpend } from '@cosimosi/twinkle'
+import { spendCostLabel, type PendingSpend } from '@cosimosi/twinkle'
 import { useSpendQuote } from '@cosimosi/twinkle/react'
 import { Button } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-
-function costLabel(kind: SpendKind): string {
-  if (kind === SpendKind.GIST_VIEW) return m.twinkle_cost_gist_label()
-  if (kind === SpendKind.DIARY_RECALL) return m.twinkle_cost_diary_label()
-  return m.twinkle_cost_recall_label()
-}
 
 // features/spend-cost-display ui ([G4], CC3): the reusable price surface the recall and
 // gist-view flows compose before spending. It renders the server quote verbatim — the
@@ -55,7 +48,7 @@ export function SpendCostDisplay({
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm text-text-muted">{costLabel(pending.kind)}</span>
+        <span className="text-sm text-text-muted">{spendCostLabel(pending.kind, m)}</span>
         <span className="text-base font-medium text-text tabular-nums">{String(quote.cost)}</span>
       </div>
 

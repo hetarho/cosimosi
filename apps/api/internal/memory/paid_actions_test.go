@@ -51,8 +51,8 @@ func TestRecallReplaysCommittedReceiptWithoutRedoingWork(t *testing.T) {
 	if fixture.predictionError.calls != 1 {
 		t.Fatalf("compare calls = %d, want 1 (the replay does no work)", fixture.predictionError.calls)
 	}
-	if len(fixture.spendGate.intents) != 1 {
-		t.Fatalf("spend intents = %d, want 1 (the replay does not re-spend)", len(fixture.spendGate.intents))
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatalf("spend intents = %d, want 0 for free recall", len(fixture.spendGate.intents))
 	}
 	// The fake records only the last committed transaction's writes; the replay's transaction
 	// stages nothing, so it appends no provenance — the replay does no work.
@@ -119,30 +119,30 @@ func TestRecallAllowsUnconsentedWhenClockAlreadyAtToday(t *testing.T) {
 	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: false}); err != nil {
 		t.Fatalf("recall on an already-synced clock should not require consent, got %v", err)
 	}
-	if len(fixture.spendGate.intents) != 1 {
-		t.Fatalf("spend intents = %d, want 1 (the recall proceeded)", len(fixture.spendGate.intents))
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatalf("spend intents = %d, want 0 for free recall", len(fixture.spendGate.intents))
 	}
 }
 
-func TestRecallDeniedSpendWritesNoReceipt(t *testing.T) {
+func TestRecallFailedComparisonWritesNoReceipt(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	previous := recallTestClock()
 	fixture.launches.clock = &previous
-	fixture.spendGate.denyErr = ErrInsufficientTwinkle
+	fixture.predictionError.err = context.Canceled
 	fixture.seedRecallable("m1", recallableMemory(), nil, nil)
 
-	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true}); !errors.Is(err, ErrInsufficientTwinkle) {
-		t.Fatalf("denied recall err = %v, want ErrInsufficientTwinkle", err)
+	if _, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("denied recall err = %v, want context.Canceled", err)
 	}
 	if len(fixture.launches.receipts) != 0 {
 		t.Fatalf("receipts = %d, want 0 — a rolled-back recall writes none (A3)", len(fixture.launches.receipts))
 	}
 	// The same operation id now does fresh work (the earlier attempt left no receipt to replay).
-	fixture.spendGate.denyErr = nil
+	fixture.predictionError.err = nil
 	result, err := fixture.paid.Recall(context.Background(), testScope(t), RecallCommand{OperationID: "op-1", MemoryID: "m1", RewriteText: "reworded", SyncConsent: true})
 	if err != nil {
-		t.Fatalf("retry after a rolled-back spend failed: %v", err)
+		t.Fatalf("retry after a rolled-back comparison failed: %v", err)
 	}
 	if result.RecallCount == 0 {
 		t.Fatal("the retry did no work, want a fresh recall (not an empty replay)")
@@ -167,8 +167,8 @@ func TestDiaryRecallReplaysAndCarriesOperationIDPerMember(t *testing.T) {
 	}
 	// Every member's spend carries the one operation id, so the composition-root seam derives a
 	// distinct per-member dedup key (A3).
-	if len(fixture.spendGate.intents) != 2 {
-		t.Fatalf("spend intents = %d, want one per member", len(fixture.spendGate.intents))
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatalf("spend intents = %d, want 0 for free diary recall", len(fixture.spendGate.intents))
 	}
 	for _, intent := range fixture.spendGate.intents {
 		if intent.OperationID != "op-1" {
@@ -183,8 +183,8 @@ func TestDiaryRecallReplaysAndCarriesOperationIDPerMember(t *testing.T) {
 	if len(second.EpisodicMemoryIDs) != 2 {
 		t.Fatalf("replay affected = %v, want the committed two members", second.EpisodicMemoryIDs)
 	}
-	if len(fixture.spendGate.intents) != 2 {
-		t.Fatalf("spend intents after replay = %d, want still 2 (no member re-charged)", len(fixture.spendGate.intents))
+	if len(fixture.spendGate.intents) != 0 {
+		t.Fatalf("spend intents after replay = %d, want 0 for free diary recall", len(fixture.spendGate.intents))
 	}
 }
 
@@ -229,7 +229,7 @@ func TestViewSemanticReplaysCommittedReceipt(t *testing.T) {
 		t.Fatalf("view replay = %+v, want the committed first result %+v", second, first)
 	}
 	if len(fixture.spendGate.intents) != 1 {
-		t.Fatalf("view spend intents = %d, want 1 (the replay does not re-spend)", len(fixture.spendGate.intents))
+		t.Fatalf("view spend intents = %d, want 0 for free recall", len(fixture.spendGate.intents))
 	}
 
 	// The stage is server-derived, so a memory can rise between the lost response and the retry.

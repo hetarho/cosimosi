@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
@@ -11,7 +11,7 @@ import { CurrentMemoryText } from '../../../entities/episodic-memory/index.ts'
 import { RecallRewrite } from '../../../features/recall-star/index.ts'
 import { RecallResult } from './RecallResult.tsx'
 import { SpendCostDisplay } from '../../../features/spend-cost-display/index.ts'
-import { recallSpend } from '@cosimosi/twinkle'
+import { restoreMemoryTextSpend } from '@cosimosi/twinkle'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
 
@@ -25,6 +25,7 @@ export function RecallFlowSheet() {
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const {
     phase,
+    mode,
     memoryId,
     result,
     rewrite,
@@ -48,23 +49,37 @@ export function RecallFlowSheet() {
   }
 
   return (
-    <Dialog open onClose={close} title={m.recall_flow_title()} closeLabel={m.common_dismiss()}>
+    <Dialog
+      open
+      onClose={close}
+      title={mode === 'restore' ? m.memory_restore_title() : m.recall_flow_title()}
+      closeLabel={m.common_dismiss()}
+    >
       <View style={styles.body}>
         {(phase === 'quoting' || phase === 'rewriting' || phase === 'reconsolidating') &&
           memoryId &&
           (phase !== 'quoting' ? (
             <>
               <CurrentMemoryText spans={spans} />
-              <RecallRewrite
-                value={rewrite}
-                onChange={setRewrite}
-                onConfirm={confirmRecall}
-                busy={phase === 'reconsolidating'}
-              />
+              {mode === 'restore' ? (
+                <View>
+                  <Text style={styles.description}>{m.memory_restore_description()}</Text>
+                  <Button disabled={phase === 'reconsolidating'} onPress={confirmRecall}>
+                    {phase === 'reconsolidating' ? m.common_loading() : m.memory_restore_confirm()}
+                  </Button>
+                </View>
+              ) : (
+                <RecallRewrite
+                  value={rewrite}
+                  onChange={setRewrite}
+                  onConfirm={confirmRecall}
+                  busy={phase === 'reconsolidating'}
+                />
+              )}
             </>
           ) : (
             <SpendCostDisplay
-              pending={recallSpend(memoryId)}
+              pending={restoreMemoryTextSpend(memoryId)}
               onProceed={acceptQuote}
               onCancel={close}
               onEarn={requestEarnGuide}
@@ -72,6 +87,9 @@ export function RecallFlowSheet() {
           ))}
         {phase === 'result' && result && (
           <>
+            {mode === 'restore' ? (
+              <Text style={styles.description}>{m.memory_restore_result()}</Text>
+            ) : null}
             <RecallResult outcome={result.outcome} currentText={result.currentText} />
             <View style={styles.done}>
               <Button color="neutral" onPress={close}>
@@ -87,5 +105,6 @@ export function RecallFlowSheet() {
 
 const styles = StyleSheet.create({
   body: { gap: tokens.spacing[4] },
+  description: { color: tokens.color.text, fontSize: tokens.fontSize.sm, lineHeight: 22 },
   done: { alignItems: 'flex-end' },
 })
