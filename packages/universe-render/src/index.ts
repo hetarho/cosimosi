@@ -4,6 +4,7 @@
 // renders through @cosimosi/3d-renderer primitives — the one place domain and visual vocabularies
 // meet (§3.4). No DOM / RN primitive here, so both apps consume it verbatim (no *.native fork).
 export { StarLayer, type StarLayerProps } from './StarLayer.tsx'
+export { UniverseFraming } from './UniverseFraming.tsx'
 export { CellStarLayer, type CellStarLayerProps } from './CellStarLayer.tsx'
 export { FilamentLayer, type FilamentLayerProps } from './FilamentLayer.tsx'
 export { LatentStarField, type LatentStarFieldProps } from './LatentStarField.tsx'

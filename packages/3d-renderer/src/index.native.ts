@@ -11,6 +11,7 @@
 // The shared surface, by name, then the native canvas host in place of the web one. The package
 // entry lint holds this list equal to the web entry's, so neither platform publishes what the other lacks.
 export {
+  FocusPulse,
   ADAPTIVE_DPR_FLOOR,
   AdaptiveDprLayer,
   type AdaptiveDprLayerProps,
@@ -45,6 +46,9 @@ export {
   type BloomParams,
   buildEmotionGradientTexture,
   CameraControls,
+  SceneFraming,
+  type SceneBounds,
+  type FrameInsets,
   type CameraControlsProps,
   ColorField,
   type ColorFieldProps,

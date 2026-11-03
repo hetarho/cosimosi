@@ -59,8 +59,8 @@
 | TWINK | 2 | 2 | - | 0 |
 | ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
-| DEMO | 1 | 1 | - | 0 |
-| ONB | 2 | 2 | - | 1 |
+| DEMO | 5 | 1 | DEMO-14✎ DEMO-22✎ DEMO-25✎ DEMO-26✎ DEMO-27✎ DEMO-29✎ DEMO-31✎ | 0 |
+| ONB | 3 | 2 | ONB-6✎ ONB-9✎ | 1 |
 | VIS    | 2   | 2      | -       | 0   |
 | ACCT | 4 | 4 | - | 1 |
 | AUTH | 3 | 3 | - | 0 |
@@ -104,6 +104,12 @@
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decoration-tour)
+- 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decoration-tour)
+- 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recall-feedback)
+- 261103 fix demo clarity: readable dialogs, current words first, real partial erosion in every sample; demo dwell 4500→2800ms and sweep settle 800→200ms (reports/261103-demo-clarity)
+- 261103 fix universe visual: clear captions from controls, pin dialog actions, complete decoration return, fit gist overview; hardware-browser review (reports/261103-universe-visual)
+- 261103 fix universe experience: synchronize tutorial signals, reading time, displayed date and memory arrival; preserve 40abb60 and add /review (reports/261103-universe)
 - 261103 T222 blocked: phase 1 done (hermetic adapter, lister, harness, EVALUATION.md); phase 2 needs keys, an operator and a reviewer
 - 261103 T221 done
 - 261103 T220 done
@@ -118,9 +124,3 @@
 - 261103 create-task T222: replaces the legacy OpenRouter task (file deleted) in the current format; AI@2 unchanged, ADMIN r3 and ERR r3 consumed
 - 261103 update-ssot ERR ADMIN: ERR-12✎ ADMIN-19✎ name the refused LLM model saves
 - 261103 fix api: regenerate sqlc output whose query comments T199 edited (CI check:gen)
-- 261103 T212 done
-- 261103 T211 done
-- 261103 T210 done
-- 261103 T209 done
-- 261103 T208 done
-- 261103 T207 done

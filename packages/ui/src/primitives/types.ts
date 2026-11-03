@@ -113,6 +113,8 @@ export interface SheetOwnProps {
   closeDisabled?: boolean
   /** Pinned below the scrolling body — the surface's one commit action. */
   footer?: ReactNode
+  /** A compact bottom sheet leaves room to inspect the content beside/above it. */
+  size?: 'standard' | 'compact'
   children?: ReactNode
 }
 

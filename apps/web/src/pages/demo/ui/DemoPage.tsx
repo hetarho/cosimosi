@@ -4,11 +4,18 @@ import { ALTERNATIVE_MOOD_COLORS, MOODS, resetMoodPalette } from '@cosimosi/emot
 import { applyMoodColors } from '@cosimosi/emotion/react'
 import { useSequenceRun } from '@cosimosi/sequence/react'
 import { VALUES } from '@cosimosi/config'
+import type { EpisodicMemory } from '@cosimosi/memory'
+import { DEFAULT_SKY_EFFECT, DEFAULT_STAR_SHAPE } from '@cosimosi/3d-renderer'
 
 import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
+import { m } from '../../../shared/i18n/index.ts'
+import { useSurfaceLayout } from '../../../shared/lib/use-surface-layout.ts'
+import { awaitDeparture } from '../../../shared/lib/measure-arrival.ts'
 import type { DemoSignal } from '../model/anchors.ts'
 import { DEMO_SCRIPT } from '../model/script.ts'
+import { useDecorationSkyPreview } from '../model/use-decoration-sky-preview.ts'
+import { decorationTourMachine, type DecorationTourStage } from '../model/decoration-tour.ts'
 import {
   demoRunMachine,
   demoRunPhase,
@@ -42,11 +49,11 @@ import { DemoWritingSheet, type DemoProposedMemory } from './DemoWritingSheet.ts
 // and calls no model, and the demo-scoped import block in the ESLint config is what makes that a
 // closure rather than a promise: with no transport reachable, a server call is not expressible.
 //
-// Three machines run here. The shared sequence engine owns the tour's presentation (caption,
+// Four machines run here. The shared sequence engine owns the tour's presentation (caption,
 // highlight, dwell, skip chrome); the demo-local run machine owns the run's PHASE — tutorial step ↔
 // free play — and every control's availability derives from it alone; the surface machine owns
-// which ONE surface is open. `syncDemoRunMachine` in the effect below is the only place the first
-// two meet. What remains in this component is composition: reading those, handing presses to them.
+// which ONE surface is open, and a decoration machine owns its guided changes.
+// `syncDemoRunMachine` in the effect below is the only place the first two meet. What remains in this component is composition: reading those, handing presses to them.
 
 /** What a time jump reports once its months have run past on screen. */
 const TIME_JUMP_REPORTS: readonly DemoSignal[] = ['time_advanced', 'gist_risen']
@@ -78,8 +85,30 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     runId: `demo-${Date.now()}`,
   })
 
-  const demo = useDemoRun(entry)
-  const run = useSequenceRun(DEMO_SCRIPT, { captionDwellMs: VALUES.sequence.captionDwellMs })
+  // Presentation feeds reports to the engine, while its displayed date feeds the domain projection.
+  const signalRef = useRef<(report: DemoSignal) => void>(() => {})
+  const reportScene = useCallback((report: DemoSignal) => signalRef.current(report), [])
+  const {
+    sceneRevealing,
+    openReveal,
+    closeReveal,
+    finishReveal,
+    sweep,
+    sweepTime,
+    setSweepTime,
+    playSweep,
+    onSweepDone,
+  } = useScenePresentation(reportScene)
+  const demo = useDemoRun(entry, sweepTime)
+  const surfaceLayout = useSurfaceLayout()
+  const run = useSequenceRun(DEMO_SCRIPT, {
+    captionDwellMs: VALUES.demo.captionDwellMs,
+    paused: sceneRevealing,
+  })
+  const signal = run.signal
+  useEffect(() => {
+    signalRef.current = signal
+  }, [signal])
   const startRun = run.start
 
   const runActor = useActorRef(demoRunMachine)
@@ -102,7 +131,6 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const {
     actor: surfaceActor,
     surface,
-    tasted,
     sheetOpen,
     selectedMemoryId,
     recallMemoryId,
@@ -112,29 +140,41 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   } = useDemoSurface()
   const send = surfaceActor.send
 
+  const [beforeRecall, setBeforeRecall] = useState<EpisodicMemory | null>(null)
+  const pendingRecall = useRef<{ memory: EpisodicMemory; claimed: boolean } | null>(null)
+  useEffect(
+    () => () => {
+      pendingRecall.current = null
+    },
+    [],
+  )
+
+  const decorationActor = useActorRef(decorationTourMachine)
+  const decorationStage = useSelector(
+    decorationActor,
+    (snapshot) => snapshot.value as DecorationTourStage,
+  )
+  const finishSkyPreview = useCallback(() => {
+    decorationActor.send({ type: 'PREVIEW_DONE' })
+  }, [decorationActor])
+
   const phaseKey = phase.kind === 'tutorial' ? phase.beatId : 'freePlay'
+  useDecorationSkyPreview(
+    decorationStage,
+    demo.state.taste.background,
+    phaseKey === 'ornament_taster' && decorateOpen,
+    finishSkyPreview,
+  )
   const writingState = demo.state.writing
   const { maskHole, guideAnchorRect } = useDemoGuide({
     beat: phaseKey,
     surface,
-    tasted,
+    decorationStage,
     splitRevealed: writingState ? writingState.splitRevealed : null,
     memoryCount: demo.scene.memories.length,
     engineRect: run.anchorRect,
     remeasure: run.remeasure,
   })
-
-  const signal = run.signal
-  const {
-    sceneRevealing,
-    openReveal,
-    closeReveal,
-    sweep,
-    sweepTime,
-    setSweepTime,
-    playSweep,
-    onSweepDone,
-  } = useScenePresentation(signal)
 
   useDemoSandbox(entry.runId, startRun)
 
@@ -206,24 +246,47 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // it plays on a canvas the result surface is standing on. So the covering lifts as the flow closes
   // and the next caption arrives with it, exactly as a launch does.
   const onRecallRequested = useCallback(
-    (memoryId: string) => send({ type: 'REQUEST_RECALL', memoryId }),
+    (memoryId: string) => {
+      send({ type: 'REQUEST_RECALL', memoryId })
+      setBeforeRecall(null)
+    },
     [send],
   )
 
   const onRecallConfirm = useCallback(() => {
-    if (!recallMemoryId || recallApplied) return
-    // The sentence lands on the canvas at once — the memory brightens and reshapes where it stands —
-    // so the surface that asked for it steps DOWN for the reveal and comes back up with the result.
-    // Watching your own memory come back through the sheet you sent it from shows nothing.
-    demo.recall(recallMemoryId)
-    send({ type: 'RECALL_APPLIED' })
+    if (!recallMemoryId || recallApplied || pendingRecall.current) return
+    const memory = demo.scene.memories.find((item) => item.id === recallMemoryId)
+    if (!memory) return
+    pendingRecall.current = { memory, claimed: false }
+    setBeforeRecall(memory)
     openReveal()
-    closeReveal(VALUES.demo.revealHoldMs)
-  }, [closeReveal, demo, openReveal, recallApplied, recallMemoryId, send])
+  }, [demo, openReveal, recallApplied, recallMemoryId])
+
+  const applyRecall = demo.recall
+  const onRecallFocusReady = useCallback(async () => {
+    const pending = pendingRecall.current
+    if (!pending || pending.claimed) return
+    pending.claimed = true
+    const panel = document
+      .querySelector('[data-sequence-anchor="recall-confirm-action"]')
+      ?.closest('[aria-modal="true"]')
+    if (panel) await awaitDeparture(panel)
+    if (pendingRecall.current !== pending) return
+    // The old body is now visible at a useful scale; commit the real change once, in that view.
+    applyRecall(pending.memory.id)
+    send({ type: 'RECALL_APPLIED' })
+  }, [applyRecall, send])
+
+  const onRecallComplete = useCallback(() => {
+    pendingRecall.current = null
+    finishReveal()
+  }, [finishReveal])
 
   const onRecallClose = useCallback(() => {
     const applied = recallApplied
     send({ type: 'CLOSE_RECALL' })
+    setBeforeRecall(null)
+    pendingRecall.current = null
     // Only a walk that actually sent something back finishes the beat; dismissing it early leaves the
     // beat where it was, and the staging below puts its panel up again.
     if (applied) signal('recalled')
@@ -233,11 +296,23 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   // absence: no preview, no save, no total). Nothing is reported here: what finishes the decorating
   // beat is the trip back out to the universe, which is where the change is actually seen.
   const onApplyOrnament = useCallback(
-    (ornament: DemoTasteOrnament, rendererKey: string | null) => {
-      demo.taste({ [ornament]: rendererKey })
+    (surface: DemoTasteOrnament, rendererKey: string | null) => {
+      demo.taste({ [surface]: rendererKey })
+      const fallback =
+        surface === 'background'
+          ? DEFAULT_SKY_EFFECT
+          : surface === 'bodyShape'
+            ? DEFAULT_STAR_SHAPE
+            : null
       send({ type: 'TASTED' })
+      decorationActor.send({
+        type: 'CHANGE',
+        surface,
+        before: demo.state.taste[surface] ?? fallback,
+        after: rendererKey ?? fallback,
+      })
     },
-    [demo, send],
+    [demo, send, decorationActor],
   )
   const onApplyPalette = useCallback(
     (on: boolean) => {
@@ -352,13 +427,37 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const displayTime = sweepTime ?? scene.universeTime
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-bg text-text">
+    <main
+      className="relative h-dvh w-full overflow-hidden bg-bg text-text"
+      data-demo-recall-phase={
+        sceneRevealing && beforeRecall
+          ? recallApplied
+            ? 'feedback'
+            : 'focus'
+          : recallApplied
+            ? 'result'
+            : 'idle'
+      }
+    >
       <DemoUniverseScene
         scene={scene}
         taste={state.taste}
         displayTime={displayTime}
         cameraFree={phase.kind === 'freePlay'}
+        rightInset={surfaceLayout.right}
+        bottomInset={surfaceLayout.bottom ? window.innerHeight - surfaceLayout.bottom.y : 0}
         onSelectMemory={onSelectMemory}
+        recallFocusId={sceneRevealing ? (beforeRecall?.id ?? null) : null}
+        recallPulsing={sceneRevealing && recallApplied && !!beforeRecall}
+        onRecallFocusReady={onRecallFocusReady}
+        onRecallComplete={onRecallComplete}
+        decorationFocusId={
+          phaseKey === 'ornament_taster' &&
+          decorateOpen &&
+          (decorationStage === 'shape' || decorationStage === 'finish')
+            ? tutorialRecallMemoryId
+            : null
+        }
       />
 
       {sweep && <DemoTimeAdvance interval={sweep} onTick={setSweepTime} onDone={onSweepDone} />}
@@ -366,6 +465,10 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
       {/* The HUD in the home screen's own arrangement — one layer, one DOM order, no breakpoint
           duplicating a control, so no anchor id ever registers twice. */}
       <DemoHud
+        rightInset={surfaceLayout.right}
+        writeObscured={
+          surfaceLayout.bottom !== null || sheetOpen || !!recallMemoryId || !!readingDiaryId
+        }
         phase={phase}
         displayTime={displayTime}
         onDraw={onDraw}
@@ -396,6 +499,8 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
           recallMemoryId ? (state.resolved.reconsolidatedTexts[recallMemoryId] ?? null) : null
         }
         done={recallApplied}
+        before={beforeRecall}
+        bodyShape={state.taste.bodyShape}
         onConfirm={onRecallConfirm}
         onClose={onRecallClose}
       />
@@ -405,7 +510,9 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         open={decorateOpen}
         phase={phase}
         taste={state.taste}
-        canClose={phaseKey !== 'ornament_taster' || tasted}
+        canClose={phaseKey !== 'ornament_taster' || decorationStage === 'finish'}
+        tourStage={phaseKey === 'ornament_taster' ? decorationStage : null}
+        onTargetReady={run.remeasure}
         onApplyOrnament={onApplyOrnament}
         onApplyPalette={onApplyPalette}
         onClose={onCloseDecoration}
@@ -429,7 +536,29 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
 
       {/* One covering layer over everything but the current beat's controls; the sequence chrome
           (ring, caption, skip) paints above it on `z-guide`, and the scene's own moments lift it. */}
-      <DemoTutorialMask hole={maskHole} lifted={sceneRevealing} />
+      <DemoTutorialMask
+        hole={maskHole}
+        focused={phaseKey === 'ornament_taster'}
+        clearRegion={
+          decorateOpen && surfaceLayout.bottom
+            ? { x: 0, y: 0, width: window.innerWidth, height: Math.max(0, surfaceLayout.bottom.y) }
+            : decorateOpen && surfaceLayout.right
+              ? {
+                  x: 0,
+                  y: 0,
+                  width: window.innerWidth - surfaceLayout.right,
+                  height: window.innerHeight,
+                }
+              : undefined
+        }
+        lifted={
+          sceneRevealing ||
+          (sheetOpen && !!writing) ||
+          !!selectedMemory ||
+          !!recallMemoryId ||
+          !!readingDiary
+        }
+      />
 
       {/* Nothing here says where the line goes: the guide reads the screen itself, so a sheet this
           page opens and a sheet it has never heard of are cleared by the same rule. */}
@@ -438,7 +567,21 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         // While the scene is revealing it is SPEAKING — a launch bursting, a sweep dimming the field
         // — so the next beat's line and ring hold back and arrive together with the covering's
         // return. The skip stays; it must never blink out.
-        caption={sceneRevealing ? null : (run.step?.caption ?? null)}
+        caption={
+          sceneRevealing
+            ? null
+            : phaseKey === 'recall' && recallApplied
+              ? m.demo_beat_recall_finish
+              : phaseKey === 'ornament_taster' && decorateOpen
+                ? decorationStage === 'sky'
+                  ? m.demo_beat_ornament_sky
+                  : decorationStage === 'sky-preview'
+                    ? m.demo_beat_ornament_sky_preview
+                    : decorationStage === 'shape'
+                      ? m.demo_beat_ornament_shape
+                      : m.demo_beat_ornament_finish
+                : (run.step?.caption ?? null)
+        }
         anchorRect={sceneRevealing ? null : guideAnchorRect}
         progress={run.progress}
         onSkip={run.skip}

@@ -46,6 +46,7 @@ export {
   CAPTION_TOP_INSET_PX,
   CAPTION_SURFACE_GAP_PX,
   resolveCaptionPosition,
+  clearCaptionObstacles,
   type CaptionPosition,
   type CaptionRoom,
   type CaptionSlot,

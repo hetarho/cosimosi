@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { universeReview } from '../../scripts/universe-review.mjs'
 
 // https://vite.dev/config/
 export default defineConfig(({ command, mode }) => {
@@ -35,7 +36,7 @@ export default defineConfig(({ command, mode }) => {
     // it memoizes away this app's locale switching. Copy is read by calling `m.*()` during render —
     // a module-global the compiler cannot see change — so a memoized component keeps its first
     // language forever. Locale must become a real React input before the compiler can be enabled.
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), universeReview()],
     envDir,
     // Internal workspace packages export source directly (no build step) and are symlinked into
     // node_modules. Vite pre-bundles node_modules deps by default and then serves the cached bundle,

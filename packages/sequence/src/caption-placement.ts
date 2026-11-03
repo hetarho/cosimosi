@@ -84,6 +84,52 @@ export function resolveCaptionPosition(room: CaptionRoom): CaptionPosition {
   }
 }
 
+/** Find the nearest free vertical interval after every host inset has been applied. */
+export function clearCaptionObstacles({
+  preferred,
+  viewport,
+  caption,
+  obstacles,
+}: {
+  readonly preferred: CaptionPosition
+  readonly viewport: SequenceViewport
+  readonly caption: { readonly x: number; readonly width: number; readonly height: number }
+  readonly obstacles: readonly SequenceRect[]
+}): CaptionPosition {
+  const height = Math.max(0, caption.height)
+  const wanted =
+    preferred.from === 'top'
+      ? preferred.insetPx
+      : preferred.from === 'bottom'
+        ? viewport.height - preferred.insetPx - height
+        : viewport.height * preferred.fraction - height / 2
+  const ceiling = CAPTION_TOP_INSET_PX
+  const floor = viewport.height - CAPTION_SURFACE_GAP_PX
+  const blocked = obstacles
+    .filter((rect) => rect.x < caption.x + caption.width && rect.x + rect.width > caption.x)
+    .map(
+      (rect) =>
+        [
+          Math.max(ceiling, rect.y - CAPTION_SURFACE_GAP_PX),
+          Math.min(floor, rect.y + rect.height + CAPTION_SURFACE_GAP_PX),
+        ] as const,
+    )
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0])
+  const candidates: number[] = []
+  let start = ceiling
+  for (const [low, high] of blocked) {
+    if (low - start >= height) candidates.push(clamp(wanted, start, low - height))
+    start = Math.max(start, high)
+  }
+  if (floor - start >= height) candidates.push(clamp(wanted, start, floor - height))
+  if (!candidates.length) return { from: 'top', insetPx: ceiling }
+  const closest = candidates.reduce((a, b) =>
+    Math.abs(a - wanted) <= Math.abs(b - wanted) ? a : b,
+  )
+  return Math.abs(closest - wanted) < 0.5 ? preferred : { from: 'top', insetPx: closest }
+}
+
 /**
  * Just above the surface's top edge. A surface taller than the room above it clamps the band against
  * the top edge rather than pushing it off the screen — the least-bad answer, and the same one a

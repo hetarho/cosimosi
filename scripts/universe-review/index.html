@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cosimosi · 우주 경험 비교</title>
+    <link rel="stylesheet" href="/__review/review.css" />
+    <link rel="stylesheet" href="/__review/fonts/WantedSansVariable.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/demo" aria-label="개선된 데모 열기"
+        ><span class="brand-mark">✳</span> cosimosi<span class="lab">EXPERIENCE LAB</span></a
+      >
+      <span class="local">로컬 비교 · 원본 보존</span>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <p class="eyebrow">기획이 화면이 되는 순간</p>
+          <h1>같은 기억, 더 자연스러운 우주<span>.</span></h1>
+          <p class="description">
+            변경 전 실제 구현과 개선한 구현을 같은 일기로 나란히 살펴보세요.
+          </p>
+        </div>
+        <button id="findings-toggle" class="quiet" aria-expanded="false" aria-controls="findings">
+          기획 대조 결과 <span>↗</span>
+        </button>
+      </div>
+      <section id="findings" hidden>
+        <article>
+          <span class="finding-number">01 / DEMO-27 · 31</span>
+          <h2>9단계에서 막히던 돌아오기</h2>
+          <p>
+            다른 하늘을 선택하면 약 1초 동안 배경을 보여준 뒤 별을 확대하고 패널을 별 모양으로 자동
+            이동합니다. 모양까지 바꾼 뒤 돌아가기로 이어집니다. 같은 기본값 재선택은 막았습니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">02 / DEMO-25</span>
+          <h2>내용까지 가리던 전체 흐림</h2>
+          <p>
+            화면 전체의 흐림을 없앴습니다. 작성·기억·회상 창의 내용은 그대로 읽고, 다음 버튼은
+            테두리로 구분합니다. 우주 위에는 옅은 음영만 남겼습니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">03 / VIS-9 · DEMO-30</span>
+          <h2>화면 밖으로 나가던 요지별</h2>
+          <p>
+            기억 별과 요지별의 높이를 함께 계산합니다. 화면 비율과 열린 패널의 공간을 반영해 두 층을
+            한 화면에 담습니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">04 / ONB-12 · 13</span>
+          <h2>패널·설명·버튼이 겹치던 배치</h2>
+          <p>
+            설명의 실제 줄바꿈 높이와 화면의 버튼·입력칸을 측정해 빈 공간에 배치합니다. 작성·회상
+            창은 설명 자리를 확보하고, 뒤쪽 쓰기 버튼은 숨깁니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">05 / ONB-9 · 20</span>
+          <h2>기다림을 줄인 안내</h2>
+          <p>
+            시간 연출 뒤 정지는 0.8초에서 0.2초로, 데모 자동 설명은 4.5초에서 2.8초로 줄였습니다.
+            로그인 후 튜토리얼의 읽기 시간은 유지하고 빠른 행동의 완료 신호도 보관합니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">07 / DEMO-14 · 29</span>
+          <h2>직접 볼 수 있는 단어별 망각</h2>
+          <p>
+            기억의 문장을 상세창 맨 위로 옮겼습니다. 실제 잃어버린 단어만 흐리게 보이고, 남은 단어는
+            또렷합니다. 세 샘플 모두 이 차이를 볼 수 있는 기억을 안내합니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">06 / DEMO-20 · VIS-34</span>
+          <h2>같은 시간을 따르는 별과 연출</h2>
+          <p>
+            표시 날짜에 맞춰 요지별이 떠오르고, 새 기억은 시간 이동 뒤에 나타납니다. 배경 점은 작게
+            낮춰 실제 기억과 구분했습니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">08 / DEMO-22</span>
+          <h2>눈앞에서 확인하는 회상</h2>
+          <p>
+            창이 사라지고 선택한 별이 가까워진 뒤 변화가 적용됩니다. 빛 고리가 그 별을 짚고,
+            결과창에서 실제 회상 전후 모습과 밝기를 나란히 확인합니다.
+          </p>
+        </article>
+        <article>
+          <span class="finding-number">09 / DEMO-25 · 27 · 31</span>
+          <h2>따라가기 쉬운 꾸미기</h2>
+          <p>
+            꾸미기 시작과 패널의 다음 항목에는 딤드를 넣고, 실제 우주 미리보기는 가리지 않습니다.
+            휴대폰 패널은 작게 열어 확대된 별과 선택지를 함께 볼 수 있습니다.
+          </p>
+        </article>
+      </section>
+      <div class="toolbar">
+        <div class="segmented" aria-label="화면 크기">
+          <button data-viewport="desktop" aria-pressed="true">데스크톱</button
+          ><button data-viewport="mobile" aria-pressed="false">휴대폰</button>
+        </div>
+        <label class="sync"
+          ><input id="sync" type="checkbox" checked /><span class="switch"></span>동작 함께
+          보기</label
+        >
+        <span id="status" role="status">양쪽이 준비되면 한쪽에서 시작하세요</span>
+        <a class="quiet" href="/__review/evidence/recall.html" target="_blank">회상 연출 영상 ↗</a>
+        <button id="restart" class="quiet">↻ 양쪽 처음부터</button>
+      </div>
+      <div class="comparison">
+        <section class="version before">
+          <div class="version-heading">
+            <div>
+              <span class="badge">AS-IS</span><strong>기존 구현</strong
+              ><span class="revision">40abb60 보존본</span>
+            </div>
+            <button class="expand" data-expand="before" aria-label="기존 구현 크게 보기">⤢</button>
+          </div>
+          <div class="stage">
+            <div class="viewport">
+              <iframe
+                id="before"
+                title="AS-IS 기존 우주 튜토리얼"
+                allow="webgpu"
+                src="/__review/as-is/demo"
+              ></iframe>
+            </div>
+          </div>
+          <div class="version-footer">
+            <span class="dot"></span><span class="step" data-for="before">불러오는 중</span
+            ><span class="footer-label">변경 전 빌드 그대로</span>
+          </div>
+        </section>
+        <section class="version after">
+          <div class="version-heading">
+            <div>
+              <span class="badge">TO-BE</span><strong>개선된 구현</strong
+              ><span class="revision">최신 · 단계별 꾸미기·회상 연출</span>
+            </div>
+            <button class="expand" data-expand="after" aria-label="개선된 구현 크게 보기">⤢</button>
+          </div>
+          <div class="stage">
+            <div class="viewport">
+              <iframe
+                id="after"
+                title="TO-BE 개선된 우주 튜토리얼"
+                allow="webgpu"
+                src="/__review/to-be/demo"
+              ></iframe>
+            </div>
+          </div>
+          <div class="version-footer">
+            <span class="dot"></span><span class="step" data-for="after">불러오는 중</span
+            ><span class="footer-label">화면과 설명의 타이밍 개선</span>
+          </div>
+        </section>
+      </div>
+      <footer class="notes">
+        <p>
+          한쪽의 버튼을 누르면 다른 쪽에도 같은 동작을 전달합니다. 연출 길이가 다르면 준비될 때까지
+          기다립니다.
+        </p>
+        <p>실제 앱 두 개를 띄운 비교입니다. 계정·일기 원본은 변경하지 않습니다.</p>
+      </footer>
+    </main>
+    <script type="module" src="/__review/review.js"></script>
+  </body>
+</html>

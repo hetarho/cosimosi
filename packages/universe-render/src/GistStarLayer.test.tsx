@@ -78,6 +78,18 @@ function expectConsistentSnapshot(
 }
 
 describe('gist render snapshot', () => {
+  it('lands a newly risen body immediately when motion is reduced', () => {
+    const state = createGistRiseState()
+    const empty = createGistRenderSnapshot([], { alpha: 0 })
+    reconcileGistRiseState(state, empty, true)
+    const snapshot = createGistRenderSnapshot([instance('alpha', 1)], { alpha: 0 })
+    reconcileGistRiseState(state, snapshot, true)
+    const out = new Float32Array(3)
+    expect(
+      mapGistInstancePosition(snapshot, state, 0, new Float32Array([1, 2, 3]), out, 0, true),
+    ).toBe(true)
+    expect(out[2]).toBeCloseTo(3 + gistStageOffset(1))
+  })
   const alpha = instance('alpha', 1)
   const beta = instance('beta', 1, {
     color: [0.8, 0.3, 0.1],
@@ -229,6 +241,18 @@ describe('gist render snapshot', () => {
     mapGistInstancePosition(advanced, riseState, 1, buffer.slice(), out, 0)
     expect(isGistRiseAnimating(riseState, advanced)).toBe(true)
     mapGistInstancePosition(advanced, riseState, 1, buffer.slice(), out, 100)
+    expect(isGistRiseAnimating(riseState, advanced)).toBe(false)
+  })
+
+  it('settles a reduced-motion rise immediately so later frames can skip the layer', () => {
+    const riseState = createGistRiseState()
+    const seeded = createGistRenderSnapshot([alpha], slots)
+    reconcileGistRiseState(riseState, seeded, true)
+    const advanced = createGistRenderSnapshot([alpha, instance('beta', 2)], slots)
+    reconcileGistRiseState(riseState, advanced, true)
+    const out = new Float32Array(3)
+    expect(isGistRiseAnimating(riseState, advanced)).toBe(true)
+    mapGistInstancePosition(advanced, riseState, 1, buffer.slice(), out, 0, true)
     expect(isGistRiseAnimating(riseState, advanced)).toBe(false)
   })
 

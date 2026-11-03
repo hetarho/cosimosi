@@ -38,7 +38,7 @@ export function SequenceAnchor({ id, children }: { id: string; children: ReactNo
   useSequenceAnchorRegistration(id, measure)
 
   return (
-    <div ref={ref} style={{ display: 'contents' }}>
+    <div ref={ref} data-sequence-anchor={id} style={{ display: 'contents' }}>
       {children}
     </div>
   )

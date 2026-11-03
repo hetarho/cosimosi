@@ -789,8 +789,8 @@ release:
 sequence:
   # [O2] How long a `dwell` step's caption holds before the run advances itself — reading time for one
   # unhurried line, not a pace the user has to keep up with. It is a tuning scalar rather than a
-  # per-script number because both hosts (the public demo and the onboarding tour) read the same one:
-  # a caption that reads comfortably in a trailer reads comfortably in a tour. A step that waits on
+  # per-step number. The onboarding tour reads this default; the short public demo supplies its
+  # own caption pace. A step that waits on
   # something the USER must do is a `signal` step and never consults this.
   caption_dwell_ms: 4500
   # [O2] One pulse period of the spotlight ring. Slow enough to read as breathing rather than
@@ -799,6 +799,10 @@ sequence:
   highlight_pulse_ms: 1800
 
 demo:
+  # Keep the changed sky in overview before moving the decoration guide to a close-up.
+  decoration_sky_preview_ms: 1000
+  # Reading time for the demo's short sky/closing captions, separate from the product onboarding.
+  caption_dwell_ms: 2800
   # [Z2][Z3]-5/7 Universe-days one "+1달" time-jump press advances the demo clock — the largest of the
   # demo's three time grains (the day and week jumps are the fixed calendar units 1 and 7, not tuning
   # numbers, so they claim no key). Sized as one legible calendar month, and large enough that a single
@@ -809,7 +813,8 @@ demo:
   # exempt, and that exemption is expressible only here because no shared code knows the demo exists.
   time_travel_month_days: 30
   # How long the tutorial's covering stays lifted for a press whose consequence is the ONLY thing
-  # playing — a memory being born on the canvas, a recalled star coming back brighter. Nothing else
+  # playing — a memory being born on the canvas. A recall finishes on its visual-feedback event.
+  # Nothing else
   # had the screen for it, so this interval IS the reveal: long enough for the awaken choreography to
   # land, short enough that the tour does not read as paused. While it runs the next beat's caption
   # and ring hold back and a surface the beat would stage waits, so it is also how long the visitor
@@ -819,7 +824,7 @@ demo:
   # for its own duration — up to a few seconds of memories dimming as the clock walks. Only the
   # settled canvas is left to read, so this is a beat rather than a second reveal: a full
   # `reveal_hold_ms` stacked on top of the sweep is what makes one press feel like a pause.
-  sweep_settle_ms: 800
+  sweep_settle_ms: 200
 
 landing:
   # How far the walkthrough's `fade` step pushes its clock, in universe-days. Tuned AGAINST other keys

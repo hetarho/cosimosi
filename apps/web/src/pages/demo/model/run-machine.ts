@@ -59,7 +59,7 @@ export function demoRunPhase(value: StateValue): DemoRunPhase {
 }
 
 // Which controls a tutorial step leaves interactive — the ONE derivation the chrome may gate from,
-// and the same list the mask cuts its hole from. Exhaustive over the beats, so a beat added to the
+// and the set from which the mask lights the currently visible part of the flow. Exhaustive over the beats, so a beat added to the
 // scenario without a gating row is a compile error. Four beats deliberately widen past their own
 // anchor. The opening beat lights the diary card as well as the control that reads it, because a
 // beat asking someone to read a diary has to leave the diary uncovered. The neuron-reuse beat opens
@@ -82,7 +82,12 @@ const TUTORIAL_INTERACTIVE: Readonly<Record<DemoBeatId, readonly DemoAnchor[] | 
   recall: ['recall-action'],
   gist_rise: ['time-month-action'],
   color: [],
-  ornament_taster: ['decorate-action', 'ornament-row-action'],
+  ornament_taster: [
+    'decorate-action',
+    'ornament-row-action',
+    'ornament-shape-action',
+    'decorate-close-action',
+  ],
   signup_cta: null,
 }
 

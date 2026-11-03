@@ -1,6 +1,8 @@
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { Button, Dialog, ObscuredText, TextArea } from '@cosimosi/ui'
 import { currentDecaySpans } from '@cosimosi/universe'
+import { starChannels } from '@cosimosi/universe/scene'
+import { StarPreview } from '@cosimosi/universe-render'
 
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
@@ -16,6 +18,8 @@ export interface DemoRecallSheetProps {
   readonly reconsolidatedText: string | null
   /** Set once the recall has been applied — the surface switches to what came back. */
   readonly done: boolean
+  readonly before?: EpisodicMemory | null
+  readonly bodyShape?: string | null
   readonly onConfirm: () => void
   readonly onClose: () => void
 }
@@ -36,6 +40,8 @@ export function DemoRecallSheet({
   universeTime,
   reconsolidatedText,
   done,
+  before,
+  bodyShape,
   onConfirm,
   onClose,
 }: DemoRecallSheetProps) {
@@ -54,10 +60,59 @@ export function DemoRecallSheet({
       onClose={onClose}
       title={m.recall_flow_title()}
       closeLabel={m.common_dismiss()}
+      footer={
+        <div className="flex justify-end">
+          {done ? (
+            <SequenceAnchor id={'recall-dismiss-action' satisfies DemoAnchor}>
+              <Button color="neutral" onClick={onClose}>
+                {m.common_dismiss()}
+              </Button>
+            </SequenceAnchor>
+          ) : (
+            <SequenceAnchor id={'recall-confirm-action' satisfies DemoAnchor}>
+              <Button color="primary" onClick={onConfirm}>
+                {m.recall_confirm()}
+              </Button>
+            </SequenceAnchor>
+          )}
+        </div>
+      }
     >
       <div className="flex flex-col gap-4">
         {done ? (
           <>
+            {before ? (
+              <div data-demo-recall-comparison="" className="grid grid-cols-2 gap-3">
+                {[
+                  { label: m.demo_recall_before(), memory: before },
+                  { label: m.demo_recall_after(), memory },
+                ].map((item) => {
+                  const channels = starChannels(item.memory, universeTime)
+                  return (
+                    <section key={item.label} className="flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-text">{item.label}</h3>
+                      <div
+                        className="h-28 overflow-hidden rounded-xl border border-border"
+                        aria-hidden
+                      >
+                        <StarPreview
+                          memory={item.memory}
+                          universeTime={universeTime}
+                          shape={bodyShape ?? undefined}
+                          reducedMotion
+                        />
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        {m.star_meta_brightness()}{' '}
+                        <span className="tabular-nums text-text">
+                          {Math.round(channels.brightness * 100)}%
+                        </span>
+                      </p>
+                    </section>
+                  )
+                })}
+              </div>
+            ) : null}
             {reconsolidatedText ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-text-muted">{m.recall_result_reconsolidated()}</p>
@@ -70,13 +125,6 @@ export function DemoRecallSheet({
                 {m.recall_result_reinforced()}
               </p>
             )}
-            <div className="flex justify-end">
-              <SequenceAnchor id={'recall-dismiss-action' satisfies DemoAnchor}>
-                <Button color="neutral" onClick={onClose}>
-                  {m.common_dismiss()}
-                </Button>
-              </SequenceAnchor>
-            </div>
           </>
         ) : (
           <>
@@ -98,13 +146,6 @@ export function DemoRecallSheet({
               onChange={() => undefined}
             />
             <p className="text-sm text-text-subtle">{m.demo_recall_prepared_note()}</p>
-            <div className="flex justify-end">
-              <SequenceAnchor id={'recall-confirm-action' satisfies DemoAnchor}>
-                <Button color="primary" onClick={onConfirm}>
-                  {m.recall_confirm()}
-                </Button>
-              </SequenceAnchor>
-            </div>
           </>
         )}
       </div>

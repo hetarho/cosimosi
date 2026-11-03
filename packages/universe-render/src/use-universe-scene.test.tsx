@@ -7,7 +7,12 @@ import { createActor } from 'xstate'
 
 import { createMemoryMockTransport } from '@cosimosi/api-client'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { universeNavigationMachine, useSpotlightStore } from '@cosimosi/universe/scene'
+import {
+  gistNodeId,
+  gistStageOffset,
+  universeNavigationMachine,
+  useSpotlightStore,
+} from '@cosimosi/universe/scene'
 import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 
 import { useUniverseScene, type UniverseSceneState } from './use-universe-scene.ts'
@@ -175,6 +180,31 @@ describe('useUniverseScene — what the pinned camera orbits', () => {
     expect(pinned?.center[0]).toBeCloseTo(mean(0), 5)
     expect(pinned?.center[1]).toBeCloseTo(mean(1), 5)
     expect(pinned?.center[2]).toBeCloseTo(mean(2), 5)
+    view.unmount()
+    actor.stop()
+  })
+
+  it('includes the gist band in the overview and holds a selected gist at its actual height', async () => {
+    const actor = createActor(universeNavigationMachine).start()
+    const { captured, view } = mountScene(actor)
+    await waitFor(() => expect(captured.current?.graph).not.toBeNull())
+    act(() => captured.current?.pump(1 / 60))
+    act(() => {
+      const state = useEpisodicMemoryStore.getState()
+      state.setAll(
+        state.ids.map((id) => ({ ...state.byId[id]!, semanticStage: id === 'server-a' ? 2 : 0 })),
+      )
+    })
+    const buffer = captured.current!.bridge.coordinates.current!
+    const index = captured.current!.nodeIndex!.episodicMemories['server-a']!
+    const gistZ = buffer[index * 3 + 2]! + gistStageOffset(2)
+    const floor = Math.min(...Array.from(buffer).filter((_, i) => i % 3 === 2))
+    await waitFor(() =>
+      expect(captured.current!.getPinnedView().center[2]).toBeCloseTo((floor + gistZ) / 2, 5),
+    )
+    act(() => actor.send({ type: 'SELECT', nodeId: gistNodeId('server-a') }))
+    expect(captured.current!.getPinnedView().held).toBe(true)
+    expect(captured.current!.getPinnedView().center[2]).toBeCloseTo(gistZ, 5)
     view.unmount()
     actor.stop()
   })

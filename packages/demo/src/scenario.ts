@@ -31,7 +31,7 @@ export interface DemoScenario {
   /** Beat 1 — the diary that appears first. */
   readonly firstDiaryId: string
   /** Beat 6 — the memory the tutorial's recall beat points at. It lives in one of the first two
-   *  diaries (the two on screen by then) and its mood differs from their dominant one, so beat 8's
+   *  diaries, has partial word loss after the first month jump, and its mood differs from their dominant one, so beat 8's
    *  colour shift is visible ([M4][M5]). Free play recalls any memory; this names the taught one.
    *  There is no gist counterpart: gist stages rise per memory from its own timer, not on a
    *  scripted id. */

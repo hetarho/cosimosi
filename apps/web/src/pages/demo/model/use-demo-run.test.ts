@@ -10,6 +10,7 @@ import { resetMoodPalette, paletteVersion } from '@cosimosi/emotion'
 import { applyMoodColors } from '@cosimosi/emotion/react'
 import {
   currentDecayStage,
+  currentDecaySpans,
   currentDecayText,
   resetUniverseUserState,
   useEpisodicMemoryStore,
@@ -18,6 +19,7 @@ import {
 } from '@cosimosi/universe'
 
 import { DEMO_SCRIPT } from './script.ts'
+import { starChannels } from '@cosimosi/universe/scene'
 import { DEMO_TIME_JUMPS, ornamentRendererKey, useDemoRun } from './use-demo-run.ts'
 
 const ENTRY = { today: '2026-07-30', draw01: 0, runId: 'run-1' }
@@ -41,6 +43,65 @@ function launchDraft(result: Run) {
 }
 
 describe('the demo run', () => {
+  it.each(
+    DEMO_DIARY_SETS.map(
+      (set, i) => [set.structure.id, (i + 0.5) / DEMO_DIARY_SETS.length] as const,
+    ),
+  )('restores the visible body and words of the recalled memory in %s', (_id, draw01) => {
+    const { result } = mountRun(draw01)
+    launchDraft(result)
+    act(() => result.current.drawDiary())
+    launchDraft(result)
+    act(() => result.current.advanceClock(DEMO_TIME_JUMPS.month))
+    const id = result.current.state.set.scenario.recallMemoryId
+    const before = result.current.scene.memories.find((memory) => memory.id === id)!
+    const oldChannels = starChannels(before, result.current.state.clock)
+    act(() => result.current.recall(id))
+    const after = result.current.scene.memories.find((memory) => memory.id === id)!
+    const newChannels = starChannels(after, result.current.state.clock)
+    expect(newChannels.brightness).toBeGreaterThan(oldChannels.brightness)
+    expect(newChannels.size).toBeGreaterThan(oldChannels.size)
+    expect(after.seed).not.toBe(before.seed)
+    expect(currentDecaySpans(after, result.current.state.clock).some((span) => span.lost)).toBe(
+      false,
+    )
+    expect(currentDecaySpans(before, result.current.state.clock).some((span) => span.lost)).toBe(
+      true,
+    )
+  })
+  it.each(
+    DEMO_DIARY_SETS.map(
+      (set, i) => [set.structure.id, (i + 0.5) / DEMO_DIARY_SETS.length] as const,
+    ),
+  )('shows both forgotten and retained words at the taught recall for %s', (_id, draw01) => {
+    const { result } = mountRun(draw01)
+    launchDraft(result)
+    act(() => result.current.drawDiary())
+    launchDraft(result)
+    act(() => result.current.advanceClock(DEMO_TIME_JUMPS.month))
+    const target = result.current.scene.memories.find(
+      (memory) => memory.id === result.current.state.set.scenario.recallMemoryId,
+    )!
+    const spans = currentDecaySpans(target, result.current.state.clock)
+    expect(spans.some((span) => span.lost)).toBe(true)
+    expect(spans.some((span) => !span.lost && span.text.trim().length > 0)).toBe(true)
+  })
+  it('projects gist stages at the displayed date while keeping the committed clock', () => {
+    const { result, rerender } = renderHook(({ displayTime }) => useDemoRun(ENTRY, displayTime), {
+      initialProps: { displayTime: null as string | null },
+    })
+    launchDraft(result)
+    const previous = result.current.state.clock
+    act(() => result.current.advanceClock(DEMO_TIME_JUMPS.month))
+    const current = result.current.state.clock
+    const finalStages = result.current.scene.memories.map((memory) => memory.semanticStage)
+    expect(finalStages.some((stage) => stage > 0)).toBe(true)
+    rerender({ displayTime: previous })
+    expect(result.current.state.clock).toBe(current)
+    expect(result.current.scene.memories.every((memory) => memory.semanticStage === 0)).toBe(true)
+    rerender({ displayTime: current })
+    expect(result.current.scene.memories.map((memory) => memory.semanticStage)).toEqual(finalStages)
+  })
   it('draws one set and keeps every derived fact identical for it', () => {
     const first = mountRun()
     const second = mountRun()

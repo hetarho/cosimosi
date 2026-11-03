@@ -35,6 +35,8 @@ export interface GistStarLayerProps {
   readonly onSelect?: (memoryId: string) => void
   /** The reserved [V8] hook: newly risen stages, one event per body. */
   readonly onStageRise?: (events: readonly GistRiseEvent[]) => void
+  readonly reducedMotion?: boolean
+  readonly paletteVersion?: number
 }
 
 // The neutral rise's length. A presentation constant shaping one motion — a values.yaml key
@@ -193,6 +195,7 @@ export function mapGistInstancePosition(
   buffer: Float32Array,
   out: Float32Array,
   elapsedSeconds: number,
+  reducedMotion = false,
 ): boolean {
   const instance = snapshot.instances[index]
   if (!instance) return false
@@ -209,7 +212,14 @@ export function mapGistInstancePosition(
   const liveZ = buffer[offset + 2] ?? 0
   out[0] = buffer[offset] ?? 0
   out[1] = buffer[offset + 1] ?? 0
-  if (entry === SETTLED) {
+  if (entry === SETTLED || reducedMotion) {
+    if (entry !== SETTLED) {
+      riseState.seen.set(instance.nodeId, SETTLED)
+      if (indexed) {
+        riseState.byInstance[index] = SETTLED
+        riseState.rising = Math.max(0, riseState.rising - 1)
+      }
+    }
     out[2] = liveZ + instance.zOffset
     return true
   }
@@ -229,7 +239,7 @@ export function mapGistInstancePosition(
     out[2] = liveZ + instance.zOffset
     return true
   }
-  const eased = 1 - (1 - progress) ** 3
+  const eased = progress * progress * (3 - 2 * progress)
   out[2] = liveZ + entry.startOffset + (instance.zOffset - entry.startOffset) * eased
   return true
 }
@@ -253,6 +263,8 @@ export function GistStarLayer({
   memoryIndexById,
   onSelect,
   onStageRise,
+  reducedMotion = false,
+  paletteVersion = 0,
 }: GistStarLayerProps) {
   // The look the whole neocortical layer wears — one key out of the gist catalogue, never per
   // memory ([V5]). Whichever row the worn ornament names reads the same two channels below, so a
@@ -262,13 +274,14 @@ export function GistStarLayer({
   const ids = useEpisodicMemoryStore((state) => state.ids)
 
   const snapshot = useMemo(() => {
+    void paletteVersion
     const memories = []
     for (const id of ids) {
       const memory = byId[id]
       if (memory) memories.push(memory)
     }
     return createGistRenderSnapshot(gistStarInstances(memories), memoryIndexById)
-  }, [byId, ids, memoryIndexById])
+  }, [byId, ids, memoryIndexById, paletteVersion])
 
   const riseRef = useRef<GistRiseState>(createGistRiseState())
   // Diff the projection against the seen set after commit (it changes only when the read model
@@ -285,9 +298,17 @@ export function GistStarLayer({
 
   const getInstancePosition = useCallback(
     (index: number, buffer: Float32Array, out: Float32Array, elapsedSeconds: number): boolean => {
-      return mapGistInstancePosition(snapshot, riseRef.current, index, buffer, out, elapsedSeconds)
+      return mapGistInstancePosition(
+        snapshot,
+        riseRef.current,
+        index,
+        buffer,
+        out,
+        elapsedSeconds,
+        reducedMotion,
+      )
     },
-    [snapshot],
+    [snapshot, reducedMotion],
   )
   // Settled, every gist rides its memory's slot, so the layer skips frames the buffer did not move.
   const isPositionAnimating = useCallback(

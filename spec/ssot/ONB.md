@@ -1,5 +1,5 @@
 # ONB onboarding
-> r2 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
+> r3 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
 
 ## decisions
 - ONB-1 [o] the demo and onboarding run on one sequence engine (`@cosimosi/sequence`) and differ only in the injected script and data: the demo's fixtures (→=DEMO-4) or the user's real first diary
@@ -27,7 +27,7 @@
 - ONB-6 [o] `@cosimosi/sequence` (`packages/sequence`) is pure and host-agnostic; its dependency list (`xstate`, `zustand`; `@xstate/react` and `react` only as peers of `/react`) is the proof that it reaches no transport, fixture or read mirror →!INV-13
   - guard: a manifest test pins that list; the closure is why the demo's import block admits the package →~DEMO-10
   - the package root is React-free (machine, selectors, anchor registry, caption placement); `@cosimosi/sequence/react` holds the binding seam (`useSequenceRun`, `useSequenceAnchorRegistration`)
-  - the dwell duration is a parameter of `useSequenceRun`, read by the app from `sequence.caption_dwell_ms`, never imported by the engine
+  - the dwell duration is a parameter of `useSequenceRun`, supplied by the host from its configuration, never imported by the engine; onboarding uses `sequence.caption_dwell_ms` and the public demo uses its shorter caption pace →=DEMO-26
   - it defines no domain function, so it owes no golden parity
 - ONB-7 [o] a step can only point and wait: `SequenceStep<Anchor, Signal>` holds exactly an id, a caption accessor, an optional anchor and one of two advance kinds →!INV-13 ← an engine that could act would make the tour an invariant bypass or leak the demo's exemptions into shared code
   | absent field | what it would allow |
@@ -47,7 +47,7 @@
   - the machine never reads a clock: dwell is a timer in the React seam keyed on the step index and cleared on every change and on unmount
   - the host owns the actor and observes the outcome; `abandon()` is the host's call, because only the host knows it is going away and the hook's actor is already stopped at unmount
 - ONB-9 [o] `dwell` is reading time and `signal` waits on the world: a step whose progress the user must make always advances on a signal, and a dwell step never fakes progress →!ONB-7
-  - a dwell step holds `sequence.caption_dwell_ms`, then advances itself
+  - a dwell step holds the host-supplied reading time, then advances itself; onboarding uses `sequence.caption_dwell_ms`
   - a signal the current step does not wait for is not progress: the engine drops it; holding it for a later step is the host's choice (onboarding holds →=ONB-20, the demo drops →~DEMO-26)
 - ONB-10 [o] the engine points at controls it does not own through an anchor registry: `anchorId → { measure(): Promise<SequenceRect | null> }`, rects in logical pixels relative to the app window
   - web measures with `getBoundingClientRect()`, native with `measureInWindow`; the promise is what lets one seam serve both
@@ -152,11 +152,12 @@
 - report: writing-flow phase transition → `reportSequenceSignal` → channel → host(no run: clear | not awaited: hold | awaited: `ADVANCE`)
 
 ## constraints
-- the `sequence` values group holds `sequence.caption_dwell_ms` and `sequence.highlight_pulse_ms`, read by both hosts; there is no onboarding group and no anchor-timeout, start-delay or replay-cooldown key
+- the `sequence` values group holds onboarding's `sequence.caption_dwell_ms` and both hosts' `sequence.highlight_pulse_ms`; the demo supplies its own caption dwell →=DEMO-26; there is no onboarding group and no anchor-timeout, start-delay or replay-cooldown key
 - script content is code, never config: steps, ids, anchor and signal ids, caption keys and `stepCount` (a derived array length); chrome geometry is design tokens and slice-local config →=UI
 - onboarding has no BE surface: no proto field, `users` column, RPC or migration →=ACCT
 - the engine and the tour speak anchors and captions, never rendering vocabulary →=UL
 
 ## chg
+- r3 261103 ONB-6✎ both hosts read sequence dwell→host supplies reading time; ONB-9✎ shared dwell→onboarding default retained, demo pace independent
 - r2 261103 ONB-15✎ "auth → onboarding reset edge"→"imports neither auth nor account"; ONB-22✎ signup handoff `packages/auth`→`packages/account`
 - r1 261102 initial

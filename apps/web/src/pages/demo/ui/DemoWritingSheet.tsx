@@ -65,6 +65,41 @@ export function DemoWritingSheet({
       onClose={canDismiss ? onClose : () => undefined}
       title={m.writing_flow_title()}
       closeLabel={m.writing_flow_close()}
+      footer={
+        <div className="flex justify-end">
+          {splitRevealed ? (
+            <SequenceAnchor id="launch-action">
+              <Button
+                color="primary"
+                onClick={onLaunch}
+                disabled={!isDemoAnchorInteractive(phase, 'launch-action')}
+              >
+                {m.writing_flow_launch_action()}
+              </Button>
+            </SequenceAnchor>
+          ) : showReadAffordance ? (
+            <SequenceAnchor id={'diary-read-action' satisfies DemoAnchor}>
+              <Button
+                color="neutral"
+                onClick={onDiaryRead}
+                disabled={!isDemoAnchorInteractive(phase, 'diary-read-action')}
+              >
+                {m.demo_diary_read_action()}
+              </Button>
+            </SequenceAnchor>
+          ) : (
+            <SequenceAnchor id="split-action">
+              <Button
+                color="primary"
+                onClick={onRevealSplit}
+                disabled={!isDemoAnchorInteractive(phase, 'split-action')}
+              >
+                {m.writing_flow_split_action()}
+              </Button>
+            </SequenceAnchor>
+          )}
+        </div>
+      }
     >
       <div className="flex flex-col gap-5">
         {!splitRevealed ? (
@@ -85,36 +120,8 @@ export function DemoWritingSheet({
                   readOnly
                   onChange={() => undefined}
                 />
-                {/* Beat 1's own affordance, and its own anchor: the card around it is the region the
-                    beat lights up to be read, while THIS is the press the beat waits for — so the
-                    ring belongs here rather than around a paragraph. */}
-                {showReadAffordance && (
-                  <div className="flex justify-end">
-                    <SequenceAnchor id={'diary-read-action' satisfies DemoAnchor}>
-                      <Button
-                        color="neutral"
-                        onClick={onDiaryRead}
-                        disabled={!isDemoAnchorInteractive(phase, 'diary-read-action')}
-                      >
-                        {m.demo_diary_read_action()}
-                      </Button>
-                    </SequenceAnchor>
-                  </div>
-                )}
               </div>
             </SequenceAnchor>
-            {/* The committing action sits last on the right, as in the product (§4). */}
-            <div className="flex justify-end">
-              <SequenceAnchor id="split-action">
-                <Button
-                  color="primary"
-                  onClick={onRevealSplit}
-                  disabled={!isDemoAnchorInteractive(phase, 'split-action')}
-                >
-                  {m.writing_flow_split_action()}
-                </Button>
-              </SequenceAnchor>
-            </div>
           </>
         ) : (
           <>
@@ -155,17 +162,6 @@ export function DemoWritingSheet({
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-              <SequenceAnchor id="launch-action">
-                <Button
-                  color="primary"
-                  onClick={onLaunch}
-                  disabled={!isDemoAnchorInteractive(phase, 'launch-action')}
-                >
-                  {m.writing_flow_launch_action()}
-                </Button>
-              </SequenceAnchor>
-            </div>
           </>
         )}
       </div>

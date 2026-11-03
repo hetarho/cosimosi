@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 
 import {
   DEFAULT_STAR_SHAPE,
+  FrameTick,
   InstancedNodeLayer,
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SEED,
@@ -20,6 +21,11 @@ import {
   type StarStaticChannels,
 } from '@cosimosi/universe/scene'
 import { useEpisodicMemoryStore } from '@cosimosi/universe'
+import {
+  advanceStarAppearance,
+  createStarAppearance,
+  reconcileStarAppearance,
+} from './star-appearance.ts'
 
 export interface StarLayerProps {
   readonly positions: CoordinateBufferRef
@@ -31,6 +37,11 @@ export interface StarLayerProps {
   readonly universeTime: string | null
   /** Freezes the seed-derived living relief while preserving each star's static pose. */
   readonly reducedMotion?: boolean
+  readonly paletteVersion?: number
+  /** Hold newly inserted bodies while their host presents the preceding clock interval. */
+  readonly arrivalPaused?: boolean
+  /** When supplied, only these pending local births animate; fetched history appears settled. */
+  readonly arrivalIds?: ReadonlySet<string>
   readonly onFocus?: (index: number) => void
   readonly onFly?: (index: number) => void
 }
@@ -79,6 +90,9 @@ export function StarLayer({
   firstNodeIndex,
   universeTime,
   reducedMotion = false,
+  paletteVersion = 0,
+  arrivalPaused = false,
+  arrivalIds,
   onFocus,
   onFly,
 }: StarLayerProps) {
@@ -90,23 +104,47 @@ export function StarLayer({
   const ids = useEpisodicMemoryStore((state) => state.ids)
   const spotlitIds = useSpotlightStore((state) => state.memoryIds)
 
-  const statics = useMemo(() => starStaticChannels(ids.map((id) => byId[id])), [byId, ids])
+  const statics = useMemo(() => {
+    void paletteVersion
+    return starStaticChannels(ids.map((id) => byId[id]))
+  }, [byId, ids, paletteVersion])
   const channels = useMemo(
     () => starLayerChannels(statics, ids, universeTime, spotlitIds),
     [statics, ids, universeTime, spotlitIds],
   )
 
+  const appearance = useRef(createStarAppearance())
+  const revision = useRef(0)
+  const scales = useMemo(() => new Float32Array(ids.length), [ids])
+  const targets = statics.scales
+  useLayoutEffect(() => {
+    reconcileStarAppearance(appearance.current, ids, targets, scales, reducedMotion, arrivalIds)
+    revision.current++
+  }, [ids, reducedMotion, scales, targets, arrivalIds])
+  const onFrame = useCallback(
+    (dt: number) => {
+      if (advanceStarAppearance(appearance.current, dt, targets, scales, arrivalPaused))
+        revision.current++
+    },
+    [scales, targets, arrivalPaused],
+  )
+  const animatedChannels = useMemo(() => ({ ...channels, scales }), [channels, scales])
+
   return (
-    <InstancedNodeLayer
-      source={bodySource}
-      bodyId="star"
-      kind="shader"
-      count={ids.length}
-      positions={positions}
-      firstNodeIndex={firstNodeIndex}
-      channels={channels}
-      onNodeClick={onFocus}
-      onNodeDoubleClick={onFly}
-    />
+    <>
+      <FrameTick onFrame={onFrame} />
+      <InstancedNodeLayer
+        source={bodySource}
+        bodyId="star"
+        kind="shader"
+        count={ids.length}
+        positions={positions}
+        firstNodeIndex={firstNodeIndex}
+        channels={animatedChannels}
+        animationRevision={revision}
+        onNodeClick={onFocus}
+        onNodeDoubleClick={onFly}
+      />
+    </>
   )
 }

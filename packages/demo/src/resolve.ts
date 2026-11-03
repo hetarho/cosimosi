@@ -22,7 +22,8 @@ export interface DemoGistTexts {
 
 // The reconsolidated readings, likewise beside the snapshot rather than on the mirror: a recall in
 // the real product rewrites `currentText` through a use-case, so there is no second text field to
-// widen `EpisodicMemory` with. Keyed by memory id; only a scenario's recall target has one.
+// widen `EpisodicMemory` with. Keyed by memory id; every scenario target has an authored reading,
+// and other authored readings remain available for free-play recall.
 export type DemoReconsolidatedTexts = Readonly<Record<string, string>>
 
 export interface ResolvedDemoDiarySet {

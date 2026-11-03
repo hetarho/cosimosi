@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
@@ -17,6 +17,8 @@ import { useEpisodicMemoryStore } from '../episodic-memory-store.ts'
 import { useOpenDiaryTargetStore } from '../open-diary-target-store.ts'
 import { useRecallTargetStore } from '../recall-target-store.ts'
 import { universeNavigationMachine } from '../universe-navigation.machine.ts'
+import { useAdvanceAnnouncementStore } from '../advance-announcement-store.ts'
+import { useAdvanceSweepStore } from '../advance-sweep-store.ts'
 
 export interface UniverseScreenInput {
   // Whether the universe is the focused screen. A backgrounded screen starts no tour and abandons a
@@ -43,6 +45,25 @@ export function onboardingReportAction(
   return report.signal === awaited ? 'advance' : 'hold'
 }
 
+/** The host retains distinct completed actions while a reading step is still on screen. */
+export function takeOnboardingReport(
+  held: Map<string, OnboardingSignalReport>,
+  report: OnboardingSignalReport | null,
+  running: boolean,
+  awaited: string | null,
+): OnboardingSignalReport | null {
+  const action = onboardingReportAction(report, running, awaited)
+  if (!running) {
+    held.clear()
+    return null
+  }
+  if (report && (action === 'hold' || action === 'advance')) held.set(report.signal, report)
+  if (!awaited) return null
+  const ready = held.get(awaited) ?? null
+  held.delete(awaited)
+  return ready
+}
+
 // useUniverseScreen is the universe screen's controller, shared by both apps: the navigation actor the
 // canvas and the star panel share, the onboarding run narrated over the live scene ([O2]), the
 // first-run welcome, and the star panel's hand-offs to recall, the archive and the deletion flows.
@@ -53,7 +74,12 @@ export function useUniverseScreen({ active, onOpenDiary }: UniverseScreenInput) 
   // A run is control state belonging to the screen it narrates. The tour performs nothing — every
   // state change during it is the user's own press — so the screen only starts the run and forwards
   // reported signals.
-  const tour = useSequenceRun(ONBOARDING_SCRIPT, { captionDwellMs: VALUES.sequence.captionDwellMs })
+  const advancePending = useAdvanceAnnouncementStore((state) => state.pending !== null)
+  const sweeping = useAdvanceSweepStore((state) => state.sampledTime !== null)
+  const tour = useSequenceRun(ONBOARDING_SCRIPT, {
+    captionDwellMs: VALUES.sequence.captionDwellMs,
+    paused: !active || advancePending || sweeping,
+  })
   const { start: startTour, signal: advanceTour, abandon: abandonTour, active: tourRunning } = tour
   const awaitedSignal = tour.step?.advance.on === 'signal' ? tour.step.advance.signal : null
 
@@ -72,13 +98,16 @@ export function useUniverseScreen({ active, onOpenDiary }: UniverseScreenInput) 
   // becomes an `ADVANCE`.
   const reportedSignal = useOnboardingSignalStore((state) => state.pending)
   const clearReportedSignal = useOnboardingSignalStore((state) => state.clear)
+  const heldReports = useRef(new Map<string, OnboardingSignalReport>())
   useEffect(() => {
-    const action = onboardingReportAction(reportedSignal, tourRunning, awaitedSignal)
-    if (action === 'clear') clearReportedSignal()
-    if (action === 'advance' && reportedSignal) {
-      advanceTour(reportedSignal.signal)
-      clearReportedSignal()
-    }
+    const ready = takeOnboardingReport(
+      heldReports.current,
+      reportedSignal,
+      tourRunning,
+      awaitedSignal,
+    )
+    if (reportedSignal) clearReportedSignal()
+    if (ready) advanceTour(ready.signal)
   }, [advanceTour, awaitedSignal, clearReportedSignal, reportedSignal, tourRunning])
 
   // First-run welcome ([U2][V7]): a settled universe read with zero episodic memories is a beginning,

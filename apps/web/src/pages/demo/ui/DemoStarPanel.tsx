@@ -63,37 +63,16 @@ export function DemoStarPanel({
   )
   const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
   const stage = currentDecayStage(memory, universeTime)
+  const spans = currentDecaySpans(memory, universeTime)
+  const hasLostWords = spans.some((span) => span.lost)
 
   return (
-    <Dialog open onClose={onClose} title={memory.name} closeLabel={m.common_dismiss()}>
-      <div className="flex flex-col gap-5">
-        {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. */}
-        <div aria-hidden className="h-44 w-full overflow-hidden rounded-xl border border-border">
-          <StarPreview
-            memory={memory}
-            universeTime={universeTime}
-            shape={bodyShape ?? undefined}
-            reducedMotion={reducedMotion}
-          />
-        </div>
-
-        <dl className="flex flex-col gap-2">
-          <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
-          <MetaRow label={m.star_meta_brightness()} value={`${Math.round(brightness * 100)}%`} />
-          <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
-          <MetaRow label={m.star_meta_strength()} value={strength.toFixed(2)} />
-          <MetaRow label={m.star_meta_forgetting_state()} value={forgettingStageLabel(stage)} />
-        </dl>
-
-        <ObscuredText
-          className="whitespace-pre-line"
-          spans={currentDecaySpans(memory, universeTime).map((span) => ({
-            text: span.text,
-            obscured: span.lost,
-          }))}
-        />
-
-        {/* Decreasing emphasis left to right, the committing action last (§4). */}
+    <Dialog
+      open
+      onClose={onClose}
+      title={memory.name}
+      closeLabel={m.common_dismiss()}
+      footer={
         <div className="flex flex-wrap items-center justify-end gap-3">
           <SequenceAnchor id={'entry-open-action' satisfies DemoAnchor}>
             <Button
@@ -117,6 +96,43 @@ export function DemoStarPanel({
             </Button>
           </SequenceAnchor>
         </div>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <section
+          aria-label={m.demo_memory_words_label()}
+          data-demo-memory-words=""
+          className="flex flex-col gap-2"
+        >
+          <h3 className="text-xs font-semibold text-text-muted">{m.demo_memory_words_label()}</h3>
+          <ObscuredText
+            size="body"
+            className="whitespace-pre-line"
+            spans={spans.map((span) => ({ text: span.text, obscured: span.lost }))}
+          />
+          {hasLostWords ? (
+            <p className="text-sm leading-relaxed text-text-muted">
+              {m.demo_memory_word_loss_hint()}
+            </p>
+          ) : null}
+        </section>
+        {/* Rounded and clipped so the sky the star sits in reads as a window, not a hole. */}
+        <div aria-hidden className="h-32 w-full overflow-hidden rounded-xl border border-border">
+          <StarPreview
+            memory={memory}
+            universeTime={universeTime}
+            shape={bodyShape ?? undefined}
+            reducedMotion={reducedMotion}
+          />
+        </div>
+
+        <dl className="flex flex-col gap-2">
+          <MetaRow label={m.star_meta_emotion()} value={moodLabel(memory.emotion.mood)} />
+          <MetaRow label={m.star_meta_brightness()} value={`${Math.round(brightness * 100)}%`} />
+          <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
+          <MetaRow label={m.star_meta_strength()} value={strength.toFixed(2)} />
+          <MetaRow label={m.star_meta_forgetting_state()} value={forgettingStageLabel(stage)} />
+        </dl>
       </div>
     </Dialog>
   )

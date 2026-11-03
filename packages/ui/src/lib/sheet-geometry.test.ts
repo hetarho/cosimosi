@@ -47,7 +47,10 @@ describe('sheet geometry chain', () => {
 
   it('keeps the resize ceiling equal to the rendered sheet max-height', () => {
     const sheet = packageSource('primitives/sheet.tsx')
-    const maxHeightDvh = /max-h-\[([\d.]+)dvh\]/.exec(sheet)?.[1]
+    const maxHeightDvh =
+      /max-h-\[min\(([\d.]+)dvh,calc\(100dvh-var\(--surface-top-clearance,0px\)\)\)\]/.exec(
+        sheet,
+      )?.[1]
 
     expect(maxHeightDvh).toBeDefined()
     expect(Number(maxHeightDvh) / 100).toBe(SHEET_GESTURE.tallestViewportRatio)

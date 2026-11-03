@@ -1,5 +1,6 @@
 import type { DemoAnchor } from './anchors.ts'
 import type { DemoSurface } from './demo-surface.machine.ts'
+import { decorationTourAnchor, type DecorationTourStage } from './decoration-tour.ts'
 import type { DemoPhaseKey } from './recall-panel.ts'
 
 /**
@@ -9,9 +10,7 @@ import type { DemoPhaseKey } from './recall-panel.ts'
  * Three beats walk the ring with the visitor instead of leaving it on a button already pressed. The
  * neuron-reuse beat draws a diary, then splits and launches it inside the writing sheet. The recall
  * beat's 회고하기 closes the panel that held its anchor, and the walk's own two presses finish it.
- * The decorating beat goes into the sheet, onto a row, and back out — and the way out is the sheet's
- * own close, a control the shared primitive owns and this page cannot anchor, so the ring stands
- * down and the caption carries that leg alone.
+ * Decorating visits the sky, pauses for its preview, changes the body, then returns to the universe.
  */
 export type DemoRingTarget =
   { readonly kind: 'anchor'; readonly anchor: DemoAnchor } | { readonly kind: 'none' } | null
@@ -21,15 +20,14 @@ export interface DemoRingInputs {
   readonly surface: DemoSurface
   /** Whether the drafted diary on the writing sheet has been split yet; null with no draft. */
   readonly splitRevealed: boolean | null
-  /** Whether anything has been tried on in the decoration sheet. */
-  readonly tasted: boolean
+  readonly decorationStage: DecorationTourStage
 }
 
 export function demoRingTarget({
   beat,
   surface,
   splitRevealed,
-  tasted,
+  decorationStage,
 }: DemoRingInputs): DemoRingTarget {
   if (beat === 'neuron_reuse' && surface.kind === 'writing' && splitRevealed !== null) {
     return { kind: 'anchor', anchor: splitRevealed ? 'launch-action' : 'split-action' }
@@ -41,7 +39,9 @@ export function demoRingTarget({
     }
   }
   if (beat === 'ornament_taster' && surface.kind === 'decorating') {
-    return tasted ? { kind: 'none' } : { kind: 'anchor', anchor: 'ornament-row-action' }
+    return decorationStage === 'sky-preview'
+      ? { kind: 'none' }
+      : { kind: 'anchor', anchor: decorationTourAnchor(decorationStage) }
   }
   return null
 }

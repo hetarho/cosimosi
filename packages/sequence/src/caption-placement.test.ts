@@ -6,12 +6,54 @@ import {
   CAPTION_SURFACE_GAP_PX,
   CAPTION_TOP_INSET_PX,
   resolveCaptionPosition,
+  clearCaptionObstacles,
   type CaptionSlot,
 } from './caption-placement.ts'
 import type { SequenceRect } from './select.ts'
 
 const VIEWPORT = { width: 400, height: 800 }
 const BAND = 96
+
+describe('measured caption clearance', () => {
+  it('rechecks the split action after a footer has lifted a long caption', () => {
+    const position = clearCaptionObstacles({
+      preferred: { from: 'bottom', insetPx: 122 },
+      viewport: { width: 768, height: 663 },
+      caption: { x: 128, width: 512, height: 106 },
+      obstacles: [
+        { x: 446, y: 316, width: 154, height: 58 },
+        { x: 318, y: 457, width: 150, height: 48 },
+      ],
+    })
+    expect(position).toEqual({ from: 'top', insetPx: 517 })
+  })
+
+  it('uses the rendered height when a translated paragraph wraps to many lines', () => {
+    expect(
+      clearCaptionObstacles({
+        preferred: { from: 'bottom', insetPx: 32 },
+        viewport: VIEWPORT,
+        caption: { x: 24, width: 352, height: 192 },
+        obstacles: [{ x: 20, y: 500, width: 360, height: 300 }],
+      }),
+    ).toEqual({ from: 'top', insetPx: 296 })
+  })
+
+  it('leaves a caption beside a side panel and inside a reserved modal header band', () => {
+    const preferred = { from: 'top', insetPx: 64 } as const
+    expect(
+      clearCaptionObstacles({
+        preferred,
+        viewport: { width: 1024, height: 768 },
+        caption: { x: 80, width: 512, height: 100 },
+        obstacles: [
+          { x: 672, y: 0, width: 352, height: 768 },
+          { x: 100, y: 176, width: 500, height: 592 },
+        ],
+      }),
+    ).toEqual(preferred)
+  })
+})
 
 const at = (slot: CaptionSlot, anchorRect: SequenceRect | null = null) =>
   resolveCaptionPosition({ slot, anchorRect, viewport: VIEWPORT, bandHeight: BAND })

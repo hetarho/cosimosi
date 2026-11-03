@@ -31,7 +31,7 @@ export type BackdropMoteFormKey =
   'grain' | 'orb' | 'pixel' | 'shard' | 'needle' | 'streak' | 'jack' | 'plate' | 'bokeh'
 
 /** World radius of one mote before the per-instance distance scaling. */
-export const MOTE_RADIUS = 0.18
+export const MOTE_RADIUS = 0.09
 
 /** How far a directional form reaches along its long axis, relative to a round one. Enough to read
  *  as a line rather than a smeared dot; past roughly this the field starts to read as rain. */

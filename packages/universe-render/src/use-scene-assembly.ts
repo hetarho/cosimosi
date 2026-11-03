@@ -63,10 +63,8 @@ export function useSceneAssembly({
   }, [bridge, graph])
   const pump = useCallback((dt: number) => bridge.pump(dt), [bridge])
 
-  // The emotion-colored layers memoize each memory's mood color into instanced buffers, so a live
-  // palette swap (module-level setMoodPalette) is invisible to their memos. Remounting them on the
-  // palette version recomputes the buffers through the unchanged moodColor seam — a live re-color
-  // with no rendering-package edit and no refetch. Only the color-bearing layers key on it.
+  // Color-bearing layers read this revision as a projection input, keeping their motion and GPU
+  // resources mounted while moodColor starts reading the selected palette.
   const paletteVersion = usePaletteVersion()
 
   const memories = universe?.memories

@@ -146,10 +146,38 @@ describe('SequenceGuide (web)', () => {
     await waitFor(() => expect(band().style.bottom).toBe(`${CAPTION_EDGE_INSET_PX}px`))
   })
 
+  it('keeps skip and caption out of a full-height right panel', async () => {
+    resizeTo(1024, 768)
+    const band = await mountGuide()
+    act(() => {
+      const panel = document.createElement('section')
+      panel.setAttribute(SURFACE_PANEL_ATTR, '')
+      panel.getBoundingClientRect = () => ({ x: 672, y: 0, width: 352, height: 768 }) as DOMRect
+      document.body.append(panel)
+    })
+    await waitFor(() => expect(band().style.right).toBe('352px'))
+    const skip = [...document.querySelectorAll('button')].find(
+      (button) => button.textContent === m.sequence_skip_action(),
+    )!
+    expect(skip.parentElement!.style.right).toBe('calc(352px + 1rem)')
+  })
+
   it('lets a host override the slot when the default cannot see its surface', async () => {
     const band = await mountGuide({ captionSlot: 'edge' })
     expect(band().style.bottom).toBe(`${CAPTION_EDGE_INSET_PX}px`)
     expect(band().style.top).toBe('')
+  })
+
+  it('keeps the caption above a scene footer rather than over the write control', async () => {
+    resizeTo(1024, 768)
+    const band = await mountGuide({ anchorRect: null })
+    act(() => {
+      const footer = document.createElement('div')
+      footer.setAttribute('data-scene-footer', '')
+      footer.getBoundingClientRect = () => ({ x: 400, y: 690, width: 200, height: 54 }) as DOMRect
+      document.body.append(footer)
+    })
+    await waitFor(() => expect(band().style.bottom).toBe('90px'))
   })
 
   it('resolves the caption through the accessor at render time, so a locale change re-reads it', () => {
@@ -158,5 +186,29 @@ describe('SequenceGuide (web)', () => {
     expect(html).toContain('first')
     locale = 'ko'
     expect(render({ caption: () => (locale === 'en' ? 'first' : 'second') })).toContain('second')
+  })
+
+  it('reserves a band above an editing modal and releases it when guidance unmounts', async () => {
+    resizeTo(768, 663)
+    const panel = document.createElement('div')
+    panel.setAttribute(SURFACE_PANEL_ATTR, '')
+    panel.setAttribute('aria-modal', 'true')
+    panel.getBoundingClientRect = () => {
+      const top =
+        Number.parseFloat(
+          document.documentElement.style.getPropertyValue('--surface-top-clearance'),
+        ) || 0
+      return { x: 160, y: top, width: 448, height: 663 - top } as DOMRect
+    }
+    document.body.append(panel)
+    const band = await mountGuide()
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue('--surface-top-clearance')).toBe(
+        '188px',
+      ),
+    )
+    expect(band().style.top).toBe('64px')
+    cleanup()
+    expect(document.documentElement.style.getPropertyValue('--surface-top-clearance')).toBe('')
   })
 })

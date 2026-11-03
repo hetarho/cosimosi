@@ -180,7 +180,10 @@ export interface DemoScene {
   readonly newNeuronIds: readonly string[]
 }
 
-export function useDemoRun(initial: { today: string; draw01: number; runId: string }): DemoRun {
+export function useDemoRun(
+  initial: { today: string; draw01: number; runId: string },
+  displayTime: string | null = null,
+): DemoRun {
   const [state, setState] = useState<DemoRunState>(() =>
     freshRun(initial.today, initial.draw01, initial.runId),
   )
@@ -318,7 +321,7 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
     [],
   )
 
-  const scene = useMemo(() => projectScene(state), [state])
+  const scene = useMemo(() => projectScene(state, displayTime ?? state.clock), [state, displayTime])
   const writingDiary = useMemo(
     () =>
       state.writing
@@ -345,7 +348,7 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
 // with each memory's stored facts applied. Every derived quantity the layers show — brightness,
 // size, the eroded text, the gist coordinate, the sky's blend — is computed downstream by the
 // shipped functions from exactly these stored facts, which is why free play only ever moves facts.
-function projectScene(run: DemoRunState): DemoScene {
+function projectScene(run: DemoRunState, displayTime: string): DemoScene {
   const launched = new Set(run.launchedDiaryIds)
   const launchedMemoryIds = new Set(
     [...run.set.structure.diaries, ...run.set.structure.extraDiaries]
@@ -355,7 +358,7 @@ function projectScene(run: DemoRunState): DemoScene {
 
   const memories = run.resolved.snapshot.memories
     .filter((memory) => launchedMemoryIds.has(memory.id))
-    .map((memory) => applyFacts(memory, run))
+    .map((memory) => applyFacts(memory, run, displayTime))
 
   const activeNeuronIds = new Set(
     memories.flatMap((memory) => memory.activations.map((activation) => activation.neuronId)),
@@ -386,7 +389,11 @@ function projectScene(run: DemoRunState): DemoScene {
   }
 }
 
-function applyFacts(memory: EpisodicMemory, run: DemoRunState): EpisodicMemory {
+function applyFacts(
+  memory: EpisodicMemory,
+  run: DemoRunState,
+  displayTime: string,
+): EpisodicMemory {
   const facts = run.memoryFacts[memory.id]
   if (!facts) return memory
   // Every field the run owns is named here rather than spread in, so a fact added to
@@ -399,7 +406,7 @@ function applyFacts(memory: EpisodicMemory, run: DemoRunState): EpisodicMemory {
     seed: facts.seed,
     currentText: facts.currentText,
     decayStages: facts.decayStages,
-    semanticStage: derivedSemanticStage(memory, facts, run.clock),
+    semanticStage: derivedSemanticStage(memory, facts, displayTime),
   }
 }
 

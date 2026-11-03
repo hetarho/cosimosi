@@ -38,6 +38,19 @@ export async function awaitArrival(node: Element): Promise<void> {
   await Promise.all(arriving.map((animation) => animation.finished.catch(() => undefined)))
 }
 
+/** A closing portal may not have started its leave animation yet; wait for its actual removal. */
+export function awaitDeparture(node: Element): Promise<void> {
+  if (!node.isConnected) return Promise.resolve()
+  return new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (node.isConnected) return
+      observer.disconnect()
+      resolve()
+    })
+    observer.observe(node.ownerDocument, { childList: true, subtree: true })
+  })
+}
+
 /** The element's box, or `null` when it has none to give — an unmounted or zero-size node. */
 export function measuredBox(node: Element): MeasuredBox | null {
   const box = node.getBoundingClientRect()

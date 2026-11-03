@@ -3,12 +3,14 @@ import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import type { NavigationPose, PinnedView } from '@cosimosi/3d-renderer'
-import { forceSimCoordinateOffset } from '@cosimosi/force-sim'
+import { FORCE_SIM_COORDINATE_STRIDE, forceSimCoordinateOffset } from '@cosimosi/force-sim'
 import { useActorRef } from '@cosimosi/state-machine/react'
 import type { OrnamentKind } from '@cosimosi/store'
 import { useWornOrnaments } from '@cosimosi/store/react'
 import {
   gistNodeId,
+  gistStageOffset,
+  parseGistNodeId,
   recentlyActiveNeuronIds,
   universeNavigationMachine,
   useSpotlightStore,
@@ -141,6 +143,25 @@ export function useUniverseScene({
     [],
   )
   const centroid = useMemo(() => createLayoutCentroid(), [])
+  const gistHeights = useMemo(
+    () =>
+      new Map(
+        (universe?.memories ?? [])
+          .filter((memory) => memory.semanticStage > 0)
+          .map((memory) => [memory.id, gistStageOffset(memory.semanticStage)]),
+      ),
+    [universe?.memories],
+  )
+  const gistCenter = useMemo(
+    () => ({
+      heights: gistHeights,
+      nodeIndex,
+      buffer: null as Float32Array | null,
+      version: Number.NaN,
+      z: 0,
+    }),
+    [gistHeights, nodeIndex],
+  )
   const getPinnedView = useCallback((): PinnedView => {
     const buffer = bridge.coordinates.current
     const snapshot = actorRef.getSnapshot()
@@ -152,15 +173,17 @@ export function useUniverseScene({
       snapshot.context.selectedNodeId ??
       useSpotlightStore.getState().memoryIds[0] ??
       null
+    const heldGist = heldId ? parseGistNodeId(heldId)?.episodicMemoryId : undefined
     const heldIndex =
       heldId && nodeIndex
-        ? (nodeIndex.neurons[heldId] ?? nodeIndex.episodicMemories[heldId])
+        ? (nodeIndex.neurons[heldId] ?? nodeIndex.episodicMemories[heldGist ?? heldId])
         : undefined
     if (buffer && heldIndex !== undefined) {
       const offset = forceSimCoordinateOffset(heldIndex)
       pinnedView.center[0] = buffer[offset] ?? 0
       pinnedView.center[1] = buffer[offset + 1] ?? 0
-      pinnedView.center[2] = buffer[offset + 2] ?? 0
+      pinnedView.center[2] =
+        (buffer[offset + 2] ?? 0) + (heldGist ? (gistHeights.get(heldGist) ?? 0) : 0)
       pinnedView.held = true
       return pinnedView
     }
@@ -171,8 +194,26 @@ export function useUniverseScene({
     pinnedView.center[0] = centroid.center[0]
     pinnedView.center[1] = centroid.center[1]
     pinnedView.center[2] = centroid.center[2]
+    // Include raised gist bodies without rescanning a settled coordinate buffer each frame.
+    if (buffer && gistCenter.heights.size > 0 && gistCenter.nodeIndex) {
+      if (gistCenter.buffer !== buffer || gistCenter.version !== bridge.coordinates.version) {
+        let lowest = Number.POSITIVE_INFINITY
+        let highest = Number.NEGATIVE_INFINITY
+        for (let i = 2; i < buffer.length; i += FORCE_SIM_COORDINATE_STRIDE)
+          lowest = Math.min(lowest, buffer[i]!)
+        for (const [id, lift] of gistCenter.heights) {
+          const index = gistCenter.nodeIndex.episodicMemories[id]
+          if (index !== undefined)
+            highest = Math.max(highest, (buffer[forceSimCoordinateOffset(index) + 2] ?? 0) + lift)
+        }
+        gistCenter.z = Number.isFinite(highest) ? (lowest + highest) / 2 : centroid.center[2]
+        gistCenter.buffer = buffer
+        gistCenter.version = bridge.coordinates.version
+      }
+      pinnedView.center[2] = gistCenter.z
+    }
     return pinnedView
-  }, [actorRef, bridge, centroid, nodeIndex, pinnedView])
+  }, [actorRef, bridge, centroid, nodeIndex, pinnedView, gistHeights, gistCenter])
 
   const onArrived = useCallback(() => actorRef.send({ type: 'ARRIVED' }), [actorRef])
   const sendNodeCommand = useCallback(

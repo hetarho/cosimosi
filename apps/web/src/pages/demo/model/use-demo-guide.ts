@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { measureAnchor, type SequenceRect } from '@cosimosi/sequence'
 
 import type { DemoSurface } from './demo-surface.machine.ts'
+import type { DecorationTourStage } from './decoration-tour.ts'
 import type { DemoPhaseKey } from './recall-panel.ts'
 import { demoRingTarget } from './ring-target.ts'
 import { tutorialInteractiveAnchors } from './run-machine.ts'
@@ -10,7 +11,7 @@ import { tutorialInteractiveAnchors } from './run-machine.ts'
 export interface DemoGuideInputs {
   readonly beat: DemoPhaseKey
   readonly surface: DemoSurface
-  readonly tasted: boolean
+  readonly decorationStage: DecorationTourStage
   /** The drafted diary's split state; null with no draft on the sheet. */
   readonly splitRevealed: boolean | null
   readonly memoryCount: number
@@ -26,7 +27,7 @@ export interface DemoGuideInputs {
 export function useDemoGuide({
   beat,
   surface,
-  tasted,
+  decorationStage,
   splitRevealed,
   memoryCount,
   engineRect,
@@ -38,37 +39,45 @@ export function useDemoGuide({
   // control's stale position. Keyed on primitives only: an object dep that changed identity per
   // render would turn this effect's own state write (the measure token) into an update loop.
   const surfaceKey = surfaceIdentity(surface)
+  const target = demoRingTarget({ beat, surface, splitRevealed, decorationStage })
+  const targetKey = target === null ? 'engine' : target.kind === 'none' ? 'none' : target.anchor
   useEffect(() => {
     remeasure()
-  }, [beat, remeasure, splitRevealed, memoryCount, surfaceKey])
+  }, [beat, remeasure, splitRevealed, memoryCount, surfaceKey, targetKey])
 
   // The mask's hole: the union box of every control the current beat opens — one lit region cut out
   // of one covering layer. No hole (the sky beat, an unmeasured mount, free play) means no mask — a
   // blackout with nothing lit would say "wait", and no beat here means that.
   const [hole, setHole] = useState<{
-    readonly beat: DemoPhaseKey
+    readonly key: string
     readonly rect: SequenceRect | null
-  }>({ beat: 'freePlay', rect: null })
+  }>({ key: '', rect: null })
+  const maskKey = `${beat}:${surfaceKey}:${targetKey}`
   useEffect(() => {
-    const anchors = beat === 'freePlay' ? null : tutorialInteractiveAnchors(beat)
+    const anchors =
+      beat === 'freePlay' || targetKey === 'none'
+        ? null
+        : targetKey !== 'engine'
+          ? [targetKey]
+          : beat === 'ornament_taster'
+            ? ['decorate-action']
+            : tutorialInteractiveAnchors(beat)
     if (!anchors || anchors.length === 0) return
     let live = true
     void Promise.all(anchors.map((anchor) => measureAnchor(anchor))).then((rects) => {
       if (!live) return
       const boxes = rects.filter((rect): rect is SequenceRect => rect !== null)
-      setHole({ beat, rect: boxes.length > 0 ? unionSequenceRects(boxes) : null })
+      setHole({ key: maskKey, rect: boxes.length > 0 ? unionSequenceRects(boxes) : null })
     })
     return () => {
       live = false
     }
-  }, [beat, engineRect, splitRevealed, memoryCount, surfaceKey])
+  }, [beat, engineRect, splitRevealed, memoryCount, surfaceKey, targetKey, maskKey])
   // A hole measured for another beat is no hole for this one.
-  const maskHole = hole.beat === beat && beat !== 'freePlay' ? hole.rect : null
+  const maskHole = hole.key === maskKey && beat !== 'freePlay' ? hole.rect : null
 
   // A page-side view override of the engine's anchor, for the beats whose work walks across a surface
   // (`demoRingTarget`). The engine's own anchor stays what the script says.
-  const target = demoRingTarget({ beat, surface, splitRevealed, tasted })
-  const targetKey = target === null ? 'engine' : target.kind === 'none' ? 'none' : target.anchor
   const [measured, setMeasured] = useState<{
     readonly key: string
     readonly rect: SequenceRect | null

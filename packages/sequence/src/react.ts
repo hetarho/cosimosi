@@ -28,6 +28,8 @@ export interface SequenceRunOptions {
    * constant is imported by the app chrome, where every other tuning number is read.
    */
   readonly captionDwellMs: number
+  /** A host can withhold the caption while a scene is being shown. Reading time starts on reveal. */
+  readonly paused?: boolean
 }
 
 export interface SequenceRunView<Anchor extends string, Signal extends string> {
@@ -92,7 +94,7 @@ export function useSequenceRun<Anchor extends string, Signal extends string>(
   const remeasure = useCallback(() => setMeasureToken((token) => token + 1), [])
 
   useDwellAdvance(
-    active && step?.advance.on === 'dwell',
+    active && step?.advance.on === 'dwell' && !options.paused,
     snapshot.stepIndex,
     options.captionDwellMs,
     advance,

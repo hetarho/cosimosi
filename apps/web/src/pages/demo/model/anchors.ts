@@ -33,6 +33,8 @@ export type DemoAnchor =
    *  sheet is open, so the highlight walks INTO the surface the press opened instead of staying on
    *  the button that opened it. */
   | 'ornament-row-action'
+  | 'ornament-shape-action'
+  | 'decorate-close-action'
 
 export type DemoSignal =
   | 'diary_read'

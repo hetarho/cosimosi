@@ -260,8 +260,8 @@ export const MOVING_BOXES_SET: DemoDiarySet = {
   scenario: {
     beats: DEMO_BEAT_IDS,
     firstDiaryId: 'd-moving-1',
-    // NEUTRAL, against on-screen memories whose weighted blend leans FEAR.
-    recallMemoryId: 'm-father-measured-the-wall',
+    // An older EMPTINESS memory has actual word loss by the taught recall, against a FEAR blend.
+    recallMemoryId: 'm-room-without-anything',
   },
   text: {
     en: {
@@ -278,6 +278,8 @@ export const MOVING_BOXES_SET: DemoDiarySet = {
           memories: {
             'm-room-without-anything': {
               name: 'The room without anything in it',
+              reconsolidatedText:
+                'The room was smaller once the boxes were packed. I remember standing there, thinking it was empty; now I remember how much had fitted inside it.',
               currentText:
                 'Six years of things came out in a day and a half, and what was left was smaller than I expected. I stood in it for a while with the boxes stacked behind me.',
               semanticStages: [
@@ -525,6 +527,8 @@ export const MOVING_BOXES_SET: DemoDiarySet = {
           memories: {
             'm-room-without-anything': {
               name: '아무것도 없는 방',
+              reconsolidatedText:
+                '상자를 다 싸고 나니 방이 작아 보였다. 그때는 비어 버렸다고 생각했는데, 지금 떠올리면 그 작은 곳에 참 많은 것이 들어 있었다.',
               currentText:
                 '육 년의 물건이 하루 반 만에 나왔고 남은 것은 생각보다 작았다. 상자들을 등 뒤에 쌓아둔 채 한동안 그 안에 서 있었다.',
               semanticStages: [

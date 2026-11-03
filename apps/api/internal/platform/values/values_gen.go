@@ -377,9 +377,11 @@ const (
 
 // demo
 const (
-	DemoTimeTravelMonthDays = 30
-	DemoRevealHoldMs        = 2400
-	DemoSweepSettleMs       = 800
+	DemoDecorationSkyPreviewMs = 1000
+	DemoCaptionDwellMs         = 2800
+	DemoTimeTravelMonthDays    = 30
+	DemoRevealHoldMs           = 2400
+	DemoSweepSettleMs          = 200
 )
 
 // landing

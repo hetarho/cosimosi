@@ -260,9 +260,9 @@ export const ROOFTOP_SUMMER_SET: DemoDiarySet = {
   scenario: {
     beats: DEMO_BEAT_IDS,
     firstDiaryId: 'd-rooftop-1',
-    // TIRED, against on-screen memories whose weighted blend leans EXCITEMENT. In the second
-    // diary, because the tutorial has launched exactly two diaries when the recall beat arrives.
-    recallMemoryId: 'm-two-in-the-morning',
+    // An older JOY memory has actual word loss after the first month and differs from EXCITEMENT,
+    // the on-screen weighted dominant mood. The recall teaches both erosion and a changed reading.
+    recallMemoryId: 'm-cat-on-the-ledge',
   },
   text: {
     en: {
@@ -296,6 +296,8 @@ export const ROOFTOP_SUMMER_SET: DemoDiarySet = {
             },
             'm-cat-on-the-ledge': {
               name: 'Byeol along the ledge',
+              reconsolidatedText:
+                'The cat came along the ledge around three. I used to think she was watching me fail; now I remember that she simply sat beside me.',
               currentText:
                 'Around three the cat came along the ledge, unhurried, as though the whole building were hers. She sat where she could watch me fail.',
               semanticStages: [
@@ -543,6 +545,8 @@ export const ROOFTOP_SUMMER_SET: DemoDiarySet = {
             },
             'm-cat-on-the-ledge': {
               name: '난간을 걸어온 별이',
+              reconsolidatedText:
+                '세 시쯤 고양이가 난간을 따라 걸어왔다. 그때는 내 실패를 구경하러 온 줄 알았는데, 지금은 그냥 옆에 앉아 있어 준 것 같다.',
               currentText:
                 '세 시쯤 고양이가 난간을 따라 걸어왔다. 서두르지 않고, 건물 전체가 자기 것인 것처럼. 내가 실패하는 걸 볼 수 있는 자리에 앉았다.',
               semanticStages: [

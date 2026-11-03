@@ -258,9 +258,11 @@ export const VALUES = {
     highlightPulseMs: 1800,
   },
   demo: {
+    decorationSkyPreviewMs: 1000,
+    captionDwellMs: 2800,
     timeTravelMonthDays: 30,
     revealHoldMs: 2400,
-    sweepSettleMs: 800,
+    sweepSettleMs: 200,
   },
   landing: {
     walkthroughFadeSpanDays: 150,

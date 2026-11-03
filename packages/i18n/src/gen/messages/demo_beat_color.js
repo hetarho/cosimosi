@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_ColorInputs */
 
 const en_demo_beat_color = /** @type {(inputs: Demo_Beat_ColorInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`The sky takes its colour from the feelings you return to — a mirror of what you re-read, not an average of everything you wrote.`)
+	return /** @type {LocalizedString} */ (`Your memories colour the sky. Stronger memories give their feelings more room.`)
 };
 
 const ko_demo_beat_color = /** @type {(inputs: Demo_Beat_ColorInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하늘은 다시 찾는 감정의 색을 띠어요. 쓴 것 전체의 평균이 아니라, 다시 읽은 것의 거울이에요.`)
+	return /** @type {LocalizedString} */ (`하늘에는 기억의 감정이 번져요. 강한 기억의 색이 더 넓게 퍼져요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "The sky takes its colour from the feelings you return to — a mirror of what you re-read, not an average of everything you wrote." |
+* | "Your memories colour the sky. Stronger memories give their feelings more room." |
 *
 * @param {Demo_Beat_ColorInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

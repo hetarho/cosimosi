@@ -14,14 +14,20 @@ import { m } from '../../../shared/i18n/index.ts'
 export function SequenceSkip({
   progress,
   onSkip,
+  rightInset = 0,
 }: {
   progress: SequenceProgress
   onSkip: () => void
+  rightInset?: number
 }) {
   return (
     // `z-guide` sits above `z-modal`, so "always visible" survives the steps that point into the
     // writing dialog — a skip hidden behind a panel is not a skip.
-    <div className="fixed right-4 top-4 z-[var(--z-guide)] flex items-center gap-3">
+    <div
+      data-sequence-chrome=""
+      className="fixed right-4 top-4 z-[var(--z-guide)] flex items-center gap-3"
+      style={rightInset ? { right: `calc(${rightInset}px + 1rem)` } : undefined}
+    >
       <span className="text-xs text-text-muted tabular-nums">
         {m.sequence_progress({ current: progress.current, total: progress.total })}
       </span>

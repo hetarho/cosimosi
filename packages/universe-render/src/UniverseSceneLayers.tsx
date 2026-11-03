@@ -13,7 +13,12 @@ import {
   type StarFieldProfile,
 } from '@cosimosi/3d-renderer'
 import { UNIVERSE_CAMERA_RIG, gistStageOffset } from '@cosimosi/universe/scene'
-import { advanceSkyRate } from '@cosimosi/universe'
+import {
+  advanceSkyRate,
+  useAdvanceAnnouncementStore,
+  useAdvanceSweepStore,
+  useEpisodicMemoryStore,
+} from '@cosimosi/universe'
 
 import { AwakenNeuron } from './AwakenNeuron.tsx'
 import { CellStarLayer } from './CellStarLayer.tsx'
@@ -80,6 +85,9 @@ export function UniverseSceneLayers({
   nebulaResolution,
   onPixelRatio,
 }: UniverseSceneLayersProps) {
+  const advancePending = useAdvanceAnnouncementStore((state) => state.pending !== null)
+  const sweeping = useAdvanceSweepStore((state) => state.sampledTime !== null)
+  const arrivalIds = useEpisodicMemoryStore((state) => state.pendingIds)
   const {
     bridge,
     nodeIndex,
@@ -125,7 +133,7 @@ export function UniverseSceneLayers({
       {/* Emotion color field: additive mood-color blend behind the latent field and bodies
           (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
       <NebulaField
-        key={`nebula-${paletteVersion}`}
+        paletteVersion={paletteVersion}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
         resolution={nebulaResolution}
@@ -137,7 +145,9 @@ export function UniverseSceneLayers({
       />
       <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
       <StarLayer
-        key={`star-${paletteVersion}-${wearing.STAR_SHADER}`}
+        paletteVersion={paletteVersion}
+        arrivalPaused={advancePending || sweeping}
+        arrivalIds={arrivalIds}
         shape={wearing.STAR_SHADER}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
@@ -163,16 +173,20 @@ export function UniverseSceneLayers({
         intensity={VALUES.rendering.gistRiseLayerFog}
       />
       <GistStarLayer
-        key={`gist-${paletteVersion}-${wearing.GIST_SHADER}`}
+        paletteVersion={paletteVersion}
         shape={wearing.GIST_SHADER}
         positions={bridge.coordinates}
         memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NODE_INDEX}
         onSelect={selectGist}
+        reducedMotion={reducedMotion}
       />
       <AwakenNeuron
         field={latentField}
         newNeuronIds={newNeuronIds}
         resolveAnchors={resolveAnchors}
+        positions={bridge.coordinates}
+        neuronIndexById={nodeIndex?.neurons ?? EMPTY_NODE_INDEX}
+        reducedMotion={reducedMotion}
       />
       <NavigationRig
         getPose={getPose}

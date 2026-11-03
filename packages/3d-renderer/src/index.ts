@@ -111,6 +111,9 @@ export {
 export { LATENT_FIELD_SEGMENTS, LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { ColorField, type ColorFieldProps } from './layers/ColorField.tsx'
 export { CameraControls, type CameraControlsProps } from './layers/CameraControls.tsx'
+export { SceneFraming } from './layers/SceneFraming.tsx'
+export { FocusPulse } from './layers/FocusPulse.tsx'
+export type { SceneBounds, FrameInsets } from './layers/scene-framing.ts'
 export { SkySphere, type SkySphereProps } from './layers/SkySphere.tsx'
 export {
   buildEmotionGradientTexture,

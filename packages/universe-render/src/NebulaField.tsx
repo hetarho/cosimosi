@@ -12,6 +12,7 @@ export interface NebulaFieldProps {
   readonly firstNodeIndex: number
   /** Kernel silhouette tessellation; omit for the web default (the mount passes the platform value). */
   readonly resolution?: number
+  readonly paletteVersion?: number
 }
 
 // The R3F binding for the emotion color field (visual entity, §3.1/§3.4): it reads the domain
@@ -20,17 +21,21 @@ export interface NebulaFieldProps {
 // the domain-agnostic ColorField layer. Positions are read per frame inside the layer from the
 // coordinate buffer, never here (§3.3). Color comes solely from `moodColor`; the slice computes
 // no color of its own and writes nothing back to the mirror [A4][A5][A7].
-export function NebulaField({ positions, firstNodeIndex, resolution }: NebulaFieldProps) {
+export function NebulaField({
+  positions,
+  firstNodeIndex,
+  resolution,
+  paletteVersion = 0,
+}: NebulaFieldProps) {
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
-  const contributors = useMemo(
-    () =>
-      buildContributors(
-        ids.map((id) => byId[id]),
-        { firstNodeIndex },
-      ),
-    [byId, ids, firstNodeIndex],
-  )
+  const contributors = useMemo(() => {
+    void paletteVersion
+    return buildContributors(
+      ids.map((id) => byId[id]),
+      { firstNodeIndex },
+    )
+  }, [byId, ids, firstNodeIndex, paletteVersion])
   return (
     <ColorField
       positions={positions}

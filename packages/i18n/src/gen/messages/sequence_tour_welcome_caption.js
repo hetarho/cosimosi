@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Sequence_Tour_Welcome_CaptionInputs */
 
 const en_sequence_tour_welcome_caption = /** @type {(inputs: Sequence_Tour_Welcome_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`This is your universe. Nothing is in it yet — stars come only from what you write.`)
+	return /** @type {LocalizedString} */ (`This is your universe. Its stars come from what you write.`)
 };
 
 const ko_sequence_tour_welcome_caption = /** @type {(inputs: Sequence_Tour_Welcome_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`여기가 당신의 우주예요. 아직 비어 있고, 별은 쓴 것에서만 태어납니다.`)
+	return /** @type {LocalizedString} */ (`여기가 당신의 우주예요. 별은 당신이 쓴 기록에서 태어납니다.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "This is your universe. Nothing is in it yet — stars come only from what you write." |
+* | "This is your universe. Its stars come from what you write." |
 *
 * @param {Sequence_Tour_Welcome_CaptionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

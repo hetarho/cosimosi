@@ -56,7 +56,7 @@ function DialogSurface({
     // `pointer-events-auto`: a modal is reachable wherever it is composed, including inside a
     // non-interactive HUD layer, whose `pointer-events: none` would otherwise inherit down and leave
     // the scrim and every control in here inert.
-    <div className="pointer-events-auto fixed inset-0 z-[var(--z-modal)] flex items-end justify-center md:items-center">
+    <div className="pointer-events-auto fixed inset-0 z-[var(--z-modal)] flex items-end justify-center pt-[var(--surface-top-clearance,0px)] md:items-center">
       <div
         className={cx('absolute inset-0 bg-overlay', leaving ? 'scrim-leave' : 'scrim-enter')}
         aria-hidden="true"
@@ -86,8 +86,8 @@ function DialogSurface({
         // and a `max()` lets a tall inset silently eat the whole gap, seating the actions flush
         // against the indicator on exactly the phones that needed the room most.
         className={cx(
-          'glass-strong relative z-10 flex w-full max-h-[85dvh] flex-col rounded-t-2xl px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+2.5rem)]',
-          'md:m-4 md:max-h-[calc(100dvh-2rem)] md:max-w-md md:rounded-2xl md:p-6',
+          'glass-strong relative z-10 flex w-full max-h-[min(85dvh,calc(100dvh-var(--surface-top-clearance,0px)))] flex-col rounded-t-2xl px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+2.5rem)]',
+          'md:m-4 md:max-h-[calc(100dvh-2rem-var(--surface-top-clearance,0px))] md:max-w-md md:rounded-2xl md:p-6',
           'focus-visible:outline-none',
           // A committed swipe carries the sheet out itself, so the leave animation stands down
           // rather than fighting the transform for the same generated settle interval.

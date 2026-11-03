@@ -37,6 +37,7 @@ export function Sheet({
   closeLabel,
   closeDisabled = false,
   footer,
+  size = 'standard',
   children,
 }: SheetProps) {
   // Held past the close so the surface can go back out the edge it came in from. A host that unmounts
@@ -76,6 +77,7 @@ export function Sheet({
       accessibilityLabel={typeof title === 'string' ? title : ariaLabel}
       style={[
         styles.sheet,
+        size === 'compact' && styles.compactSheet,
         {
           opacity: offset.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
           transform: [
@@ -105,6 +107,7 @@ export function Sheet({
 }
 
 const styles = StyleSheet.create({
+  compactSheet: { maxHeight: '45%' },
   // Bounded to the lower two thirds so the universe it is about stays the larger half of the screen.
   sheet: {
     position: 'absolute',

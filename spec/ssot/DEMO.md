@@ -1,5 +1,5 @@
 # DEMO demo
-> r1 | the signed-out `/demo` trailer: shipped fixture sets played on the real render layers as a step-gated ten-beat tutorial, then free play, walled off so its rule exemption never reaches the real code path
+> r5 | the signed-out `/demo` trailer: shipped fixture sets played on the real render layers as a step-gated ten-beat tutorial, then free play, walled off so its rule exemption never reaches the real code path
 
 ## decisions
 - DEMO-1 [o] the demo is signed-out and frontend-only: no auth, no `apps/api` RPC, no DB write, no LLM call ← abuse, cost and privacy problems then cannot arise structurally
@@ -25,7 +25,7 @@
   | 6 | `recall` | recalls the staged target (`recall-action`) | `recalled` | the recall walk; the memory brightens, reshapes and its words return |
   | 7 | `gist_rise` | +1 month (`time-month-action`) | `gist_risen` | unrecalled memories climb gist stages; gist bodies rise into the neocortex band |
   | 8 | `color` | nothing | dwell | the caption names the sky's colour already overhead |
-  | 9 | `ornament_taster` | decorates (`decorate-action`), then picks a catalog row | `decorate_closed` | the decoration round trip |
+  | 9 | `ornament_taster` | opens decoration, changes the sky, then changes the memory body shape | `decorate_closed` | the guided decoration round trip |
   | 10 | `signup_cta` | nothing | dwell | the caption names the signup corner over a room already open |
   - `DEMO_BEAT_IDS` (`packages/demo/src/scenario.ts`) fixes the order; a beat id is an identifier union, not a new noun (the engine's noun is `SequenceStep`)
   - beat 4 is `neuron_reuse`, never a rendering word: the domain half owns the id, the cluster is what the renderer makes of it
@@ -121,6 +121,7 @@
   | draws | the set draw is not total, or the per-diary draw is not deterministic, does not cycle, or repeats back-to-back |
   | package isolation | the dependency list differs →=DEMO-11 |
   - colour headroom exists so that the tutorial's recall visibly moves the sky the colour beat names →~DEMO-32
+  - the recall target has both lost and retained words after the first two launches and one month jump, using the real decay projection; the target is authored in the scenario, never substituted at runtime
   - fixture integrity, not golden parity: the math is pinned where it lives →~DEMO-6
 - DEMO-15 [o] fixture dates are integer day offsets stamped from an `epoch` parameter, so the newest fixture diary lands on the visitor's today ← hardcoded dates go stale, and every reused quantity is a difference of dates, so the epoch moves only the calendar
   - `resolveDemoEpoch(today, set)` = today minus the set's span, the largest day offset over the triple and the extras
@@ -165,7 +166,10 @@
   - a never-recalled memory keeps the authored ladder byte for byte
   - the rewrite field is read-only and prefilled with what goes back (the reconsolidated text, else the current words): a box whose contents were silently discarded would be dishonest
   - the diary body is never rewritten →~INV-2
-  - the recall sheet steps down while the memory brightens and reshapes on the canvas, then returns with the result
+  - confirmation closes the recall dialog and frames the actual memory at a readable scale; only after the dialog has left and the camera arrives does the recall commit, once
+  - a short neutral expanding ring follows the memory's live simulation position to identify the changed body; it changes no body channel or stored fact and ends before the result returns
+  - reduced motion snaps the framing and uses a brief static ring; the result compares the real pre-recall and post-recall bodies at the same preview scale and time, including their actual brightness
+  - the result caption names the completed change, and dismissing the result completes the beat; returning to the overview preserves the camera's continuity
 - DEMO-23 [o] the run's phase is one XState machine, `demoRunMachine` (`pages/demo/model/run-machine.ts`): `tutorial(<beat>)` steps beat by beat into `freePlay`, which no transition leaves; `SKIP` reaches it from every beat →!DEMO-3
   - every tour control's pressability derives from this machine alone (`isDemoAnchorInteractive`): while the tutorial runs only the current beat's controls are pressable, the rest render disabled
   - skip, the signup CTA and start-over are not tour controls: they sit above the gate →~DEMO-33
@@ -188,21 +192,24 @@
   - a picked memory's panel shows its eroded current words at the demo clock, and its own diary opens verbatim from there
   - the free camera mounts →=DEMO-30
   - nobody has to finish the tour to see the point, and nobody is asked to confirm leaving
-- DEMO-25 [o] the tutorial covering is one page-level mask (`DemoTutorialMask`), dimmed hard and blurred lightly, with one hole around the union of the current beat's pressable controls ← a page of individually faded widgets does not read as covered
+- DEMO-25 [o] the tutorial focus cue is one page-level mask (`DemoTutorialMask`) without backdrop blur, with a hole around the current visible controls; most beats dim lightly and the decorating beat dims more strongly ← the next control must be clear while the universe and selective word loss remain legible
   - purely visual (`pointer-events: none`): pressability stays the run machine's, and the mask paints below the sequence chrome (ring, caption, skip)
   - no hole, no mask: a beat that opens nothing (the colour beat), the whole-room beat and free play play unmasked
+  - an open diary, proposal, memory-detail or recall dialog stays fully readable under its own scrim; the tutorial mask lifts while those dialogs are open, and the control ring remains
+  - during guided decorating the universe preview stays uncovered while the panel is dimmed around the current target row or return button; no word-level content is blurred by the cue
+  - the brief changed-sky preview has no control ring or mask; its caption asks the visitor to look at the sky, before guidance moves to body shape
   - while the scene speaks (a launch's awaken, every time sweep, a completed recall's reshaped star) the mask lifts by fading without unmounting; the next beat's caption and ring hold back, and a surface the beat would stage waits
-  - it returns `demo.reveal_hold_ms` after a launch or recall (the hold is the whole reveal) and `demo.sweep_settle_ms` after a sweep (the sweep already had the screen)
+  - the next guidance resumes `demo.reveal_hold_ms` after a launch and `demo.sweep_settle_ms` after a sweep; recall returns its result on visual-feedback completion rather than a fixed hold; the mask stays lifted when a readable surface owns that screen
   - pressability never rides the lift, and the skip never blinks out
 - DEMO-26 [o] a time jump reports `time_advanced` and `gist_risen` when its sweep lands, not when pressed; the engine advances on the one its current beat waits for and drops the other ← reported at the press, the next beat's caption arrived under the lifted mask and a dwell-only beat spent its whole dwell unread
   - a jump with nothing to walk, or under reduced motion, reports at once
   - `launched` reports from the press: a launch has a path with no sweep, and every beat it hands to waits on a press of its own
   - `recalled` reports when an applied recall walk closes (dismissing early leaves the beat open); `decorate_closed` when the decoration sheet closes
-  - no step fires its own signal on arrival, which would advance the run in the commit that starts it and leave the caption unread; the colour and closing beats therefore dwell (`sequence.caption_dwell_ms`) →~ONB
+  - no step fires its own signal on arrival, which would advance the run in the commit that starts it and leave the caption unread; the short colour and closing beats therefore dwell for `demo.caption_dwell_ms`, independently of the onboarding reading time →~ONB-9
 - DEMO-27 [o] the ring always circles a control, never a region, and walks with the visitor through a beat whose work is a flow (a page-side override of the guide's rect)
   - neuron reuse: the write control, then split, then launch
   - recall: the panel's recall control, then confirm, then the way out; pressing recall closes the panel that held the beat's anchor
-  - decorating: the decorate control, then a catalog row, then the ring stands down for the trip out, because the sheet's own close belongs to a shared primitive the page cannot anchor; the caption carries that leg
+  - decorating: the decorate control → a different sky row → a different memory-body row → the page-owned return button; the panel scrolls its own body to the target before its position is remeasured
   - the opening beat uncovers the whole diary card and rings only its read control
   - the page re-measures whenever the phase, the draft or a sheet moves the layout; the engine re-measures only when an anchor mounts or unmounts
   - one DOM renders every width, so no anchor id registers twice
@@ -213,6 +220,7 @@
   - the staged recall panel never returns once the target has been recalled, which is read off the memory, not a flag
   - a sheet a beat is staged inside cannot strand it: the write sheet's dismiss is inert until the write control could reopen it, the decoration sheet's close until something was tried on
 - DEMO-29 [o] the demo teaches the screen the product ships: its HUD and surfaces are read-only twins of the product's, diverging only where the sandbox cannot honestly carry the product's thing →!DEMO-9
+  - a memory-detail panel puts the current eroded sentence before the preview and metadata; when actual decay spans contain lost words, an explanation distinguishes those blurred words from the clear ones, without revealing the lost text or faking decay
   - HUD = the home screen's arrangement: the clock centred over the sky as bare type (from `sm`; on a phone it keeps left because the skip owns the top-right), a borderless icon column at the right edge, the write action alone at the bottom, outlined
   - divergences: no balance (→=DEMO-8), no archive (no route; a memory's diary opens from its panel), time jumps under the clock as quiet text buttons, signup and start-over top-right
   - write flow: the product dialog and `writing_flow_*` labels, split → proposal rows (name, mood chip, source passage, neuron chips) → launch, read-only with no revise and no error arm; a launch closes the dialog before the memory goes up
@@ -234,7 +242,11 @@
   - the background sets `SkySphere`'s effect directly, never `setSkinKey`: a skin swap would also move bloom and `camera.fov`
   - the feeling's colour applies through `applyMoodColors` (the module-level palette, no server) and reverts through `resetMoodPalette`
   - it changes the sky, the shape a memory or gist takes and the backdrop motes, never a memory's position, size, brightness, emotion or seed →=INV-11
-  - the beat is the whole round trip: open, try something on, come back out to the changed universe; nothing is decorated on the visitor's behalf →~VIS-10
+  - the guided beat is open → choose an actually different sky → choose an actually different memory body → return; the return control enables only after both changes, and no selection is made on the visitor's behalf →~VIS-10
+  - the current implicit defaults are resolved through the renderer defaults, so choosing Grainient over a default Grainient does not advance the beat; identical choices are disabled during guidance, and examples always differ from the current resolved look
+  - after the sky change, the overview and sky group stay put for `demo.decoration_sky_preview_ms`, then the camera frames an existing memory while the panel scrolls to the body group; another sky chosen during that preview restarts it, and closing/skipping cancels its pending handoff
+  - geometry changes remain the user's actual selection, not a preview substituted by the guide
+  - a compact bottom panel leaves a preview area on narrow screens; the desktop panel retains its full-height side layout, and the rest of the catalogue remains available
 - DEMO-32 [o] the sky carries the universe's colour from the first launch: `EffectiveStrength`-weighted emotion shares over the launched memories (`universeEmotionSlices`), so the tutorial's recall has moved it before the colour beat names it →=MOOD-5 ← a night sky under risen stars reads as a failed renderer, and a visitor who skips early would never see it
   - an empty universe opens on the night
   - the colour beat applies nothing: its caption states the honest definition (the colour mirrors the emotions re-read, not an average); the demo is one of the two surfaces MOOD-5 makes responsible for saying so →~MOOD-4
@@ -256,14 +268,18 @@
 ## flow
 - run: entry(set draw, epoch from today, stores reset) → tutorial beats 1–10 (skip: free play) → free play → exit(signup CTA: `/signup` | start-over: entry | leave: stores and palette reset)
 - write: write control → draft from the pool(draft open: no draw) → split → launch(already launched: nothing | clock moves: sweep | same day: awaken hold) → `launched`
-- time jump: press → clock commits → sweep(nothing to walk or reduced motion: none) → `time_advanced` + `gist_risen` → mask returns after `demo.sweep_settle_ms`
-- recall: target panel(staged during the tutorial) → recall walk → confirm(memory reshapes on the uncovered canvas) → result → close → `recalled`
+- time jump: press → clock commits → sweep(nothing to walk or reduced motion: none) → `time_advanced` + `gist_risen` → next guidance resumes after `demo.sweep_settle_ms`
+- recall: target panel(staged during the tutorial) → recall walk → confirm → dialog leaves + camera frames target → recall commits → neutral focus feedback → real before/after result → close → `recalled`
 
 ## constraints
-- the `demo` values group holds `demo.time_travel_month_days`, `demo.reveal_hold_ms` and `demo.sweep_settle_ms`; nothing else on the demo is a tuning scalar: beats, captions, counts, day offsets and fixture numbers are content
-- the demo reads physics values from their owners' groups (`forgetting.*`, `semantic.*`, `synapse.*`, `reconsolidation.*`, `rendering.*`, `force_sim.*`) and no `twinkle.*` key; caption dwell is `sequence.*` →=ONB
+- the `demo` values group holds `demo.time_travel_month_days`, `demo.reveal_hold_ms`, `demo.sweep_settle_ms`, `demo.caption_dwell_ms` and `demo.decoration_sky_preview_ms`; beats, captions, counts, day offsets and fixture numbers are content
+- the demo reads physics values from their owners' groups (`forgetting.*`, `semantic.*`, `synapse.*`, `reconsolidation.*`, `rendering.*`, `force_sim.*`) and no `twinkle.*` key; highlight timing is `sequence.*`, and the demo supplies its caption dwell to the shared engine →=ONB-6
 - no rendering word (`star`, `cell-star`, `filament`, `constellation`, `nebula`, `latent-star`) appears in `packages/demo` in a type, field, identifier or comment (`lint:language`) →=UL
 - the demo runs on the shared sequence engine and chrome (`@cosimosi/sequence`, `widgets/sequence-guide`, `features/highlight-next-control`); demo and onboarding differ only in the injected script and data →=ONB-1
 
 ## chg
+- r5 261103 DEMO-25✎ continuous row cue→uncovered changed-sky preview; DEMO-31✎ immediate zoom/scroll after sky choice→1000ms overview, restart on another sky and cancel on leaving
+- r4 261103 DEMO-25✎ no decoration dim→targeted panel dim with clear universe preview; DEMO-27✎ one row→sky row, body row, return with automatic panel scroll; DEMO-31✎ any one selection→real sky and body changes, resolved-default no-op guard and focused preview
+- r3 261103 DEMO-22✎ immediate commit behind closing dialog→commit after departure and focus, bounded feedback and real before/after result; DEMO-25✎ fixed recall hold→feedback-completion handoff
+- r2 261103 DEMO-14✎ recall target present→actual partial word loss at taught recall; DEMO-25✎ hard dim and backdrop blur→light dim, readable dialogs and no backdrop blur; DEMO-26✎ shared 4500ms dwell→demo 2800ms, sweep settle 800→200ms; DEMO-29✎ current words after preview/metadata→before both with factual word-loss explanation
 - r1 261102 initial

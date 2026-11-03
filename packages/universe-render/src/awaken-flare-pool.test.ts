@@ -5,11 +5,36 @@ import {
   createAwakenFlarePool,
   freeAwakenSlot,
   igniteAwakenFlare,
+  moveAwakenFlares,
 } from './awaken-flare-pool.ts'
 
 const FRAME = 1 / 60
 
 describe('awaken flare pool', () => {
+  it('moves a lit seed smoothly into its live neuron and follows that neuron', () => {
+    const pool = createAwakenFlarePool(1)
+    igniteAwakenFlare(pool, 0)
+    const origin = new Float32Array([0, 0, 0])
+    const live = new Float32Array([10, 20, 30])
+    const out = new Float32Array(3)
+    pool.progress[0] = 1 / 3
+    moveAwakenFlares(pool, origin, new Int32Array([0]), live, out)
+    expect(out[0]).toBeCloseTo(5, 5)
+    expect(out[1]).toBeCloseTo(10, 5)
+    expect(out[2]).toBeCloseTo(15, 5)
+    pool.progress[0] = 0.8
+    live.set([12, 22, 32])
+    moveAwakenFlares(pool, origin, new Int32Array([0]), live, out)
+    expect([...out]).toEqual([12, 22, 32])
+  })
+
+  it('leaves a seed in place until its destination has a live buffer slot', () => {
+    const pool = createAwakenFlarePool(1)
+    igniteAwakenFlare(pool, 0)
+    const out = new Float32Array([1, 2, 3])
+    moveAwakenFlares(pool, out, new Int32Array([-1]), new Float32Array(), out)
+    expect([...out]).toEqual([1, 2, 3])
+  })
   it('writes nothing while no flare is playing', () => {
     const pool = createAwakenFlarePool(32)
 

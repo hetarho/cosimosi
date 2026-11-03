@@ -36,6 +36,7 @@ export function Sheet({
   closeLabel,
   closeDisabled = false,
   footer,
+  size = 'standard',
   children,
 }: SheetProps) {
   const titleId = useId()
@@ -61,7 +62,10 @@ export function Sheet({
       // chosen one. It is a class rather than an inline height so the `md:` rule can take it away —
       // the wide-screen shape is the right edge, top to bottom, and must not wear a phone's number.
       className={cx(
-        'glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex h-[var(--sheet-height,auto)] max-h-[70dvh] flex-col rounded-t-2xl px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none md:p-5',
+        'glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex h-[var(--sheet-height,auto)] flex-col rounded-t-2xl px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none md:p-5',
+        size === 'standard'
+          ? 'max-h-[min(70dvh,calc(100dvh-var(--surface-top-clearance,0px)))]'
+          : 'max-h-[min(45dvh,calc(100dvh-var(--surface-top-clearance,0px)))]',
         // A committed throw carries the sheet out itself, so the leave animation stands down rather
         // than fighting the transform for the same generated settle interval.
         resize.flung ? undefined : phase === 'leaving' ? 'sheet-leave' : 'sheet-enter',

@@ -11,6 +11,7 @@ export interface CameraControlsProps {
   readonly minDistance: number
   /** Zoom-out limit. Must stay inside the backdrop nesting (see `backdrop-scale.ts`). */
   readonly maxDistance: number
+  readonly getInitialTarget?: () => readonly [number, number, number]
 }
 
 // Shared R3F layer: the demo inspection camera — drag to rotate, wheel/pinch to zoom, with
@@ -20,7 +21,11 @@ export interface CameraControlsProps {
 // not the product's navigation camera. Attaches to the canvas DOM element; on a host without one it
 // stays inert rather than throwing. Damping needs update() every frame, so it runs in useFrame at
 // default priority — before PostFX's priority-1 render.
-export function CameraControls({ minDistance, maxDistance }: CameraControlsProps) {
+export function CameraControls({
+  minDistance,
+  maxDistance,
+  getInitialTarget,
+}: CameraControlsProps) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
   const controlsRef = useRef<TrackballControls | null>(null)
@@ -28,7 +33,14 @@ export function CameraControls({ minDistance, maxDistance }: CameraControlsProps
   useEffect(() => {
     const el = gl.domElement
     if (!canAttachDomControls(el)) return
+    const position = getInitialTarget ? camera.position.clone() : null
+    const rotation = getInitialTarget ? camera.quaternion.clone() : null
     const controls = new TrackballControls(camera, el)
+    if (getInitialTarget && position && rotation) {
+      controls.target.set(...getInitialTarget())
+      camera.position.copy(position)
+      camera.quaternion.copy(rotation)
+    }
     controls.noPan = true
     applyTrackballFeel(controls)
     // Faster than the product rig's 1.4: inspection wants a quick tumble around one body, where the
@@ -47,7 +59,7 @@ export function CameraControls({ minDistance, maxDistance }: CameraControlsProps
       unobserve()
       controls.dispose()
     }
-  }, [camera, gl, maxDistance, minDistance])
+  }, [camera, gl, maxDistance, minDistance, getInitialTarget])
 
   useFrame(() => controlsRef.current?.update())
   return null

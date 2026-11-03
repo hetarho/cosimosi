@@ -111,7 +111,13 @@ export function WritingFlowSheet() {
         title={m.writing_flow_title()}
         closeLabel={m.writing_flow_close()}
         footer={
-          status === 'reviewing' ? (
+          status === 'writing' ? (
+            <div className="flex justify-end">
+              <Button color="primary" disabled={body.trim().length === 0} onClick={runSplit}>
+                {m.writing_flow_split_action()}
+              </Button>
+            </div>
+          ) : status === 'reviewing' ? (
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Button variant="text" color="neutral" disabled={busy} onClick={back}>
                 {m.writing_flow_back_action()}
@@ -142,12 +148,6 @@ export function WritingFlowSheet() {
                     {m.writing_flow_empty_body_hint()}
                   </p>
                 ) : null}
-                {/* The committing action sits last on the right (§4). */}
-                <div className="flex justify-end">
-                  <Button color="primary" disabled={body.trim().length === 0} onClick={runSplit}>
-                    {m.writing_flow_split_action()}
-                  </Button>
-                </div>
               </div>
             </SequenceAnchor>
           ) : null}

@@ -36,6 +36,11 @@ export function useScenePresentation(signal: (report: DemoSignal) => void) {
     if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
     revealTimerRef.current = setTimeout(() => setSceneRevealing(false), holdMs)
   }, [])
+  const finishReveal = useCallback(() => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+    revealTimerRef.current = null
+    setSceneRevealing(false)
+  }, [])
   useEffect(
     () => () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
@@ -80,6 +85,7 @@ export function useScenePresentation(signal: (report: DemoSignal) => void) {
     sceneRevealing,
     openReveal,
     closeReveal,
+    finishReveal,
     sweep,
     sweepTime,
     setSweepTime,

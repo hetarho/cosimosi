@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import {
   resolveCaptionPosition,
@@ -13,8 +13,9 @@ import { SHEET_BREAKPOINT } from '@cosimosi/ui'
 import { SequenceSpotlight } from './SequenceSpotlight.tsx'
 import { CAPTION_BAND_HEIGHT, SequenceCaption } from './SequenceCaption.tsx'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
-import { useBottomSurface } from '../lib/use-bottom-surface.ts'
+import { useSurfaceLayout } from '../../../shared/lib/use-surface-layout.ts'
 import { useViewport } from '../lib/use-viewport.ts'
+import { useCaptionLayout } from '../lib/use-caption-layout.ts'
 
 export interface SequenceGuideProps {
   readonly active: boolean
@@ -59,35 +60,70 @@ export function SequenceGuide({
   captionSlot,
 }: SequenceGuideProps) {
   const viewport = useViewport()
-  const surface = useBottomSurface(active, viewport)
+  const { bottom: surface, right, footer } = useSurfaceLayout(active)
 
   useEffect(() => {
     if (active) onRemeasure()
-  }, [active, onRemeasure, viewport])
+  }, [active, onRemeasure, viewport, right, surface])
 
-  if (!active) return null
+  useEffect(() => {
+    if (!active) return
+    let frame = 0
+    const schedule = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(onRemeasure)
+    }
+    window.addEventListener('scroll', schedule, true)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', schedule, true)
+    }
+  }, [active, onRemeasure])
 
   // The one breakpoint the chrome reads, and it is the same one `Dialog` reads: at `md` an
   // interrupting surface stops being a bottom sheet and becomes a CENTRED modal, which frees the
   // bottom edge and occupies the middle. So on a wide screen with nothing in the way the line takes
   // the bottom band rather than floating into the space a modal will want.
   const wide = viewport.width >= WIDE_MIN_WIDTH_PX
-  const slot = captionRoom(
-    captionSlot ?? (surface ? 'aboveSurface' : wide ? 'edge' : 'eyeline'),
-    surface,
-  )
-  const position = resolveCaptionPosition({
-    slot,
-    anchorRect,
+  const preferred = useMemo(() => {
+    const slot = captionRoom(
+      captionSlot ?? (surface ? 'aboveSurface' : wide ? 'edge' : 'eyeline'),
+      surface,
+    )
+    const position = resolveCaptionPosition({
+      slot,
+      anchorRect: anchorRect && anchorRect.x < viewport.width - right ? anchorRect : null,
+      viewport,
+      bandHeight: CAPTION_BAND_HEIGHT,
+    })
+    return position.from === 'bottom' && !surface
+      ? { ...position, insetPx: Math.max(position.insetPx, footer + 12) }
+      : position
+  }, [captionSlot, surface, wide, anchorRect, viewport, right, footer])
+  const layout = useCaptionLayout({
+    active,
+    text: caption?.() ?? null,
+    preferred,
     viewport,
-    bandHeight: CAPTION_BAND_HEIGHT,
+    right,
+    anchorRect,
+    onRemeasure,
   })
 
+  if (!active) return null
   return (
     <>
       <SequenceSpotlight rect={anchorRect} />
-      {caption ? <SequenceCaption caption={caption} position={position} /> : null}
-      <SequenceSkip progress={progress} onSkip={onSkip} />
+      {caption ? (
+        <SequenceCaption
+          caption={caption}
+          position={layout.position}
+          rightInset={right}
+          measureRef={layout.ref}
+          ready={layout.ready}
+        />
+      ) : null}
+      <SequenceSkip progress={progress} onSkip={onSkip} rightInset={right} />
     </>
   )
 }

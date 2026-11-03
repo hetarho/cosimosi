@@ -47,7 +47,8 @@ export function advanceAwakenFlares(pool: AwakenFlarePool, deltaSeconds: number)
   // genuinely nothing to write.
   if (pool.activeCount === 0) return false
   const step =
-    Math.min(deltaSeconds, VALUES.rendering.awakenMaxStepS) / VALUES.rendering.awakenDurationS
+    Math.max(0, Math.min(deltaSeconds, VALUES.rendering.awakenMaxStepS)) /
+    VALUES.rendering.awakenDurationS
   for (let slot = 0; slot < pool.active.length; slot++) {
     if (!pool.active[slot]) continue
     const next = (pool.progress[slot] as number) + step
@@ -62,4 +63,25 @@ export function advanceAwakenFlares(pool: AwakenFlarePool, deltaSeconds: number)
     pool.scales[slot] = Math.sin(next * Math.PI) * VALUES.rendering.awakenPeakSize
   }
   return true
+}
+
+/** A flare hands its latent seed to the live sim node without storing a coordinate as a fact. */
+export function moveAwakenFlares(
+  pool: AwakenFlarePool,
+  origins: Float32Array,
+  destinations: Int32Array,
+  live: Float32Array,
+  out: Float32Array,
+): void {
+  for (let slot = 0; slot < pool.active.length; slot++) {
+    if (!pool.active[slot]) continue
+    const target = destinations[slot]! * 3
+    if (target < 0 || target + 2 >= live.length) continue
+    const t = Math.min(1, pool.progress[slot]! * 1.5)
+    const eased = t * t * (3 - 2 * t)
+    for (let axis = 0; axis < 3; axis++) {
+      const offset = slot * 3 + axis
+      out[offset] = origins[offset]! + (live[target + axis]! - origins[offset]!) * eased
+    }
+  }
 }
