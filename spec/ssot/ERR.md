@@ -1,5 +1,5 @@
 # ERR error contract
-> r2 | how a failed RPC travels from a Go context to the user: the two error classes, the `ErrorInfo` detail, the reason registry, masking and reporting, and the shared FE decode, copy and recovery seam
+> r3 | how a failed RPC travels from a Go context to the user: the two error classes, the `ErrorInfo` detail, the reason registry, masking and reporting, and the shared FE decode, copy and recovery seam
 
 ## decisions
 - ERR-1 [o] every RPC failure is exactly one of two classes, decided by its Connect code after the owning context's mapping: a domain refusal (any code but `Internal`/`Unknown`) or an unexpected failure (`Internal`/`Unknown`)
@@ -66,9 +66,10 @@
   | `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID`, `ACCOUNT_MOOD_COLOR_INVALID` | account | InvalidArgument | coarse |
   | `ACCOUNT_NOT_WITHDRAWN`, `ACCOUNT_RESTORE_WINDOW_EXPIRED` | account | FailedPrecondition | coarse; the `RestoreAccount` refusals, which no client can reach →~ACCT-25 |
   | `ADMIN_FORBIDDEN` | admin | PermissionDenied | reason copy |
-  | `ADMIN_USER_ID_REQUIRED`, `ADMIN_GRANT_AMOUNT_RANGE`, `ADMIN_GRANT_ID_REQUIRED`, `ADMIN_UNKNOWN_CAPABILITY` | admin | InvalidArgument | coarse |
+  | `ADMIN_USER_ID_REQUIRED`, `ADMIN_GRANT_AMOUNT_RANGE`, `ADMIN_GRANT_ID_REQUIRED`, `ADMIN_UNKNOWN_CAPABILITY`, `ADMIN_MODEL_REQUIRED` | admin | InvalidArgument | coarse |
   | `ADMIN_PROVIDER_REQUIRED`, `ADMIN_PROVIDER_KEY_REQUIRED`, `ADMIN_UNKNOWN_PROVIDER`, `ADMIN_PROVIDER_CAPABILITY_MISMATCH` | admin | InvalidArgument | coarse |
   | `ADMIN_SEED_ADMIN_UNDEMOTABLE`, `ADMIN_GRANT_ID_CONFLICT`, `ADMIN_PROVIDER_NOT_IMPLEMENTED`, `ADMIN_PROVIDER_KEY_MISSING`, `ADMIN_SECRETBOX_DISABLED` | admin | FailedPrecondition | coarse |
+  | `ADMIN_MODEL_NOT_CURATED` | admin | FailedPrecondition | reason copy; the console refetches the curated list →=ADMIN-19 |
   | `ADMIN_MODEL_LISTING_UNAVAILABLE` | admin | Unavailable | coarse |
   | `ADMIN_USER_SEARCH_TOO_BROAD` | admin | ResourceExhausted | reason copy →=ERR-20 |
   | `MEMORY_DIARY_DATE_INVALID`, `MEMORY_ENCODE_INPUT_REQUIRED`, `MEMORY_ENCODE_BODY_TOO_LONG`, `MEMORY_LAUNCH_INVALID_MEMORIES` | memory | InvalidArgument | coarse (`error_invalid_argument`), no reason copy; `MEMORY_ENCODE_INPUT_REQUIRED` also answers a future-dated launch →=TIME-13 |
@@ -159,5 +160,6 @@
 - the only `values.yaml` key ERR owns is `errors.toast_auto_dismiss_ms`; reasons, `ErrorInfo` and the `debug_detail` gate are contract or runtime env, never values
 
 ## chg
+- r3 261103 ERR-12✎ admin LLM model refusals unregistered→`ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse) and `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy)
 - r2 261102 ERR-12✎ recall refusals without source-version guard→add MEMORY_RECALL_SOURCE_CHANGED for a comparison invalidated by a concurrent rewrite
 - r1 261102 initial

@@ -15,11 +15,13 @@
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
 ## inbox
+- 261103 decided ADMIN-19 ERR-12 T222: ADMIN-19 asked for a typed reason when an LLM model save is refused, but ERR-12 registered none → ERR r3/ADMIN r3: empty model `ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse), outside the intersection, an empty one included, `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy), listing or auth failure the existing `ADMIN_MODEL_LISTING_UNAVAILABLE` (alt: one reason for every refusal | InvalidArgument for a non-curated model) ← whether a model is curated depends on the live catalog, not on the argument alone, and only that refusal makes the console refetch
+- 261103 decided T222: how to rewrite the legacy OpenRouter task in the current format → one task in three ordered phases (hermetic adapter, evidence gate, cutover) that blocks after phase 1 while keys, an operator or a reviewer are missing (alt: split the adapter and the cutover into two tasks) ← the user asked for a single T222, and the gate order keeps the direct adapters until an approval exists
 - 261103 decided UI-30 T210: F29 deletes the unused background seam that UI-30 still defined → UI-30 [x] (r2) and the seam, `useBackground` and their exports removed (alt: keep the seam as reserved API | give it a consumer) ← no surface reads it, and ARCH-27 forbids entries publishing what nothing imports
 - 261103 decided CLIENT-11 T207: with the signup-completion leg in account, CLIENT-11's "then auth's own leg" named a leg auth no longer has → CLIENT-11 r3: the app's product legs end with account's `signup-completion`, then `locale`; auth's registry is removed (alt: keep an empty auth registry | let auth import account) ← AUTH-24 keeps auth free of product packages, and the order stays what it was
 - 261103 decided AUTH-3 T206: AUTH-3 said OAuth adds no machine states or events, but F19 moves the facade's flags into the machine → AUTH-3 r3: OAuth adds no statuses; attempt, local/forced sign-out, bootstrap settling and disposal are machine states outside the context (alt: keep the flags and drop the acceptance | encode them as statuses) ← statuses are the public lifecycle; the flags are control state the machine owns
 - 261103 decided T181 T221: how to run the 41 tasks after `vibe loop` stopped (every unit brief is ~1.8 MB because 547 whole-domain →=/→! references pull all 32 SSOTs past the adapter's 1 MiB input cap) → implement them sequentially in this session with per-task commits and one final batch gate (alt: a custom adapter that trims the brief | reclassify the references | stop) ← reclassifying references in bulk is forbidden by FORMAT and the cap is outside the repository
-- 261103 decided T165 T181 T221: which work the autopilot runs first → T181–T221 first by making T165 depend on T221 (alt: T165 first as the lowest runnable ID | park T165) ← the user asked to implement the post-refactor tasks; T165 carries live-evaluation gates and is not part of that request
+- 261103 decided T181 T221 T222: which work the autopilot runs first → T181–T221 first by making the OpenRouter cutover (now T222) depend on T221 (alt: the cutover first as the lowest runnable ID | park it) ← the user asked to implement the post-refactor tasks; the cutover carries live-evaluation gates and is not part of that request
 - 261103 decided ACCT-12 ACCT-21 T195: `users.signup_settled_at` contradicted ACCT-12's closed column list, and a refused invite cannot say whether the transient email condition failed → amended ACCT-12/21 (r4): stamp only after the bonus and no settleable or a credited invite (alt: keep re-running settlement every launch | stamp after any refusal, losing late email verification) ← the transient condition must still be judged at the next launch
 - 261103 decided T195 T198: migration numbering after T195 ran before T198 → T195 takes `00030_signup_settled_at`, T198 moves to `00031` (alt: leave a gap at 00030) ← goose refuses an out-of-order version once a later one is applied
 - 261103 decided MEM-9 T196: the explore's measurement showed the global HNSW index unused by the per-user dedup read and costly on writes → dropped it (migration 00031) and amended MEM-9 to an exact per-user scan (alt: keep the index | SET LOCAL hnsw.iterative_scan) ← recall stays 100% and latency unchanged, which the exit criterion requires; T198 moves to 00032
@@ -57,10 +59,10 @@
 | AUTH | 3 | 3 | - | 0 |
 | CLIENT | 3 | 3 | - | 0 |
 | UI | 2 | 2 | - | 2 |
-| ERR | 2 | 2 | - | 0 |
+| ERR | 3 | 3 | - | 0 |
 | OBS | 1 | 1 | - | 0 |
 | AI | 2 | 2 | - | 1 |
-| ADMIN | 2 | 2 | - | 0 |
+| ADMIN | 3 | 3 | - | 0 |
 
 ## review
 | id | st |
@@ -87,7 +89,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T165 | Consolidate LLM access through OpenRouter | AI ADMIN | T221 | todo |
 | T213 | Color math has one implementation | ARCH | - | todo |
 | T214 | Canvases render only while visible | ARCH | - | todo |
 | T215 | The server keeps a per-user universe revision | ARCH MEM CLIENT | T198 | todo |
@@ -97,13 +98,16 @@
 | T219 | Demo surfaces are one machine state | ARCH DEMO | T212 | todo |
 | T220 | Same-named slices share an API, and mobile gets the Twinkle panel | ARCH TWINK | T208 | todo |
 | T221 | Frontend residue: stale paths, synonyms, test fakes and admin IO | ARCH | T209 T220 | todo |
+| T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
 - implement-task T213 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
-- T165: OpenRouter cutover — evidence gates (T001–T002) before any adapter is removed (AI@2, ADMIN@2); T192 coordinates adapter construction with it
+- T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 create-task T222: replaces the legacy OpenRouter task (file deleted) in the current format; AI@2 unchanged, ADMIN r3 and ERR r3 consumed
+- 261103 update-ssot ERR ADMIN: ERR-12✎ ADMIN-19✎ name the refused LLM model saves
 - 261103 fix api: regenerate sqlc output whose query comments T199 edited (CI check:gen)
 - 261103 T212 done
 - 261103 T211 done
@@ -122,6 +126,3 @@
 - 261103 T198 done
 - 261103 T197 done
 - 261103 T196 done
-- 261103 T195 done
-- 261103 T194 done
-- 261103 T193 done

@@ -1,5 +1,5 @@
 # ADMIN admin console
-> r2 | the operator console: who is an admin, what an admin may read and change (accounts, Twinkle grants, AI provider config, operational health), and how every change is audited
+> r3 | the operator console: who is an admin, what an admin may read and change (accounts, Twinkle grants, AI provider config, operational health), and how every change is audited
 
 ## decisions
 - ADMIN-1 [o] the admin console is a web-only operator surface at `/admin`; the web↔mobile parity rule is waived for it →=ARCH
@@ -62,8 +62,13 @@
   - LLM selection is fixed-provider and curated-only →!ADMIN-19
   - a provider endpoint is adapter-owned code, never an env, DB or console setting →=AI-16
 - ADMIN-19 [o] the LLM row is fixed-provider and curated-only: the provider is always `openrouter`, and a model is saved only from the current curated intersection →=AI-18 ← an unreviewed model must never reach a production call
-  - `SetAIConfig(llm)` normalizes the provider to `openrouter`, requires its stored key and a non-empty model, fetches the current intersection and refuses a model outside it with a typed, actionable reason →=ERR
-  - a listing outage or an empty intersection refuses a new LLM save the same way; the current selection stays visible as current state but cannot be re-saved
+  - `SetAIConfig(llm)` normalizes the provider to `openrouter`, requires its stored key and a non-empty model, fetches the current intersection and refuses a model outside it →=ERR-12
+  | `SetAIConfig(llm)` refusal | reason |
+  |---|---|
+  | empty model | `ADMIN_MODEL_REQUIRED` |
+  | model outside the current intersection, an empty intersection included | `ADMIN_MODEL_NOT_CURATED` |
+  | listing or auth failure | `ADMIN_MODEL_LISTING_UNAVAILABLE` |
+  - a refused new save keeps the current selection visible as current state, and it cannot be re-saved outside the intersection
   - console: the server-reported `openrouter` identity shows as fixed text; the model control offers only the returned list, with no default, unlisted, custom-ID or listing-failure manual path, and saving stays disabled until a listed model is chosen
   - no model id is copied into TS or i18n; the allowlist is adapter code →=AI-18
   - no RPC, field, table, query or migration changes; the existing rows hold `openrouter` and a `vendor/model` →~AI-24
@@ -104,5 +109,6 @@
 - DB-backed admin and Twinkle integration tests run only with a local database (`COSIMOSI_TEST_DATABASE_URL` or `DATABASE_URL`); CI has no Postgres, so a green CI never proves the admin transaction paths
 
 ## chg
+- r3 261103 ADMIN-19✎ one unnamed typed refusal→empty model `ADMIN_MODEL_REQUIRED`, outside the intersection (empty included) `ADMIN_MODEL_NOT_CURATED`, listing or auth failure `ADMIN_MODEL_LISTING_UNAVAILABLE`
 - r2 261102 ADMIN-12✎ advisory model list + manual entry for both capabilities→embedding only · ADMIN-19+ LLM fixed `openrouter`, curated-only save, outage blocks a new save · ADMIN-11✎ any LLM provider key→one `openrouter` key, legacy rows kept · ADMIN-13✎ legacy LLM selection falls through→fails closed
 - r1 261102 initial
