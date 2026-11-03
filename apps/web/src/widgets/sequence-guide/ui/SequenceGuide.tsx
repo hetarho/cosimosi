@@ -11,7 +11,7 @@ import {
 import { SHEET_BREAKPOINT } from '@cosimosi/ui'
 
 import { SequenceSpotlight } from './SequenceSpotlight.tsx'
-import { CAPTION_BAND_HEIGHT_PX, SequenceCaption } from './SequenceCaption.tsx'
+import { CAPTION_BAND_HEIGHT, SequenceCaption } from './SequenceCaption.tsx'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
 import { useBottomSurface } from '../lib/use-bottom-surface.ts'
 import { useViewport } from '../lib/use-viewport.ts'
@@ -80,7 +80,7 @@ export function SequenceGuide({
     slot,
     anchorRect,
     viewport,
-    bandHeight: CAPTION_BAND_HEIGHT_PX,
+    bandHeight: CAPTION_BAND_HEIGHT,
   })
 
   return (

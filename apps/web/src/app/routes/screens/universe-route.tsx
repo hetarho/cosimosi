@@ -1,4 +1,4 @@
-import { UniverseHomePage } from '../../../pages/universe/index.ts'
+import { UniversePage } from '../../../pages/universe/index.ts'
 import { useAppNavigate } from '../navigation.ts'
 
 // The router seam stays confined to this segment: the universe/reader surfaces navigate between
@@ -12,7 +12,7 @@ import { useAppNavigate } from '../navigation.ts'
 export function UniverseRoute() {
   const navigate = useAppNavigate()
   return (
-    <UniverseHomePage
+    <UniversePage
       onOpenDiary={() => navigate({ to: '/diary' })}
       onOpenMe={() => navigate({ to: '/me', search: { tab: 'profile' } })}
       // Where earning is actually claimed ([A4]) — the app layer owns the tab id because it owns the

@@ -77,14 +77,15 @@ export default defineConfig([
     },
   },
   {
-    // ARCH-21: the stardust overlay widget and the earn guide its balance reading opens, the cost
-    // display the paid flows compose before a spend, and the ledger tab /me composes — each one user
-    // surface; the twinkle entity is the balance reading they all show.
+    // ARCH-21: the stardust overlay widget and the earn guide and charge control its panel holds, the
+    // cost display the paid flows compose before a spend, and the ledger tab /me composes — each one
+    // user surface; the twinkle entity is the balance reading they all show.
     files: [
       './src/entities/twinkle/**',
       './src/features/spend-cost-display/**',
       './src/widgets/stardust/**',
       './src/features/earn-twinkle/**',
+      './src/features/charge-twinkle/**',
       './src/features/twinkle-ledger/**',
     ],
     rules: {

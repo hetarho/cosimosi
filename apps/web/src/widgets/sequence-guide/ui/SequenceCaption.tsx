@@ -5,7 +5,7 @@ import { cx } from '@cosimosi/ui'
 
 /** The reading height the placement resolver budgets for this line — what it reserves when it works
  *  out whether the band fits above a sheet or clear of a control. The band itself hugs its content. */
-export const CAPTION_BAND_HEIGHT_PX = 112
+export const CAPTION_BAND_HEIGHT = 112
 
 // widgets/sequence-guide ui ([O2]): one line of guidance. It is the guaranteed channel of the
 // whole engine — the highlight can fail to resolve, the caption cannot — which is why it lives in a

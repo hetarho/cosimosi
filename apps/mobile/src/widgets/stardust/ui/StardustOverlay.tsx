@@ -5,20 +5,20 @@ import { VALUES } from '@cosimosi/config'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
-import { IconButton, NoticeIcon, tokens } from '@cosimosi/ui'
+import { tokens } from '@cosimosi/ui'
 
 import { useErrorToast } from '@cosimosi/errors/react'
-import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
+import { WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '@cosimosi/universe'
 import { BalanceHud } from './BalanceHud.tsx'
-import { m } from '../../../shared/i18n/index.ts'
+import { TwinkleDetailSheet } from './TwinkleDetailSheet.tsx'
 // widgets/stardust (RN fork, [G2][G3]): the persistent economy overlay over the running canvas — it
-// composes the balance HUD, the earn guide, and the write-earn feedback. It never remounts the
+// composes the balance HUD, the 별가루 panel it opens, and the write-earn feedback. It never remounts the
 // renderer and imports no three/visual entity (§3.4); the figures live in Query/config (§3.2). Shares
 // every model/api module with web verbatim; only this shell forks for RN primitives.
 //
-// The guide's open/closed state is LOCAL, not a machine: §3.2 reserves XState for genuinely exclusive
-// phases, and the guide issues no request — there is no in-flight state to be exclusive about, so a
+// The panel's open/closed state is LOCAL, not a machine: §3.2 reserves XState for genuinely exclusive
+// phases, and the panel issues no request — there is no in-flight state to be exclusive about, so a
 // boolean is the honest model.
 export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: () => void }) {
   const showError = useErrorToast()
@@ -29,19 +29,19 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
   // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
   const invalidateAchievements = useInvalidateAchievements()
 
-  const [guideOpen, setGuideOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   useEffect(() => {
     if (balanceQuery.error) showError(balanceQuery.error)
   }, [balanceQuery.error, showError])
 
-  // A shortfall in a cost display (recall / gist-view) requests the guide through the decoupled seam,
+  // A shortfall in a cost display (recall / gist-view) requests the panel through the decoupled seam,
   // so the spend flows and this widget never import each other (§3.1).
   const earnRequested = useEarnRequestStore((state) => state.requested)
   const clearEarnRequest = useEarnRequestStore((state) => state.clear)
   useEffect(() => {
     if (!earnRequested) return
-    setGuideOpen(true)
+    setDetailOpen(true)
     clearEarnRequest()
   }, [earnRequested, clearEarnRequest])
 
@@ -59,43 +59,26 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
     setEarnShown(true)
   }, [launchedNeuronIds, invalidateBalance, invalidateAchievements])
 
-  const openGuide = useCallback(() => setGuideOpen(true), [])
-  const closeGuide = useCallback(() => setGuideOpen(false), [])
+  const openDetail = useCallback(() => setDetailOpen(true), [])
+  const closeDetail = useCallback(() => setDetailOpen(false), [])
 
   return (
     <View style={styles.root}>
-      {/* A restrained proactive way in ([G3]): a shortfall is not the only reason to wonder how
-          별가루 gathers. It rides in the balance reading's own action slot, because what it explains is
-          the figures beside it — an icon-only control, so its name lives in `label` (there is no hover
-          on touch; the accessible name is the whole affordance).
-          It stays put while the guide is open: an affordance that vanishes as its own surface opens
-          takes the anchor out from under the thing that just appeared, and leaves a hole in the
-          reading beside it that fills back in on close. */}
-      <BalanceHud
-        action={
-          <IconButton
-            variant="text"
-            color="neutral"
-            size="sm"
-            label={m.twinkle_earn_title()}
-            icon={<NoticeIcon />}
-            onPress={openGuide}
-          />
-        }
-      />
+      {/* The reading IS the way in (TWINK-32): pressing the figures opens what they are about. */}
+      <BalanceHud onOpenDetail={openDetail} />
       {earnShown ? (
         <WriteEarnFeedback
           amount={VALUES.twinkle.earnWrite}
           onDismiss={() => setEarnShown(false)}
         />
       ) : null}
-      <EarnGuideSheet
-        open={guideOpen}
+      <TwinkleDetailSheet
+        open={detailOpen}
         onOpenAchievements={() => {
-          closeGuide()
+          closeDetail()
           onOpenAchievements?.()
         }}
-        onClose={closeGuide}
+        onClose={closeDetail}
       />
     </View>
   )

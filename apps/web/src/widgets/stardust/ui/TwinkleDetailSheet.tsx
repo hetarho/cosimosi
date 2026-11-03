@@ -1,6 +1,6 @@
 import { Dialog } from '@cosimosi/ui'
 
-import { ChargeTwinkleAction } from './ChargeTwinkleAction.tsx'
+import { ChargeTwinkleAction } from '../../../features/charge-twinkle/index.ts'
 import { EarnGuideSections } from '../../../features/earn-twinkle/index.ts'
 import { TwinkleBalance } from '../../../entities/twinkle/index.ts'
 import { m } from '../../../shared/i18n/index.ts'

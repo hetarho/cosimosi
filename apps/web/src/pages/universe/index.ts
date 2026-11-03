@@ -1,1 +1,1 @@
-export { UniverseHomePage } from './ui/UniverseHomePage.tsx'
+export { UniversePage, type UniversePageProps } from './ui/UniversePage.tsx'

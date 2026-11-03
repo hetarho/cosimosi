@@ -46,17 +46,15 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 // over it (mirror of the mobile screen's HUD, §3.5). The widget owns the whole 3D block (renderer
 // mount, graph read, sim, camera rig); the page only lays out the HUD. `onOpenDiary` is the
 // app-layer navigation seam to the diary archive (the page never reaches the router itself).
-export function UniverseHomePage({
-  onOpenDiary,
-  onOpenMe,
-  onOpenAchievements,
-}: {
+export interface UniversePageProps {
   onOpenDiary: () => void
   onOpenMe?: () => void
   // The earn guide's one affordance. It is a separate intent rather than a tab argument so that no
   // page or widget has to name a route or import another page's tab type (§3.1).
   onOpenAchievements?: () => void
-}) {
+}
+
+export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: UniversePageProps) {
   // The navigation actor, the onboarding run, the first-run read and the star panel's hand-offs are the
   // package's universe-screen controller; this page lays out the HUD over the canvas.
   const {
