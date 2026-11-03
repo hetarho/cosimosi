@@ -1,6 +1,6 @@
 # ARCH architecture
 
-> r3 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
+> r4 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
 
 ## decisions
 - ARCH-1 [o] cosimosi is one pnpm workspace of peer apps, shared packages and one RPC contract; each app builds and ships on its own
@@ -206,6 +206,8 @@
   - native plumbing (the navigation root, `metro.config.js` mapping `three` to its WebGPU build, `babel.config.js`, native modules, `ios/`, `android/`) lives in `apps/mobile` only
   - guard: a normalized-equivalent pure module at the same relative path in both apps (`api`, `model`, `lib`, `config`, `shared`, `app/providers`, `app/model`) fails `pnpm lint:fsd:layout` until promoted to its package; identifier-only renames and comment or format churn do not evade it
   - a `ui` file joins that comparison when it carries no platform marker (a React Native or `react-dom` import, a DOM global, a lowercase JSX intrinsic) and holds more than a wiring shell
+  - a slice present on both apps exports the same names from its `index.ts`; a name only one platform exports is an additive platform-only export listed in `scripts/slice-api-platform-only.json` ← porting a slice must never mean relearning its API
+  - guard: `scripts/slice-api-parity.test.mjs` (`pnpm test:guards`) fails an unlisted one-sided name and a stale listing
 - ARCH-29 [o] parity is per surface: every user surface ships on both apps unless a waiver is written here ← `lint:fsd:layout` does not check page peering, so an unwritten waiver would go unnoticed
   | surface | web | mobile | waiver owner |
   | ----------------------- | --- | ------ | --------------------------- |
@@ -369,6 +371,7 @@
 
 ## chg
 
+- r4 261103 ARCH-28✎ parity guards: copied pure modules only→also same-named slices export the same names, platform-only additions listed (slice-api-parity guard)
 - r3 261103 ARCH-7✎ +`cmd/internal/wiring` ; ARCH-21✎ feature "one action"→"views of one action", widget "reused across pages"→"binds a controller or composes features", entity "domain mirror"→"read-only views of one noun" ; ARCH-27✎ +`account` +`color`, auth "platform seam"→"session only", React "seam entries only"→"plus root hook stores", +named exports ; ARCH-34✎ +MEM `persistence` ; ARCH-41✎ +`lint:package-entries`
 - r2 261102 ARCH-9✎ opaque DB assertions and late-bound holders→typed transaction behaviors and independently constructed read/recording capabilities ; queue producer ownership stays with each context
 - r1 261102 initial

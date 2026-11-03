@@ -20,6 +20,7 @@
 | ptl | DESKTOP-VKPLS8P | autopilot | 2026-11-03T00:53Z | 2026-11-03T01:06Z | - |
 
 ## inbox
+- 261103 decided ARCH-28 T220: the slice API parity guard enforces a rule ARCH did not state → ARCH r4: same-named slices export the same names from `index.ts`, platform-only additions listed in `scripts/slice-api-platform-only.json` (alt: keep the rule in the test only | fold it into `lint:fsd:layout`) ← a rule later changes must obey belongs in the SSOT, and a separate guard keeps the layout lint about placement
 - 261103 parked T215 T222: Docker Desktop is not reachable from this WSL session, so DB-backed Go integration tests, `pnpm check:api` (it provisions Postgres through compose) and the Docker `pnpm gen` path cannot run here — start Docker Desktop with WSL integration, then run `pnpm check:api` and `pnpm check:gen` at the batch gate
 - 261103 parked T214 T218: the headless CDP checks (landing hero: walkthrough canvas absent before intersection, rAF stops while hidden; T218: web renderer memory across 20 rebuilds) needs a Chromium that runs here — `sudo apt install libnss3 libnspr4 libasound2t64` for the cached Playwright build, then `node` + CDP against `vite preview`
 - 261103 decided ADMIN-19 ERR-12 T222: ADMIN-19 asked for a typed reason when an LLM model save is refused, but ERR-12 registered none → ERR r3/ADMIN r3: empty model `ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse), outside the intersection, an empty one included, `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy), listing or auth failure the existing `ADMIN_MODEL_LISTING_UNAVAILABLE` (alt: one reason for every refusal | InvalidArgument for a non-curated model) ← whether a model is curated depends on the live catalog, not on the argument alone, and only that refusal makes the console refetch
@@ -38,7 +39,7 @@
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
-| ARCH | 3 | 3 | - | 0 |
+| ARCH | 4 | 4 | - | 0 |
 | PROD | 1 | 1 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
@@ -106,6 +107,7 @@
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
 - 261103 T219 done
 - 261103 T218 done
 - 261103 T217 done
@@ -125,4 +127,3 @@
 - 261103 T206 done
 - 261103 T205 done
 - 261103 T204 done
-- 261103 T203 done
