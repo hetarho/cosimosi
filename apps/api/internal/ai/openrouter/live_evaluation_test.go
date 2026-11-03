@@ -1,4 +1,4 @@
-package ai_test
+package openrouter_test
 
 import (
 	"bytes"
@@ -17,8 +17,11 @@ import (
 	"time"
 
 	ai "github.com/cosimosi/api/internal/ai"
+	// The direct providers stay reachable here only for their baselines (AI-19); the cutover drops
+	// them together with these imports.
 	_ "github.com/cosimosi/api/internal/ai/anthropic"
 	_ "github.com/cosimosi/api/internal/ai/deepseek"
+	"github.com/cosimosi/api/internal/ai/openrouter"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 )
@@ -55,12 +58,26 @@ func TestLiveLLMEvaluation(t *testing.T) {
 	corpus := loadEvaluationCorpus(t)
 	observer := &usageObserverTransport{base: http.DefaultTransport}
 	httpClient := &http.Client{Transport: observer, Timeout: 5 * time.Minute}
-	adapters, err := ai.NewAdapters(ai.FactoryOptions{
+	options := ai.FactoryOptions{
 		LLM: ai.CapabilityConfig{Provider: provider, APIKey: apiKey, Model: model},
 		HTTPClients: ai.HTTPClients{
 			LLMByProvider: map[string]*http.Client{provider: httpClient},
 		},
-	})
+	}
+	if provider == "openrouter" {
+		// A candidate is evaluated before the allowlist admits it, through the same transport the
+		// production factory builds, injected so the production ports, metering and cache all run.
+		candidate, err := openrouter.NewCandidateClient(ai.ProviderConfig{
+			APIKey:     apiKey,
+			Model:      model,
+			HTTPClient: httpClient,
+		})
+		if err != nil {
+			t.Fatalf("build openrouter candidate %s: %v", model, err)
+		}
+		options = ai.FactoryOptions{LLMClient: candidate}
+	}
+	adapters, err := ai.NewAdapters(options)
 	if err != nil {
 		t.Fatalf("build %s/%s adapter: %v", provider, model, err)
 	}
@@ -224,7 +241,7 @@ type evaluationLatencySummary struct {
 
 func loadEvaluationCorpus(t *testing.T) evaluationCorpus {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/llm-evaluation-corpus.json")
+	raw, err := os.ReadFile("../testdata/llm-evaluation-corpus.json")
 	if err != nil {
 		t.Fatalf("read evaluation corpus: %v", err)
 	}

@@ -20,6 +20,7 @@
 | ptl | DESKTOP-VKPLS8P | autopilot | 2026-11-03T00:53Z | 2026-11-03T01:06Z | - |
 
 ## inbox
+- 261103 parked T222: phase 2 evidence gate — needs an OpenRouter key and the Anthropic and DeepSeek keys for the baselines (`COSIMOSI_LIVE_LLM_EVAL=1 go test -run TestLiveLLMEvaluation ./internal/ai/openrouter/`), an operator to confirm prompt logging is off on the production workspace, a named reviewer to score fidelity and approve rows in `internal/ai/openrouter/EVALUATION.md`, and a recheck of the OpenRouter docs (this run made no web lookups)
 - 261103 decided T221: two apps' `shared/testing/index.ts` barrels failed `lint:fsd:layout` as normalized-equivalent pure modules once web gained the segment → the layout guard skips a `shared` module that only re-exports, its target modules still compared (alt: give web's barrel a different shape | keep the fakes under `pages/test`) ← every barrel normalizes alike, the guard already exempts barrels from its ui rule, and reshaping a file to dodge a guard is the evasion it forbids
 - 261103 decided T221: "engram" appears legitimately as the research-strand id (UL-93) → the new `lint:language` rule scans app and package source, comments included, excluding only the landing, the blog and the copy catalogues (alt: rename the strand id | forbid only identifiers) ← MKT-22 shares the id with the blog, and the task asks for comments to be scanned
 - 261103 decided T220: the shared web/mobile ui-logic ratchet rose 1061 → 1095 once the aligned names paired files it could not compare before (`UniversePage` 13, the caption constant and the earn guide 2 each) and the TWINK-32 mobile panel added its fork → baseline rewritten to the measured counts (alt: lift the overlay controller into a package first | keep the old file names) ← the growth is existing composition made visible plus a fork ARCH-28 allows; lifting the overlay controller would cross the achievement and universe packages
@@ -100,14 +101,15 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
+| T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
-- implement-task T222 phase 1 (hermetic OpenRouter adapter); phase 2 needs keys, an operator and a named reviewer
+- T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T222 blocked: phase 1 done (hermetic adapter, lister, harness, EVALUATION.md); phase 2 needs keys, an operator and a reviewer
 - 261103 T221 done
 - 261103 T220 done
 - 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
@@ -127,4 +129,3 @@
 - 261103 T209 done
 - 261103 T208 done
 - 261103 T207 done
-- 261103 T206 done
