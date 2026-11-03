@@ -61,7 +61,6 @@
     "NEAR_NEUTRAL_HUE_BUCKET",
     "assertCompletePalette",
     "checkPaletteAxisConsistency",
-    "colorToLinearRgb",
     "colorToOkLab",
     "colorToOkLch",
     "deltaEOkLab",
@@ -73,9 +72,6 @@
     "moodValueKeys",
     "nearDuplicateMood",
     "okLabToColor",
-    "okLabToLinearRgb",
-    "okLabToOkLch",
-    "okLchToOkLab",
     "relativeLuminance",
     "subscribeMoodPalette"
   ],

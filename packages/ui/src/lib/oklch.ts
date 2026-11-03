@@ -1,5 +1,5 @@
 /**
- * OKLCH → sRGB conversion (Björn Ottosson's OKLab). Pure and DOM-free.
+ * OKLCH token strings → sRGB. Pure and DOM-free; the conversion itself is `@cosimosi/color`.
  *
  * The palette authors color in OKLCH (tokens.ts / palette.ts). Web consumes that
  * verbatim through Tailwind's `@theme` — modern browsers render oklch() natively.
@@ -7,6 +7,8 @@
  * and the WCAG **contrast** check. Both derive sRGB from the one OKLCH source here,
  * so there is still a single color source — never a parallel hex table.
  */
+
+import { encodeLinear, okLabToLinearRgb, okLchToOkLab } from '@cosimosi/color'
 
 export interface Oklch {
   L: number
@@ -27,26 +29,11 @@ export function parseOklch(input: string): Oklch | null {
 
 /** OKLCH → linear-light sRGB (unclamped; may fall slightly outside [0,1] near the gamut edge). */
 export function oklchToLinearRgb({ L, C, H }: Oklch): { r: number; g: number; b: number } {
-  const h = (H * Math.PI) / 180
-  const a = C * Math.cos(h)
-  const bb = C * Math.sin(h)
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * bb
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * bb
-  const s_ = L - 0.0894841775 * a - 1.291485548 * bb
-  const l = l_ ** 3
-  const m = m_ ** 3
-  const s = s_ ** 3
-  return {
-    r: 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    b: -0.0041960863 * l - 0.7034186147 * m + 1.7076147011 * s,
-  }
+  const [r, g, b] = okLabToLinearRgb(okLchToOkLab({ l: L, c: C, h: H }))
+  return { r, g, b }
 }
 
-const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
-const linearToSrgb = (c: number): number =>
-  c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055
-const to255 = (c: number): number => Math.round(clamp01(linearToSrgb(clamp01(c))) * 255)
+const to255 = (c: number): number => Math.round(encodeLinear(c) * 255)
 const hex2 = (n: number): string => n.toString(16).padStart(2, '0')
 
 /**

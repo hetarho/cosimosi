@@ -1,4 +1,11 @@
-import { colorToLinearRgb, okLabToLinearRgb, okLchToOkLab, type OkLch } from './oklab.ts'
+import {
+  hexToLinearRgb,
+  linearLuminance,
+  okLabToLinearRgb,
+  okLchToOkLab,
+  type OkLch,
+} from '@cosimosi/color'
+
 import type { Color } from './palette.ts'
 
 // Must stay equal to the slack `SnapToEmotionStep` allows in
@@ -49,6 +56,5 @@ export function clampChromaToGamut(lch: OkLch): OkLch {
  * by half again in emitted light. `mood-color-risk.ts` reads its bands from here for that reason.
  */
 export function relativeLuminance(color: Color): number {
-  const [r, g, b] = colorToLinearRgb(color)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return linearLuminance(hexToLinearRgb(color))
 }

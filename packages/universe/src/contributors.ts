@@ -1,3 +1,4 @@
+import { hexToLinearRgb } from '@cosimosi/color'
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
 import { effectiveStrength } from '@cosimosi/memory-logic'
@@ -66,18 +67,4 @@ export function buildContributors(
 // so it reads as the min-radius glow rather than producing a NaN scale that poisons a matrix.
 function clamp01(value: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0
-}
-
-// sRGB `#rrggbb` → linear RGB, matching the star body's conversion so a memory's field glow and
-// its star read the same emotion color in the renderer's linear working space.
-function hexToLinearRgb(hex: string): [number, number, number] {
-  return [
-    srgbToLinear(Number.parseInt(hex.slice(1, 3), 16) / 255),
-    srgbToLinear(Number.parseInt(hex.slice(3, 5), 16) / 255),
-    srgbToLinear(Number.parseInt(hex.slice(5, 7), 16) / 255),
-  ]
-}
-
-function srgbToLinear(c: number): number {
-  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
 }

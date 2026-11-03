@@ -11,9 +11,10 @@ import {
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
+import { hexToLinearRgb } from '@cosimosi/color'
 import { VALUES } from '@cosimosi/config'
 import { MOODS, type Color, type Mood } from '@cosimosi/emotion'
-import { generateLatentField, hexToLinearRgb } from '@cosimosi/universe/scene'
+import { generateLatentField } from '@cosimosi/universe/scene'
 
 export interface MoodStarLayerProps {
   readonly colors: Readonly<Record<Mood, Color>>

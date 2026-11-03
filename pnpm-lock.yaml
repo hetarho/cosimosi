@@ -625,6 +625,18 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.0(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
 
+  packages/color:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
   packages/config:
     devDependencies:
       typescript:
@@ -667,6 +679,9 @@ importers:
       '@cosimosi/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@cosimosi/color':
+        specifier: workspace:*
+        version: link:../color
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
@@ -1016,6 +1031,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@cosimosi/color':
+        specifier: workspace:*
+        version: link:../color
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
@@ -1086,6 +1104,9 @@ importers:
       '@cosimosi/auth':
         specifier: workspace:*
         version: link:../auth
+      '@cosimosi/color':
+        specifier: workspace:*
+        version: link:../color
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
@@ -1162,6 +1183,9 @@ importers:
       '@cosimosi/3d-renderer':
         specifier: workspace:*
         version: link:../3d-renderer
+      '@cosimosi/color':
+        specifier: workspace:*
+        version: link:../color
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config

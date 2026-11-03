@@ -16,6 +16,7 @@
   "dependencies": {
     "@connectrpc/connect": "^2.1.2",
     "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/color": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/i18n": "workspace:*"
   },

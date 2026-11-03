@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@cosimosi/3d-renderer": "workspace:*",
+    "@cosimosi/color": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
     "@cosimosi/force-sim": "workspace:*",

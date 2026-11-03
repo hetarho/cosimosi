@@ -3,7 +3,7 @@ import { createEmotion, type Mood } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { describe, expect, it } from 'vitest'
 
-import { hexToLinearRgb, normalizeSeed, starChannels } from './star-channels.ts'
+import { normalizeSeed, starChannels } from './star-channels.ts'
 
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
   return {
@@ -95,12 +95,5 @@ describe('normalizeSeed', () => {
   it('falls back to a stable id hash when the seed is absent', () => {
     expect(normalizeSeed(null, 'memory-1')).toBe(normalizeSeed(null, 'memory-1'))
     expect(normalizeSeed(null, 'a')).not.toBe(normalizeSeed(null, 'b'))
-  })
-})
-
-describe('hexToLinearRgb', () => {
-  it('parses hex to linear rgb in 0..1 (black and white anchors)', () => {
-    expect(hexToLinearRgb('#000000')).toEqual([0, 0, 0])
-    expect(hexToLinearRgb('#ffffff')).toEqual([1, 1, 1])
   })
 })

@@ -34,16 +34,12 @@ export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-con
 export { arousalToInitialStrength } from './strength.ts'
 export {
   NEAR_NEUTRAL_HUE_BUCKET,
-  colorToLinearRgb,
   colorToOkLab,
   colorToOkLch,
   deltaEOkLab,
   hueBucket,
   okLabToColor,
-  okLabToLinearRgb,
-  okLabToOkLch,
   okLchToColor,
-  okLchToOkLab,
   type OkLab,
   type OkLch,
 } from './oklab.ts'

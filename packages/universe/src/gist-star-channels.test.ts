@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { hexToLinearRgb } from '@cosimosi/color'
 import { VALUES } from '@cosimosi/config'
 import { createEmotion } from '@cosimosi/emotion'
 import { SEMANTIC_MAX_STAGE, effectiveStrength, gistZOffset } from '@cosimosi/memory-logic'
@@ -8,7 +9,6 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 import { gistNodeId, gistStarInstances, parseGistNodeId } from './gist-star-channels.ts'
-import { hexToLinearRgb } from './star-channels.ts'
 import { moodColor } from '@cosimosi/emotion'
 
 function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {

@@ -4,6 +4,8 @@
  * OKLCH is converted to linear sRGB via lib/oklch.
  */
 
+import { linearLuminance, srgbToLinear } from '@cosimosi/color'
+
 import { oklchToLinearRgb, parseOklch } from '../lib/oklch.ts'
 
 /** AA contrast ratio for normal-size text. */
@@ -11,11 +13,6 @@ export const WCAG_AA_TEXT = 4.5
 
 /** AA contrast ratio for large text and UI components. */
 export const WCAG_AA_LARGE = 3
-
-function srgbChannelToLinear(channel: number): number {
-  const c = channel / 255
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-}
 
 /** Parse `#rgb` / `#rrggbb` into 8-bit channels. Throws on anything else (non-hex tokens aren't contrast-checked). */
 export function parseHex(hex: string): { r: number; g: number; b: number } {
@@ -38,14 +35,10 @@ export function relativeLuminance(color: string): number {
     const parsed = parseOklch(color)
     if (!parsed) throw new Error(`not an oklch color: ${color}`)
     const { r, g, b } = oklchToLinearRgb(parsed)
-    return 0.2126 * clamp01(r) + 0.7152 * clamp01(g) + 0.0722 * clamp01(b)
+    return linearLuminance([clamp01(r), clamp01(g), clamp01(b)])
   }
   const { r, g, b } = parseHex(color)
-  return (
-    0.2126 * srgbChannelToLinear(r) +
-    0.7152 * srgbChannelToLinear(g) +
-    0.0722 * srgbChannelToLinear(b)
-  )
+  return linearLuminance([srgbToLinear(r / 255), srgbToLinear(g / 255), srgbToLinear(b / 255)])
 }
 
 /** Contrast ratio (1–21) between two sRGB hex colors. */

@@ -14,6 +14,11 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| ptl | DESKTOP-VKPLS8P | autopilot | 2026-11-03T00:53Z | 2026-11-03T01:06Z | - |
+
 ## inbox
 - 261103 decided ADMIN-19 ERR-12 T222: ADMIN-19 asked for a typed reason when an LLM model save is refused, but ERR-12 registered none → ERR r3/ADMIN r3: empty model `ADMIN_MODEL_REQUIRED` (InvalidArgument, coarse), outside the intersection, an empty one included, `ADMIN_MODEL_NOT_CURATED` (FailedPrecondition, reason copy), listing or auth failure the existing `ADMIN_MODEL_LISTING_UNAVAILABLE` (alt: one reason for every refusal | InvalidArgument for a non-curated model) ← whether a model is curated depends on the live catalog, not on the argument alone, and only that refusal makes the console refetch
 - 261103 decided T222: how to rewrite the legacy OpenRouter task in the current format → one task in three ordered phases (hermetic adapter, evidence gate, cutover) that blocks after phase 1 while keys, an operator or a reviewer are missing (alt: split the adapter and the cutover into two tasks) ← the user asked for a single T222, and the gate order keeps the direct adapters until an approval exists
@@ -89,7 +94,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T213 | Color math has one implementation | ARCH | - | todo |
 | T214 | Canvases render only while visible | ARCH | - | todo |
 | T215 | The server keeps a per-user universe revision | ARCH MEM CLIENT | T198 | todo |
 | T216 | Refocus reads the revision before the full universe | ARCH CLIENT | T215 | todo |
@@ -101,11 +105,12 @@
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | todo |
 
 ## next
-- implement-task T213 (next todo by dep): 41 tasks T181–T221 from review/post-refactor-261102 in six waves; T196 is explore (main session)
+- implement-task T214 (next todo by dep): the rest of the post-refactor-261102 run, then T222 phase 1
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T213 done
 - 261103 create-task T222: replaces the legacy OpenRouter task (file deleted) in the current format; AI@2 unchanged, ADMIN r3 and ERR r3 consumed
 - 261103 update-ssot ERR ADMIN: ERR-12✎ ADMIN-19✎ name the refused LLM model saves
 - 261103 fix api: regenerate sqlc output whose query comments T199 edited (CI check:gen)
@@ -125,4 +130,3 @@
 - 261103 T199 done
 - 261103 T198 done
 - 261103 T197 done
-- 261103 T196 done

@@ -1,3 +1,4 @@
+import { hexToLinearRgb } from '@cosimosi/color'
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
 import {
@@ -44,6 +45,7 @@ export function starChannels(memory: EpisodicMemory, universeTime: string | null
     // star_brightness_min, so it IS the render range — clamp it in place, do NOT re-lerp a [0,1]
     // fraction (that would lift the silent-engram floor off star_brightness_min). A2/[F2].
     brightness: clampToRange(brightness, rendering.starBrightnessMin, rendering.starBrightnessMax),
+    // Linear light: a colorNode attribute bypasses the sRGB decode three applies to `.color.set(hex)`.
     color: hexToLinearRgb(moodColor(memory.emotion.mood)),
     seed: normalizeSeed(memory.seed, memory.id),
   }
@@ -63,21 +65,6 @@ export function lerpClamp(min: number, max: number, t: number): number {
 function clampToRange(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min
   return Math.min(max, Math.max(min, value))
-}
-
-// Parse `#rrggbb` and convert sRGB → linear so the raw floats match the renderer's linear
-// working space (three converts `.color.set(hex)` the same way; a colorNode attribute is fed
-// straight through, so we convert here).
-export function hexToLinearRgb(hex: string): [number, number, number] {
-  return [
-    srgbToLinear(Number.parseInt(hex.slice(1, 3), 16) / 255),
-    srgbToLinear(Number.parseInt(hex.slice(3, 5), 16) / 255),
-    srgbToLinear(Number.parseInt(hex.slice(5, 7), 16) / 255),
-  ]
-}
-
-function srgbToLinear(c: number): number {
-  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
 }
 
 // A meaningless visual value giving each star a distinct-but-coherent form [V5]. The stored

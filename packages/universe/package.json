@@ -23,6 +23,7 @@
     "@cosimosi/account": "workspace:*",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
+    "@cosimosi/color": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
     "@cosimosi/errors": "workspace:*",

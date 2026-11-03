@@ -1,10 +1,11 @@
+import { hexToLinearRgb } from '@cosimosi/color'
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
 import { SEMANTIC_MAX_STAGE, effectiveStrength, gistZOffset } from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
-import { hexToLinearRgb, lerpClamp } from './star-channels.ts'
+import { lerpClamp } from './star-channels.ts'
 
 // The pure projection of a memory's gist onto one neocortical body (§3.4): ONE instance per
 // risen memory, whose z and softness read its CURRENT stage. A trace transforms into its gist
