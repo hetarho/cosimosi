@@ -14,12 +14,8 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| rcui | DESKTOP-VKPLS8P | autopilot | 2026-11-03T05:42Z | 2026-11-03T06:41Z | - |
-
 ## inbox
+- 261103 parked T223 T224: implementation and all TypeScript tests/typechecks, Go hermetic tests/vet/build and site build passed; Docker is unavailable in WSL, blocking Postgres integration and full generation freshness. Final batch on 3a6804d6 stopped at db:migrate; code push/CI await a passing pnpm check. See reports/261103-rcui.
 - 261103 decided RECALL TWINK DIARY: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
 - 261103 parked T222: phase 2 evidence gate — needs an OpenRouter key and the Anthropic and DeepSeek keys for the baselines (`COSIMOSI_LIVE_LLM_EVAL=1 go test -run TestLiveLLMEvaluation ./internal/ai/openrouter/`), an operator to confirm prompt logging is off on the production workspace, a named reviewer to score fidelity and approve rows in `internal/ai/openrouter/EVALUATION.md`, and a recheck of the OpenRouter docs (this run made no web lookups)
 - 261103 decided T221: two apps' `shared/testing/index.ts` barrels failed `lint:fsd:layout` as normalized-equivalent pure modules once web gained the segment → the layout guard skips a `shared` module that only re-exports, its target modules still compared (alt: give web's barrel a different shape | keep the fakes under `pages/test`) ← every barrel normalizes alike, the guard already exempts barrels from its ui rule, and reshaping a file to dodge a guard is the evasion it forbids
@@ -105,11 +101,13 @@
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
+- T223/T224 release: enable Docker WSL integration and rerun pnpm check, then publish the locally committed free recall, paid restoration and diary-star navigation changes and wait for CI once
 - T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
 - 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
