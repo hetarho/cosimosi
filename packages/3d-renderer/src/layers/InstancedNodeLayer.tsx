@@ -326,13 +326,13 @@ export function InstancedNodeLayer({
     if (vertexScalesChanged && vertexScaleAttribute) vertexScaleAttribute.needsUpdate = true
   })
 
+  if (sourceError) throw sourceError
   if (!body) return null
 
   // Single mesh, so the instanceId IS the node index; firstNodeIndex only offsets the buffer.
   const pick = (instanceId: number | undefined): number | null =>
     instanceId !== undefined && instanceId < count ? instanceId : null
 
-  if (sourceError) throw sourceError
   return (
     <instancedMesh
       key={instanceCount}
