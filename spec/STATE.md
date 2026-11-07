@@ -20,7 +20,6 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:47Z | - |
 
 ## inbox
-
 - 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
 - 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
 - 261108 decided T237: direct local8h delegation adopts independently audited eight-case mapper-cache proof; VIS30 reconciles accepted T217 settled skipping and changed mapper input, preserving output precision/quality and zero clean/brightness writes; no current production trigger claimed
@@ -121,8 +120,8 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-
 | T238 | Propagate current asset failures before the empty-body return | ARCH | T237 | todo |
+
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -134,8 +133,6 @@
 
 ## log
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
-- 261107 T236 integrated
-- 261107 T237 integrated
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
 - 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
@@ -153,3 +150,5 @@
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
+- 261107 T236 integrated
+- 261107 T237 integrated
