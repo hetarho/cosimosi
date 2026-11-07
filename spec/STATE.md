@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T17:16Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T18:13Z | - |
 
 ## inbox
+- 261108 decided T233 T234: direct local8h delegation adopts actual refused-dialog swipe and disposed-refocus callback reproductions; preserve public APIs and live behavior, limit to existing private helpers/tests, require separate native reviews and final gate
 - 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
 - 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
 - 261108 decided T229 T230: direct local8h delegation adopts measured ratchet maintenance and reproduced exhausted-balance committed replay; preserve existing aggregate policy, pricing, receipt behavior and scoped deduplication; independent review and coordinator DB/full gates required
@@ -114,6 +115,8 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T233 | Restore a dialog after refused swipe dismissal | ARCH | T227 | todo |
+| T234 | Fence refocus callbacks after subscription disposal | ARCH | T227 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -121,9 +124,11 @@
 | local8h | 2 | 8 | 8 | 0 | 0 | 0 | 0 | 2026-11-07T17:37:50.050Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- implement-task T233 and T234 in isolated assigned workspaces
+- complete frozen browser validation and reserve final integrated gate
 
 ## log
+- 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
 - 261107 T232 integrated
 - 261107 T231 integrated
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
@@ -143,4 +148,3 @@
 - 261107 T228 integrated
 - 261107 T227 integrated
 - 261107 T226 integrated
-- 261107 T225 integrated
