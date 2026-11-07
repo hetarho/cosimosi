@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/cosimosi/api/internal/platform"
@@ -120,6 +121,88 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 	}
 	if foreign != nil {
 		t.Fatalf("GetBalanceRecord(intruder) = %+v, want nil (per-user isolation)", foreign)
+	}
+}
+
+func TestTwinkleDedupLookupPreservesUserAndReasonScope(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	base := fmt.Sprintf("test-twinkle-dedup-%d", time.Now().UnixNano())
+	owner := mustUserScope(t, base+"-owner")
+	other := mustUserScope(t, base+"-other")
+	cleanupTwinkleTestRows(t, pool, owner.UserID())
+	cleanupTwinkleTestRows(t, pool, other.UserID())
+	store := NewStore(pool.PgxPool())
+	recallKey, paymentKey := base+"-recall", base+"-payment"
+	cost := twinkle.RecallCost(1)
+	for index, entry := range []twinkle.LedgerEntry{
+		{Kind: twinkle.EntryKindSpend, Reason: twinkle.ReasonRecall, Amount: cost, FromGeneral: cost, DedupKey: &recallKey},
+		{Kind: twinkle.EntryKindEarn, Reason: twinkle.ReasonPayment, Amount: cost, DedupKey: &paymentKey},
+	} {
+		entry.ID = fmt.Sprintf("%s-entry-%d", base, index)
+		entry.CreatedAt = time.Now().UTC()
+		if applied, err := store.AppendLedgerEntry(ctx, owner, entry); err != nil || !applied {
+			t.Fatalf("seed entry %d = (%v, %v)", index, applied, err)
+		}
+	}
+	for _, test := range []struct {
+		name   string
+		scope  platform.UserScope
+		key    string
+		reason twinkle.EntryReason
+		want   bool
+	}{
+		{"owner", owner, recallKey, twinkle.ReasonRecall, true},
+		{"same-user other reason", owner, recallKey, twinkle.ReasonGistView, true},
+		{"cross-user recall", other, recallKey, twinkle.ReasonRecall, false},
+		{"payment request cannot expose cross-user recall", other, recallKey, twinkle.ReasonPayment, false},
+		{"unknown key", owner, base + "-unknown", twinkle.ReasonRecall, false},
+		{"global payment replay", other, paymentKey, twinkle.ReasonPayment, true},
+		{"recall request cannot expose cross-user payment", other, paymentKey, twinkle.ReasonRecall, false},
+		{"same-user payment under other reason", owner, paymentKey, twinkle.ReasonRecall, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got, err := store.LedgerDedupExists(ctx, test.scope, test.key, test.reason); err != nil || got != test.want {
+				t.Fatalf("LedgerDedupExists = (%v, %v), want %v", got, err, test.want)
+			}
+		})
+	}
+	var rows int
+	if err := pool.PgxPool().QueryRow(ctx, "SELECT count(*) FROM twinkle_ledger_entries WHERE user_id IN ($1, $2)", owner.UserID(), other.UserID()).Scan(&rows); err != nil || rows != 2 {
+		t.Fatalf("rows after lookups = %d (err %v), want only the 2 seed rows", rows, err)
+	}
+}
+
+func TestTwinkleDedupLookupSeesItsTransactionAndForgetsRollback(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	userID := fmt.Sprintf("test-twinkle-dedup-tx-%d", time.Now().UnixNano())
+	cleanupTwinkleTestRows(t, pool, userID)
+	scope := mustUserScope(t, userID)
+	key := userID + "-spend"
+	cost := twinkle.RecallCost(1)
+	injected := errors.New("roll back the uncommitted spend")
+	err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		store := NewStore(tx)
+		applied, err := store.AppendLedgerEntry(ctx, scope, twinkle.LedgerEntry{
+			ID: userID + "-entry", Kind: twinkle.EntryKindSpend, Reason: twinkle.ReasonRecall,
+			Amount: cost, FromGeneral: cost, DedupKey: &key, CreatedAt: time.Now().UTC(),
+		})
+		if err != nil || !applied {
+			return fmt.Errorf("append in transaction = (%v, %v)", applied, err)
+		}
+		if exists, err := store.LedgerDedupExists(ctx, scope, key, twinkle.ReasonRecall); err != nil || !exists {
+			return fmt.Errorf("lookup of own uncommitted row = (%v, %v), want true", exists, err)
+		}
+		return injected
+	})
+	if !errors.Is(err, injected) {
+		t.Fatalf("transaction error = %v, want injected rollback", err)
+	}
+	if exists, err := NewStore(pool.PgxPool()).LedgerDedupExists(ctx, scope, key, twinkle.ReasonRecall); err != nil || exists {
+		t.Fatalf("rolled-back key = (%v, %v), want absent", exists, err)
 	}
 }
 

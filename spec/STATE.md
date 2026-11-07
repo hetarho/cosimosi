@@ -112,19 +112,19 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
 | T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 7 | 5 | 2 | 2 | 0 | 0 | 2026-11-07T16:57:25.095Z | [history](work/local8h.json) |
+| local8h | 2 | 7 | 6 | 1 | 0 | 1 | 0 | 2026-11-07T17:13:43.115Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261107 T230 integrated
 - 261107 T229 integrated
 - 261107 T228 integrated
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
@@ -144,4 +144,3 @@
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
 - 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
-- 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation

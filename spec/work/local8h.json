@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T16:57:25.095Z",
-  "sourceCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+  "snapshotAt": "2026-11-07T17:13:43.115Z",
+  "sourceCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -14,29 +14,33 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+    "taskScope": [
+      "T225",
+      "T226",
+      "T227",
+      "T228",
+      "T229",
+      "T230",
+      "T231"
+    ]
   },
   "summary": {
     "total": 7,
-    "completed": 5,
-    "remaining": 2,
-    "running": 2,
-    "review": 0,
+    "completed": 6,
+    "remaining": 1,
+    "running": 0,
+    "review": 1,
     "blocked": 0,
     "unassigned": 0
   },
   "tasks": [
     {
-      "id": "T230",
-      "title": "Accept committed spend replay after eligible balance is exhausted",
-      "dep": ["T227"],
-      "status": "doing"
-    },
-    {
       "id": "T231",
       "title": "Reject test-shaped files excluded by their actual runner",
-      "dep": ["T227"],
-      "status": "doing"
+      "dep": [
+        "T227"
+      ],
+      "status": "ready"
     }
   ],
   "attempts": [
@@ -44,10 +48,14 @@
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": ["T225"],
+      "tasks": [
+        "T225"
+      ],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": ["gatesworker"],
+      "contributors": [
+        "gatesworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -122,10 +130,14 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": ["T226"],
+      "tasks": [
+        "T226"
+      ],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": ["fieldworker"],
+      "contributors": [
+        "fieldworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -200,10 +212,14 @@
       "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
       "group": "local8h",
       "taskId": "T227",
-      "tasks": ["T227"],
+      "tasks": [
+        "T227"
+      ],
       "lane": null,
       "owner": "checksworker",
-      "contributors": ["checksworker"],
+      "contributors": [
+        "checksworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:59:37.533Z",
@@ -261,10 +277,14 @@
       "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
       "group": "local8h",
       "taskId": "T228",
-      "tasks": ["T228"],
+      "tasks": [
+        "T228"
+      ],
       "lane": null,
       "owner": "resourceworker",
-      "contributors": ["resourceworker"],
+      "contributors": [
+        "resourceworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:20.204Z",
@@ -322,10 +342,14 @@
       "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "group": "local8h",
       "taskId": "T229",
-      "tasks": ["T229"],
+      "tasks": [
+        "T229"
+      ],
       "lane": null,
       "owner": "ratchetworker",
-      "contributors": ["ratchetworker"],
+      "contributors": [
+        "ratchetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:25.658Z",
@@ -334,6 +358,8 @@
       "submittedBase": "769715d45ba3e11520a40f73fa4432391b7a1eca",
       "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
       "submittedAt": "2026-11-07T16:49:57.269Z",
+      "integratedCommit": "c3e89ad699944bc6cba039f25f742a254e1a0b13",
+      "integratedAt": "2026-11-07T16:57:25.937Z",
       "risk": null,
       "review": {
         "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
@@ -368,31 +394,136 @@
           "startedAt": "2026-11-07T16:49:56.592Z",
           "finishedAt": "2026-11-07T16:49:56.932Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T16:57:25.254Z",
+          "finishedAt": "2026-11-07T16:57:25.648Z"
+        }
       ]
     },
     {
       "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
       "group": "local8h",
       "taskId": "T231",
-      "tasks": ["T231"],
+      "tasks": [
+        "T231"
+      ],
       "lane": null,
       "owner": "collectionworker",
-      "contributors": ["collectionworker"],
-      "status": "doing",
+      "contributors": [
+        "collectionworker"
+      ],
+      "status": "ready",
+      "reason": null,
       "createdAt": "2026-11-07T16:50:25.131Z",
-      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
+      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca",
+      "verifiedCommit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+      "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+      "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+      "submittedAt": "2026-11-07T17:08:33.513Z",
+      "risk": null,
+      "reviewHistory": [
+        {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T231 scripts/check-test-reachability.mjs:31-32",
+              "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+            }
+          ],
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z",
+          "finishedAt": "2026-11-07T17:03:29.741Z",
+          "invalidatedAt": "2026-11-07T17:05:01.181Z",
+          "invalidationReason": "correction assigned"
+        }
+      ],
+      "steps": [
+        {
+          "taskId": "T231",
+          "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+          "at": "2026-11-07T17:08:33.503Z",
+          "verification": [
+            {
+              "command": "node --test scripts/check-test-reachability.test.mjs",
+              "startedAt": "2026-11-07T17:08:32.724Z",
+              "finishedAt": "2026-11-07T17:08:33.183Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "node --test scripts/check-test-reachability.test.mjs",
+          "startedAt": "2026-11-07T17:08:32.724Z",
+          "finishedAt": "2026-11-07T17:08:33.183Z"
+        }
+      ]
     },
     {
       "id": "ef070033-58bc-48af-94bf-84637877b087",
       "group": "local8h",
       "taskId": "T230",
-      "tasks": ["T230"],
+      "tasks": [
+        "T230"
+      ],
       "lane": null,
       "owner": "replayworker",
-      "contributors": ["replayworker"],
-      "status": "doing",
+      "contributors": [
+        "replayworker"
+      ],
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-07T16:51:01.837Z",
-      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
+      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca",
+      "verifiedCommit": "1a7f449c23e316c9237fe21785c9693569b27153",
+      "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+      "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+      "submittedAt": "2026-11-07T17:03:51.586Z",
+      "risk": null,
+      "review": {
+        "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+        "owner": "crossreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T230 confines the exhausted-balance replay lookup to a nonempty validated intent plus typed InsufficientTwinkle, uses the caller/own transaction-bound consumer port, propagates lookup errors, preserves the original shortfall for absent keys and writes nothing on replay/refusal/error. The pg adapter reuses the unchanged user-scoped dedup query with its existing cross-user payment-only exception; append-conflict handling shares that mapping. Independent exact-candidate hermetic Go unit verification passed57 tests with only the opt-in golden-writer skipped; targeted vet and API build passed. Pricing, prepareSpend, CheckCanSpend, SQL, module inputs, public boundaries, normal append/delta ordering and receipt-first RestoreMemoryText remain unchanged. Added database regressions were inspected and compiled, not executed. Root must pass conditional pnpm check:api before integration and final integrated pnpm check before completion; neither pending gate is claimed passed.",
+        "findings": [],
+        "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+        "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+        "createdAt": "2026-11-07T17:09:28.025Z",
+        "finishedAt": "2026-11-07T17:11:25.598Z"
+      },
+      "steps": [
+        {
+          "taskId": "T230",
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "at": "2026-11-07T17:03:51.576Z",
+          "verification": [
+            {
+              "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+              "startedAt": "2026-11-07T17:03:50.313Z",
+              "finishedAt": "2026-11-07T17:03:51.243Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+          "startedAt": "2026-11-07T17:03:50.313Z",
+          "finishedAt": "2026-11-07T17:03:51.243Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -415,7 +546,9 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": ["T225"]
+        "taskScope": [
+          "T225"
+        ]
       }
     },
     {
@@ -442,10 +575,14 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": ["T225"],
+        "tasks": [
+          "T225"
+        ],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": ["gatesworker"],
+        "contributors": [
+          "gatesworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -472,7 +609,10 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226"]
+        "taskScope": [
+          "T225",
+          "T226"
+        ]
       }
     },
     {
@@ -488,10 +628,14 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": ["T226"],
+        "tasks": [
+          "T226"
+        ],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": ["fieldworker"],
+        "contributors": [
+          "fieldworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
@@ -1053,7 +1197,12 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228"
+        ]
       }
     },
     {
@@ -1069,10 +1218,14 @@
         "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
         "group": "local8h",
         "taskId": "T227",
-        "tasks": ["T227"],
+        "tasks": [
+          "T227"
+        ],
         "lane": null,
         "owner": "checksworker",
-        "contributors": ["checksworker"],
+        "contributors": [
+          "checksworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:59:37.533Z",
         "startCommit": "864544d4a2eb68176891d49da259c44eb59d2a3e"
@@ -1164,7 +1317,14 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230"
+        ]
       }
     },
     {
@@ -1275,10 +1435,14 @@
         "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
         "group": "local8h",
         "taskId": "T228",
-        "tasks": ["T228"],
+        "tasks": [
+          "T228"
+        ],
         "lane": null,
         "owner": "resourceworker",
-        "contributors": ["resourceworker"],
+        "contributors": [
+          "resourceworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:20.204Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -1310,10 +1474,14 @@
         "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
         "group": "local8h",
         "taskId": "T229",
-        "tasks": ["T229"],
+        "tasks": [
+          "T229"
+        ],
         "lane": null,
         "owner": "ratchetworker",
-        "contributors": ["ratchetworker"],
+        "contributors": [
+          "ratchetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:25.658Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -1340,7 +1508,15 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231"
+        ]
       }
     },
     {
@@ -1503,10 +1679,14 @@
         "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
         "group": "local8h",
         "taskId": "T231",
-        "tasks": ["T231"],
+        "tasks": [
+          "T231"
+        ],
         "lane": null,
         "owner": "collectionworker",
-        "contributors": ["collectionworker"],
+        "contributors": [
+          "collectionworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:50:25.131Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -1589,10 +1769,14 @@
         "id": "ef070033-58bc-48af-94bf-84637877b087",
         "group": "local8h",
         "taskId": "T230",
-        "tasks": ["T230"],
+        "tasks": [
+          "T230"
+        ],
         "lane": null,
         "owner": "replayworker",
-        "contributors": ["replayworker"],
+        "contributors": [
+          "replayworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:51:01.837Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -1761,6 +1945,351 @@
       "group": "local8h",
       "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "taskId": "T229",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 72,
+      "at": "2026-11-07T16:57:25.865Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T16:57:25.254Z",
+            "finishedAt": "2026-11-07T16:57:25.648Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 73,
+      "at": "2026-11-07T16:57:25.937Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "c3e89ad699944bc6cba039f25f742a254e1a0b13",
+        "integratedAt": "2026-11-07T16:57:25.937Z"
+      }
+    },
+    {
+      "sequence": 74,
+      "at": "2026-11-07T16:59:46.547Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 75,
+      "at": "2026-11-07T16:59:47.401Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+        "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+        "submittedAt": "2026-11-07T16:59:47.401Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T231",
+            "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+            "at": "2026-11-07T16:59:47.392Z",
+            "verification": [
+              {
+                "command": "node --test scripts/check-test-reachability.test.mjs",
+                "startedAt": "2026-11-07T16:59:46.794Z",
+                "finishedAt": "2026-11-07T16:59:47.080Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "node --test scripts/check-test-reachability.test.mjs",
+            "startedAt": "2026-11-07T16:59:46.794Z",
+            "finishedAt": "2026-11-07T16:59:47.080Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 76,
+      "at": "2026-11-07T17:00:49.192Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z"
+        }
+      }
+    },
+    {
+      "sequence": 77,
+      "at": "2026-11-07T17:03:29.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "reviewing",
+      "status": "changes_requested",
+      "changes": {
+        "status": "changes_requested",
+        "reason": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+        "review": {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T231 scripts/check-test-reachability.mjs:31-32",
+              "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+            }
+          ],
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z",
+          "finishedAt": "2026-11-07T17:03:29.741Z"
+        }
+      }
+    },
+    {
+      "sequence": 78,
+      "at": "2026-11-07T17:03:50.037Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 79,
+      "at": "2026-11-07T17:03:51.586Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "1a7f449c23e316c9237fe21785c9693569b27153",
+        "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+        "submittedAt": "2026-11-07T17:03:51.586Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T230",
+            "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+            "at": "2026-11-07T17:03:51.576Z",
+            "verification": [
+              {
+                "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+                "startedAt": "2026-11-07T17:03:50.313Z",
+                "finishedAt": "2026-11-07T17:03:51.243Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+            "startedAt": "2026-11-07T17:03:50.313Z",
+            "finishedAt": "2026-11-07T17:03:51.243Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 80,
+      "at": "2026-11-07T17:05:01.181Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "changes_requested",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "verifiedCommit": null,
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+            "owner": "localreviewer",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T231 scripts/check-test-reachability.mjs:31-32",
+                "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+              }
+            ],
+            "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+            "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+            "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+            "createdAt": "2026-11-07T17:00:49.191Z",
+            "finishedAt": "2026-11-07T17:03:29.741Z",
+            "invalidatedAt": "2026-11-07T17:05:01.181Z",
+            "invalidationReason": "correction assigned"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 81,
+      "at": "2026-11-07T17:08:32.471Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 82,
+      "at": "2026-11-07T17:08:33.513Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+        "submittedAt": "2026-11-07T17:08:33.513Z",
+        "steps": [
+          {
+            "taskId": "T231",
+            "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+            "at": "2026-11-07T17:08:33.503Z",
+            "verification": [
+              {
+                "command": "node --test scripts/check-test-reachability.test.mjs",
+                "startedAt": "2026-11-07T17:08:32.724Z",
+                "finishedAt": "2026-11-07T17:08:33.183Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "node --test scripts/check-test-reachability.test.mjs",
+            "startedAt": "2026-11-07T17:08:32.724Z",
+            "finishedAt": "2026-11-07T17:08:33.183Z"
+          }
+        ],
+        "verifiedCommit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028"
+      }
+    },
+    {
+      "sequence": 83,
+      "at": "2026-11-07T17:09:28.026Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+          "owner": "crossreviewer",
+          "status": "reviewing",
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+          "createdAt": "2026-11-07T17:09:28.025Z"
+        }
+      }
+    },
+    {
+      "sequence": 84,
+      "at": "2026-11-07T17:11:25.598Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+          "owner": "crossreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T230 confines the exhausted-balance replay lookup to a nonempty validated intent plus typed InsufficientTwinkle, uses the caller/own transaction-bound consumer port, propagates lookup errors, preserves the original shortfall for absent keys and writes nothing on replay/refusal/error. The pg adapter reuses the unchanged user-scoped dedup query with its existing cross-user payment-only exception; append-conflict handling shares that mapping. Independent exact-candidate hermetic Go unit verification passed57 tests with only the opt-in golden-writer skipped; targeted vet and API build passed. Pricing, prepareSpend, CheckCanSpend, SQL, module inputs, public boundaries, normal append/delta ordering and receipt-first RestoreMemoryText remain unchanged. Added database regressions were inspected and compiled, not executed. Root must pass conditional pnpm check:api before integration and final integrated pnpm check before completion; neither pending gate is claimed passed.",
+          "findings": [],
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+          "createdAt": "2026-11-07T17:09:28.025Z",
+          "finishedAt": "2026-11-07T17:11:25.598Z"
+        }
+      }
+    },
+    {
+      "sequence": 85,
+      "at": "2026-11-07T17:13:42.145Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

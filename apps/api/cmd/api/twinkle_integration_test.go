@@ -74,6 +74,77 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	}
 }
 
+func TestEconomyExhaustedSpendReplayStaysInMemoryTransaction(t *testing.T) {
+	pool := openEconomyTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	userID := fmt.Sprintf("test-economy-exhausted-%d", time.Now().UnixNano())
+	cleanupEconomyTestRows(t, pool, userID)
+	scope := economyScope(t, userID)
+	service := economyTwinkleService(t, pool)
+	memoryStore := mustBindMemoryTransactions(t, memorypg.NewStore(pool.PgxPool()), service, noProgress{})
+	weight := float64(values.ForgettingCostWeightCap)
+	cost := twinkle.RecallCost(weight)
+	intent := memory.RecallSpendIntent("op-exhausted", "memory-1", weight)
+	if err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := twinkleLedgerTx(tx).ApplyBalanceDelta(ctx, scope, twinkle.ResetWindowOf(time.Now().UTC(), time.UTC), cost, values.TwinkleSmallDailyAmount)
+		return err
+	}); err != nil {
+		t.Fatalf("seed exact eligible cost: %v", err)
+	}
+	assertState := func(wantGeneral, wantRows int) {
+		t.Helper()
+		balance, err := service.GetBalance(ctx, scope)
+		if err != nil || balance.General != wantGeneral || balance.Small != 0 {
+			t.Fatalf("balance = %+v (err %v), want GENERAL=%d SMALL=0", balance, err, wantGeneral)
+		}
+		if rows := countLedgerRows(t, pool, userID); rows != wantRows {
+			t.Fatalf("ledger rows = %d, want %d", rows, wantRows)
+		}
+	}
+	injected := errors.New("recall fails after its spend and replay")
+	err := memoryStore.InRecallTx(ctx, func(tx memory.RecallTx) error {
+		if err := tx.SpendMemory(ctx, scope, intent); err != nil {
+			return err
+		}
+		// The second call must see the first call's still-uncommitted ledger row.
+		if err := tx.SpendMemory(ctx, scope, intent); err != nil {
+			return err
+		}
+		return injected
+	})
+	if !errors.Is(err, injected) {
+		t.Fatalf("same-transaction replay/rollback = %v, want injected rollback", err)
+	}
+	assertState(cost, 0)
+	if exists, err := twinkleLedgerStore(pool).LedgerDedupExists(ctx, scope, spendDedupKey(intent), twinkle.ReasonRecall); err != nil || exists {
+		t.Fatalf("rolled-back key = (%v, %v), want absent", exists, err)
+	}
+	for range 2 {
+		if err := memoryStore.InRecallTx(ctx, func(tx memory.RecallTx) error {
+			return tx.SpendMemory(ctx, scope, intent)
+		}); err != nil {
+			t.Fatalf("commit or committed replay: %v", err)
+		}
+		assertState(0, 1)
+	}
+	err = memoryStore.InRecallTx(ctx, func(tx memory.RecallTx) error {
+		return tx.SpendMemory(ctx, scope, memory.RecallSpendIntent("op-unfunded", "memory-1", weight))
+	})
+	if !errors.Is(err, memory.ErrInsufficientTwinkle) || !errors.Is(err, twinkle.ErrInsufficientTwinkle) {
+		t.Fatalf("unfunded new operation = %v, want unchanged memory/Twinkle denial mapping", err)
+	}
+	assertState(0, 1)
+	page, err := service.GetLedger(ctx, scope, 0, "")
+	if err != nil || len(page.Entries) != 1 {
+		t.Fatalf("ledger page = %+v (err %v), want one spend", page, err)
+	}
+	entry := page.Entries[0].Entry
+	if entry.Kind != twinkle.EntryKindSpend || entry.Amount != cost || entry.FromGeneral != cost || entry.FromSmall != 0 {
+		t.Fatalf("committed row = %+v, want one exact GENERAL debit %d", entry, cost)
+	}
+}
+
 func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	pool := openEconomyTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -27,6 +27,9 @@ type fakeLedger struct {
 	txCount           int
 	writes            int
 	batchReads        int
+	dedupReads        int
+	dedupReadErr      error
+	balanceReadErr    error
 	// zones is the zone read bound to the ledger's transaction; open counts transactions in flight
 	// so a pool-side reader can refuse to be called inside one.
 	zones ZoneReader
@@ -62,6 +65,9 @@ func newFakeLedger() *fakeLedger {
 func (f *fakeLedger) GetBalanceRecord(_ context.Context, scope platform.UserScope) (*BalanceRecord, error) {
 	if scope.UserID() == "" {
 		return nil, errors.New("scope missing")
+	}
+	if f.balanceReadErr != nil {
+		return nil, f.balanceReadErr
 	}
 	if !f.born[scope.UserID()] {
 		return nil, nil
@@ -117,6 +123,22 @@ func (f *fakeLedger) AppendLedgerEntry(_ context.Context, scope platform.UserSco
 	}
 	f.entries = append(f.entries, recordedEntry{userID: scope.UserID(), entry: entry})
 	return true, nil
+}
+
+func (f *fakeLedger) LedgerDedupExists(_ context.Context, scope platform.UserScope, dedupKey string, reason EntryReason) (bool, error) {
+	f.dedupReads++
+	if f.dedupReadErr != nil {
+		return false, f.dedupReadErr
+	}
+	for _, existing := range f.entries {
+		if existing.entry.DedupKey == nil || *existing.entry.DedupKey != dedupKey {
+			continue
+		}
+		if existing.userID == scope.UserID() || (existing.entry.Reason == ReasonPayment && reason == ReasonPayment) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeLedger) LockInviteRewardsByInviter(context.Context, platform.UserScope) error {
@@ -562,6 +584,139 @@ func TestCheckAndSpendIsIdempotentPerDedupKey(t *testing.T) {
 	entries := fixture.ledger.userEntries("user-1")
 	if len(entries) != 1 {
 		t.Fatalf("spend entries = %d, want exactly 1 for a deduped operation", len(entries))
+	}
+}
+
+func newExhaustedSpendFixture(t *testing.T, ownTx bool) (*twinkleFixture, platform.UserScope, SpendIntent, int) {
+	t.Helper()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	weight := float64(values.ForgettingCostWeightCap)
+	cost := RecallCost(weight)
+	if cost <= 0 {
+		t.Fatalf("fixture cost = %d, want positive", cost)
+	}
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), cost, values.TwinkleSmallDailyAmount); err != nil {
+		t.Fatalf("seed exact eligible cost: %v", err)
+	}
+	intent := RecallSpendIntent(weight, "spend:exhausted:memory-1")
+	var ledger LedgerTx = fixture.ledger
+	if ownTx {
+		ledger = nil
+	}
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, ledger, intent); err != nil {
+		t.Fatalf("first spend: %v", err)
+	}
+	entries := fixture.ledger.userEntries(scope.UserID())
+	if len(entries) != 1 {
+		t.Fatalf("first spend rows = %d, want 1", len(entries))
+	}
+	entry := entries[0]
+	if entry.Kind != EntryKindSpend || entry.Reason != ReasonRecall || entry.Amount != cost || entry.FromSmall != 0 || entry.FromGeneral != cost || entry.DedupKey == nil || *entry.DedupKey != intent.dedupKey {
+		t.Fatalf("first spend row = %+v, want exact GENERAL draw %d", entry, cost)
+	}
+	if balance := DeriveBalance(twinkleNow(), time.UTC, fixture.ledger.records[scope.UserID()]); balance.Small != 0 || balance.General != 0 {
+		t.Fatalf("first spend balance = %+v, want both kinds exhausted", balance)
+	}
+	if fixture.ledger.dedupReads != 0 {
+		t.Fatal("a funded spend performed an affordability-replay lookup")
+	}
+	return fixture, scope, intent, cost
+}
+
+func TestCheckAndSpendReplayAtExhaustedBalance(t *testing.T) {
+	for _, ownTx := range []bool{false, true} {
+		t.Run(fmt.Sprintf("own_transaction=%v", ownTx), func(t *testing.T) {
+			t.Parallel()
+			fixture, scope, intent, _ := newExhaustedSpendFixture(t, ownTx)
+			before := fixture.ledger.records[scope.UserID()]
+			writes := fixture.ledger.writes
+			var ledger LedgerTx = fixture.ledger
+			if ownTx {
+				ledger = nil
+			}
+			if err := fixture.service.CheckAndSpend(context.Background(), scope, ledger, intent); err != nil {
+				t.Fatalf("committed-key replay after exhaustion: %v", err)
+			}
+			if fixture.ledger.records[scope.UserID()] != before || fixture.ledger.writes != writes || len(fixture.ledger.entries) != 1 {
+				t.Fatal("committed replay changed balance or wrote another ledger row/delta")
+			}
+			if fixture.ledger.dedupReads != 1 {
+				t.Fatalf("replay lookups = %d, want 1", fixture.ledger.dedupReads)
+			}
+		})
+	}
+}
+
+func TestCheckAndSpendReplayRefusesUnfundedKeys(t *testing.T) {
+	for _, name := range []string{"unknown", "empty", "cross-user"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			fixture, scope, intent, cost := newExhaustedSpendFixture(t, false)
+			switch name {
+			case "unknown":
+				intent.dedupKey = "spend:unknown:memory-1"
+			case "empty":
+				intent.dedupKey = ""
+			case "cross-user":
+				scope = twinkleScope(t, "user-2")
+				if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 0, values.TwinkleSmallDailyAmount); err != nil {
+					t.Fatalf("seed exhausted other user: %v", err)
+				}
+			}
+			before := fixture.ledger.records[scope.UserID()]
+			writes := fixture.ledger.writes
+			err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent)
+			var insufficient *InsufficientTwinkle
+			if !errors.As(err, &insufficient) || insufficient.Cost != cost || insufficient.Eligible != 0 || insufficient.Shortfall != cost {
+				t.Fatalf("unfunded %s error = %v, want original typed shortfall %d", name, err, cost)
+			}
+			if fixture.ledger.records[scope.UserID()] != before || fixture.ledger.writes != writes || len(fixture.ledger.entries) != 1 {
+				t.Fatal("unfunded new operation changed balance or ledger")
+			}
+			if name == "empty" && fixture.ledger.dedupReads != 0 {
+				t.Fatal("empty key must not consult replay storage")
+			}
+		})
+	}
+}
+
+func TestCheckAndSpendReplayLookupFailsClosed(t *testing.T) {
+	t.Parallel()
+	fixture, scope, intent, _ := newExhaustedSpendFixture(t, false)
+	injected := errors.New("replay lookup unavailable")
+	fixture.ledger.dedupReadErr = injected
+	before := fixture.ledger.records[scope.UserID()]
+	writes := fixture.ledger.writes
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent); !errors.Is(err, injected) {
+		t.Fatalf("lookup failure = %v, want injected error", err)
+	}
+	if fixture.ledger.dedupReads != 1 || fixture.ledger.records[scope.UserID()] != before || fixture.ledger.writes != writes || len(fixture.ledger.entries) != 1 {
+		t.Fatal("failed lookup must read once and leave balance/ledger unchanged")
+	}
+}
+
+func TestCheckAndSpendReplayLookupPreservesValidationAndPreflight(t *testing.T) {
+	t.Parallel()
+	fixture, scope, intent, _ := newExhaustedSpendFixture(t, false)
+	fixture.ledger.dedupReadErr = errors.New("lookup must not run")
+	writes := fixture.ledger.writes
+	if err := fixture.service.CheckCanSpend(context.Background(), scope, fixture.ledger, intent); !errors.Is(err, ErrInsufficientTwinkle) {
+		t.Fatalf("preflight at zero balance = %v, want insufficient", err)
+	}
+	invalid := SpendIntent{reason: "unknown", dedupKey: intent.dedupKey}
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, invalid); !errors.Is(err, ErrSpendIntentInvalid) {
+		t.Fatalf("invalid intent with committed key = %v, want invalid", err)
+	}
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, PurchaseSpendIntent(0, intent.dedupKey)); !errors.Is(err, ErrPurchaseAmountInvalid) {
+		t.Fatalf("invalid purchase with committed key = %v, want invalid amount", err)
+	}
+	fixture.ledger.balanceReadErr = ErrInsufficientTwinkle
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent); err != ErrInsufficientTwinkle {
+		t.Fatalf("untyped balance-read error = %v, want original sentinel", err)
+	}
+	if fixture.ledger.dedupReads != 0 || fixture.ledger.writes != writes || len(fixture.ledger.entries) != 1 {
+		t.Fatal("validation, preflight or untyped read failure reached replay storage or wrote")
 	}
 }
 
