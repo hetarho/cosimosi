@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T16:57:25.095Z",
-  "sourceCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+  "snapshotAt": "2026-11-07T17:37:50.050Z",
+  "sourceCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -14,31 +14,18 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
   },
   "summary": {
-    "total": 7,
-    "completed": 5,
-    "remaining": 2,
-    "running": 2,
+    "total": 8,
+    "completed": 8,
+    "remaining": 0,
+    "running": 0,
     "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T230",
-      "title": "Accept committed spend replay after eligible balance is exhausted",
-      "dep": ["T227"],
-      "status": "doing"
-    },
-    {
-      "id": "T231",
-      "title": "Reject test-shaped files excluded by their actual runner",
-      "dep": ["T227"],
-      "status": "doing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -334,6 +321,8 @@
       "submittedBase": "769715d45ba3e11520a40f73fa4432391b7a1eca",
       "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
       "submittedAt": "2026-11-07T16:49:57.269Z",
+      "integratedCommit": "c3e89ad699944bc6cba039f25f742a254e1a0b13",
+      "integratedAt": "2026-11-07T16:57:25.937Z",
       "risk": null,
       "review": {
         "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
@@ -368,6 +357,13 @@
           "startedAt": "2026-11-07T16:49:56.592Z",
           "finishedAt": "2026-11-07T16:49:56.932Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T16:57:25.254Z",
+          "finishedAt": "2026-11-07T16:57:25.648Z"
+        }
       ]
     },
     {
@@ -378,9 +374,81 @@
       "lane": null,
       "owner": "collectionworker",
       "contributors": ["collectionworker"],
-      "status": "doing",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-07T16:50:25.131Z",
-      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
+      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca",
+      "verifiedCommit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+      "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+      "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+      "submittedAt": "2026-11-07T17:08:33.513Z",
+      "integratedCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+      "integratedAt": "2026-11-07T17:24:12.329Z",
+      "risk": null,
+      "review": {
+        "id": "040b6e35-d76f-4a29-b9f3-3cc0507a9e76",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Fresh T231 review at corrected b7f3c4fc against current f98f41e1 closes the prior mobile-extension P2. All6 focused tests pass independently, including actual installed Jest29.7 discovery with8 legitimate paths and16 rejected c/m-prefixed assertions, plus actual default/UI Vitest collection with no fixture execution. Actual guard/probe pass with261 filename matches and9 rejected controls; broad scanning, runner configs/helpers, guard registration and mandatory gates remain intact. Current Go-only T230 and T232 planning changes do not conflict.",
+        "findings": [],
+        "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+        "baseCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+        "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+        "createdAt": "2026-11-07T17:21:19.881Z",
+        "finishedAt": "2026-11-07T17:23:28.788Z"
+      },
+      "reviewHistory": [
+        {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T231 scripts/check-test-reachability.mjs:31-32",
+              "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+            }
+          ],
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z",
+          "finishedAt": "2026-11-07T17:03:29.741Z",
+          "invalidatedAt": "2026-11-07T17:05:01.181Z",
+          "invalidationReason": "correction assigned"
+        }
+      ],
+      "steps": [
+        {
+          "taskId": "T231",
+          "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+          "at": "2026-11-07T17:08:33.503Z",
+          "verification": [
+            {
+              "command": "node --test scripts/check-test-reachability.test.mjs",
+              "startedAt": "2026-11-07T17:08:32.724Z",
+              "finishedAt": "2026-11-07T17:08:33.183Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "node --test scripts/check-test-reachability.test.mjs",
+          "startedAt": "2026-11-07T17:08:32.724Z",
+          "finishedAt": "2026-11-07T17:08:33.183Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T17:24:11.698Z",
+          "finishedAt": "2026-11-07T17:24:12.048Z"
+        }
+      ]
     },
     {
       "id": "ef070033-58bc-48af-94bf-84637877b087",
@@ -390,9 +458,115 @@
       "lane": null,
       "owner": "replayworker",
       "contributors": ["replayworker"],
-      "status": "doing",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-07T16:51:01.837Z",
-      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
+      "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca",
+      "verifiedCommit": "1a7f449c23e316c9237fe21785c9693569b27153",
+      "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+      "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+      "submittedAt": "2026-11-07T17:03:51.586Z",
+      "integratedCommit": "f56b16832fb0cc319c44c8582a9c4fd92780b92b",
+      "integratedAt": "2026-11-07T17:14:09.043Z",
+      "risk": null,
+      "review": {
+        "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+        "owner": "crossreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T230 confines the exhausted-balance replay lookup to a nonempty validated intent plus typed InsufficientTwinkle, uses the caller/own transaction-bound consumer port, propagates lookup errors, preserves the original shortfall for absent keys and writes nothing on replay/refusal/error. The pg adapter reuses the unchanged user-scoped dedup query with its existing cross-user payment-only exception; append-conflict handling shares that mapping. Independent exact-candidate hermetic Go unit verification passed57 tests with only the opt-in golden-writer skipped; targeted vet and API build passed. Pricing, prepareSpend, CheckCanSpend, SQL, module inputs, public boundaries, normal append/delta ordering and receipt-first RestoreMemoryText remain unchanged. Added database regressions were inspected and compiled, not executed. Root must pass conditional pnpm check:api before integration and final integrated pnpm check before completion; neither pending gate is claimed passed.",
+        "findings": [],
+        "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+        "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+        "createdAt": "2026-11-07T17:09:28.025Z",
+        "finishedAt": "2026-11-07T17:11:25.598Z"
+      },
+      "steps": [
+        {
+          "taskId": "T230",
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "at": "2026-11-07T17:03:51.576Z",
+          "verification": [
+            {
+              "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+              "startedAt": "2026-11-07T17:03:50.313Z",
+              "finishedAt": "2026-11-07T17:03:51.243Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+          "startedAt": "2026-11-07T17:03:50.313Z",
+          "finishedAt": "2026-11-07T17:03:51.243Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T17:13:43.244Z",
+          "finishedAt": "2026-11-07T17:13:43.612Z"
+        },
+        {
+          "command": "pnpm check:api > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T230-api-full.raw.log 2>&1",
+          "startedAt": "2026-11-07T17:13:43.682Z",
+          "finishedAt": "2026-11-07T17:14:08.810Z"
+        }
+      ]
+    },
+    {
+      "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "group": "local8h",
+      "taskId": "T232",
+      "tasks": ["T232"],
+      "lane": null,
+      "owner": "latentworker",
+      "contributors": ["latentworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T17:21:14.121Z",
+      "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+      "verifiedCommit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+      "submittedBase": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+      "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+      "submittedAt": "2026-11-07T17:30:50.664Z",
+      "risk": null,
+      "review": {
+        "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T232 correctly adds material reconstruction to the existing matrix-effect invalidation and changes only its explanatory comment. All15 tests pass independently at exact f8fef3f5, including8 real React/R3F lifecycle cases,20 unchanged rerenders with zero writes/uploads, exact transforms/consumed/count controls and real disposal events. Calibrated red proof fails only color/drift replacement; the separate Clock-observer calibration error is not treated as production evidence. Current T231 target contracts do not conflict, and the real four-package checks/normal hook match the submitted source or documented comment-only equivalent.",
+        "findings": [],
+        "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+        "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+        "createdAt": "2026-11-07T17:32:21.493Z",
+        "finishedAt": "2026-11-07T17:34:18.392Z"
+      },
+      "steps": [
+        {
+          "taskId": "T232",
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "at": "2026-11-07T17:30:50.655Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+              "startedAt": "2026-11-07T17:30:49.608Z",
+              "finishedAt": "2026-11-07T17:30:50.349Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+          "startedAt": "2026-11-07T17:30:49.608Z",
+          "finishedAt": "2026-11-07T17:30:50.349Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -1761,6 +1935,645 @@
       "group": "local8h",
       "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "taskId": "T229",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 72,
+      "at": "2026-11-07T16:57:25.865Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T16:57:25.254Z",
+            "finishedAt": "2026-11-07T16:57:25.648Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 73,
+      "at": "2026-11-07T16:57:25.937Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "c3e89ad699944bc6cba039f25f742a254e1a0b13",
+        "integratedAt": "2026-11-07T16:57:25.937Z"
+      }
+    },
+    {
+      "sequence": 74,
+      "at": "2026-11-07T16:59:46.547Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 75,
+      "at": "2026-11-07T16:59:47.401Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+        "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+        "submittedAt": "2026-11-07T16:59:47.401Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T231",
+            "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+            "at": "2026-11-07T16:59:47.392Z",
+            "verification": [
+              {
+                "command": "node --test scripts/check-test-reachability.test.mjs",
+                "startedAt": "2026-11-07T16:59:46.794Z",
+                "finishedAt": "2026-11-07T16:59:47.080Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "node --test scripts/check-test-reachability.test.mjs",
+            "startedAt": "2026-11-07T16:59:46.794Z",
+            "finishedAt": "2026-11-07T16:59:47.080Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 76,
+      "at": "2026-11-07T17:00:49.192Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z"
+        }
+      }
+    },
+    {
+      "sequence": 77,
+      "at": "2026-11-07T17:03:29.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "reviewing",
+      "status": "changes_requested",
+      "changes": {
+        "status": "changes_requested",
+        "reason": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+        "review": {
+          "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+          "owner": "localreviewer",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T231 scripts/check-test-reachability.mjs:31-32",
+              "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+            }
+          ],
+          "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+          "createdAt": "2026-11-07T17:00:49.191Z",
+          "finishedAt": "2026-11-07T17:03:29.741Z"
+        }
+      }
+    },
+    {
+      "sequence": 78,
+      "at": "2026-11-07T17:03:50.037Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 79,
+      "at": "2026-11-07T17:03:51.586Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "1a7f449c23e316c9237fe21785c9693569b27153",
+        "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+        "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+        "submittedAt": "2026-11-07T17:03:51.586Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T230",
+            "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+            "at": "2026-11-07T17:03:51.576Z",
+            "verification": [
+              {
+                "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+                "startedAt": "2026-11-07T17:03:50.313Z",
+                "finishedAt": "2026-11-07T17:03:51.243Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "go -C apps/api test -json -count=1 ./internal/twinkle",
+            "startedAt": "2026-11-07T17:03:50.313Z",
+            "finishedAt": "2026-11-07T17:03:51.243Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 80,
+      "at": "2026-11-07T17:05:01.181Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "changes_requested",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "verifiedCommit": null,
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "9ff35279-79be-4e58-ab1a-0663d2d66390",
+            "owner": "localreviewer",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "T231 fixes the named default Vitest/UI exclusions and all5 submitted focused cases plus actual guard/probe pass independently, but mobile collection still accepts files that actual installed Jest excludes. Correct the mobile filename matching and cover it with an actual Jest collection-only regression before approval.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T231 scripts/check-test-reachability.mjs:31-32",
+                "message": "The mobile branch accepts optional c/m-prefixed extensions through CODE_FILE, but the installed mobile Jest testMatch only collects js/jsx/ts/tsx names. A hermetic actual Jest --listTests run selects control.test.ts and __tests__/control.check.ts but excludes invisible.test.mjs, __tests__/hidden.check.mjs and invisible.test.mts; this submitted guard classifies all three excluded files as collected and reports no unreachable tests. This preserves a false-success path under the task's actual-runner contract and inflates the collected count. Keep broad candidate scanning but match mobile collection to the existing Jest rules, then add an actual collection-only Jest regression with these negative and legitimate positive controls; do not change runner configs or dependencies. Reproduction and non-execution marker evidence are in reviews/T231-871e0857-baseb6add75f.jest-repro.{mjs,json}."
+              }
+            ],
+            "commit": "871e0857702795d37216f44ad2cdd8cce3884c0b",
+            "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+            "submissionId": "2d165f69-ab6c-45de-b261-a137d3b4cfff",
+            "createdAt": "2026-11-07T17:00:49.191Z",
+            "finishedAt": "2026-11-07T17:03:29.741Z",
+            "invalidatedAt": "2026-11-07T17:05:01.181Z",
+            "invalidationReason": "correction assigned"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 81,
+      "at": "2026-11-07T17:08:32.471Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 82,
+      "at": "2026-11-07T17:08:33.513Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+        "submittedAt": "2026-11-07T17:08:33.513Z",
+        "steps": [
+          {
+            "taskId": "T231",
+            "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+            "at": "2026-11-07T17:08:33.503Z",
+            "verification": [
+              {
+                "command": "node --test scripts/check-test-reachability.test.mjs",
+                "startedAt": "2026-11-07T17:08:32.724Z",
+                "finishedAt": "2026-11-07T17:08:33.183Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "node --test scripts/check-test-reachability.test.mjs",
+            "startedAt": "2026-11-07T17:08:32.724Z",
+            "finishedAt": "2026-11-07T17:08:33.183Z"
+          }
+        ],
+        "verifiedCommit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028"
+      }
+    },
+    {
+      "sequence": 83,
+      "at": "2026-11-07T17:09:28.026Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+          "owner": "crossreviewer",
+          "status": "reviewing",
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+          "createdAt": "2026-11-07T17:09:28.025Z"
+        }
+      }
+    },
+    {
+      "sequence": 84,
+      "at": "2026-11-07T17:11:25.598Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
+          "owner": "crossreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T230 confines the exhausted-balance replay lookup to a nonempty validated intent plus typed InsufficientTwinkle, uses the caller/own transaction-bound consumer port, propagates lookup errors, preserves the original shortfall for absent keys and writes nothing on replay/refusal/error. The pg adapter reuses the unchanged user-scoped dedup query with its existing cross-user payment-only exception; append-conflict handling shares that mapping. Independent exact-candidate hermetic Go unit verification passed57 tests with only the opt-in golden-writer skipped; targeted vet and API build passed. Pricing, prepareSpend, CheckCanSpend, SQL, module inputs, public boundaries, normal append/delta ordering and receipt-first RestoreMemoryText remain unchanged. Added database regressions were inspected and compiled, not executed. Root must pass conditional pnpm check:api before integration and final integrated pnpm check before completion; neither pending gate is claimed passed.",
+          "findings": [],
+          "commit": "1a7f449c23e316c9237fe21785c9693569b27153",
+          "baseCommit": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
+          "submissionId": "8bb4c6cd-0b6b-4586-b2b7-9b1966b98107",
+          "createdAt": "2026-11-07T17:09:28.025Z",
+          "finishedAt": "2026-11-07T17:11:25.598Z"
+        }
+      }
+    },
+    {
+      "sequence": 85,
+      "at": "2026-11-07T17:13:42.145Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 86,
+      "at": "2026-11-07T17:14:08.973Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T17:13:43.244Z",
+            "finishedAt": "2026-11-07T17:13:43.612Z"
+          },
+          {
+            "command": "pnpm check:api > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T230-api-full.raw.log 2>&1",
+            "startedAt": "2026-11-07T17:13:43.682Z",
+            "finishedAt": "2026-11-07T17:14:08.810Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 87,
+      "at": "2026-11-07T17:14:09.043Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "f56b16832fb0cc319c44c8582a9c4fd92780b92b",
+        "integratedAt": "2026-11-07T17:14:09.043Z"
+      }
+    },
+    {
+      "sequence": 88,
+      "at": "2026-11-07T17:21:03.637Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
+      }
+    },
+    {
+      "sequence": 89,
+      "at": "2026-11-07T17:21:14.121Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+        "group": "local8h",
+        "taskId": "T232",
+        "tasks": ["T232"],
+        "lane": null,
+        "owner": "latentworker",
+        "contributors": ["latentworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T17:21:14.121Z",
+        "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc"
+      }
+    },
+    {
+      "sequence": 90,
+      "at": "2026-11-07T17:21:14.596Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 91,
+      "at": "2026-11-07T17:21:19.881Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "040b6e35-d76f-4a29-b9f3-3cc0507a9e76",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+          "baseCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+          "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+          "createdAt": "2026-11-07T17:21:19.881Z"
+        }
+      }
+    },
+    {
+      "sequence": 92,
+      "at": "2026-11-07T17:23:28.788Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "040b6e35-d76f-4a29-b9f3-3cc0507a9e76",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Fresh T231 review at corrected b7f3c4fc against current f98f41e1 closes the prior mobile-extension P2. All6 focused tests pass independently, including actual installed Jest29.7 discovery with8 legitimate paths and16 rejected c/m-prefixed assertions, plus actual default/UI Vitest collection with no fixture execution. Actual guard/probe pass with261 filename matches and9 rejected controls; broad scanning, runner configs/helpers, guard registration and mandatory gates remain intact. Current Go-only T230 and T232 planning changes do not conflict.",
+          "findings": [],
+          "commit": "b7f3c4fc5554b8ed0dc02ef6ee116dea5acbd028",
+          "baseCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+          "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
+          "createdAt": "2026-11-07T17:21:19.881Z",
+          "finishedAt": "2026-11-07T17:23:28.788Z"
+        }
+      }
+    },
+    {
+      "sequence": 93,
+      "at": "2026-11-07T17:24:10.455Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 94,
+      "at": "2026-11-07T17:24:12.271Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T17:24:11.698Z",
+            "finishedAt": "2026-11-07T17:24:12.048Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 95,
+      "at": "2026-11-07T17:24:12.329Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "integratedAt": "2026-11-07T17:24:12.329Z"
+      }
+    },
+    {
+      "sequence": 96,
+      "at": "2026-11-07T17:30:49.354Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 97,
+      "at": "2026-11-07T17:30:50.664Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+        "submittedBase": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+        "submittedAt": "2026-11-07T17:30:50.664Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T232",
+            "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+            "at": "2026-11-07T17:30:50.655Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+                "startedAt": "2026-11-07T17:30:49.608Z",
+                "finishedAt": "2026-11-07T17:30:50.349Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+            "startedAt": "2026-11-07T17:30:49.608Z",
+            "finishedAt": "2026-11-07T17:30:50.349Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 98,
+      "at": "2026-11-07T17:32:21.493Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+          "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+          "createdAt": "2026-11-07T17:32:21.493Z"
+        }
+      }
+    },
+    {
+      "sequence": 99,
+      "at": "2026-11-07T17:34:18.392Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T232 correctly adds material reconstruction to the existing matrix-effect invalidation and changes only its explanatory comment. All15 tests pass independently at exact f8fef3f5, including8 real React/R3F lifecycle cases,20 unchanged rerenders with zero writes/uploads, exact transforms/consumed/count controls and real disposal events. Calibrated red proof fails only color/drift replacement; the separate Clock-observer calibration error is not treated as production evidence. Current T231 target contracts do not conflict, and the real four-package checks/normal hook match the submitted source or documented comment-only equivalent.",
+          "findings": [],
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+          "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+          "createdAt": "2026-11-07T17:32:21.493Z",
+          "finishedAt": "2026-11-07T17:34:18.392Z"
+        }
+      }
+    },
+    {
+      "sequence": 100,
+      "at": "2026-11-07T17:37:49.094Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

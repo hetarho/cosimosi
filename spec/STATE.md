@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T17:16Z | - |
 
 ## inbox
+- 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
 - 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
 - 261108 decided T229 T230: direct local8h delegation adopts measured ratchet maintenance and reproduced exhausted-balance committed replay; preserve existing aggregate policy, pricing, receipt behavior and scoped deduplication; independent review and coordinator DB/full gates required
 - 261108 decided ARCH-47 review/local-reliability-261108 T227 T228: reproduced linked-worktree selection skips required tests → route the same coverage through Git-root-aware project commands (alt: upgrade pnpm | keep manual closures). Separately adopt bounded shared-component resource updates after actual lifecycle reproduction; fixed current caller values limit demonstrated production exposure.
@@ -112,21 +113,20 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
-| T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 7 | 5 | 2 | 2 | 0 | 0 | 2026-11-07T16:57:25.095Z | [history](work/local8h.json) |
+| local8h | 2 | 8 | 8 | 0 | 0 | 0 | 0 | 2026-11-07T17:37:50.050Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
-- 261107 T229 integrated
-- 261107 T228 integrated
+- 261107 T232 integrated
+- 261107 T231 integrated
+- 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
@@ -138,10 +138,9 @@
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
+- 261107 T230 integrated
+- 261107 T229 integrated
+- 261107 T228 integrated
 - 261107 T227 integrated
 - 261107 T226 integrated
 - 261107 T225 integrated
-- 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
-- 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
-- 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
-- 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation

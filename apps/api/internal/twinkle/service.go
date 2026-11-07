@@ -140,9 +140,9 @@ func resolveZone(ctx context.Context, zones ZoneReader, scope platform.UserScope
 // CheckAndSpend is the real spend gate ([G1]): price the intent from its depth
 // signal via the kind-split curves, derive the balance, plan the draw SMALL-first
 // ([G2]), and — only when the plan fits — append the spend row and apply the guarded
-// delta. On a plan that does not fit it returns the canonical ErrInsufficientTwinkle
-// and writes nothing: the caller's action is refused, not partially charged, and
-// nothing is ever deleted ([I1]). ledger is the caller's transaction-bound store
+// delta. An unaffordable new spend returns the canonical ErrInsufficientTwinkle
+// without writes; a confirmed committed-key replay succeeds without another debit.
+// Nothing is ever deleted ([I1]). ledger is the caller's transaction-bound store
 // (the composition-root economy seam) so the spend commits or rolls back with the
 // recall it gates; a nil ledger (the tx-less gist view) runs the spend in its own
 // transaction.
@@ -209,6 +209,16 @@ func (s *Service) prepareSpend(ctx context.Context, scope platform.UserScope, le
 func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerTx, intent SpendIntent) error {
 	prepared, err := s.prepareSpend(ctx, scope, ledger, intent)
 	if err != nil {
+		var insufficient *InsufficientTwinkle
+		if intent.dedupKey != "" && errors.As(err, &insufficient) {
+			replay, lookupErr := ledger.LedgerDedupExists(ctx, scope, intent.dedupKey, intent.reason)
+			if lookupErr != nil {
+				return lookupErr
+			}
+			if replay {
+				return nil
+			}
+		}
 		return err
 	}
 	if prepared.cost == 0 {
