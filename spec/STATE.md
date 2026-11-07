@@ -120,18 +120,18 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T238 | Propagate current asset failures before the empty-body return | ARCH | T237 | todo |
 
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 13 | 13 | 0 | 0 | 0 | 0 | 2026-11-07T19:44:54.729Z | [history](work/local8h.json) |
+| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T20:08:22.719Z | [history](work/local8h.json) |
 
 ## next
-- implement-task T238
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T238 integrated
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
@@ -151,4 +151,3 @@
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261107 T236 integrated
-- 261107 T237 integrated
