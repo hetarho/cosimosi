@@ -14,11 +14,6 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T20:30Z | - |
-
 ## inbox
 - 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no Task239/code/rerun, preserve criteria/raw evidence and require separate mutation-lifetime calibration
 - 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
@@ -130,9 +125,11 @@
 | local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:32:24.424Z | [history](work/local8h.json) |
 
 ## next
-- close local8h at23:10:49Z after final evidence/cleanup/report checks; fourteen scoped code integrations, root full gate, source publication and exact CI/deployment workflow have passed
+- local8h timed run closed; fourteen scoped improvements/gates/source CI are complete. Follow reports/261108-local8h for separately scoped future observations and existing T222 owner gates.
 
 ## log
+
+- 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
 - 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
@@ -152,4 +149,3 @@
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
 - 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
-- 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
