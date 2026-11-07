@@ -127,7 +127,7 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T20:08:22.719Z | [history](work/local8h.json) |
+| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:12:09.698Z | [history](work/local8h.json) |
 
 ## next
 - freeze fourteen adopted local8h tasks, run final root pnpm check, publish source once and verify exact CI; continue bounded read-only follow-up until the eight-hour deadline
