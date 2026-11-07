@@ -492,7 +492,12 @@ describe('Dialog', () => {
     const SHORTEST = Math.round(768 * SHEET_GESTURE.shortestViewportRatio)
     const TALLEST = Math.round(768 * SHEET_GESTURE.tallestViewportRatio)
 
-    function renderResizableSheet(onClose: () => void, closeDisabled = false, height = 500) {
+    function renderResizableSheet(
+      onClose: () => void,
+      closeDisabled = false,
+      height = 500,
+      acceptClose = true,
+    ) {
       // A fake layout that answers with the height the gesture last chose, since the gesture reads the
       // sheet it is starting from and jsdom would answer 0 for every element forever.
       vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
@@ -501,17 +506,33 @@ describe('Dialog', () => {
         const chosen = this.style.getPropertyValue('--sheet-height')
         return { height: chosen ? Number.parseFloat(chosen) : height } as DOMRect
       })
-      render(
-        <Sheet
-          open
-          onClose={onClose}
-          title="Decorate"
-          closeLabel="Close"
-          closeDisabled={closeDisabled}
-        >
-          <button type="button">Inner</button>
-        </Sheet>,
-      )
+      function Host() {
+        const [open, setOpen] = useState(true)
+        const [completed, setCompleted] = useState(false)
+        return (
+          <>
+            <button type="button" onClick={() => setOpen(true)}>
+              Reopen
+            </button>
+            <button type="button" onClick={() => setCompleted(true)}>
+              Complete operation
+            </button>
+            <Sheet
+              open={open}
+              onClose={() => {
+                onClose()
+                if (acceptClose) setOpen(false)
+              }}
+              title="Decorate"
+              closeLabel="Close"
+              closeDisabled={closeDisabled}
+            >
+              {completed ? <p>Completed result</p> : <button type="button">Inner</button>}
+            </Sheet>
+          </>
+        )
+      }
+      render(<Host />)
       return screen.getByRole('region', { name: 'Decorate' })
     }
 
@@ -523,6 +544,108 @@ describe('Dialog', () => {
     }
 
     const chosenHeight = (panel: HTMLElement) => panel.style.getPropertyValue('--sheet-height')
+
+    it('reopens visibly after an accepted swipe exit fully unmounts the panel', () => {
+      stubViewport(true)
+      vi.useFakeTimers()
+      try {
+        const onClose = vi.fn()
+        const panel = renderResizableSheet(onClose)
+        dragHandle(500 - SHORTEST + SHEET_GESTURE.resizeDismissPx + 1)
+        const height = chosenHeight(panel)
+
+        expect(onClose).toHaveBeenCalledOnce()
+        expect(panel.style.opacity).toBe('0')
+        expect(panel.style.transform).toBe('translate3d(0, 100%, 0)')
+        expect(panel).not.toHaveClass('sheet-leave')
+        act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs - 1))
+        expect(panel).toBeInTheDocument()
+        act(() => vi.advanceTimersByTime(1))
+        expect(screen.queryByRole('region', { name: 'Decorate' })).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+
+        const reopened = screen.getByRole('region', { name: 'Decorate' })
+        expect(reopened).not.toBe(panel)
+        expect(chosenHeight(reopened)).toBe(height)
+        expect(reopened.style.opacity).not.toBe('0')
+        expect(reopened.style.transform).not.toBe('translate3d(0, 100%, 0)')
+      } finally {
+        cleanup()
+        vi.useRealTimers()
+      }
+    })
+
+    it('keeps a Sheet reopened during its swipe exit visible past the old deadline', () => {
+      stubViewport(true)
+      vi.useFakeTimers()
+      try {
+        const panel = renderResizableSheet(vi.fn())
+        dragHandle(500 - SHORTEST + SHEET_GESTURE.resizeDismissPx + 1)
+        const height = chosenHeight(panel)
+        act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs / 2))
+        fireEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+        act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs))
+
+        expect(screen.getByRole('region', { name: 'Decorate' })).toBe(panel)
+        expect(chosenHeight(panel)).toBe(height)
+        expect(panel.style.opacity).not.toBe('0')
+        expect(panel.style.transform).not.toBe('translate3d(0, 100%, 0)')
+        // The old timeout must not shorten a subsequent ordinary close's presence.
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+        expect(panel).toHaveClass('sheet-leave')
+        act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs - 1))
+        expect(panel).toBeInTheDocument()
+        act(() => vi.advanceTimersByTime(1))
+        expect(screen.queryByRole('region', { name: 'Decorate' })).not.toBeInTheDocument()
+      } finally {
+        cleanup()
+        vi.useRealTimers()
+      }
+    })
+
+    it('springs back when the retained parent refuses a swipe and updates its body', () => {
+      stubViewport(true)
+      const onClose = vi.fn()
+      const panel = renderResizableSheet(onClose, false, 500, false)
+
+      dragHandle(500 - SHORTEST + SHEET_GESTURE.resizeDismissPx + 1)
+      const height = chosenHeight(panel)
+      expect(onClose).toHaveBeenCalledOnce()
+      fireEvent.click(screen.getByRole('button', { name: 'Complete operation' }))
+
+      expect(screen.getByText('Completed result')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Decorate' })).toBe(panel)
+      expect(chosenHeight(panel)).toBe(height)
+      expect(panel.style.opacity).not.toBe('0')
+      expect(panel.style.transform).not.toBe('translate3d(0, 100%, 0)')
+    })
+
+    it('retains a nonthrow chosen height across ordinary close and reopen', () => {
+      stubViewport(true)
+      vi.useFakeTimers()
+      try {
+        const onClose = vi.fn()
+        const panel = renderResizableSheet(onClose)
+        dragHandle(120)
+        const height = chosenHeight(panel)
+        expect(height).not.toBe('')
+        expect(onClose).not.toHaveBeenCalled()
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+        act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs))
+        expect(screen.queryByRole('region', { name: 'Decorate' })).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+
+        const reopened = screen.getByRole('region', { name: 'Decorate' })
+        expect(chosenHeight(reopened)).toBe(height)
+        expect(reopened.style.opacity).not.toBe('0')
+        expect(reopened.style.transform).not.toBe('translate3d(0, 100%, 0)')
+      } finally {
+        cleanup()
+        vi.useRealTimers()
+      }
+    })
 
     it('starts with no height of its own, so an untouched sheet is whatever its content makes it', () => {
       stubViewport(true)

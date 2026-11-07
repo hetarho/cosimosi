@@ -116,18 +116,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T235 | Restore retained Sheet swipe state on reopen or refusal | ARCH | T233 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 10 | 10 | 0 | 0 | 0 | 0 | 2026-11-07T18:29:09.772Z | [history](work/local8h.json) |
+| local8h | 2 | 11 | 11 | 0 | 0 | 0 | 0 | 2026-11-07T18:55:14.111Z | [history](work/local8h.json) |
 
 ## next
-- implement-task T235 in an isolated assigned workspace
-- inspect the frozen withdrawal probe and preserve final-gate time
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T235 integrated
 - 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
 - 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
@@ -147,4 +146,3 @@
 - 261107 T232 integrated
 - 261107 T231 integrated
 - 261107 T230 integrated
-- 261107 T229 integrated

@@ -45,7 +45,7 @@ export function Sheet({
   // the Sheet itself on close skips the leave — the element is gone before this can hold it.
   const { present, phase } = usePresence(open, SHEET_GESTURE.settleMs)
   const panelRef = useRef<HTMLElement | null>(null)
-  const resize = useSheetResize(panelRef, onClose, !closeDisabled)
+  const resize = useSheetResize(panelRef, onClose, open, !closeDisabled)
 
   if (!present) return null
 
