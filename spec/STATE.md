@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T17:16Z | - |
 
 ## inbox
+- 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
 - 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
 - 261108 decided T229 T230: direct local8h delegation adopts measured ratchet maintenance and reproduced exhausted-balance committed replay; preserve existing aggregate policy, pricing, receipt behavior and scoped deduplication; independent review and coordinator DB/full gates required
 - 261108 decided ARCH-47 review/local-reliability-261108 T227 T228: reproduced linked-worktree selection skips required tests → route the same coverage through Git-root-aware project commands (alt: upgrade pnpm | keep manual closures). Separately adopt bounded shared-component resource updates after actual lifecycle reproduction; fixed current caller values limit demonstrated production exposure.
@@ -120,6 +121,7 @@
 | T229 | Refresh existing guard ratchets to measured debt | ARCH | T227 | todo |
 | T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
 | T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
+| T232 | Repopulate latent-field transforms after material replacement | ARCH | T227 | todo |
 
 ## next
 - local8h: retry approved T225/T226 integration after the spec preflight repair, then evaluate the affected-selection proposal and retain the final coordinator gate
@@ -128,6 +130,8 @@
 - local8h: independently review/integrate submitted T227, then implement approved T228 T229 T230; coordinator retains DB and final full gates
 - local8h: T227 integrated; review/integrate approved T228 T229 T230 T231; root retains DB/browser and final full gates
 - T222 and pending DEMO/ONB product deltas remain outside this run
+- local8h: six units integrated, corrected T231 awaits fresh native review; implement/review approved T232, then freeze browser source/build
+- Existing T222 and pending DEMO/ONB product deltas remain excluded; root retains final integrated gate
 
 ## log
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
@@ -141,9 +145,9 @@
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
+- 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
-- 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
