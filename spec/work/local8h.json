@@ -14,14 +14,7 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": [
-      "T225",
-      "T226",
-      "T227",
-      "T228",
-      "T229",
-      "T230"
-    ]
+    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
   },
   "summary": {
     "total": 6,
@@ -36,26 +29,19 @@
     {
       "id": "T228",
       "title": "Preserve color-field attributes and independent resource lifetimes",
-      "dep": [
-        "T226",
-        "T227"
-      ],
+      "dep": ["T226", "T227"],
       "status": "todo"
     },
     {
       "id": "T229",
       "title": "Refresh existing guard ratchets to measured debt",
-      "dep": [
-        "T227"
-      ],
+      "dep": ["T227"],
       "status": "todo"
     },
     {
       "id": "T230",
       "title": "Accept committed spend replay after eligible balance is exhausted",
-      "dep": [
-        "T227"
-      ],
+      "dep": ["T227"],
       "status": "todo"
     }
   ],
@@ -64,14 +50,10 @@
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": [
-        "T225"
-      ],
+      "tasks": ["T225"],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": [
-        "gatesworker"
-      ],
+      "contributors": ["gatesworker"],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -146,14 +128,10 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": [
-        "T226"
-      ],
+      "tasks": ["T226"],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": [
-        "fieldworker"
-      ],
+      "contributors": ["fieldworker"],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -228,14 +206,10 @@
       "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
       "group": "local8h",
       "taskId": "T227",
-      "tasks": [
-        "T227"
-      ],
+      "tasks": ["T227"],
       "lane": null,
       "owner": "checksworker",
-      "contributors": [
-        "checksworker"
-      ],
+      "contributors": ["checksworker"],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:59:37.533Z",
@@ -301,9 +275,7 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": [
-          "T225"
-        ]
+        "taskScope": ["T225"]
       }
     },
     {
@@ -330,14 +302,10 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": [
-          "T225"
-        ],
+        "tasks": ["T225"],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": [
-          "gatesworker"
-        ],
+        "contributors": ["gatesworker"],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -364,10 +332,7 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": [
-          "T225",
-          "T226"
-        ]
+        "taskScope": ["T225", "T226"]
       }
     },
     {
@@ -383,14 +348,10 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": [
-          "T226"
-        ],
+        "tasks": ["T226"],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": [
-          "fieldworker"
-        ],
+        "contributors": ["fieldworker"],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
@@ -952,12 +913,7 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": [
-          "T225",
-          "T226",
-          "T227",
-          "T228"
-        ]
+        "taskScope": ["T225", "T226", "T227", "T228"]
       }
     },
     {
@@ -973,14 +929,10 @@
         "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
         "group": "local8h",
         "taskId": "T227",
-        "tasks": [
-          "T227"
-        ],
+        "tasks": ["T227"],
         "lane": null,
         "owner": "checksworker",
-        "contributors": [
-          "checksworker"
-        ],
+        "contributors": ["checksworker"],
         "status": "preparing",
         "createdAt": "2026-11-07T15:59:37.533Z",
         "startCommit": "864544d4a2eb68176891d49da259c44eb59d2a3e"
@@ -1072,14 +1024,7 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": [
-          "T225",
-          "T226",
-          "T227",
-          "T228",
-          "T229",
-          "T230"
-        ]
+        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
       }
     },
     {
