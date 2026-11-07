@@ -1,4 +1,4 @@
-# REPORT 261103-demo-clarity
+# REPORT 261103-democlr
 
 > mode:autopilot | host:codex | from:2026-11-03T03:13:05Z | to:2026-11-03T03:21:26Z | push:-
 

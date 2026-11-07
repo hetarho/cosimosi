@@ -20,12 +20,13 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
 
 ## inbox
+- 261108 decided TWINK-4 review/frontend-rendering-experience-260726: two canonical references conflate price ownership with a consumed weight → retain economy ownership and classify its forgetting input as required (alt: split decisions broadly | remove a dependency); all rules and transitive brief inclusion remain. Close the historical review's fulfilled task conversion while preserving its original audit provenance.
 - 261108 decided review/local-reliability-261108 T226: actual R3F/React reproduction confirms a settled field disappears on unchanged rerender → adopt F2 under the direct eight-hour delegation (alt: retain the defect | invalidate/recompose every frame); stable attachment preserves visibility and the existing zero-work frame gate without shader/API changes.
 - 261108 decided review/local-reliability-261108 T225: interrupted verification can return success → adopt F1 under the direct eight-hour self-improve-local delegation (alt: leave the reproduced false success | duplicate ad hoc checks); one shared completion policy preserves all ordinary outcomes and gate coverage, with real subprocess regressions and independent review.
-- 261108 decided self-improve-local: the user delegated an eight-hour local improvement run (2026-11-07T15:10:49Z..23:10:49Z); the calling coordinator adopts only bounded behavior-preserving scout proposals, assigns approved task IDs and integrates independently reviewed changes on main. Existing push/plan policy is preserved; no product-rule changes or PRs. See reports/261108-local8h.
+- 261108 decided -: the user delegated an eight-hour local improvement run (2026-11-07T15:10:49Z..23:10:49Z); the calling coordinator adopts only bounded behavior-preserving scout proposals, assigns approved task IDs and integrates independently reviewed changes on main. Existing push/plan policy is preserved; no product-rule changes or PRs. See reports/261108-local8h.
 - 261103 decided T223 T224: the user explicitly requested commit and push after the local-delivery report; publish main with the documented Docker verification limits and check CI after push.
 - 261103 parked T223 T224: implementation and all TypeScript tests/typechecks, Go hermetic tests/vet/build and site build passed; Docker is unavailable in WSL, blocking Postgres integration and full generation freshness. Final batch on 3a6804d6 stopped at db:migrate. See reports/261103-rcui.
-- 261103 decided RECALL TWINK DIARY: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
+- 261103 decided T223 T224: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
 - 261103 parked T222: phase 2 evidence gate — needs an OpenRouter key and the Anthropic and DeepSeek keys for the baselines (`COSIMOSI_LIVE_LLM_EVAL=1 go test -run TestLiveLLMEvaluation ./internal/ai/openrouter/`), an operator to confirm prompt logging is off on the production workspace, a named reviewer to score fidelity and approve rows in `internal/ai/openrouter/EVALUATION.md`, and a recheck of the OpenRouter docs (this run made no web lookups)
 - 261103 decided T221: two apps' `shared/testing/index.ts` barrels failed `lint:fsd:layout` as normalized-equivalent pure modules once web gained the segment → the layout guard skips a `shared` module that only re-exports, its target modules still compared (alt: give web's barrel a different shape | keep the fakes under `pages/test`) ← every barrel normalizes alike, the guard already exempts barrels from its ui rule, and reshaping a file to dodge a guard is the evasion it forbids
 - 261103 decided T221: "engram" appears legitimately as the research-strand id (UL-93) → the new `lint:language` rule scans app and package source, comments included, excluding only the landing, the blog and the copy catalogues (alt: rename the strand id | forbid only identifiers) ← MKT-22 shares the id with the blog, and the task asks for comments to be scanned
@@ -67,7 +68,7 @@
 | DEL | 1 | 1 | - | 1 |
 | DIARY | 2 | 2 | - | 0 |
 | SOCIAL | 1 | 1 | - | 0 |
-| TWINK | 3 | 3 | - | 0 |
+| TWINK | 4 | 4 | - | 0 |
 | ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 5 | 1 | DEMO-14✎ DEMO-22✎ DEMO-25✎ DEMO-26✎ DEMO-27✎ DEMO-29✎ DEMO-31✎ | 0 |
@@ -89,7 +90,7 @@
 | post-refactor-261102                  | converted@261103 |
 | all-261102                            | converted@261102 |
 | architecture-261102                   | converted@261102 |
-| frontend-rendering-experience-260726 | open@260726 |
+| frontend-rendering-experience-260726 | converted@261108 |
 | phase-1-critical-readiness-260629 | converted@260629 |
 | phase-1-foundation-runtime-260629 | converted@260629 |
 | phase-2-runtime-architecture-260704 | converted@260704 |
@@ -113,13 +114,14 @@
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
-- implement-task T225 and T226 in the approved local8h group; independent review precedes integration and the coordinator owns the final full gate
-- T223/T224 remaining verification: enable Docker WSL integration and rerun pnpm check locally; check remote CI for the requested publication
-- T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
-- review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
-- T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
+- local8h: retry approved T225/T226 integration after the spec preflight repair, then evaluate the affected-selection proposal and retain the final coordinator gate
+- T222 phase 2 still needs provider-evaluation evidence; pending DEMO/ONB product deltas remain outside this run
+- Historical review/frontend-rendering-experience-260726: revalidate its six unadopted candidates against current code before any adoption
 
 ## log
+- 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
+- 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
+- 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
@@ -129,15 +131,11 @@
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
-- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decoration-tour)
-- 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decoration-tour)
-- 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recall-feedback)
-- 261103 fix demo clarity: readable dialogs, current words first, real partial erosion in every sample; demo dwell 4500→2800ms and sweep settle 800→200ms (reports/261103-demo-clarity)
-- 261103 fix universe visual: clear captions from controls, pin dialog actions, complete decoration return, fit gist overview; hardware-browser review (reports/261103-universe-visual)
+- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decor)
+- 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decor)
+- 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recallfb)
+- 261103 fix demo clarity: readable dialogs, current words first, real partial erosion in every sample; demo dwell 4500→2800ms and sweep settle 800→200ms (reports/261103-democlr)
+- 261103 fix universe visual: clear captions from controls, pin dialog actions, complete decoration return, fit gist overview; hardware-browser review (reports/261103-univvis)
 - 261103 fix universe experience: synchronize tutorial signals, reading time, displayed date and memory arrival; preserve 40abb60 and add /review (reports/261103-universe)
 - 261103 T222 blocked: phase 1 done (hermetic adapter, lister, harness, EVALUATION.md); phase 2 needs keys, an operator and a reviewer
 - 261103 T221 done
-- 261103 T220 done
-- 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
-- 261103 T219 done
-- 261103 T218 done

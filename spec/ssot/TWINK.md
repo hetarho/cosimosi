@@ -1,5 +1,5 @@
 # TWINK Twinkle economy
-> r3 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
+> r4 | Twinkle (별가루), the product's single currency: its two kinds, the balance and daily refill, what costs Twinkle and how much, how it is earned, the one append-only ledger, and the surfaces that show it
 
 ## decisions
 - TWINK-1 [o] reconstructing a memory through `Recall` is free; retrieving its stored text through `RestoreMemoryText` spends Twinkle
@@ -21,7 +21,8 @@
   - beyond the five, an operator may gift `GENERAL` (`admin_grant`): a discretionary support grant, not a path a user can pursue →=ADMIN
   - payment is not a v2 earn path →=TWINK-26
 - TWINK-4 [o] three actions spend Twinkle: stored-memory text restoration, gist viewing and ornament purchasing
-  - restoration uses the existing `RecallCost` curve and `twinkle.recall_*` values, non-decreasing with forgetting depth; its quote and debit use the same pre-action accessibility signal →=FORGET-4
+  - restoration uses the existing `RecallCost` curve and `twinkle.recall_*` values, non-decreasing with forgetting depth
+  - its quote and debit use the same pre-action accessibility signal →!FORGET-4
   - gist pricing, purchase pricing, currency draw order and all curve coefficients remain as defined by their existing contracts
   - `Recall` and `RecallDiaryStars` are free and never call the gate; seeing a diary's stars is navigation only
   - original-diary archive reading/search/export and deletion/undo remain free; restoration concerns the star's memory representation, never rewrites the diary
@@ -238,6 +239,7 @@
 - the `twinkle.*` values group holds only coefficients, earn amounts, caps and the page size; formulas, closed sets, the eligible list, dedup-key formats and catalogs (ornament prices →=DECOR, reward tiers →=ACH) are not values
 
 ## chg
+- r4 261108 TWINK-4✎ forgetting-input reference canonical→requires; economy price ownership and forgetting weight ownership unchanged
 - r3 261103 TWINK-1✎ TWINK-4✎ TWINK-5✎ paid reconstruction and diary jump→free reconstruction/navigation with separate paid stored-text restoration
 - r2 261103 TWINK-32✎ mobile "earn guide only, a parity gap"→"the same panel as a bottom sheet"; TWINK-39✎ balance readout `features/twinkle-balance-hud`→`entities/twinkle`, `features/charge-twinkle` and the panel "web only"→"both apps"
 - r1 261102 initial

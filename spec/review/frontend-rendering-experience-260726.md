@@ -1,5 +1,5 @@
 # REVIEW frontend-rendering-experience-260726
-> st:open@260726 | scope:all | at:ed6664ea | base:ARCH@1
+> st:converted@261108 | scope:all | at:ed6664ea | base:ARCH@1
 
 ## summary
 - Frontend rendering runtime and experience audit — legacy code review 8 (2026-07-26); 9 findings, 2 adopted into tasks, 1 closed without a task ([x]), 6 never adopted ([?])
@@ -17,6 +17,7 @@
 - F9 [x] P1 Merge/release readiness: The required repository gate is currently red ← fixed by 77b510ec: the in-progress plans 60–82 landed formatted (the review cut no job)
 
 ## notes
+- Conversion lifecycle reconciled: both adopted findings already have completed tasks (F1→T136, F6→T130). This closes their prior task conversion, preserves the original audit SHA/ARCH base and makes no fresh runtime-audit claim. The six unadopted [?] findings retain historical evidence only and require current revalidation before adoption; later implementation has changed several cited mechanisms.
 - legacy report, verbatim (headings demoted):
 
 ### Code Review 08: Frontend rendering runtime and experience audit
