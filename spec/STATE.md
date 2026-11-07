@@ -17,9 +17,11 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:14Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:47Z | - |
 
 ## inbox
+
+- 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
 - 261108 decided T237: direct local8h delegation adopts independently audited eight-case mapper-cache proof; VIS30 reconciles accepted T217 settled skipping and changed mapper input, preserving output precision/quality and zero clean/brightness writes; no current production trigger claimed
 - 261108 decided T236: direct local8h delegation adopts independently audited actual-PG completed withdrawal-trigger failure; ARCH53 records a typed DONE-only mechanism, preserving existing ACCT/AI rules, stored identity, ordinary enqueue, original window and safety stops; separate review and root DB/final gates required
 - 261108 decided T235: direct local8h delegation adopts six-case actual Sheet proof; fix only retained private fling state, preserve height and all public/native/domain/T233 contracts, require independent review and final gate
