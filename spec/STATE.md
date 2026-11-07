@@ -20,6 +20,7 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T20:30Z | - |
 
 ## inbox
+- 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no Task239/code/rerun, preserve criteria/raw evidence and require separate mutation-lifetime calibration
 - 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
 - 261108 parked VIS-18: static worker-error/equal-refetch recovery lead needs a new successful-read event contract across public read/assembly seams while preserving T137 sharing; independent design audit confirms no authorized private repair, no probe or change adopted; see review/local-reliability-261108 F18
 - 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
@@ -126,12 +127,14 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T20:08:22.719Z | [history](work/local8h.json) |
+| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:32:24.424Z | [history](work/local8h.json) |
 
 ## next
-- complete local8h integrated-source audit and final root pnpm check before source push/exact CI
+- close local8h at23:10:49Z after final evidence/cleanup/report checks; fourteen scoped code integrations, root full gate, source publication and exact CI/deployment workflow have passed
 
 ## log
+- 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
+- 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
 - 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
@@ -150,5 +153,3 @@
 - 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
-- 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
-- 261107 T238 integrated
