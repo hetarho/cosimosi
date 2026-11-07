@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T18:13Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T18:40Z | - |
 
 ## inbox
+- 261108 decided T235: direct local8h delegation adopts six-case actual Sheet proof; fix only retained private fling state, preserve height and all public/native/domain/T233 contracts, require independent review and final gate
 - 261108 decided T233 T234: direct local8h delegation adopts actual refused-dialog swipe and disposed-refocus callback reproductions; preserve public APIs and live behavior, limit to existing private helpers/tests, require separate native reviews and final gate
 - 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
 - 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
@@ -115,6 +116,7 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T235 | Restore retained Sheet swipe state on reopen or refusal | ARCH | T233 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -122,9 +124,11 @@
 | local8h | 2 | 10 | 10 | 0 | 0 | 0 | 0 | 2026-11-07T18:29:09.772Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- implement-task T235 in an isolated assigned workspace
+- inspect the frozen withdrawal probe and preserve final-gate time
 
 ## log
+- 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
 - 261107 T233 integrated
 - 261107 T234 integrated
 - 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
@@ -144,4 +148,3 @@
 - 261107 T231 integrated
 - 261107 T230 integrated
 - 261107 T229 integrated
-- 261107 T228 integrated
