@@ -112,7 +112,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T228 | Preserve color-field attributes and independent resource lifetimes | ARCH | T226 T227 | todo |
 | T229 | Refresh existing guard ratchets to measured debt | ARCH | T227 | todo |
 | T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
 | T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
@@ -121,13 +120,13 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 6 | 3 | 3 | 0 | 0 | 0 | 2026-11-07T16:38:57.098Z | [history](work/local8h.json) |
+| local8h | 2 | 7 | 4 | 3 | 2 | 1 | 0 | 2026-11-07T16:54:54.954Z | [history](work/local8h.json) |
 
 ## next
-- local8h: T227 integrated; review/integrate approved T228 T229 T230 T231; root retains DB/browser and final full gates
-- T222 and pending DEMO/ONB product deltas remain outside this run
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T228 integrated
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
@@ -147,4 +146,3 @@
 - 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
-- 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224

@@ -129,7 +129,7 @@ export function ColorField({
     } else {
       // A count change remounts the mesh but keeps the memoized geometry, so the previous tint
       // attribute is still attached — dispose its GPU buffer before replacing it, or it leaks (the
-      // geometry.dispose cleanup below only runs on unmount, not on a count change).
+      // geometry.dispose cleanup below runs on geometry replacement or unmount, not a count change).
       existing?.dispose()
       mesh.geometry.setAttribute(FIELD_INSTANCE_TINT, new THREE.InstancedBufferAttribute(tints, 3))
     }
@@ -147,15 +147,10 @@ export function ColorField({
         )
       }
     }
-  }, [tints, radii, count, instanceCount])
+  }, [geometry, tints, radii, count, instanceCount])
 
-  useEffect(
-    () => () => {
-      geometry.dispose()
-      material.dispose()
-    },
-    [geometry, material],
-  )
+  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(() => () => material.dispose(), [material])
 
   const lastFrame = useMemo(() => createInstanceFrameKey(), [])
   const nextFrame = useMemo(() => createInstanceFrameKey(), [])
