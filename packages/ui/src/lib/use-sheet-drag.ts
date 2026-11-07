@@ -52,15 +52,17 @@ export interface SheetDrag {
  * the handle in the first few pixels, that being the point of a drag; capture would keep the events
  * coming but only for as long as the element it was taken on survives the re-render.
  *
- * There is no reset: the hook is meant to be called from a component that lives only while its sheet
- * is on screen, so a reopen mounts a fresh drag instead of inheriting the throw that closed the last
- * one.
+ * The controlled open state decides whether the parent accepted dismissal. A refused throw or a
+ * reopen before the exit unmounts must return the panel to its visible resting position.
  */
-export function useSheetDrag(onDismiss: () => void): SheetDrag {
+export function useSheetDrag(onDismiss: () => void, open: boolean): SheetDrag {
   // Non-null exactly while a finger is down; `rest` is where the sheet goes once it lifts.
   const [grab, setGrab] = useState<Grab | null>(null)
   const [rest, setRest] = useState<'idle' | 'settling' | 'flung'>('idle')
   const [offset, setOffset] = useState(0)
+
+  // Reconcile before commit so a parent that retains open never paints a refused throw.
+  if (open && rest === 'flung') setRest('settling')
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.button !== 0) return

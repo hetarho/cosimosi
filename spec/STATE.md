@@ -115,17 +115,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T233 | Restore a dialog after refused swipe dismissal | ARCH | T227 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 10 | 9 | 1 | 0 | 1 | 0 | 2026-11-07T18:25:37.280Z | [history](work/local8h.json) |
+| local8h | 2 | 10 | 10 | 0 | 0 | 0 | 0 | 2026-11-07T18:29:09.772Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261107 T233 integrated
 - 261107 T234 integrated
 - 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
@@ -145,4 +145,3 @@
 - 261107 T230 integrated
 - 261107 T229 integrated
 - 261107 T228 integrated
-- 261107 T227 integrated

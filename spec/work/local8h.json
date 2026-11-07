@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T18:25:37.280Z",
-  "sourceCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+  "snapshotAt": "2026-11-07T18:29:09.772Z",
+  "sourceCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -29,23 +29,14 @@
   },
   "summary": {
     "total": 10,
-    "completed": 9,
-    "remaining": 1,
+    "completed": 10,
+    "remaining": 0,
     "running": 0,
-    "review": 1,
+    "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T233",
-      "title": "Restore a controlled dialog after its parent refuses a swipe dismissal",
-      "dep": [
-        "T227"
-      ],
-      "status": "ready"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -641,7 +632,7 @@
       "contributors": [
         "dialogworker"
       ],
-      "status": "ready",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:38.752Z",
       "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
@@ -650,6 +641,19 @@
       "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
       "submittedAt": "2026-11-07T18:22:13.985Z",
       "risk": null,
+      "review": {
+        "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T233 correctly reconciles private flung state with controlled openness before commit: refused or reopened dialogs return to rest, while accepted open=false exits retain the existing throw and presence deadline. All78 UI tests pass independently at exact7ba9c0e1, including44 primitives and real refusing/accepting/reopen parents. Original red proof fails only refusal/reopen; public/native/presence/threshold/domain/baseline bytes and current T234 contracts are preserved. Actual affected checks and normal hook evidence match submission.",
+        "findings": [],
+        "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+        "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+        "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+        "createdAt": "2026-11-07T18:26:40.636Z",
+        "finishedAt": "2026-11-07T18:28:54.525Z"
+      },
       "steps": [
         {
           "taskId": "T233",
@@ -692,6 +696,8 @@
       "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
       "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
       "submittedAt": "2026-11-07T18:20:49.311Z",
+      "integratedCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+      "integratedAt": "2026-11-07T18:25:38.130Z",
       "risk": null,
       "review": {
         "id": "18e8fe0e-6c31-41e1-9442-df4e5495214f",
@@ -725,6 +731,13 @@
           "command": "pnpm --filter @cosimosi/client-cache exec vitest run src/refocus.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T234/submitted-vitest.json",
           "startedAt": "2026-11-07T18:20:47.660Z",
           "finishedAt": "2026-11-07T18:20:48.951Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T18:25:37.490Z",
+          "finishedAt": "2026-11-07T18:25:37.861Z"
         }
       ]
     }
@@ -3101,6 +3114,101 @@
       "group": "local8h",
       "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
       "taskId": "T234",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 115,
+      "at": "2026-11-07T18:25:38.067Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T18:25:37.490Z",
+            "finishedAt": "2026-11-07T18:25:37.861Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 116,
+      "at": "2026-11-07T18:25:38.130Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+        "integratedAt": "2026-11-07T18:25:38.130Z"
+      }
+    },
+    {
+      "sequence": 117,
+      "at": "2026-11-07T18:26:40.636Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+          "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+          "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+          "createdAt": "2026-11-07T18:26:40.636Z"
+        }
+      }
+    },
+    {
+      "sequence": 118,
+      "at": "2026-11-07T18:28:54.525Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T233 correctly reconciles private flung state with controlled openness before commit: refused or reopened dialogs return to rest, while accepted open=false exits retain the existing throw and presence deadline. All78 UI tests pass independently at exact7ba9c0e1, including44 primitives and real refusing/accepting/reopen parents. Original red proof fails only refusal/reopen; public/native/presence/threshold/domain/baseline bytes and current T234 contracts are preserved. Actual affected checks and normal hook evidence match submission.",
+          "findings": [],
+          "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+          "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+          "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+          "createdAt": "2026-11-07T18:26:40.636Z",
+          "finishedAt": "2026-11-07T18:28:54.525Z"
+        }
+      }
+    },
+    {
+      "sequence": 119,
+      "at": "2026-11-07T18:29:08.687Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
