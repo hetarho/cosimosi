@@ -20,6 +20,7 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:47Z | - |
 
 ## inbox
+- 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
 - 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
 - 261108 decided T237: direct local8h delegation adopts independently audited eight-case mapper-cache proof; VIS30 reconciles accepted T217 settled skipping and changed mapper input, preserving output precision/quality and zero clean/brightness writes; no current production trigger claimed
 - 261108 decided T236: direct local8h delegation adopts independently audited actual-PG completed withdrawal-trigger failure; ARCH53 records a typed DONE-only mechanism, preserving existing ACCT/AI rules, stored identity, ordinary enqueue, original window and safety stops; separate review and root DB/final gates required
@@ -132,6 +133,8 @@
 | T235 | Restore retained Sheet swipe state on reopen or refusal | ARCH | T233 | todo |
 | T236 | Recover a completed inert withdrawal trigger | ARCH ACCT AI INV | T227 | todo |
 | T237 | Invalidate settled matrices when the committed mapper changes | ARCH VIS | T227 | todo |
+| T238 | Propagate current asset failures before the empty-body return | ARCH | T237 | todo |
+
 
 ## next
 - local8h: retry approved T225/T226 integration after the spec preflight repair, then evaluate the affected-selection proposal and retain the final coordinator gate
@@ -148,6 +151,7 @@
 - inspect the frozen withdrawal probe and preserve final-gate time
 - implement-task T236 and T237 in their separate assigned workspaces
 - reserve root DB integration and final integrated gate
+- implement-task T238
 
 ## log
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
@@ -155,7 +159,6 @@
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
-- 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
@@ -168,5 +171,6 @@
 - 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
+- 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
