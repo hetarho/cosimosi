@@ -371,3 +371,364 @@ describe('committed instance mapper changes', () => {
     },
   )
 })
+
+extend({ Group: THREE.Group })
+
+class AssetErrorBoundary extends React.Component<
+  { caught: Error[]; children?: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  componentDidCatch(error: Error) {
+    this.props.caught.push(error)
+  }
+  render() {
+    return this.state.error
+      ? React.createElement('group', { name: 'asset-error-signal' })
+      : this.props.children
+  }
+}
+
+function ThrowAssetError({ error }: { error: Error }): never {
+  throw error
+}
+
+function deferredAsset() {
+  let resolve!: (body: THREE.Object3D) => void
+  let reject!: (error: Error) => void
+  const promise = new Promise<THREE.Object3D>((yes, no) => {
+    resolve = yes
+    reject = no
+  })
+  return { promise, resolve, reject }
+}
+
+async function createAssetHarness(expectedError: Error) {
+  const canvas = {
+    width: 800,
+    height: 600,
+    style: {},
+    addEventListener() {},
+    removeEventListener() {},
+  } as unknown as HTMLCanvasElement
+  // Real React/R3F and Three resources; only the GPU backend and canvas-shaped host are stubs.
+  const renderer = {
+    render: vi.fn(),
+    setSize: vi.fn(),
+    setPixelRatio: vi.fn(),
+    domElement: canvas,
+    xr: { isPresenting: false, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+    renderLists: { dispose: vi.fn() },
+    forceContextLoss: vi.fn(),
+  }
+  const camera = new THREE.PerspectiveCamera(60, 800 / 600, 0.1, 1000)
+  camera.position.set(0, 0, 10)
+  camera.updateMatrixWorld()
+  const makeResource = () => ({
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    material: new THREE.MeshBasicNodeMaterial(),
+    geometryDisposed: vi.fn(),
+    materialDisposed: vi.fn(),
+  })
+  const resources = new Map<string, ReturnType<typeof makeResource>>()
+  const instances = new Map<
+    THREE.InstancedMesh,
+    {
+      owner: string
+      writes: ReturnType<typeof vi.spyOn>
+      disposed: ReturnType<typeof vi.fn>
+    }
+  >()
+  const makeBody = (owner: string) => {
+    expect(resources.has(owner)).toBe(false)
+    const resource = makeResource()
+    resources.set(owner, resource)
+    resource.geometry.addEventListener('dispose', resource.geometryDisposed)
+    resource.material.addEventListener('dispose', resource.materialDisposed)
+    return new THREE.Mesh(resource.geometry, resource.material)
+  }
+  const resource = (owner: string) => {
+    const value = resources.get(owner)
+    expect(value).toBeDefined()
+    return value!
+  }
+  const positions = { current: new Float32Array([1, 2, 3, 4, 5, 6]), version: 7 }
+  const caught: Error[] = []
+  const diagnostics: unknown[][] = []
+  // The reconciler captures its error callback during createRoot, before configure.
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const errorLog = vi
+    .spyOn(console, 'error')
+    .mockImplementation((...args: unknown[]) => diagnostics.push(args))
+  let root: ReturnType<typeof createRoot>
+  try {
+    expect(typeof globalThis.reportError).not.toBe('function')
+    root = createRoot(canvas)
+    await root.configure({
+      gl: renderer as unknown as RootState['gl'],
+      camera,
+      frameloop: 'never',
+      dpr: 1,
+      size: { width: 800, height: 600, top: 0, left: 0 },
+    })
+    expect(warning.mock.calls).toEqual([
+      ['THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.'],
+    ])
+  } catch (error) {
+    warning.mockRestore()
+    errorLog.mockRestore()
+    throw error
+  }
+  let store: RootStore
+  let timestamp = 0
+  const observe = () => {
+    for (const child of store.getState().scene.children) {
+      if (!(child instanceof THREE.InstancedMesh) || instances.has(child)) continue
+      const owner = [...resources].find(([, value]) => value.geometry === child.geometry)?.[0]
+      expect(owner).toBeDefined()
+      const disposed = vi.fn()
+      child.addEventListener('dispose', disposed)
+      // Constructor identity writes are excluded from the frame-write oracle.
+      instances.set(child, { owner: owner!, writes: vi.spyOn(child, 'setMatrixAt'), disposed })
+    }
+  }
+  const snapshot = () => {
+    observe()
+    const children = store.getState().scene.children
+    return {
+      markers: children.filter((child) => child.name === 'asset-error-signal').length,
+      meshes: children
+        .filter((child) => child instanceof THREE.InstancedMesh)
+        .map((child) => {
+          const mesh = child as THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>
+          return {
+            owner: instances.get(mesh)!.owner,
+            mesh,
+            geometry: mesh.geometry,
+            material: mesh.material,
+            matrices: Array.from(mesh.instanceMatrix.array),
+            version: mesh.instanceMatrix.version,
+            writes: instances.get(mesh)!.writes.mock.calls.length,
+            count: mesh.count,
+            visible: mesh.visible,
+          }
+        }),
+    }
+  }
+  const renderChild = async (child: React.ReactNode) => {
+    await act(async () => {
+      store = root.render(React.createElement(AssetErrorBoundary, { caught }, child))
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    return snapshot()
+  }
+  return {
+    caught,
+    diagnostics,
+    resources,
+    instances,
+    makeBody,
+    resource,
+    snapshot,
+    renderChild,
+    source: (resolve: () => THREE.Object3D | Promise<THREE.Object3D>) => ({
+      resolve: vi.fn(resolve),
+    }),
+    async render(source: InstancedNodeLayerProps['source']) {
+      return renderChild(
+        React.createElement(InstancedNodeLayer, {
+          source,
+          bodyId: 'asset-test',
+          kind: 'primitive',
+          count: 2,
+          positions,
+          firstNodeIndex: 0,
+          scale: 1,
+        }),
+      )
+    },
+    async settle(action: () => void) {
+      await act(async () => {
+        action()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      return snapshot()
+    },
+    async frame() {
+      observe()
+      for (const { writes } of instances.values()) writes.mockClear()
+      await act(async () => store.getState().advance((timestamp += 1 / 60)))
+      return snapshot()
+    },
+    async dispose() {
+      try {
+        await act(async () => {
+          root.render(null)
+        })
+        expect(store.getState().scene.children).toHaveLength(0)
+        for (const value of resources.values()) {
+          expect(value.geometryDisposed).toHaveBeenCalledTimes(1)
+          expect(value.materialDisposed).toHaveBeenCalledTimes(1)
+        }
+        for (const { disposed } of instances.values()) expect(disposed).toHaveBeenCalledTimes(1)
+        for (const entry of diagnostics) {
+          expect(entry[0]).toBe(expectedError)
+          expect(entry[1]).toMatchObject({ errorBoundary: expect.any(AssetErrorBoundary) })
+        }
+        expect(warning.mock.calls).toEqual([
+          ['THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.'],
+        ])
+      } finally {
+        vi.useFakeTimers()
+        try {
+          await act(async () => root.unmount())
+          await vi.runOnlyPendingTimersAsync()
+          expect(vi.getTimerCount()).toBe(0)
+        } finally {
+          vi.useRealTimers()
+          warning.mockRestore()
+          errorLog.mockRestore()
+        }
+      }
+    },
+  }
+}
+
+function expectAssetPopulated(
+  snapshot: Awaited<ReturnType<Awaited<ReturnType<typeof createAssetHarness>>['frame']>>,
+  owner: string,
+) {
+  expect(snapshot.markers).toBe(0)
+  expect(snapshot.meshes).toHaveLength(1)
+  expect(snapshot.meshes[0].owner).toBe(owner)
+  expect(snapshot.meshes[0].matrices).toEqual(CONTIGUOUS_MATRICES)
+  expect(snapshot.meshes[0].count).toBe(2)
+  expect(snapshot.meshes[0].visible).toBe(true)
+}
+
+describe('current asset failure propagation', () => {
+  beforeEach(() => vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true))
+  afterEach(() => vi.unstubAllGlobals())
+  it.each([
+    'initial synchronous throw',
+    'initial deferred rejection',
+    'current replacement rejection',
+    'deferred success',
+    'obsolete rejection',
+    'post-unmount rejection',
+    'obsolete resolution',
+    'direct boundary calibration',
+  ])('preserves boundary and resource behavior on %s', async (name) => {
+    const error = new Error('asset-test-fixed-failure')
+    const layer = await createAssetHarness(error)
+    const a = deferredAsset()
+    const b = deferredAsset()
+    const pendingA = layer.source(() => a.promise)
+    const pendingB = layer.source(() => b.promise)
+    try {
+      if (name === 'direct boundary calibration') {
+        await layer.renderChild(React.createElement(ThrowAssetError, { error }))
+      } else if (name === 'initial synchronous throw') {
+        const source = layer.source(() => {
+          throw error
+        })
+        await layer.render(source)
+        expect(source.resolve).toHaveBeenCalledTimes(1)
+      } else if (name === 'current replacement rejection') {
+        const source = layer.source(() => layer.makeBody('A'))
+        await layer.render(source)
+        const initial = await layer.frame()
+        expectAssetPopulated(initial, 'A')
+        expect(initial.meshes[0].writes).toBe(2)
+        expect(layer.resource('A').geometryDisposed).not.toHaveBeenCalled()
+        await layer.render(pendingB)
+        expect(pendingB.resolve).toHaveBeenCalledTimes(1)
+        expect(layer.caught).toHaveLength(0)
+        await layer.settle(() => b.reject(error))
+        expect(source.resolve).toHaveBeenCalledTimes(1)
+        expect(layer.resource('A').geometryDisposed).toHaveBeenCalledTimes(1)
+        expect(layer.resource('A').materialDisposed).toHaveBeenCalledTimes(1)
+        expect(layer.instances.get(initial.meshes[0].mesh)!.disposed).toHaveBeenCalledTimes(1)
+      } else {
+        const pending = await layer.render(pendingA)
+        expect(pendingA.resolve).toHaveBeenCalledTimes(1)
+        expect(pending.meshes).toHaveLength(0)
+        expect(pending.markers).toBe(0)
+        expect(layer.caught).toHaveLength(0)
+        if (name === 'initial deferred rejection') await layer.settle(() => a.reject(error))
+        else if (name === 'deferred success')
+          await layer.settle(() => a.resolve(layer.makeBody('A')))
+        else if (name === 'post-unmount rejection') {
+          await layer.renderChild(null)
+          await layer.settle(() => a.reject(error))
+        } else {
+          const source = layer.source(() => layer.makeBody('B'))
+          await layer.render(source)
+          const initial = await layer.frame()
+          expectAssetPopulated(initial, 'B')
+          expect(initial.meshes[0].writes).toBe(2)
+          expect(source.resolve).toHaveBeenCalledTimes(1)
+          expect(layer.resource('B').geometryDisposed).not.toHaveBeenCalled()
+          if (name === 'obsolete rejection') await layer.settle(() => a.reject(error))
+          else {
+            await layer.settle(() => a.resolve(layer.makeBody('A')))
+            expect(layer.resource('A').geometryDisposed).toHaveBeenCalledTimes(1)
+            expect(layer.resource('A').materialDisposed).toHaveBeenCalledTimes(1)
+            expect(
+              [...layer.instances.values()].filter((instance) => instance.owner === 'A'),
+            ).toHaveLength(0)
+          }
+        }
+      }
+      const frames: ReturnType<typeof layer.snapshot>[] = []
+      for (let frame = 0; frame < 3; frame++) frames.push(await layer.frame())
+      const expectsBoundary = [
+        'initial synchronous throw',
+        'initial deferred rejection',
+        'current replacement rejection',
+        'direct boundary calibration',
+      ].includes(name)
+      if (expectsBoundary) {
+        expect(layer.caught).toEqual([error])
+        expect(layer.caught[0]).toBe(error)
+        expect(layer.diagnostics).toHaveLength(1)
+        expect(layer.diagnostics[0][0]).toBe(error)
+        for (const frame of frames) {
+          expect(frame.markers).toBe(1)
+          expect(frame.meshes).toHaveLength(0)
+        }
+      } else {
+        expect(layer.caught).toHaveLength(0)
+        expect(layer.diagnostics).toHaveLength(0)
+        for (const frame of frames) {
+          expect(frame.markers).toBe(0)
+          if (name === 'post-unmount rejection') expect(frame.meshes).toHaveLength(0)
+          else expectAssetPopulated(frame, name === 'deferred success' ? 'A' : 'B')
+        }
+        if (name !== 'post-unmount rejection') {
+          const owner = name === 'deferred success' ? 'A' : 'B'
+          expect(layer.resource(owner).geometryDisposed).not.toHaveBeenCalled()
+          expect(layer.resource(owner).materialDisposed).not.toHaveBeenCalled()
+          const initial = frames[0].meshes[0]
+          for (const [index, frame] of frames.entries()) {
+            const mesh = frame.meshes[0]
+            expect(mesh.mesh).toBe(initial.mesh)
+            expect(mesh.geometry).toBe(initial.geometry)
+            expect(mesh.material).toBe(initial.material)
+            expect(mesh.writes).toBe(name === 'deferred success' && index === 0 ? 2 : 0)
+            expect(mesh.version).toBe(initial.version)
+          }
+        }
+      }
+    } finally {
+      await layer.dispose()
+    }
+  })
+})
