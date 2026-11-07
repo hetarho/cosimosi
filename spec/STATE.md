@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T18:40Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:02Z | - |
 
 ## inbox
+- 261108 decided T236: direct local8h delegation adopts independently audited actual-PG completed withdrawal-trigger failure; ARCH53 records a typed DONE-only mechanism, preserving existing ACCT/AI rules, stored identity, ordinary enqueue, original window and safety stops; separate review and root DB/final gates required
 - 261108 decided T235: direct local8h delegation adopts six-case actual Sheet proof; fix only retained private fling state, preserve height and all public/native/domain/T233 contracts, require independent review and final gate
 - 261108 decided T233 T234: direct local8h delegation adopts actual refused-dialog swipe and disposed-refocus callback reproductions; preserve public APIs and live behavior, limit to existing private helpers/tests, require separate native reviews and final gate
 - 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
@@ -56,7 +57,7 @@
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
-| ARCH | 5 | 5 | - | 0 |
+| ARCH | 6 | 6 | - | 0 |
 | PROD | 2 | 2 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
@@ -127,6 +128,7 @@
 | T233 | Restore a dialog after refused swipe dismissal | ARCH | T227 | todo |
 | T234 | Fence refocus callbacks after subscription disposal | ARCH | T227 | todo |
 | T235 | Restore retained Sheet swipe state on reopen or refusal | ARCH | T233 | todo |
+| T236 | Recover a completed inert withdrawal trigger | ARCH ACCT AI INV | T227 | todo |
 
 ## next
 - local8h: retry approved T225/T226 integration after the spec preflight repair, then evaluate the affected-selection proposal and retain the final coordinator gate
@@ -141,6 +143,8 @@
 - complete frozen browser validation and reserve final integrated gate
 - implement-task T235 in an isolated assigned workspace
 - inspect the frozen withdrawal probe and preserve final-gate time
+- implement-task T236 in an isolated assigned workspace
+- inspect the separately prepared mapper probe; reserve final integrated gate
 
 ## log
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
@@ -157,9 +161,9 @@
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
 - 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
+- 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
+- 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
-- 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
-- 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recallfb)

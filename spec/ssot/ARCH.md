@@ -1,6 +1,6 @@
 # ARCH architecture
 
-> r5 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
+> r6 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
 
 ## decisions
 - ARCH-1 [o] cosimosi is one pnpm workspace of peer apps, shared packages and one RPC contract; each app builds and ships on its own
@@ -363,6 +363,11 @@
   - `pnpm infra:up` and `pnpm infra:down` start and stop the compose stack; a fresh database needs `pnpm db:migrate` →~ARCH-12
   - the dev sign-in bypass and its seeded universe →~AUTH-15
 - ARCH-52 [o] no multi-user real-time collaboration: social features are async, one-way and deferred →~SOCIAL-3
+- ARCH-53 [o] completed user-trigger recovery is an explicitly selected typed queue capability, separate from ordinary enqueue; the withdrawal scheduler consumes it to preserve its existing durable-trigger promise →=ACCT-22 →!ARCH-9
+  - its user-scoped atomic operation inserts a missing pending envelope or re-arms a `done` row under the same identity: preserve ID, user, kind, key, payload, target and creation time; clear terminal time, reset attempts, set the requested due time and advance the lease generation
+  - pending/running rows retain their persisted values; failed/cancelled rows remain inactive and cannot be revived. An inactive or malformed returned user envelope is an error before the producer commits its fact →~AI-34 →~AI-36
+  - ordinary enqueue keeps terminal deduplication, and cleanup keeps its existing retention policy; recovery neither deletes a trigger first nor changes the stored identity/target format →=AI-33 →=AI-38
+  - the producer derives due-ness from its own canonical source fact; queue infrastructure owns only envelopes and lease fences, with no account rule or kind switch in its SQL →=ACCT-22 →!ARCH-8
 
 ## flow
 - change: edit → task tier(`pnpm lint`, affected typecheck and tests, conditional gates) → commit(pre-commit hook) → batch `pnpm check` on the final candidate → push → CI `pnpm check`
@@ -373,6 +378,7 @@
 - the `be-architecture`, `fe-architecture` and `mobile-architecture` skills are procedures over these decisions, never a second source of their rules
 
 ## chg
+- r6 261108 ARCH-53+ explicit typed completed user-trigger recovery; ordinary enqueue, identity, safety stops and retention unchanged
 - r5 261108 ARCH-47✎ pnpm diff selectors→Git-root-aware affected check entrypoints; task, batch and CI obligations preserved
 
 - r4 261103 ARCH-28✎ parity guards: copied pure modules only→also same-named slices export the same names, platform-only additions listed (slice-api-parity guard)
