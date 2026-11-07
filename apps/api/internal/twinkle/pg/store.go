@@ -213,6 +213,18 @@ func balanceCheckAsInsufficient(err error) error {
 	return err
 }
 
+// LedgerDedupExists confirms a replay within the append's user/reason boundary.
+func (s Store) LedgerDedupExists(ctx context.Context, scope platform.UserScope, dedupKey string, reason twinkle.EntryReason) (bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, err
+	}
+	return s.queries.TwinkleLedgerDedupExists(ctx, dbgen.TwinkleLedgerDedupExistsParams{
+		DedupKey:    pgText(&dedupKey),
+		UserID:      scope.UserID(),
+		EntryReason: string(reason),
+	})
+}
+
 // AppendLedgerEntry appends one row to the append-only earn/spend log ([I1] — the log is
 // never updated or deleted by the system). Returns false when the entry's dedup key was
 // already applied (the idempotent retry no-op), true when the row was written. In an
@@ -256,11 +268,7 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 	if entry.DedupKey == nil {
 		return false, ErrUnexpectedLedgerConflict
 	}
-	dedupExists, err := s.queries.TwinkleLedgerDedupExists(ctx, dbgen.TwinkleLedgerDedupExistsParams{
-		DedupKey:    pgText(entry.DedupKey),
-		UserID:      scope.UserID(),
-		EntryReason: string(entry.Reason),
-	})
+	dedupExists, err := s.LedgerDedupExists(ctx, scope, *entry.DedupKey, entry.Reason)
 	if err != nil {
 		return false, err
 	}

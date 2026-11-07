@@ -23,6 +23,8 @@ type LedgerStore interface {
 	GetBalanceRecord(ctx context.Context, scope platform.UserScope) (*BalanceRecord, error)
 	ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, resetWindow time.Time, generalDelta int, smallSpentDelta int) (BalanceRecord, error)
 	AppendLedgerEntry(ctx context.Context, scope platform.UserScope, entry LedgerEntry) (bool, error)
+	// LedgerDedupExists uses the same user/reason replay scope as AppendLedgerEntry.
+	LedgerDedupExists(ctx context.Context, scope platform.UserScope, dedupKey string, reason EntryReason) (bool, error)
 	LockInviteRewardsByInviter(ctx context.Context, scope platform.UserScope) error
 	GetInviteRewardState(ctx context.Context, scope platform.UserScope, dedupKey string) (rewardCount int64, replay bool, err error)
 	// ListLedgerPage reads one keyset page of the user's history, newest first. A nil cursor starts at
