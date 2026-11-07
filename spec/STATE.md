@@ -119,18 +119,17 @@
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 | T236 | Recover a completed inert withdrawal trigger | ARCH ACCT AI INV | T227 | todo |
-| T237 | Invalidate settled matrices when the committed mapper changes | ARCH VIS | T227 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 11 | 11 | 0 | 0 | 0 | 0 | 2026-11-07T18:55:14.111Z | [history](work/local8h.json) |
+| local8h | 2 | 13 | 12 | 1 | 0 | 1 | 0 | 2026-11-07T19:35:29.965Z | [history](work/local8h.json) |
 
 ## next
-- implement-task T236 and T237 in their separate assigned workspaces
-- reserve root DB integration and final integrated gate
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T237 integrated
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
 - 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
@@ -150,4 +149,3 @@
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
 - 261107 T235 integrated
-- 261107 T233 integrated

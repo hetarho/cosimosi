@@ -140,6 +140,11 @@ export function InstancedNodeLayer({
   // are stable scratch objects: the hot loop compares and records field-wise, never allocating.
   const composedFrame = useMemo(() => createInstanceFrameKey(), [])
   const frame = useMemo(() => createInstanceFrameKey(), [])
+  // A settled mapper is a matrix input. Invalidate after commit, before the next frame, so an
+  // unfinished React render cannot disturb the live cache.
+  useLayoutEffect(() => {
+    resetInstanceFrame(composedFrame)
+  }, [composedFrame, getInstancePosition])
   const matrix = useMemo(() => new THREE.Matrix4(), [])
   const derivedPosition = useMemo(() => new Float32Array(3), [])
   // A zero-scale matrix hides an instance whose coordinate isn't in the live buffer yet, keeping its
