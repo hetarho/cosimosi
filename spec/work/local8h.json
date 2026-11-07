@@ -14,10 +14,7 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": [
-      "T225",
-      "T226"
-    ]
+    "taskScope": ["T225", "T226"]
   },
   "summary": {
     "total": 2,
@@ -34,14 +31,10 @@
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": [
-        "T225"
-      ],
+      "tasks": ["T225"],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": [
-        "gatesworker"
-      ],
+      "contributors": ["gatesworker"],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -116,14 +109,10 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": [
-        "T226"
-      ],
+      "tasks": ["T226"],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": [
-        "fieldworker"
-      ],
+      "contributors": ["fieldworker"],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -206,9 +195,7 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": [
-          "T225"
-        ]
+        "taskScope": ["T225"]
       }
     },
     {
@@ -235,14 +222,10 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": [
-          "T225"
-        ],
+        "tasks": ["T225"],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": [
-          "gatesworker"
-        ],
+        "contributors": ["gatesworker"],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -269,10 +252,7 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": [
-          "T225",
-          "T226"
-        ]
+        "taskScope": ["T225", "T226"]
       }
     },
     {
@@ -288,14 +268,10 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": [
-          "T226"
-        ],
+        "tasks": ["T226"],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": [
-          "fieldworker"
-        ],
+        "contributors": ["fieldworker"],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
