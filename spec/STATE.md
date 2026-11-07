@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:02Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:14Z | - |
 
 ## inbox
+- 261108 decided T237: direct local8h delegation adopts independently audited eight-case mapper-cache proof; VIS30 reconciles accepted T217 settled skipping and changed mapper input, preserving output precision/quality and zero clean/brightness writes; no current production trigger claimed
 - 261108 decided T236: direct local8h delegation adopts independently audited actual-PG completed withdrawal-trigger failure; ARCH53 records a typed DONE-only mechanism, preserving existing ACCT/AI rules, stored identity, ordinary enqueue, original window and safety stops; separate review and root DB/final gates required
 - 261108 decided T235: direct local8h delegation adopts six-case actual Sheet proof; fix only retained private fling state, preserve height and all public/native/domain/T233 contracts, require independent review and final gate
 - 261108 decided T233 T234: direct local8h delegation adopts actual refused-dialog swipe and disposed-refocus callback reproductions; preserve public APIs and live behavior, limit to existing private helpers/tests, require separate native reviews and final gate
@@ -80,7 +81,7 @@
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 5 | 1 | DEMO-14✎ DEMO-22✎ DEMO-25✎ DEMO-26✎ DEMO-27✎ DEMO-29✎ DEMO-31✎ | 0 |
 | ONB | 3 | 2 | ONB-6✎ ONB-9✎ | 1 |
-| VIS    | 2   | 2      | -       | 0   |
+| VIS | 3 | 3 | - | 0 |
 | ACCT | 4 | 4 | - | 1 |
 | AUTH | 3 | 3 | - | 0 |
 | CLIENT | 3 | 3 | - | 0 |
@@ -118,6 +119,7 @@
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 | T236 | Recover a completed inert withdrawal trigger | ARCH ACCT AI INV | T227 | todo |
+| T237 | Invalidate settled matrices when the committed mapper changes | ARCH VIS | T227 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -125,10 +127,12 @@
 | local8h | 2 | 11 | 11 | 0 | 0 | 0 | 0 | 2026-11-07T18:55:14.111Z | [history](work/local8h.json) |
 
 ## next
-- implement-task T236 in an isolated assigned workspace
-- inspect the separately prepared mapper probe; reserve final integrated gate
+- implement-task T236 and T237 in their separate assigned workspaces
+- reserve root DB integration and final integrated gate
 
 ## log
+- 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
+- 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
 - 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
 - 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
 - 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
@@ -147,5 +151,3 @@
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
 - 261107 T235 integrated
 - 261107 T233 integrated
-- 261107 T234 integrated
-- 261107 T232 integrated
