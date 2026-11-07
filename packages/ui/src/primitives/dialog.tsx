@@ -48,7 +48,7 @@ function DialogSurface({
   const containerRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const descriptionId = useId()
-  const drag = useSheetDrag(onClose)
+  const drag = useSheetDrag(onClose, open)
 
   useFocusTrap(containerRef, { active: open, onEscape: onClose })
 
