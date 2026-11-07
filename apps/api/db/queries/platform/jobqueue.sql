@@ -174,6 +174,71 @@ SELECT
     lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 FROM inserted_job;
 
+-- Completed user triggers may re-arm under their existing identity. Other states retain their envelope.
+-- name: EnqueueOrRearmCompletedUserJob :one
+WITH inserted_job AS (
+    INSERT INTO jobs (
+        id,
+        user_id,
+        kind,
+        payload,
+        status,
+        attempts,
+        next_run_at,
+        created_at,
+        dedup_key
+    ) VALUES (
+        sqlc.arg(id),
+        sqlc.arg(user_id),
+        sqlc.arg(kind),
+        sqlc.arg(payload),
+        sqlc.arg(status),
+        sqlc.arg(attempts),
+        sqlc.arg(next_run_at),
+        sqlc.arg(created_at),
+        sqlc.narg(dedup_key)
+    )
+    ON CONFLICT (user_id, kind, dedup_key) WHERE dedup_key IS NOT NULL
+    DO UPDATE SET
+        status = CASE WHEN jobs.status = 'done' THEN 'pending' ELSE jobs.status END,
+        attempts = CASE WHEN jobs.status = 'done' THEN 0 ELSE jobs.attempts END,
+        terminal_at = CASE WHEN jobs.status = 'done' THEN NULL ELSE jobs.terminal_at END,
+        next_run_at = CASE WHEN jobs.status = 'done' THEN EXCLUDED.next_run_at ELSE jobs.next_run_at END,
+        lease_generation = CASE WHEN jobs.status = 'done' THEN jobs.lease_generation + 1 ELSE jobs.lease_generation END
+    RETURNING
+        id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+        lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+), inserted_targets AS (
+    INSERT INTO job_targets (
+        job_id,
+        user_id,
+        target_kind,
+        target_id,
+        expected_revision
+    )
+    SELECT
+        inserted_job.id,
+        inserted_job.user_id,
+        target.target_kind,
+        target.target_id,
+        NULLIF(target.expected_revision, 0)
+    FROM inserted_job
+    CROSS JOIN LATERAL (
+        SELECT
+            UNNEST(sqlc.arg(target_kinds)::text[]) AS target_kind,
+            UNNEST(sqlc.arg(target_ids)::text[]) AS target_id,
+            UNNEST(sqlc.arg(expected_revisions)::bigint[]) AS expected_revision
+    ) AS target
+    WHERE inserted_job.id = sqlc.arg(id)
+    ON CONFLICT DO NOTHING
+    RETURNING job_id
+)
+SELECT
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+FROM inserted_job;
+
+
 -- Batch form of EnqueueJob for jobs without a dedup key: one statement inserts every job and its
 -- targets. The caller sizes the batch; payloads are the empty control object every kind carries.
 -- name: EnqueueJobs :exec

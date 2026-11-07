@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T18:29:09.772Z",
-  "sourceCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+  "snapshotAt": "2026-11-07T19:44:54.729Z",
+  "sourceCommit": "fba1c2583cf7a40ba9e8b04be9996d34acc80eac",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -14,11 +14,25 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232", "T233", "T234"]
+    "taskScope": [
+      "T225",
+      "T226",
+      "T227",
+      "T228",
+      "T229",
+      "T230",
+      "T231",
+      "T232",
+      "T233",
+      "T234",
+      "T235",
+      "T236",
+      "T237"
+    ]
   },
   "summary": {
-    "total": 10,
-    "completed": 10,
+    "total": 13,
+    "completed": 13,
     "remaining": 0,
     "running": 0,
     "review": 0,
@@ -593,6 +607,8 @@
       "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
       "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
       "submittedAt": "2026-11-07T18:22:13.985Z",
+      "integratedCommit": "c6971b92500419a6239c31157eabf7812f184037",
+      "integratedAt": "2026-11-07T18:29:10.665Z",
       "risk": null,
       "review": {
         "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
@@ -626,6 +642,13 @@
           "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
           "startedAt": "2026-11-07T18:22:11.446Z",
           "finishedAt": "2026-11-07T18:22:13.597Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T18:29:10.106Z",
+          "finishedAt": "2026-11-07T18:29:10.455Z"
         }
       ]
     },
@@ -687,6 +710,180 @@
           "command": "pnpm lint:spec",
           "startedAt": "2026-11-07T18:25:37.490Z",
           "finishedAt": "2026-11-07T18:25:37.861Z"
+        }
+      ]
+    },
+    {
+      "id": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "group": "local8h",
+      "taskId": "T235",
+      "tasks": ["T235"],
+      "lane": null,
+      "owner": "sheetworker",
+      "contributors": ["sheetworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T18:43:20.470Z",
+      "startCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+      "verifiedCommit": "efa25d138961b9ef195c75d334cb09198f098c97",
+      "submittedBase": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+      "submissionId": "9a5864ad-832d-4662-bd97-a816f66ce369",
+      "submittedAt": "2026-11-07T18:51:06.834Z",
+      "integratedCommit": "a688c8791b61ad2e6d1e626a9864300e9114abd9",
+      "integratedAt": "2026-11-07T18:55:14.804Z",
+      "risk": null,
+      "review": {
+        "id": "0fa4fc42-e380-40b3-933e-54b81342010b",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T235 correctly clears only retained private fling state when controlled open remains or becomes true, preserving chosen height and accepted swipe exits. All82 UI tests pass independently at exact efa25d13, including48primitive cases, full/mid-reopen, refused body update, new-close full presence interval and retained T233 controls. Original three-red proof, actual581-test affected receipts and normal hooks match the submission;12protected public/native/presence/geometry/domain/baseline files are unchanged.",
+        "findings": [],
+        "commit": "efa25d138961b9ef195c75d334cb09198f098c97",
+        "baseCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+        "submissionId": "9a5864ad-832d-4662-bd97-a816f66ce369",
+        "createdAt": "2026-11-07T18:52:30.596Z",
+        "finishedAt": "2026-11-07T18:54:59.374Z"
+      },
+      "steps": [
+        {
+          "taskId": "T235",
+          "commit": "efa25d138961b9ef195c75d334cb09198f098c97",
+          "at": "2026-11-07T18:51:06.823Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+              "startedAt": "2026-11-07T18:51:04.333Z",
+              "finishedAt": "2026-11-07T18:51:06.488Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+          "startedAt": "2026-11-07T18:51:04.333Z",
+          "finishedAt": "2026-11-07T18:51:06.488Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T18:55:14.238Z",
+          "finishedAt": "2026-11-07T18:55:14.586Z"
+        }
+      ]
+    },
+    {
+      "id": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "group": "local8h",
+      "taskId": "T236",
+      "tasks": ["T236"],
+      "lane": null,
+      "owner": "withdrawalworker",
+      "contributors": ["withdrawalworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T19:06:12.161Z",
+      "startCommit": "5f73743831ec03a6a43fde570fbb3a7300f168aa",
+      "verifiedCommit": "8789525944af266fef4339c9a17a76563f616bbe",
+      "submittedBase": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+      "submissionId": "59dde23b-c737-4452-b179-667c873e0ec5",
+      "submittedAt": "2026-11-07T19:29:41.155Z",
+      "risk": null,
+      "review": {
+        "id": "8ba2cdd8-f5eb-4fa8-b8fa-da930159b393",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T236 explicitly opts account into typed DONE-only recovery under current ARCH53, with atomic same-identity five-field rearm, actual scoped persisted-target read and active-envelope rejection before marking; ordinary scheduler/enqueue/terminal retention remain literal unchanged and existing markers retain original due. Independently137 focused Go tests passed/22 DB tests skipped at exact87895259 against currentfba1c258; full diff, complete contracts, all10 source hashes,15 protected blocks, original executed red, pinned generation and real normal hooks reviewed. Seven new real-DB functions and conditional check:api plus final integrated gate remain coordinator obligations; running-inert/concurrent-restore/captured-clock races are expressly outside this repair.",
+        "findings": [],
+        "commit": "8789525944af266fef4339c9a17a76563f616bbe",
+        "baseCommit": "fba1c2583cf7a40ba9e8b04be9996d34acc80eac",
+        "submissionId": "59dde23b-c737-4452-b179-667c873e0ec5",
+        "createdAt": "2026-11-07T19:42:25.042Z",
+        "finishedAt": "2026-11-07T19:44:39.741Z"
+      },
+      "steps": [
+        {
+          "taskId": "T236",
+          "commit": "8789525944af266fef4339c9a17a76563f616bbe",
+          "at": "2026-11-07T19:29:41.146Z",
+          "verification": [
+            {
+              "command": "python3 /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T236/verify-final.py",
+              "startedAt": "2026-11-07T19:29:39.078Z",
+              "finishedAt": "2026-11-07T19:29:40.768Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "python3 /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T236/verify-final.py",
+          "startedAt": "2026-11-07T19:29:39.078Z",
+          "finishedAt": "2026-11-07T19:29:40.768Z"
+        }
+      ]
+    },
+    {
+      "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "group": "local8h",
+      "taskId": "T237",
+      "tasks": ["T237"],
+      "lane": null,
+      "owner": "mapperworker",
+      "contributors": ["mapperworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T19:20:26.074Z",
+      "startCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+      "verifiedCommit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+      "submittedBase": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+      "submissionId": "69b643d4-a23d-4472-8a55-0bb33da1a7ec",
+      "submittedAt": "2026-11-07T19:27:03.193Z",
+      "integratedCommit": "35bc9e2d058027ef432f989e411ab615c9a7cdf8",
+      "integratedAt": "2026-11-07T19:35:30.787Z",
+      "risk": null,
+      "review": {
+        "id": "f3b74465-87f5-455e-b22d-7001bb49e496",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T237 adds only committed-layout invalidation of the private matrix key when the mapper changes, preserving public frame keys, composition and resource ownership under current VIS3. All17 focused tests pass independently at exact78432fb1, including8 actual-R3F cases for mapper/default changes, zero clean/brightness writes, fail-open/version controls and exact ordinary disposal. Original3red/14green proof,16protected source hashes,198renderer/741affected worker tests and real normal-hook receipts match submission.",
+        "findings": [],
+        "commit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+        "baseCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+        "submissionId": "69b643d4-a23d-4472-8a55-0bb33da1a7ec",
+        "createdAt": "2026-11-07T19:28:22.889Z",
+        "finishedAt": "2026-11-07T19:32:03.325Z"
+      },
+      "steps": [
+        {
+          "taskId": "T237",
+          "commit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+          "at": "2026-11-07T19:27:03.182Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/InstancedNodeLayer.test.ts",
+              "startedAt": "2026-11-07T19:27:02.107Z",
+              "finishedAt": "2026-11-07T19:27:02.843Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/InstancedNodeLayer.test.ts",
+          "startedAt": "2026-11-07T19:27:02.107Z",
+          "finishedAt": "2026-11-07T19:27:02.843Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T19:35:30.195Z",
+          "finishedAt": "2026-11-07T19:35:30.541Z"
         }
       ]
     }
@@ -3084,6 +3281,627 @@
       "group": "local8h",
       "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
       "taskId": "T233",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 120,
+      "at": "2026-11-07T18:29:10.615Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T18:29:10.106Z",
+            "finishedAt": "2026-11-07T18:29:10.455Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 121,
+      "at": "2026-11-07T18:29:10.665Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "c6971b92500419a6239c31157eabf7812f184037",
+        "integratedAt": "2026-11-07T18:29:10.665Z"
+      }
+    },
+    {
+      "sequence": 122,
+      "at": "2026-11-07T18:43:17.100Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235"
+        ]
+      }
+    },
+    {
+      "sequence": 123,
+      "at": "2026-11-07T18:43:20.470Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "a666c552-3a57-4484-933b-f1288868d0f2",
+        "group": "local8h",
+        "taskId": "T235",
+        "tasks": ["T235"],
+        "lane": null,
+        "owner": "sheetworker",
+        "contributors": ["sheetworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T18:43:20.470Z",
+        "startCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f"
+      }
+    },
+    {
+      "sequence": 124,
+      "at": "2026-11-07T18:43:20.938Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 125,
+      "at": "2026-11-07T18:51:04.074Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 126,
+      "at": "2026-11-07T18:51:06.834Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "efa25d138961b9ef195c75d334cb09198f098c97",
+        "submittedBase": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+        "submissionId": "9a5864ad-832d-4662-bd97-a816f66ce369",
+        "submittedAt": "2026-11-07T18:51:06.834Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T235",
+            "commit": "efa25d138961b9ef195c75d334cb09198f098c97",
+            "at": "2026-11-07T18:51:06.823Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+                "startedAt": "2026-11-07T18:51:04.333Z",
+                "finishedAt": "2026-11-07T18:51:06.488Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+            "startedAt": "2026-11-07T18:51:04.333Z",
+            "finishedAt": "2026-11-07T18:51:06.488Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 127,
+      "at": "2026-11-07T18:52:30.596Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "0fa4fc42-e380-40b3-933e-54b81342010b",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "efa25d138961b9ef195c75d334cb09198f098c97",
+          "baseCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+          "submissionId": "9a5864ad-832d-4662-bd97-a816f66ce369",
+          "createdAt": "2026-11-07T18:52:30.596Z"
+        }
+      }
+    },
+    {
+      "sequence": 128,
+      "at": "2026-11-07T18:54:59.374Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "0fa4fc42-e380-40b3-933e-54b81342010b",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T235 correctly clears only retained private fling state when controlled open remains or becomes true, preserving chosen height and accepted swipe exits. All82 UI tests pass independently at exact efa25d13, including48primitive cases, full/mid-reopen, refused body update, new-close full presence interval and retained T233 controls. Original three-red proof, actual581-test affected receipts and normal hooks match the submission;12protected public/native/presence/geometry/domain/baseline files are unchanged.",
+          "findings": [],
+          "commit": "efa25d138961b9ef195c75d334cb09198f098c97",
+          "baseCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f",
+          "submissionId": "9a5864ad-832d-4662-bd97-a816f66ce369",
+          "createdAt": "2026-11-07T18:52:30.596Z",
+          "finishedAt": "2026-11-07T18:54:59.374Z"
+        }
+      }
+    },
+    {
+      "sequence": 129,
+      "at": "2026-11-07T18:55:13.105Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 130,
+      "at": "2026-11-07T18:55:14.754Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T18:55:14.238Z",
+            "finishedAt": "2026-11-07T18:55:14.586Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 131,
+      "at": "2026-11-07T18:55:14.804Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "a688c8791b61ad2e6d1e626a9864300e9114abd9",
+        "integratedAt": "2026-11-07T18:55:14.804Z"
+      }
+    },
+    {
+      "sequence": 132,
+      "at": "2026-11-07T19:06:08.533Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236"
+        ]
+      }
+    },
+    {
+      "sequence": 133,
+      "at": "2026-11-07T19:06:12.161Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "652bb260-f071-477b-92fd-1d87c29495fc",
+        "group": "local8h",
+        "taskId": "T236",
+        "tasks": ["T236"],
+        "lane": null,
+        "owner": "withdrawalworker",
+        "contributors": ["withdrawalworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T19:06:12.161Z",
+        "startCommit": "5f73743831ec03a6a43fde570fbb3a7300f168aa"
+      }
+    },
+    {
+      "sequence": 134,
+      "at": "2026-11-07T19:06:12.627Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 135,
+      "at": "2026-11-07T19:20:22.066Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237"
+        ]
+      }
+    },
+    {
+      "sequence": 136,
+      "at": "2026-11-07T19:20:26.074Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+        "group": "local8h",
+        "taskId": "T237",
+        "tasks": ["T237"],
+        "lane": null,
+        "owner": "mapperworker",
+        "contributors": ["mapperworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T19:20:26.074Z",
+        "startCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661"
+      }
+    },
+    {
+      "sequence": 137,
+      "at": "2026-11-07T19:20:26.586Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 138,
+      "at": "2026-11-07T19:27:01.828Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 139,
+      "at": "2026-11-07T19:27:03.193Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+        "submittedBase": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+        "submissionId": "69b643d4-a23d-4472-8a55-0bb33da1a7ec",
+        "submittedAt": "2026-11-07T19:27:03.193Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T237",
+            "commit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+            "at": "2026-11-07T19:27:03.182Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/InstancedNodeLayer.test.ts",
+                "startedAt": "2026-11-07T19:27:02.107Z",
+                "finishedAt": "2026-11-07T19:27:02.843Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/InstancedNodeLayer.test.ts",
+            "startedAt": "2026-11-07T19:27:02.107Z",
+            "finishedAt": "2026-11-07T19:27:02.843Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 140,
+      "at": "2026-11-07T19:28:22.889Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "f3b74465-87f5-455e-b22d-7001bb49e496",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+          "baseCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+          "submissionId": "69b643d4-a23d-4472-8a55-0bb33da1a7ec",
+          "createdAt": "2026-11-07T19:28:22.889Z"
+        }
+      }
+    },
+    {
+      "sequence": 141,
+      "at": "2026-11-07T19:29:38.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 142,
+      "at": "2026-11-07T19:29:41.155Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "8789525944af266fef4339c9a17a76563f616bbe",
+        "submittedBase": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+        "submissionId": "59dde23b-c737-4452-b179-667c873e0ec5",
+        "submittedAt": "2026-11-07T19:29:41.155Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T236",
+            "commit": "8789525944af266fef4339c9a17a76563f616bbe",
+            "at": "2026-11-07T19:29:41.146Z",
+            "verification": [
+              {
+                "command": "python3 /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T236/verify-final.py",
+                "startedAt": "2026-11-07T19:29:39.078Z",
+                "finishedAt": "2026-11-07T19:29:40.768Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "python3 /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T236/verify-final.py",
+            "startedAt": "2026-11-07T19:29:39.078Z",
+            "finishedAt": "2026-11-07T19:29:40.768Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 143,
+      "at": "2026-11-07T19:32:03.325Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "f3b74465-87f5-455e-b22d-7001bb49e496",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T237 adds only committed-layout invalidation of the private matrix key when the mapper changes, preserving public frame keys, composition and resource ownership under current VIS3. All17 focused tests pass independently at exact78432fb1, including8 actual-R3F cases for mapper/default changes, zero clean/brightness writes, fail-open/version controls and exact ordinary disposal. Original3red/14green proof,16protected source hashes,198renderer/741affected worker tests and real normal-hook receipts match submission.",
+          "findings": [],
+          "commit": "78432fb160ba08d47c7fd2e51164cc3c86422817",
+          "baseCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661",
+          "submissionId": "69b643d4-a23d-4472-8a55-0bb33da1a7ec",
+          "createdAt": "2026-11-07T19:28:22.889Z",
+          "finishedAt": "2026-11-07T19:32:03.325Z"
+        }
+      }
+    },
+    {
+      "sequence": 144,
+      "at": "2026-11-07T19:35:28.948Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 145,
+      "at": "2026-11-07T19:35:30.705Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T19:35:30.195Z",
+            "finishedAt": "2026-11-07T19:35:30.541Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 146,
+      "at": "2026-11-07T19:35:30.787Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "35bc9e2d058027ef432f989e411ab615c9a7cdf8",
+        "integratedAt": "2026-11-07T19:35:30.787Z"
+      }
+    },
+    {
+      "sequence": 147,
+      "at": "2026-11-07T19:42:25.042Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "8ba2cdd8-f5eb-4fa8-b8fa-da930159b393",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "8789525944af266fef4339c9a17a76563f616bbe",
+          "baseCommit": "fba1c2583cf7a40ba9e8b04be9996d34acc80eac",
+          "submissionId": "59dde23b-c737-4452-b179-667c873e0ec5",
+          "createdAt": "2026-11-07T19:42:25.042Z"
+        }
+      }
+    },
+    {
+      "sequence": 148,
+      "at": "2026-11-07T19:44:39.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "8ba2cdd8-f5eb-4fa8-b8fa-da930159b393",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T236 explicitly opts account into typed DONE-only recovery under current ARCH53, with atomic same-identity five-field rearm, actual scoped persisted-target read and active-envelope rejection before marking; ordinary scheduler/enqueue/terminal retention remain literal unchanged and existing markers retain original due. Independently137 focused Go tests passed/22 DB tests skipped at exact87895259 against currentfba1c258; full diff, complete contracts, all10 source hashes,15 protected blocks, original executed red, pinned generation and real normal hooks reviewed. Seven new real-DB functions and conditional check:api plus final integrated gate remain coordinator obligations; running-inert/concurrent-restore/captured-clock races are expressly outside this repair.",
+          "findings": [],
+          "commit": "8789525944af266fef4339c9a17a76563f616bbe",
+          "baseCommit": "fba1c2583cf7a40ba9e8b04be9996d34acc80eac",
+          "submissionId": "59dde23b-c737-4452-b179-667c873e0ec5",
+          "createdAt": "2026-11-07T19:42:25.042Z",
+          "finishedAt": "2026-11-07T19:44:39.741Z"
+        }
+      }
+    },
+    {
+      "sequence": 149,
+      "at": "2026-11-07T19:44:53.630Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

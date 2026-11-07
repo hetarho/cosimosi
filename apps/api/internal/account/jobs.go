@@ -16,10 +16,12 @@ func WithdrawalSweepJobIdentity(scope platform.UserScope) (jobqueue.UserJobIdent
 	return jobqueue.NewUserJobIdentity(WithdrawalJobKind, "withdrawal:"+scope.UserID())
 }
 
-type WithdrawalJobScheduler struct{ queue jobqueue.UserScheduler }
+type WithdrawalJobScheduler struct {
+	queue jobqueue.RearmingUserScheduler
+}
 
-func NewWithdrawalJobScheduler(store jobqueue.UserJobStore, now func() time.Time, newID func() string) (WithdrawalJobScheduler, error) {
-	queue, err := jobqueue.NewUserScheduler(store, now, newID)
+func NewWithdrawalJobScheduler(store jobqueue.CompletedUserJobStore, now func() time.Time, newID func() string) (WithdrawalJobScheduler, error) {
+	queue, err := jobqueue.NewRearmingUserScheduler(store, now, newID)
 	return WithdrawalJobScheduler{queue: queue}, err
 }
 func (s WithdrawalJobScheduler) Schedule(ctx context.Context, scope platform.UserScope, due time.Time) error {
