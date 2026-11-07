@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T15:38:24.142Z",
-  "sourceCommit": "9fe5b77baab1e38098f750546bada30db49de818",
+  "snapshotAt": "2026-11-07T15:41:07.426Z",
+  "sourceCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -21,21 +21,14 @@
   },
   "summary": {
     "total": 2,
-    "completed": 1,
-    "remaining": 1,
+    "completed": 2,
+    "remaining": 0,
     "running": 0,
-    "review": 1,
+    "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T226",
-      "title": "Preserve settled color-field instances across React rerenders",
-      "dep": [],
-      "status": "ready"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -57,6 +50,8 @@
       "submittedBase": "6b21631d3f5e11e20db5800f39ee669c712125da",
       "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
       "submittedAt": "2026-11-07T15:24:18.268Z",
+      "integratedCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
+      "integratedAt": "2026-11-07T15:38:25.117Z",
       "risk": null,
       "review": {
         "id": "2aca8e36-164e-44ce-a661-f8aa8013cc92",
@@ -108,6 +103,13 @@
           "startedAt": "2026-11-07T15:24:13.396Z",
           "finishedAt": "2026-11-07T15:24:17.433Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T15:38:24.269Z",
+          "finishedAt": "2026-11-07T15:38:24.628Z"
+        }
       ]
     },
     {
@@ -122,7 +124,7 @@
       "contributors": [
         "fieldworker"
       ],
-      "status": "ready",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
       "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
@@ -131,6 +133,19 @@
       "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
       "submittedAt": "2026-11-07T15:26:41.154Z",
       "risk": null,
+      "review": {
+        "id": "c890a88e-8f15-44ab-8428-cef3d50b407a",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Fresh T226 review against integrated target d24e8847: the stable attachment fix and actual R3F lifecycle regressions remain correct. T225 changes only subprocess completion and adds its guard suite, with no overlap in renderer/config/dependency/task contracts. Both focused real-R3F cases passed again in the new fixed review checkout, including 20 rerenders, unchanged matrices/upload versions and invalidation/remount controls.",
+        "findings": [],
+        "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+        "baseCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
+        "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+        "createdAt": "2026-11-07T15:39:30.047Z",
+        "finishedAt": "2026-11-07T15:40:41.964Z"
+      },
       "reviewHistory": [
         {
           "id": "2cfa3b80-ced7-4b90-b2fe-068f3f754b25",
@@ -699,6 +714,101 @@
       "group": "local8h",
       "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "taskId": "T225",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 27,
+      "at": "2026-11-07T15:38:24.796Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T15:38:24.269Z",
+            "finishedAt": "2026-11-07T15:38:24.628Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 28,
+      "at": "2026-11-07T15:38:25.117Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
+        "integratedAt": "2026-11-07T15:38:25.117Z"
+      }
+    },
+    {
+      "sequence": 29,
+      "at": "2026-11-07T15:39:30.047Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "c890a88e-8f15-44ab-8428-cef3d50b407a",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "baseCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
+          "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+          "createdAt": "2026-11-07T15:39:30.047Z"
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "at": "2026-11-07T15:40:41.964Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "c890a88e-8f15-44ab-8428-cef3d50b407a",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Fresh T226 review against integrated target d24e8847: the stable attachment fix and actual R3F lifecycle regressions remain correct. T225 changes only subprocess completion and adds its guard suite, with no overlap in renderer/config/dependency/task contracts. Both focused real-R3F cases passed again in the new fixed review checkout, including 20 rerenders, unchanged matrices/upload versions and invalidation/remount controls.",
+          "findings": [],
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "baseCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
+          "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+          "createdAt": "2026-11-07T15:39:30.047Z",
+          "finishedAt": "2026-11-07T15:40:41.964Z"
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "at": "2026-11-07T15:41:06.456Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

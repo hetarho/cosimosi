@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { cameraPosition, clamp, dot, float, normalize, positionWorld, sqrt, uv } from 'three/tsl'
 import * as THREE from 'three/webgpu'
@@ -74,6 +74,14 @@ export function ColorField({
   const zeroMatrix = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), [])
   const segments = Math.max(3, Math.round(resolution))
   const instanceCount = Math.max(1, count)
+  const attachMesh = useCallback((mesh: THREE.InstancedMesh | null) => {
+    meshRef.current = mesh
+    if (mesh) {
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+      mesh.count = 0
+      mesh.visible = false
+    }
+  }, [])
 
   const geometry = useMemo(() => new THREE.CircleGeometry(1, segments), [segments])
   const material = useMemo(() => {
@@ -211,14 +219,7 @@ export function ColorField({
   return (
     <instancedMesh
       key={instanceCount}
-      ref={(mesh: THREE.InstancedMesh | null) => {
-        meshRef.current = mesh
-        if (mesh) {
-          mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-          mesh.count = 0
-          mesh.visible = false
-        }
-      }}
+      ref={attachMesh}
       args={[geometry, material, instanceCount]}
       frustumCulled={false}
       renderOrder={-2}

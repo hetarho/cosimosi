@@ -109,18 +109,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T226 | Preserve settled color-field instances across React rerenders | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 2 | 1 | 1 | 0 | 1 | 0 | 2026-11-07T15:38:24.142Z | [history](work/local8h.json) |
+| local8h | 2 | 2 | 2 | 0 | 0 | 0 | 0 | 2026-11-07T15:41:07.426Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261107 T226 integrated
 - 261107 T225 integrated
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
 - 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
@@ -140,4 +140,3 @@
 - 261103 fix demo clarity: readable dialogs, current words first, real partial erosion in every sample; demo dwell 4500→2800ms and sweep settle 800→200ms (reports/261103-democlr)
 - 261103 fix universe visual: clear captions from controls, pin dialog actions, complete decoration return, fit gist overview; hardware-browser review (reports/261103-univvis)
 - 261103 fix universe experience: synchronize tutorial signals, reading time, displayed date and memory arrival; preserve 40abb60 and add /review (reports/261103-universe)
-- 261103 T222 blocked: phase 1 done (hermetic adapter, lister, harness, EVALUATION.md); phase 2 needs keys, an operator and a reviewer
