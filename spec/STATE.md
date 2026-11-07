@@ -20,6 +20,7 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
 
 ## inbox
+- 261108 decided review/local-reliability-261108 T225: interrupted verification can return success → adopt F1 under the direct eight-hour self-improve-local delegation (alt: leave the reproduced false success | duplicate ad hoc checks); one shared completion policy preserves all ordinary outcomes and gate coverage, with real subprocess regressions and independent review.
 - 261108 decided self-improve-local: the user delegated an eight-hour local improvement run (2026-11-07T15:10:49Z..23:10:49Z); the calling coordinator adopts only bounded behavior-preserving scout proposals, assigns approved task IDs and integrates independently reviewed changes on main. Existing push/plan policy is preserved; no product-rule changes or PRs. See reports/261108-local8h.
 - 261103 decided T223 T224: the user explicitly requested commit and push after the local-delivery report; publish main with the documented Docker verification limits and check CI after push.
 - 261103 parked T223 T224: implementation and all TypeScript tests/typechecks, Go hermetic tests/vet/build and site build passed; Docker is unavailable in WSL, blocking Postgres integration and full generation freshness. Final batch on 3a6804d6 stopped at db:migrate. See reports/261103-rcui.
@@ -83,6 +84,7 @@
 ## review
 | id | st |
 | ------------------------------------- | ---------------- |
+| local-reliability-261108 | converted@261108 |
 | post-refactor-261102                  | converted@261103 |
 | all-261102                            | converted@261102 |
 | architecture-261102                   | converted@261102 |
@@ -105,15 +107,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
+| T225 | Fail closed when a verification subprocess is interrupted | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## next
+- implement-task T225 in the approved local8h group; F2 requires a real lifecycle reproduction before adoption
 - T223/T224 remaining verification: enable Docker WSL integration and rerun pnpm check locally; check remote CI for the requested publication
 - T222 phase 2 (evidence gate): recheck the OpenRouter contract, run the baselines and candidates, approve; then phase 3 (cutover)
 - review/frontend-rendering-experience-260726: adopt or reject its 6 open findings (still present in code)
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
@@ -133,4 +138,3 @@
 - 261103 update-ssot ARCH: ARCH-28✎ same-named slices export the same names (r4; T221 base → ARCH@4)
 - 261103 T219 done
 - 261103 T218 done
-- 261103 T217 done
