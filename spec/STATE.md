@@ -20,6 +20,7 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
 
 ## inbox
+- 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
 - 261108 decided T229 T230: direct local8h delegation adopts measured ratchet maintenance and reproduced exhausted-balance committed replay; preserve existing aggregate policy, pricing, receipt behavior and scoped deduplication; independent review and coordinator DB/full gates required
 - 261108 decided ARCH-47 review/local-reliability-261108 T227 T228: reproduced linked-worktree selection skips required tests → route the same coverage through Git-root-aware project commands (alt: upgrade pnpm | keep manual closures). Separately adopt bounded shared-component resource updates after actual lifecycle reproduction; fixed current caller values limit demonstrated production exposure.
 - 261108 decided TWINK-4 review/frontend-rendering-experience-260726: two canonical references conflate price ownership with a consumed weight → retain economy ownership and classify its forgetting input as required (alt: split decisions broadly | remove a dependency); all rules and transitive brief inclusion remain. Close the historical review's fulfilled task conversion while preserving its original audit provenance.
@@ -114,6 +115,7 @@
 | T228 | Preserve color-field attributes and independent resource lifetimes | ARCH | T226 T227 | todo |
 | T229 | Refresh existing guard ratchets to measured debt | ARCH | T227 | todo |
 | T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
+| T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
@@ -122,10 +124,12 @@
 | local8h | 2 | 6 | 3 | 3 | 0 | 0 | 0 | 2026-11-07T16:38:57.098Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- local8h: T227 integrated; review/integrate approved T228 T229 T230 T231; root retains DB/browser and final full gates
+- T222 and pending DEMO/ONB product deltas remain outside this run
 
 ## log
-- 261107 T227 integrated
+- 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
+- 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
@@ -135,6 +139,7 @@
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
+- 261107 T227 integrated
 - 261107 T226 integrated
 - 261107 T225 integrated
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
@@ -143,5 +148,3 @@
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
-- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decor)
-- 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decor)
