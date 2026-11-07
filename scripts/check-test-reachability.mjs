@@ -1,43 +1,52 @@
 #!/usr/bin/env node
-// Every test-shaped file under an app or package is actually collected by that project's runner.
-//
-// A file can look like a test, typecheck like a test, be reviewed like a test, and never run. The
-// runners collect by filename: Jest's defaults (which the React Native preset does not override) and
-// Vitest's defaults both match `*.test.*` / `*.spec.*` and anything under `__tests__/`. A file named
-// for any other convention — `*.probe.ts` being the tempting one, since the repo's gate probes use
-// that word — is collected by nothing, and nothing says so.
+// Filename reachability for the repository's Vitest and mobile Jest runners. Vitest collects
+// test/spec filenames; Jest also collects assertion files beneath __tests__. The UI package's
+// explicit include narrows its Vitest files to src/**/*.test.{ts,tsx}. Ordinary imported helpers
+// need not be independent test files.
 //
 //   node scripts/check-test-reachability.mjs
-//   node scripts/check-test-reachability.mjs --probe   self-test that the rule fires
-//
-// Runs over strings only, so it writes nothing and needs no fixture workspace.
+//   node scripts/check-test-reachability.mjs --probe
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { readdirSync, existsSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { fail, note, ok, repoRoot, section } from './lib.mjs'
 
 const ROOTS = ['apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages']
-
-// What a runner collects. Anything a person would read as a test must land here.
-const COLLECTED = /(\.|^)(test|spec)\.[cm]?[jt]sx?$|(^|\/)__tests__\//
-// What reads as a test or a check but is not `test`/`spec`. `probe` is the live case: the repo's own
-// gate probes are `scripts/probe-*.mjs`, invoked by name from package.json, and the convention leaked
-// into an app's source tree where nothing invokes anything.
+const CODE_FILE = /\.[cm]?[jt]sx?$/
+const TEST_NAME = /(^|[/.])(test|spec)\.[cm]?[jt]sx?$/
+const VITEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/
+const UI_FILE = /^packages\/ui\/src\/.+\.test\.(ts|tsx)$/
+const TEST_DIRECTORY = /(^|\/)__tests__\//
+// Assertion-like suffixes are candidates, while an ordinary testing.ts or helper.ts module remains
+// free to be imported by a collected suite. A test/spec filename is checked even if a local include
+// excludes that convention.
 const TEST_SHAPED = /(\.|^)(probe|tests|testing|check|checks|assert|asserts)\.[cm]?[jt]sx?$/
-
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'gen', 'ios', 'android', '.expo'])
+const portable = (file) => file.replaceAll('\\', '/')
 
-export function unreachableTestFiles(files) {
-  return files.filter((file) => TEST_SHAPED.test(file) && !COLLECTED.test(file))
+export function isCollectedTestFile(file) {
+  const path = portable(file)
+  if (path.startsWith('apps/mobile/'))
+    return CODE_FILE.test(path) && (TEST_NAME.test(path) || TEST_DIRECTORY.test(path))
+  if (path.startsWith('packages/ui/')) return UI_FILE.test(path)
+  return VITEST_FILE.test(path)
 }
 
-section('test reachability')
+export function unreachableTestFiles(files) {
+  return files.filter((file) => {
+    const path = portable(file)
+    return (TEST_NAME.test(path) || TEST_SHAPED.test(path)) && !isCollectedTestFile(path)
+  })
+}
 
-if (process.argv.includes('--probe')) {
-  runProbe()
-} else {
-  runCheck()
+function advice(file) {
+  if (file.startsWith('packages/ui/'))
+    return 'Use a src/**/*.test.ts or src/**/*.test.tsx filename in packages/ui.'
+  if (file.startsWith('apps/mobile/'))
+    return 'Use a Jest test/spec filename or place an assertion file under __tests__/.'
+  return 'Use a *.test.* or *.spec.* filename; __tests__/ alone does not collect Vitest assertions.'
 }
 
 function runCheck() {
@@ -51,20 +60,18 @@ function runCheck() {
 
   const unreachable = unreachableTestFiles(files)
   if (unreachable.length > 0) {
-    for (const file of unreachable) {
+    for (const file of unreachable)
       console.error(
-        `  \x1b[31m✗\x1b[0m ${file} — reads as a test or check, but no runner collects it. ` +
-          `Rename it to *.test.* / *.spec.*, or move it under __tests__/.`,
+        `  \x1b[31m✗\x1b[0m ${file} — reads as a test or check, but its runner excludes it. ${advice(file)}`,
       )
-    }
     fail(
       `${unreachable.length} file(s) look like tests that never run. A gate nobody runs is not a gate.`,
     )
   }
 
-  const collected = files.filter((file) => COLLECTED.test(file)).length
-  note(`${collected} collected test file(s) across ${ROOTS.length} root(s)`)
-  ok('no test-shaped file is invisible to its runner')
+  const collected = files.filter(isCollectedTestFile).length
+  note(`${collected} collected test filename(s) across ${ROOTS.length} root(s)`)
+  ok('test-shaped files match their runner collection rules')
 }
 
 function runProbe() {
@@ -72,30 +79,31 @@ function runProbe() {
     'apps/mobile/src/app/providers/api-client.probe.ts',
     'apps/web/src/shared/lib/thing.check.ts',
     'packages/universe/src/thing.assert.tsx',
+    'packages/universe/src/__tests__/invisible.assert.ts',
+    'packages/ui/src/invisible.spec.ts',
+    'packages/ui/src/__tests__/hidden.check.ts',
   ]
-  const permitted = [
+  const collected = [
     'apps/mobile/src/app/providers/api-client.test.ts',
+    'apps/mobile/src/__tests__/assertion.check.ts',
     'apps/web/src/shared/lib/thing.spec.tsx',
-    'packages/universe/src/__tests__/thing.ts',
-    // Helper modules a test imports. They are not tests and must not be demanded to look like ones.
-    'apps/mobile/src/shared/testing/fakes.ts',
+    'packages/ui/src/primitive.test.tsx',
     'packages/demo/src/integrity.test.ts',
   ]
-
+  const helpers = [
+    'apps/mobile/src/shared/testing/fakes.ts',
+    'packages/universe/src/testing.ts',
+    'packages/universe/src/__tests__/helper.ts',
+  ]
   const missed = offenders.filter((file) => unreachableTestFiles([file]).length === 0)
-  if (missed.length > 0) {
-    fail(`these unreachable files were not reported:\n  ${missed.join('\n  ')}`)
-  }
-
-  const wrongly = permitted.filter((file) => unreachableTestFiles([file]).length > 0)
-  if (wrongly.length > 0) {
-    fail(
-      `these files are collected (or are plain helpers) and must not be reported:\n  ${wrongly.join('\n  ')}`,
-    )
-  }
-
+  if (missed.length) fail(`these unreachable files were not reported:\n  ${missed.join('\n  ')}`)
+  const wrongly = [...collected, ...helpers].filter((file) => unreachableTestFiles([file]).length)
+  if (wrongly.length)
+    fail(`these collected files or helpers were reported:\n  ${wrongly.join('\n  ')}`)
+  if (collected.some((file) => !isCollectedTestFile(file)) || helpers.some(isCollectedTestFile))
+    fail('collected-file counts must distinguish runner matches from imported helpers')
   ok(
-    `${offenders.length} unreachable name(s) reported; ${permitted.length} collected/helper path(s) left alone`,
+    `${offenders.length} unreachable names reported; ${collected.length} collected controls and ${helpers.length} helpers preserved`,
   )
 }
 
@@ -104,6 +112,12 @@ function* walk(dir) {
     if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) yield* walk(path)
-    else if (/\.[cm]?[jt]sx?$/.test(entry.name)) yield path
+    else if (CODE_FILE.test(entry.name)) yield path
   }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  section('test reachability')
+  if (process.argv.includes('--probe')) runProbe()
+  else runCheck()
 }
