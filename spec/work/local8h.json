@@ -1,0 +1,709 @@
+{
+  "schemaVersion": 1,
+  "snapshotAt": "2026-11-07T15:38:24.142Z",
+  "sourceCommit": "9fe5b77baab1e38098f750546bada30db49de818",
+  "group": {
+    "id": "local8h",
+    "branch": "main",
+    "status": "active",
+    "createdAt": "2026-11-07T15:16:19.881Z",
+    "limits": {
+      "workers": 2,
+      "reviewers": 1,
+      "maxPending": 8
+    },
+    "push": null,
+    "review": "all",
+    "taskScope": [
+      "T225",
+      "T226"
+    ]
+  },
+  "summary": {
+    "total": 2,
+    "completed": 1,
+    "remaining": 1,
+    "running": 0,
+    "review": 1,
+    "blocked": 0,
+    "unassigned": 0
+  },
+  "tasks": [
+    {
+      "id": "T226",
+      "title": "Preserve settled color-field instances across React rerenders",
+      "dep": [],
+      "status": "ready"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "group": "local8h",
+      "taskId": "T225",
+      "tasks": [
+        "T225"
+      ],
+      "lane": null,
+      "owner": "gatesworker",
+      "contributors": [
+        "gatesworker"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T15:16:26.012Z",
+      "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5",
+      "verifiedCommit": "761af6db380022b78cef26884f20b344e98872b7",
+      "submittedBase": "6b21631d3f5e11e20db5800f39ee669c712125da",
+      "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+      "submittedAt": "2026-11-07T15:24:18.268Z",
+      "risk": null,
+      "review": {
+        "id": "2aca8e36-164e-44ce-a661-f8aa8013cc92",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Fresh T225 review against target 9fe5b77b: the exact submitted subprocess patch remains correct, the new TWINK dependency classification preserves economics ownership/transitive inclusion and does not change its verification contracts, and all 26 focused real-child regressions passed again in the new fixed review workspace. No source, required gate or task-contract change in the new target conflicts with this submission.",
+        "findings": [],
+        "commit": "761af6db380022b78cef26884f20b344e98872b7",
+        "baseCommit": "9fe5b77baab1e38098f750546bada30db49de818",
+        "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+        "createdAt": "2026-11-07T15:37:04.062Z",
+        "finishedAt": "2026-11-07T15:38:03.930Z"
+      },
+      "reviewHistory": [
+        {
+          "id": "30eb3e38-8e25-40ad-a31c-1a25b5fb280e",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T225 rejects interrupted subprocess completion across the shared runner, both Go paths and generated-output Git queries while preserving normal exit, environment and diagnostic policies. All 26 focused real-child regressions passed independently at the fixed submission, and the actual lint/web-build hook receipt matches that SHA.",
+          "findings": [],
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+          "createdAt": "2026-11-07T15:24:21.872Z",
+          "finishedAt": "2026-11-07T15:25:12.939Z",
+          "invalidatedAt": "2026-11-07T15:34:37.444Z",
+          "invalidationReason": "integration base changed"
+        }
+      ],
+      "steps": [
+        {
+          "taskId": "T225",
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "at": "2026-11-07T15:24:18.248Z",
+          "verification": [
+            {
+              "command": "node --test scripts/subprocess-results.test.mjs",
+              "startedAt": "2026-11-07T15:24:13.396Z",
+              "finishedAt": "2026-11-07T15:24:17.433Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "node --test scripts/subprocess-results.test.mjs",
+          "startedAt": "2026-11-07T15:24:13.396Z",
+          "finishedAt": "2026-11-07T15:24:17.433Z"
+        }
+      ]
+    },
+    {
+      "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "group": "local8h",
+      "taskId": "T226",
+      "tasks": [
+        "T226"
+      ],
+      "lane": null,
+      "owner": "fieldworker",
+      "contributors": [
+        "fieldworker"
+      ],
+      "status": "ready",
+      "reason": null,
+      "createdAt": "2026-11-07T15:19:21.301Z",
+      "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+      "verifiedCommit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+      "submittedBase": "6b21631d3f5e11e20db5800f39ee669c712125da",
+      "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+      "submittedAt": "2026-11-07T15:26:41.154Z",
+      "risk": null,
+      "reviewHistory": [
+        {
+          "id": "2cfa3b80-ced7-4b90-b2fe-068f3f754b25",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T226 limits production code to a stable attachment callback and preserves settled-frame skipping. The actual React/R3F regression, unchanged matrices/upload versions across 20 rerenders, camera/buffer invalidation and genuine-remount controls pass independently at the exact submitted SHA; raw red/green, dependent-closure and normal-hook evidence match the submitted code hashes.",
+          "findings": [],
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+          "createdAt": "2026-11-07T15:27:03.103Z",
+          "finishedAt": "2026-11-07T15:28:35.001Z",
+          "invalidatedAt": "2026-11-07T15:37:04.061Z",
+          "invalidationReason": "review base changed"
+        }
+      ],
+      "steps": [
+        {
+          "taskId": "T226",
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "at": "2026-11-07T15:26:41.135Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/ColorField.test.tsx",
+              "startedAt": "2026-11-07T15:26:39.146Z",
+              "finishedAt": "2026-11-07T15:26:40.307Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/ColorField.test.tsx",
+          "startedAt": "2026-11-07T15:26:39.146Z",
+          "finishedAt": "2026-11-07T15:26:40.307Z"
+        }
+      ]
+    }
+  ],
+  "history": [
+    {
+      "sequence": 1,
+      "at": "2026-11-07T15:16:20.123Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "local8h",
+        "branch": "main",
+        "status": "preparing",
+        "createdAt": "2026-11-07T15:16:19.881Z",
+        "limits": {
+          "workers": 2,
+          "reviewers": 1,
+          "maxPending": 8
+        },
+        "push": null,
+        "review": "all",
+        "taskScope": [
+          "T225"
+        ]
+      }
+    },
+    {
+      "sequence": 2,
+      "at": "2026-11-07T15:16:20.241Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "preparing",
+      "status": "active",
+      "changes": {
+        "status": "active"
+      }
+    },
+    {
+      "sequence": 3,
+      "at": "2026-11-07T15:16:26.012Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+        "group": "local8h",
+        "taskId": "T225",
+        "tasks": [
+          "T225"
+        ],
+        "lane": null,
+        "owner": "gatesworker",
+        "contributors": [
+          "gatesworker"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-07T15:16:26.012Z",
+        "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
+      }
+    },
+    {
+      "sequence": 4,
+      "at": "2026-11-07T15:16:27.384Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 5,
+      "at": "2026-11-07T15:19:19.786Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226"
+        ]
+      }
+    },
+    {
+      "sequence": 6,
+      "at": "2026-11-07T15:19:21.301Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+        "group": "local8h",
+        "taskId": "T226",
+        "tasks": [
+          "T226"
+        ],
+        "lane": null,
+        "owner": "fieldworker",
+        "contributors": [
+          "fieldworker"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-07T15:19:21.301Z",
+        "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
+      }
+    },
+    {
+      "sequence": 7,
+      "at": "2026-11-07T15:19:22.286Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 8,
+      "at": "2026-11-07T15:19:51.046Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "doing",
+      "status": "doing",
+      "changes": {
+        "reason": null
+      }
+    },
+    {
+      "sequence": 9,
+      "at": "2026-11-07T15:24:12.708Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 10,
+      "at": "2026-11-07T15:24:18.268Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "verifiedCommit": "761af6db380022b78cef26884f20b344e98872b7",
+        "submittedBase": "6b21631d3f5e11e20db5800f39ee669c712125da",
+        "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+        "submittedAt": "2026-11-07T15:24:18.268Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T225",
+            "commit": "761af6db380022b78cef26884f20b344e98872b7",
+            "at": "2026-11-07T15:24:18.248Z",
+            "verification": [
+              {
+                "command": "node --test scripts/subprocess-results.test.mjs",
+                "startedAt": "2026-11-07T15:24:13.396Z",
+                "finishedAt": "2026-11-07T15:24:17.433Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "node --test scripts/subprocess-results.test.mjs",
+            "startedAt": "2026-11-07T15:24:13.396Z",
+            "finishedAt": "2026-11-07T15:24:17.433Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 11,
+      "at": "2026-11-07T15:24:21.872Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "30eb3e38-8e25-40ad-a31c-1a25b5fb280e",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+          "createdAt": "2026-11-07T15:24:21.872Z"
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "at": "2026-11-07T15:25:12.939Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "30eb3e38-8e25-40ad-a31c-1a25b5fb280e",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T225 rejects interrupted subprocess completion across the shared runner, both Go paths and generated-output Git queries while preserving normal exit, environment and diagnostic policies. All 26 focused real-child regressions passed independently at the fixed submission, and the actual lint/web-build hook receipt matches that SHA.",
+          "findings": [],
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+          "createdAt": "2026-11-07T15:24:21.872Z",
+          "finishedAt": "2026-11-07T15:25:12.939Z"
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "at": "2026-11-07T15:25:36.873Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 14,
+      "at": "2026-11-07T15:25:38.686Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "통합 후보의 spec 검증에 실패했습니다."
+      }
+    },
+    {
+      "sequence": 15,
+      "at": "2026-11-07T15:26:15.648Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 16,
+      "at": "2026-11-07T15:26:15.770Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "verifying",
+      "status": "blocked",
+      "changes": {
+        "status": "blocked",
+        "reason": "미커밋·미추적 변경이 있습니다. 해당 작업을 먼저 정리하세요."
+      }
+    },
+    {
+      "sequence": 17,
+      "at": "2026-11-07T15:26:38.500Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "blocked",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 18,
+      "at": "2026-11-07T15:26:41.154Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+        "submittedBase": "6b21631d3f5e11e20db5800f39ee669c712125da",
+        "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+        "submittedAt": "2026-11-07T15:26:41.154Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T226",
+            "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+            "at": "2026-11-07T15:26:41.135Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/ColorField.test.tsx",
+                "startedAt": "2026-11-07T15:26:39.146Z",
+                "finishedAt": "2026-11-07T15:26:40.307Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/ColorField.test.tsx",
+            "startedAt": "2026-11-07T15:26:39.146Z",
+            "finishedAt": "2026-11-07T15:26:40.307Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 19,
+      "at": "2026-11-07T15:27:03.104Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "2cfa3b80-ced7-4b90-b2fe-068f3f754b25",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+          "createdAt": "2026-11-07T15:27:03.103Z"
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "at": "2026-11-07T15:28:35.001Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "2cfa3b80-ced7-4b90-b2fe-068f3f754b25",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T226 limits production code to a stable attachment callback and preserves settled-frame skipping. The actual React/R3F regression, unchanged matrices/upload versions across 20 rerenders, camera/buffer invalidation and genuine-remount controls pass independently at the exact submitted SHA; raw red/green, dependent-closure and normal-hook evidence match the submitted code hashes.",
+          "findings": [],
+          "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+          "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+          "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+          "createdAt": "2026-11-07T15:27:03.103Z",
+          "finishedAt": "2026-11-07T15:28:35.001Z"
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "at": "2026-11-07T15:34:36.607Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 22,
+      "at": "2026-11-07T15:34:37.444Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "integrating",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": "review-base-changed",
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "30eb3e38-8e25-40ad-a31c-1a25b5fb280e",
+            "owner": "localreviewer",
+            "status": "approved",
+            "verdict": "approved",
+            "summary": "T225 rejects interrupted subprocess completion across the shared runner, both Go paths and generated-output Git queries while preserving normal exit, environment and diagnostic policies. All 26 focused real-child regressions passed independently at the fixed submission, and the actual lint/web-build hook receipt matches that SHA.",
+            "findings": [],
+            "commit": "761af6db380022b78cef26884f20b344e98872b7",
+            "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+            "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+            "createdAt": "2026-11-07T15:24:21.872Z",
+            "finishedAt": "2026-11-07T15:25:12.939Z",
+            "invalidatedAt": "2026-11-07T15:34:37.444Z",
+            "invalidationReason": "integration base changed"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 23,
+      "at": "2026-11-07T15:37:04.062Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "2aca8e36-164e-44ce-a661-f8aa8013cc92",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "baseCommit": "9fe5b77baab1e38098f750546bada30db49de818",
+          "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+          "createdAt": "2026-11-07T15:37:04.062Z"
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "at": "2026-11-07T15:37:04.062Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "approved",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "2cfa3b80-ced7-4b90-b2fe-068f3f754b25",
+            "owner": "localreviewer",
+            "status": "approved",
+            "verdict": "approved",
+            "summary": "T226 limits production code to a stable attachment callback and preserves settled-frame skipping. The actual React/R3F regression, unchanged matrices/upload versions across 20 rerenders, camera/buffer invalidation and genuine-remount controls pass independently at the exact submitted SHA; raw red/green, dependent-closure and normal-hook evidence match the submitted code hashes.",
+            "findings": [],
+            "commit": "8bff540a8ca981cc11e9526cdec65583d12b229e",
+            "baseCommit": "6b21631d3f5e11e20db5800f39ee669c712125da",
+            "submissionId": "568d9785-1e62-461d-96e7-185ac9c2cd4d",
+            "createdAt": "2026-11-07T15:27:03.103Z",
+            "finishedAt": "2026-11-07T15:28:35.001Z",
+            "invalidatedAt": "2026-11-07T15:37:04.061Z",
+            "invalidationReason": "review base changed"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 25,
+      "at": "2026-11-07T15:38:03.930Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": null,
+        "review": {
+          "id": "2aca8e36-164e-44ce-a661-f8aa8013cc92",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Fresh T225 review against target 9fe5b77b: the exact submitted subprocess patch remains correct, the new TWINK dependency classification preserves economics ownership/transitive inclusion and does not change its verification contracts, and all 26 focused real-child regressions passed again in the new fixed review workspace. No source, required gate or task-contract change in the new target conflicts with this submission.",
+          "findings": [],
+          "commit": "761af6db380022b78cef26884f20b344e98872b7",
+          "baseCommit": "9fe5b77baab1e38098f750546bada30db49de818",
+          "submissionId": "b626b21c-657c-4589-9d58-e1bff30725a6",
+          "createdAt": "2026-11-07T15:37:04.062Z",
+          "finishedAt": "2026-11-07T15:38:03.930Z"
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "at": "2026-11-07T15:38:23.212Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    }
+  ]
+}

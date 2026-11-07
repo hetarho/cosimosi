@@ -9,6 +9,7 @@ import {
   pnpm,
   repoRoot,
   section,
+  subprocessExitCode,
 } from './lib.mjs'
 
 const image = 'golang:1.26'
@@ -55,7 +56,8 @@ const run = (cmd, args, opts = {}) => {
     console.error(result.error.message)
     process.exit(1)
   }
-  if (result.status) process.exit(result.status)
+  const status = subprocessExitCode(result)
+  if (status) process.exit(status)
 }
 
 const runHost = (name) => {
@@ -76,7 +78,8 @@ const runHost = (name) => {
     console.error(result.stdout.trim())
     fail('api gofmt is not clean')
   }
-  if (result.status) process.exit(result.status)
+  const status = subprocessExitCode(result)
+  if (status) process.exit(status)
 }
 
 section(`api ${mode}`)

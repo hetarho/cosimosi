@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { fail, ok, pnpm, repoRoot, section } from './lib.mjs'
+import { fail, ok, pnpm, repoRoot, section, subprocessExitCode } from './lib.mjs'
 
 const generatedPathspecs = [
   'apps/api/internal/gen',
@@ -18,7 +18,7 @@ const git = (args) => {
     encoding: 'utf8',
   })
   if (result.error) throw result.error
-  if (result.status) fail('git failed while checking generated outputs')
+  if (subprocessExitCode(result)) fail('git failed while checking generated outputs')
   return result.stdout.trim()
 }
 
