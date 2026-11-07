@@ -140,13 +140,13 @@
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
+- 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
 - 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
-- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decor)
 - 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recallfb)
 - 261103 T222 blocked: phase 1 done (hermetic adapter, lister, harness, EVALUATION.md); phase 2 needs keys, an operator and a reviewer
 - 261103 T221 done
