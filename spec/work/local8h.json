@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T21:12:09.698Z",
-  "sourceCommit": "521c4439aa5b47fced8487be318a5d89b465b3dd",
+  "snapshotAt": "2026-11-07T21:32:24.424Z",
+  "sourceCommit": "edc2a27e332995b6a72d23f77be0a6c2f9145dca",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -22,7 +22,9 @@
         }
       ],
       "at": "2026-11-07T21:12:08.978Z",
-      "excluded": ["T222"]
+      "excluded": [
+        "T222"
+      ]
     },
     "push": null,
     "review": "all",
@@ -58,10 +60,14 @@
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": ["T225"],
+      "tasks": [
+        "T225"
+      ],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": ["gatesworker"],
+      "contributors": [
+        "gatesworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -72,6 +78,7 @@
       "submittedAt": "2026-11-07T15:24:18.268Z",
       "integratedCommit": "d24e8847f6ae1ccaf0d0b38799054f15b923aff3",
       "integratedAt": "2026-11-07T15:38:25.117Z",
+      "cleanedAt": "2026-11-07T21:30:11.303Z",
       "risk": null,
       "review": {
         "id": "2aca8e36-164e-44ce-a661-f8aa8013cc92",
@@ -136,10 +143,14 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": ["T226"],
+      "tasks": [
+        "T226"
+      ],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": ["fieldworker"],
+      "contributors": [
+        "fieldworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -150,6 +161,7 @@
       "submittedAt": "2026-11-07T15:26:41.154Z",
       "integratedCommit": "b28786da240c86a32ee7b45cea0cb0ba7f13d9e0",
       "integratedAt": "2026-11-07T15:41:08.342Z",
+      "cleanedAt": "2026-11-07T21:30:13.422Z",
       "risk": null,
       "review": {
         "id": "c890a88e-8f15-44ab-8428-cef3d50b407a",
@@ -214,10 +226,14 @@
       "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
       "group": "local8h",
       "taskId": "T227",
-      "tasks": ["T227"],
+      "tasks": [
+        "T227"
+      ],
       "lane": null,
       "owner": "checksworker",
-      "contributors": ["checksworker"],
+      "contributors": [
+        "checksworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:59:37.533Z",
@@ -228,6 +244,7 @@
       "submittedAt": "2026-11-07T16:14:58.035Z",
       "integratedCommit": "502467c28a804c44450f4dc6bd097e4ba13002fe",
       "integratedAt": "2026-11-07T16:38:57.782Z",
+      "cleanedAt": "2026-11-07T21:30:15.424Z",
       "risk": null,
       "review": {
         "id": "7f20375f-4de2-4625-9a46-3c83481eed1f",
@@ -275,10 +292,14 @@
       "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
       "group": "local8h",
       "taskId": "T228",
-      "tasks": ["T228"],
+      "tasks": [
+        "T228"
+      ],
       "lane": null,
       "owner": "resourceworker",
-      "contributors": ["resourceworker"],
+      "contributors": [
+        "resourceworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:20.204Z",
@@ -289,6 +310,7 @@
       "submittedAt": "2026-11-07T16:50:30.275Z",
       "integratedCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
       "integratedAt": "2026-11-07T16:54:55.789Z",
+      "cleanedAt": "2026-11-07T21:30:17.416Z",
       "risk": null,
       "review": {
         "id": "6deeaaee-69c2-4fca-90d2-0079b388a849",
@@ -336,10 +358,14 @@
       "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "group": "local8h",
       "taskId": "T229",
-      "tasks": ["T229"],
+      "tasks": [
+        "T229"
+      ],
       "lane": null,
       "owner": "ratchetworker",
-      "contributors": ["ratchetworker"],
+      "contributors": [
+        "ratchetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:25.658Z",
@@ -350,6 +376,7 @@
       "submittedAt": "2026-11-07T16:49:57.269Z",
       "integratedCommit": "c3e89ad699944bc6cba039f25f742a254e1a0b13",
       "integratedAt": "2026-11-07T16:57:25.937Z",
+      "cleanedAt": "2026-11-07T21:30:19.150Z",
       "risk": null,
       "review": {
         "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
@@ -397,10 +424,14 @@
       "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
       "group": "local8h",
       "taskId": "T231",
-      "tasks": ["T231"],
+      "tasks": [
+        "T231"
+      ],
       "lane": null,
       "owner": "collectionworker",
-      "contributors": ["collectionworker"],
+      "contributors": [
+        "collectionworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:50:25.131Z",
@@ -411,6 +442,7 @@
       "submittedAt": "2026-11-07T17:08:33.513Z",
       "integratedCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
       "integratedAt": "2026-11-07T17:24:12.329Z",
+      "cleanedAt": "2026-11-07T21:30:21.218Z",
       "risk": null,
       "review": {
         "id": "040b6e35-d76f-4a29-b9f3-3cc0507a9e76",
@@ -481,10 +513,14 @@
       "id": "ef070033-58bc-48af-94bf-84637877b087",
       "group": "local8h",
       "taskId": "T230",
-      "tasks": ["T230"],
+      "tasks": [
+        "T230"
+      ],
       "lane": null,
       "owner": "replayworker",
-      "contributors": ["replayworker"],
+      "contributors": [
+        "replayworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:51:01.837Z",
@@ -495,6 +531,7 @@
       "submittedAt": "2026-11-07T17:03:51.586Z",
       "integratedCommit": "f56b16832fb0cc319c44c8582a9c4fd92780b92b",
       "integratedAt": "2026-11-07T17:14:09.043Z",
+      "cleanedAt": "2026-11-07T21:30:23.287Z",
       "risk": null,
       "review": {
         "id": "a735a456-86c1-4e1b-8a61-f498d016ba35",
@@ -547,10 +584,14 @@
       "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
       "group": "local8h",
       "taskId": "T232",
-      "tasks": ["T232"],
+      "tasks": [
+        "T232"
+      ],
       "lane": null,
       "owner": "latentworker",
-      "contributors": ["latentworker"],
+      "contributors": [
+        "latentworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T17:21:14.121Z",
@@ -561,6 +602,7 @@
       "submittedAt": "2026-11-07T17:30:50.664Z",
       "integratedCommit": "b99f9ddd58997c34bacf121d2e5f02eebd963a0d",
       "integratedAt": "2026-11-07T17:37:50.737Z",
+      "cleanedAt": "2026-11-07T21:30:25.096Z",
       "risk": null,
       "review": {
         "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
@@ -608,10 +650,14 @@
       "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
       "group": "local8h",
       "taskId": "T233",
-      "tasks": ["T233"],
+      "tasks": [
+        "T233"
+      ],
       "lane": null,
       "owner": "dialogworker",
-      "contributors": ["dialogworker"],
+      "contributors": [
+        "dialogworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:38.752Z",
@@ -622,6 +668,7 @@
       "submittedAt": "2026-11-07T18:22:13.985Z",
       "integratedCommit": "c6971b92500419a6239c31157eabf7812f184037",
       "integratedAt": "2026-11-07T18:29:10.665Z",
+      "cleanedAt": "2026-11-07T21:30:26.837Z",
       "risk": null,
       "review": {
         "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
@@ -669,10 +716,14 @@
       "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
       "group": "local8h",
       "taskId": "T234",
-      "tasks": ["T234"],
+      "tasks": [
+        "T234"
+      ],
       "lane": null,
       "owner": "refocusworker",
-      "contributors": ["refocusworker"],
+      "contributors": [
+        "refocusworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:53.465Z",
@@ -683,6 +734,7 @@
       "submittedAt": "2026-11-07T18:20:49.311Z",
       "integratedCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
       "integratedAt": "2026-11-07T18:25:38.130Z",
+      "cleanedAt": "2026-11-07T21:30:28.762Z",
       "risk": null,
       "review": {
         "id": "18e8fe0e-6c31-41e1-9442-df4e5495214f",
@@ -730,10 +782,14 @@
       "id": "a666c552-3a57-4484-933b-f1288868d0f2",
       "group": "local8h",
       "taskId": "T235",
-      "tasks": ["T235"],
+      "tasks": [
+        "T235"
+      ],
       "lane": null,
       "owner": "sheetworker",
-      "contributors": ["sheetworker"],
+      "contributors": [
+        "sheetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:43:20.470Z",
@@ -744,6 +800,7 @@
       "submittedAt": "2026-11-07T18:51:06.834Z",
       "integratedCommit": "a688c8791b61ad2e6d1e626a9864300e9114abd9",
       "integratedAt": "2026-11-07T18:55:14.804Z",
+      "cleanedAt": "2026-11-07T21:30:30.738Z",
       "risk": null,
       "review": {
         "id": "0fa4fc42-e380-40b3-933e-54b81342010b",
@@ -791,10 +848,14 @@
       "id": "652bb260-f071-477b-92fd-1d87c29495fc",
       "group": "local8h",
       "taskId": "T236",
-      "tasks": ["T236"],
+      "tasks": [
+        "T236"
+      ],
       "lane": null,
       "owner": "withdrawalworker",
-      "contributors": ["withdrawalworker"],
+      "contributors": [
+        "withdrawalworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:06:12.161Z",
@@ -805,6 +866,7 @@
       "submittedAt": "2026-11-07T19:29:41.155Z",
       "integratedCommit": "bc54907cb4a5bafd72347a681db4fe47423a8da9",
       "integratedAt": "2026-11-07T19:45:18.707Z",
+      "cleanedAt": "2026-11-07T21:30:32.971Z",
       "risk": null,
       "review": {
         "id": "8ba2cdd8-f5eb-4fa8-b8fa-da930159b393",
@@ -857,10 +919,14 @@
       "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
       "group": "local8h",
       "taskId": "T237",
-      "tasks": ["T237"],
+      "tasks": [
+        "T237"
+      ],
       "lane": null,
       "owner": "mapperworker",
-      "contributors": ["mapperworker"],
+      "contributors": [
+        "mapperworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:20:26.074Z",
@@ -871,6 +937,7 @@
       "submittedAt": "2026-11-07T19:27:03.193Z",
       "integratedCommit": "35bc9e2d058027ef432f989e411ab615c9a7cdf8",
       "integratedAt": "2026-11-07T19:35:30.787Z",
+      "cleanedAt": "2026-11-07T21:30:34.715Z",
       "risk": null,
       "review": {
         "id": "f3b74465-87f5-455e-b22d-7001bb49e496",
@@ -918,10 +985,14 @@
       "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
       "group": "local8h",
       "taskId": "T238",
-      "tasks": ["T238"],
+      "tasks": [
+        "T238"
+      ],
       "lane": null,
       "owner": "assetworker",
-      "contributors": ["assetworker"],
+      "contributors": [
+        "assetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:58:43.759Z",
@@ -932,6 +1003,7 @@
       "submittedAt": "2026-11-07T20:05:13.201Z",
       "integratedCommit": "0d46fd9907e2ddd10d95f2a7c11d2bbde9a2d2bd",
       "integratedAt": "2026-11-07T20:08:23.659Z",
+      "cleanedAt": "2026-11-07T21:30:36.483Z",
       "risk": null,
       "review": {
         "id": "17d2ad9a-abc9-4bbb-b41c-40a1647e2517",
@@ -996,7 +1068,9 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": ["T225"]
+        "taskScope": [
+          "T225"
+        ]
       }
     },
     {
@@ -1023,10 +1097,14 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": ["T225"],
+        "tasks": [
+          "T225"
+        ],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": ["gatesworker"],
+        "contributors": [
+          "gatesworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -1053,7 +1131,10 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226"]
+        "taskScope": [
+          "T225",
+          "T226"
+        ]
       }
     },
     {
@@ -1069,10 +1150,14 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": ["T226"],
+        "tasks": [
+          "T226"
+        ],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": ["fieldworker"],
+        "contributors": [
+          "fieldworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
@@ -1634,7 +1719,12 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228"
+        ]
       }
     },
     {
@@ -1650,10 +1740,14 @@
         "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
         "group": "local8h",
         "taskId": "T227",
-        "tasks": ["T227"],
+        "tasks": [
+          "T227"
+        ],
         "lane": null,
         "owner": "checksworker",
-        "contributors": ["checksworker"],
+        "contributors": [
+          "checksworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:59:37.533Z",
         "startCommit": "864544d4a2eb68176891d49da259c44eb59d2a3e"
@@ -1745,7 +1839,14 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230"
+        ]
       }
     },
     {
@@ -1856,10 +1957,14 @@
         "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
         "group": "local8h",
         "taskId": "T228",
-        "tasks": ["T228"],
+        "tasks": [
+          "T228"
+        ],
         "lane": null,
         "owner": "resourceworker",
-        "contributors": ["resourceworker"],
+        "contributors": [
+          "resourceworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:20.204Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -1891,10 +1996,14 @@
         "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
         "group": "local8h",
         "taskId": "T229",
-        "tasks": ["T229"],
+        "tasks": [
+          "T229"
+        ],
         "lane": null,
         "owner": "ratchetworker",
-        "contributors": ["ratchetworker"],
+        "contributors": [
+          "ratchetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:25.658Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -1921,7 +2030,15 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231"
+        ]
       }
     },
     {
@@ -2084,10 +2201,14 @@
         "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
         "group": "local8h",
         "taskId": "T231",
-        "tasks": ["T231"],
+        "tasks": [
+          "T231"
+        ],
         "lane": null,
         "owner": "collectionworker",
-        "contributors": ["collectionworker"],
+        "contributors": [
+          "collectionworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:50:25.131Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -2170,10 +2291,14 @@
         "id": "ef070033-58bc-48af-94bf-84637877b087",
         "group": "local8h",
         "taskId": "T230",
-        "tasks": ["T230"],
+        "tasks": [
+          "T230"
+        ],
         "lane": null,
         "owner": "replayworker",
-        "contributors": ["replayworker"],
+        "contributors": [
+          "replayworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:51:01.837Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -2740,7 +2865,16 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232"
+        ]
       }
     },
     {
@@ -2756,10 +2890,14 @@
         "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
         "group": "local8h",
         "taskId": "T232",
-        "tasks": ["T232"],
+        "tasks": [
+          "T232"
+        ],
         "lane": null,
         "owner": "latentworker",
-        "contributors": ["latentworker"],
+        "contributors": [
+          "latentworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T17:21:14.121Z",
         "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc"
@@ -3056,10 +3194,14 @@
         "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
         "group": "local8h",
         "taskId": "T233",
-        "tasks": ["T233"],
+        "tasks": [
+          "T233"
+        ],
         "lane": null,
         "owner": "dialogworker",
-        "contributors": ["dialogworker"],
+        "contributors": [
+          "dialogworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:38.752Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -3091,10 +3233,14 @@
         "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
         "group": "local8h",
         "taskId": "T234",
-        "tasks": ["T234"],
+        "tasks": [
+          "T234"
+        ],
         "lane": null,
         "owner": "refocusworker",
-        "contributors": ["refocusworker"],
+        "contributors": [
+          "refocusworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:53.465Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -3445,10 +3591,14 @@
         "id": "a666c552-3a57-4484-933b-f1288868d0f2",
         "group": "local8h",
         "taskId": "T235",
-        "tasks": ["T235"],
+        "tasks": [
+          "T235"
+        ],
         "lane": null,
         "owner": "sheetworker",
-        "contributors": ["sheetworker"],
+        "contributors": [
+          "sheetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:43:20.470Z",
         "startCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f"
@@ -3652,10 +3802,14 @@
         "id": "652bb260-f071-477b-92fd-1d87c29495fc",
         "group": "local8h",
         "taskId": "T236",
-        "tasks": ["T236"],
+        "tasks": [
+          "T236"
+        ],
         "lane": null,
         "owner": "withdrawalworker",
-        "contributors": ["withdrawalworker"],
+        "contributors": [
+          "withdrawalworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:06:12.161Z",
         "startCommit": "5f73743831ec03a6a43fde570fbb3a7300f168aa"
@@ -3712,10 +3866,14 @@
         "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
         "group": "local8h",
         "taskId": "T237",
-        "tasks": ["T237"],
+        "tasks": [
+          "T237"
+        ],
         "lane": null,
         "owner": "mapperworker",
-        "contributors": ["mapperworker"],
+        "contributors": [
+          "mapperworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:20:26.074Z",
         "startCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661"
@@ -4074,10 +4232,14 @@
         "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
         "group": "local8h",
         "taskId": "T238",
-        "tasks": ["T238"],
+        "tasks": [
+          "T238"
+        ],
         "lane": null,
         "owner": "assetworker",
-        "contributors": ["assetworker"],
+        "contributors": [
+          "assetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:58:43.759Z",
         "startCommit": "6be0e30690b1ef878be68ff2db5892625dfb811e"
@@ -4262,8 +4424,388 @@
             }
           ],
           "at": "2026-11-07T21:12:08.978Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
+      }
+    },
+    {
+      "sequence": 163,
+      "at": "2026-11-07T21:30:09.676Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 164,
+      "at": "2026-11-07T21:30:11.303Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
+      "taskId": "T225",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:11.303Z"
+      }
+    },
+    {
+      "sequence": 165,
+      "at": "2026-11-07T21:30:12.281Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 166,
+      "at": "2026-11-07T21:30:13.422Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
+      "taskId": "T226",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:13.422Z"
+      }
+    },
+    {
+      "sequence": 167,
+      "at": "2026-11-07T21:30:14.318Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "888e659a-0758-4cc8-8be8-09838f685b7c",
+      "taskId": "T227",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 168,
+      "at": "2026-11-07T21:30:15.424Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "888e659a-0758-4cc8-8be8-09838f685b7c",
+      "taskId": "T227",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:15.424Z"
+      }
+    },
+    {
+      "sequence": 169,
+      "at": "2026-11-07T21:30:16.395Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
+      "taskId": "T228",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 170,
+      "at": "2026-11-07T21:30:17.416Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
+      "taskId": "T228",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:17.416Z"
+      }
+    },
+    {
+      "sequence": 171,
+      "at": "2026-11-07T21:30:18.323Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 172,
+      "at": "2026-11-07T21:30:19.150Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:19.150Z"
+      }
+    },
+    {
+      "sequence": 173,
+      "at": "2026-11-07T21:30:20.110Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 174,
+      "at": "2026-11-07T21:30:21.218Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:21.218Z"
+      }
+    },
+    {
+      "sequence": 175,
+      "at": "2026-11-07T21:30:22.147Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 176,
+      "at": "2026-11-07T21:30:23.287Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef070033-58bc-48af-94bf-84637877b087",
+      "taskId": "T230",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:23.287Z"
+      }
+    },
+    {
+      "sequence": 177,
+      "at": "2026-11-07T21:30:24.251Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 178,
+      "at": "2026-11-07T21:30:25.096Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:25.096Z"
+      }
+    },
+    {
+      "sequence": 179,
+      "at": "2026-11-07T21:30:26.004Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 180,
+      "at": "2026-11-07T21:30:26.837Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:26.837Z"
+      }
+    },
+    {
+      "sequence": 181,
+      "at": "2026-11-07T21:30:27.792Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 182,
+      "at": "2026-11-07T21:30:28.762Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:28.762Z"
+      }
+    },
+    {
+      "sequence": 183,
+      "at": "2026-11-07T21:30:29.912Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 184,
+      "at": "2026-11-07T21:30:30.738Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "a666c552-3a57-4484-933b-f1288868d0f2",
+      "taskId": "T235",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:30.738Z"
+      }
+    },
+    {
+      "sequence": 185,
+      "at": "2026-11-07T21:30:31.706Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 186,
+      "at": "2026-11-07T21:30:32.971Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "652bb260-f071-477b-92fd-1d87c29495fc",
+      "taskId": "T236",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:32.971Z"
+      }
+    },
+    {
+      "sequence": 187,
+      "at": "2026-11-07T21:30:33.887Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 188,
+      "at": "2026-11-07T21:30:34.715Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
+      "taskId": "T237",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:34.715Z"
+      }
+    },
+    {
+      "sequence": 189,
+      "at": "2026-11-07T21:30:35.637Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
+      "taskId": "T238",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 190,
+      "at": "2026-11-07T21:30:36.483Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
+      "taskId": "T238",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-07T21:30:36.483Z"
       }
     }
   ]
