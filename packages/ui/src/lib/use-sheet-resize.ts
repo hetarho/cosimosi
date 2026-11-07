@@ -93,6 +93,7 @@ export interface SheetResize {
 export function useSheetResize(
   panelRef: RefObject<HTMLElement | null>,
   onDismiss: () => void,
+  open: boolean,
   dismissable = true,
 ): SheetResize {
   // Non-null exactly while a finger is down.
@@ -104,6 +105,9 @@ export function useSheetResize(
   // instead — which is what makes letting go from there read as having already left.
   const [overshoot, setOvershoot] = useState(0)
   const [flung, setFlung] = useState(false)
+
+  // The Sheet outlives its panel's exit. Reconcile before commit without losing the chosen height.
+  if (open && flung) setFlung(false)
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLElement>) => {
