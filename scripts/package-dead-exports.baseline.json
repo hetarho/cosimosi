@@ -1,6 +1,5 @@
 {
   "@cosimosi/3d-renderer": [
-    "DEFAULT_SKY_EFFECT",
     "FILAMENT_VERTEX_COLOR",
     "GIST_TRIANGLE_CEILING",
     "MOTE_RADIUS",
