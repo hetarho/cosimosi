@@ -130,9 +130,11 @@
 | local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:32:24.424Z | [history](work/local8h.json) |
 
 ## next
-- freeze fourteen adopted local8h tasks, run final root pnpm check, publish source once and verify exact CI; continue bounded read-only follow-up until the eight-hour deadline
+- close local8h at23:10:49Z after final evidence/cleanup/report checks; fourteen scoped code integrations, root full gate, source publication and exact CI/deployment workflow have passed
 
 ## log
+
+- 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
 - 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
@@ -152,4 +154,3 @@
 - 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
-- 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
