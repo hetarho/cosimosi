@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Filename reachability for the repository's Vitest and mobile Jest runners. Vitest collects
-// test/spec filenames; Jest also collects assertion files beneath __tests__. The UI package's
-// explicit include narrows its Vitest files to src/**/*.test.{ts,tsx}. Ordinary imported helpers
-// need not be independent test files.
+// test/spec filenames; mobile Jest collects js/jsx/ts/tsx test/spec names and __tests__ children.
+// The UI package's explicit include narrows its Vitest files to src/**/*.test.{ts,tsx}.
+// Ordinary imported helpers need not be independent test files.
 //
 //   node scripts/check-test-reachability.mjs
 //   node scripts/check-test-reachability.mjs --probe
@@ -15,6 +15,7 @@ import { fail, note, ok, repoRoot, section } from './lib.mjs'
 
 const ROOTS = ['apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages']
 const CODE_FILE = /\.[cm]?[jt]sx?$/
+const MOBILE_CODE_FILE = /\.[jt]sx?$/
 const TEST_NAME = /(^|[/.])(test|spec)\.[cm]?[jt]sx?$/
 const VITEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/
 const UI_FILE = /^packages\/ui\/src\/.+\.test\.(ts|tsx)$/
@@ -29,7 +30,7 @@ const portable = (file) => file.replaceAll('\\', '/')
 export function isCollectedTestFile(file) {
   const path = portable(file)
   if (path.startsWith('apps/mobile/'))
-    return CODE_FILE.test(path) && (TEST_NAME.test(path) || TEST_DIRECTORY.test(path))
+    return MOBILE_CODE_FILE.test(path) && (TEST_NAME.test(path) || TEST_DIRECTORY.test(path))
   if (path.startsWith('packages/ui/')) return UI_FILE.test(path)
   return VITEST_FILE.test(path)
 }
@@ -45,7 +46,7 @@ function advice(file) {
   if (file.startsWith('packages/ui/'))
     return 'Use a src/**/*.test.ts or src/**/*.test.tsx filename in packages/ui.'
   if (file.startsWith('apps/mobile/'))
-    return 'Use a Jest test/spec filename or place an assertion file under __tests__/.'
+    return 'Use a js/jsx/ts/tsx Jest test/spec filename or __tests__/ assertion file.'
   return 'Use a *.test.* or *.spec.* filename; __tests__/ alone does not collect Vitest assertions.'
 }
 
@@ -77,6 +78,9 @@ function runCheck() {
 function runProbe() {
   const offenders = [
     'apps/mobile/src/app/providers/api-client.probe.ts',
+    'apps/mobile/src/invisible.test.mjs',
+    'apps/mobile/src/invisible.test.mts',
+    'apps/mobile/src/__tests__/hidden.check.mjs',
     'apps/web/src/shared/lib/thing.check.ts',
     'packages/universe/src/thing.assert.tsx',
     'packages/universe/src/__tests__/invisible.assert.ts',
