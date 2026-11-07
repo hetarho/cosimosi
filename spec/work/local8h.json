@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T17:24:11.458Z",
-  "sourceCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+  "snapshotAt": "2026-11-07T17:37:50.050Z",
+  "sourceCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -27,23 +27,14 @@
   },
   "summary": {
     "total": 8,
-    "completed": 7,
-    "remaining": 1,
-    "running": 1,
+    "completed": 8,
+    "remaining": 0,
+    "running": 0,
     "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T232",
-      "title": "Repopulate latent-field transforms after material replacement",
-      "dep": [
-        "T227"
-      ],
-      "status": "doing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -424,6 +415,8 @@
       "submittedBase": "b6add75fddc1ce0ac55d60518c7b33380d3ea852",
       "submissionId": "51095966-f6cb-43a8-a3be-ab4ae3090182",
       "submittedAt": "2026-11-07T17:08:33.513Z",
+      "integratedCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+      "integratedAt": "2026-11-07T17:24:12.329Z",
       "risk": null,
       "review": {
         "id": "040b6e35-d76f-4a29-b9f3-3cc0507a9e76",
@@ -480,6 +473,13 @@
           "command": "node --test scripts/check-test-reachability.test.mjs",
           "startedAt": "2026-11-07T17:08:32.724Z",
           "finishedAt": "2026-11-07T17:08:33.183Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T17:24:11.698Z",
+          "finishedAt": "2026-11-07T17:24:12.048Z"
         }
       ]
     },
@@ -565,9 +565,49 @@
       "contributors": [
         "latentworker"
       ],
-      "status": "doing",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-07T17:21:14.121Z",
-      "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc"
+      "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc",
+      "verifiedCommit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+      "submittedBase": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+      "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+      "submittedAt": "2026-11-07T17:30:50.664Z",
+      "risk": null,
+      "review": {
+        "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T232 correctly adds material reconstruction to the existing matrix-effect invalidation and changes only its explanatory comment. All15 tests pass independently at exact f8fef3f5, including8 real React/R3F lifecycle cases,20 unchanged rerenders with zero writes/uploads, exact transforms/consumed/count controls and real disposal events. Calibrated red proof fails only color/drift replacement; the separate Clock-observer calibration error is not treated as production evidence. Current T231 target contracts do not conflict, and the real four-package checks/normal hook match the submitted source or documented comment-only equivalent.",
+        "findings": [],
+        "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+        "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+        "createdAt": "2026-11-07T17:32:21.493Z",
+        "finishedAt": "2026-11-07T17:34:18.392Z"
+      },
+      "steps": [
+        {
+          "taskId": "T232",
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "at": "2026-11-07T17:30:50.655Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+              "startedAt": "2026-11-07T17:30:49.608Z",
+              "finishedAt": "2026-11-07T17:30:50.349Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+          "startedAt": "2026-11-07T17:30:49.608Z",
+          "finishedAt": "2026-11-07T17:30:50.349Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -2493,6 +2533,154 @@
       "group": "local8h",
       "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
       "taskId": "T231",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 94,
+      "at": "2026-11-07T17:24:12.271Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T17:24:11.698Z",
+            "finishedAt": "2026-11-07T17:24:12.048Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 95,
+      "at": "2026-11-07T17:24:12.329Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
+      "taskId": "T231",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "integratedAt": "2026-11-07T17:24:12.329Z"
+      }
+    },
+    {
+      "sequence": 96,
+      "at": "2026-11-07T17:30:49.354Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 97,
+      "at": "2026-11-07T17:30:50.664Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+        "submittedBase": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+        "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+        "submittedAt": "2026-11-07T17:30:50.664Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T232",
+            "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+            "at": "2026-11-07T17:30:50.655Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+                "startedAt": "2026-11-07T17:30:49.608Z",
+                "finishedAt": "2026-11-07T17:30:50.349Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
+            "startedAt": "2026-11-07T17:30:49.608Z",
+            "finishedAt": "2026-11-07T17:30:50.349Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 98,
+      "at": "2026-11-07T17:32:21.493Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+          "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+          "createdAt": "2026-11-07T17:32:21.493Z"
+        }
+      }
+    },
+    {
+      "sequence": 99,
+      "at": "2026-11-07T17:34:18.392Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T232 correctly adds material reconstruction to the existing matrix-effect invalidation and changes only its explanatory comment. All15 tests pass independently at exact f8fef3f5, including8 real React/R3F lifecycle cases,20 unchanged rerenders with zero writes/uploads, exact transforms/consumed/count controls and real disposal events. Calibrated red proof fails only color/drift replacement; the separate Clock-observer calibration error is not treated as production evidence. Current T231 target contracts do not conflict, and the real four-package checks/normal hook match the submitted source or documented comment-only equivalent.",
+          "findings": [],
+          "commit": "f8fef3f55d0ec93138e9bd9ce0a20f712140786b",
+          "baseCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+          "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
+          "createdAt": "2026-11-07T17:32:21.493Z",
+          "finishedAt": "2026-11-07T17:34:18.392Z"
+        }
+      }
+    },
+    {
+      "sequence": 100,
+      "at": "2026-11-07T17:37:49.094Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

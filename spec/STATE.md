@@ -113,18 +113,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T232 | Repopulate latent-field transforms after material replacement | ARCH | T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 8 | 7 | 1 | 1 | 0 | 0 | 2026-11-07T17:24:11.458Z | [history](work/local8h.json) |
+| local8h | 2 | 8 | 8 | 0 | 0 | 0 | 0 | 2026-11-07T17:37:50.050Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261107 T232 integrated
 - 261107 T231 integrated
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
@@ -144,4 +144,3 @@
 - 261107 T227 integrated
 - 261107 T226 integrated
 - 261107 T225 integrated
-- 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui

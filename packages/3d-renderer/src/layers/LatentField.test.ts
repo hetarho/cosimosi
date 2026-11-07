@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { act, createRoot, extend, type RootState, type RootStore } from '@react-three/fiber'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
 import {
   LATENT_FIELD_SEGMENTS,
   LATENT_INSTANCE_SEED,
+  LatentField,
   createLatentGeometry,
   createLatentMaterial,
 } from './LatentField.tsx'
@@ -105,4 +108,188 @@ describe('latent mote tessellation', () => {
     // The mobile arm is the cheaper one — that is the whole point of the pair.
     expect(LATENT_FIELD_SEGMENTS.mobile).toBeLessThan(LATENT_FIELD_SEGMENTS.web)
   })
+})
+
+extend({ InstancedMesh: THREE.InstancedMesh })
+
+describe('latent field reconciler lifecycle', () => {
+  beforeEach(() => vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true))
+  afterEach(() => vi.unstubAllGlobals())
+
+  it.each([
+    { name: 'unchanged inputs', change: {}, geometryChanges: false, materialChanges: false },
+    {
+      name: 'material-only color replacement',
+      change: { color: '#aa5500' },
+      geometryChanges: false,
+      materialChanges: true,
+    },
+    {
+      name: 'material-only drift replacement',
+      change: { drift: 0.75 },
+      geometryChanges: false,
+      materialChanges: true,
+    },
+    {
+      name: 'segments update',
+      change: { segments: 12 },
+      geometryChanges: true,
+      materialChanges: false,
+    },
+    { name: 'size update', change: { size: 3 }, geometryChanges: false, materialChanges: false },
+    {
+      name: 'consumed update',
+      change: { consumed: new Set([1]) },
+      geometryChanges: false,
+      materialChanges: false,
+    },
+    { name: 'count update', change: { count: 1 }, geometryChanges: true, materialChanges: false },
+    { name: 'genuine keyed remount', change: {}, geometryChanges: true, materialChanges: true },
+  ])(
+    'keeps exact populated transforms and resource ownership for $name',
+    async ({ name, change, geometryChanges, materialChanges }) => {
+      const canvas = {
+        width: 800,
+        height: 600,
+        style: {},
+        addEventListener() {},
+        removeEventListener() {},
+      } as unknown as HTMLCanvasElement
+      // React, R3F and Three resources are real; only the backend that needs a GPU is a stub.
+      const renderer = {
+        render: vi.fn(),
+        setSize: vi.fn(),
+        setPixelRatio: vi.fn(),
+        domElement: canvas,
+        xr: { isPresenting: false, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+        renderLists: { dispose: vi.fn() },
+        forceContextLoss: vi.fn(),
+      }
+      const camera = new THREE.PerspectiveCamera(60, 800 / 600, 0.1, 1000)
+      camera.position.set(0, 0, 10)
+      camera.updateMatrixWorld()
+      const props = {
+        positions: new Float32Array([1, 2, 3, 4, 5, 6]),
+        count: 2,
+        size: 2,
+        color: '#7d8ba8',
+        drift: 0.5,
+        consumed: null as ReadonlySet<number> | null,
+        reducedMotion: false,
+        segments: 8,
+      }
+      let root: ReturnType<typeof createRoot>
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        root = createRoot(canvas)
+        await root.configure({
+          gl: renderer as unknown as RootState['gl'],
+          camera,
+          frameloop: 'never',
+          dpr: 1,
+          size: { width: 800, height: 600, top: 0, left: 0 },
+        })
+        expect(warning.mock.calls).toEqual([
+          ['THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.'],
+        ])
+      } finally {
+        warning.mockRestore()
+      }
+      let store: RootStore
+      let timestamp = 0
+      const initialGeometryDisposed = vi.fn()
+      const initialMaterialDisposed = vi.fn()
+      const currentGeometryDisposed = vi.fn()
+      const currentMaterialDisposed = vi.fn()
+      try {
+        await act(async () => {
+          store = root.render(createElement(LatentField, { key: 'field', ...props }))
+        })
+        const initial = store!.getState().scene.children[0] as THREE.InstancedMesh<
+          THREE.BufferGeometry,
+          THREE.Material
+        >
+        expect(initial).toBeInstanceOf(THREE.InstancedMesh)
+        const matrices = [
+          2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 1, 2, 3, 1, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 4, 5,
+          6, 1,
+        ]
+        expect(Array.from(initial.instanceMatrix.array)).toEqual(matrices)
+        expect(initial.count).toBe(2)
+        expect(initial.visible).toBe(true)
+        initial.geometry.addEventListener('dispose', initialGeometryDisposed)
+        initial.material.addEventListener('dispose', initialMaterialDisposed)
+        // Spy after construction and initial composition, both of which legitimately write matrices.
+        const initialWrites = vi.spyOn(initial, 'setMatrixAt')
+        const initialVersion = initial.instanceMatrix.version
+        for (let index = 0; index < 20; index++) {
+          await act(async () => {
+            root.render(createElement(LatentField, { key: 'field', ...props }))
+          })
+          await act(async () => store!.getState().advance((timestamp += 1 / 60)))
+          expect(store!.getState().scene.children[0]).toBe(initial)
+          expect(initial.count).toBe(2)
+          expect(initial.visible).toBe(true)
+          expect(Array.from(initial.instanceMatrix.array)).toEqual(matrices)
+          expect(initial.instanceMatrix.version).toBe(initialVersion)
+        }
+        expect(initialWrites).not.toHaveBeenCalled()
+        expect(initialGeometryDisposed).not.toHaveBeenCalled()
+        expect(initialMaterialDisposed).not.toHaveBeenCalled()
+
+        Object.assign(props, change)
+        const key = name === 'genuine keyed remount' ? 'remounted' : 'field'
+        await act(async () => {
+          root.render(createElement(LatentField, { key, ...props }))
+        })
+        const changed = store!.getState().scene.children[0] as THREE.InstancedMesh<
+          THREE.BufferGeometry,
+          THREE.Material
+        >
+        expect(changed.geometry === initial.geometry).toBe(!geometryChanges)
+        expect(changed.material === initial.material).toBe(!materialChanges)
+        expect(initialGeometryDisposed).toHaveBeenCalledTimes(geometryChanges ? 1 : 0)
+        expect(initialMaterialDisposed).toHaveBeenCalledTimes(materialChanges ? 1 : 0)
+        changed.geometry.addEventListener('dispose', currentGeometryDisposed)
+        changed.material.addEventListener('dispose', currentMaterialDisposed)
+        const changedWrites = vi.spyOn(changed, 'setMatrixAt').mockClear()
+        const changedVersion = changed.instanceMatrix.version
+        for (let index = 0; index < 3; index++)
+          await act(async () => store!.getState().advance((timestamp += 1 / 60)))
+        expect(changedWrites).not.toHaveBeenCalled()
+        expect(changed.instanceMatrix.version).toBe(changedVersion)
+        expect(changed.count).toBe(props.count)
+        expect(changed.visible).toBe(true)
+        const expected = matrices.slice(0, props.count * 16)
+        if (name === 'size update')
+          for (const offset of [0, 5, 10, 16, 21, 26]) expected[offset] = 3
+        if (name === 'consumed update') for (const offset of [16, 21, 26]) expected[offset] = 0
+        expect(Array.from(changed.instanceMatrix.array)).toEqual(expected)
+        await act(async () => {
+          root.render(createElement(LatentField, { key, ...props }))
+        })
+        await act(async () => store!.getState().advance((timestamp += 1 / 60)))
+        expect(store!.getState().scene.children[0]).toBe(changed)
+        expect(changedWrites).not.toHaveBeenCalled()
+        expect(changed.instanceMatrix.version).toBe(changedVersion)
+        expect(currentGeometryDisposed).not.toHaveBeenCalled()
+        expect(currentMaterialDisposed).not.toHaveBeenCalled()
+      } finally {
+        await act(async () => {
+          root.render(null)
+        })
+        vi.useFakeTimers()
+        try {
+          await act(async () => root.unmount())
+          await vi.runOnlyPendingTimersAsync()
+        } finally {
+          vi.useRealTimers()
+        }
+      }
+      expect(initialGeometryDisposed).toHaveBeenCalledOnce()
+      expect(initialMaterialDisposed).toHaveBeenCalledOnce()
+      expect(currentGeometryDisposed).toHaveBeenCalledOnce()
+      expect(currentMaterialDisposed).toHaveBeenCalledOnce()
+    },
+  )
 })
