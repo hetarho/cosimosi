@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T16:54:54.954Z",
-  "sourceCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca",
+  "snapshotAt": "2026-11-07T16:57:25.095Z",
+  "sourceCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -26,22 +26,14 @@
   },
   "summary": {
     "total": 7,
-    "completed": 4,
-    "remaining": 3,
+    "completed": 5,
+    "remaining": 2,
     "running": 2,
-    "review": 1,
+    "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
   "tasks": [
-    {
-      "id": "T229",
-      "title": "Refresh existing guard ratchets to measured debt",
-      "dep": [
-        "T227"
-      ],
-      "status": "ready"
-    },
     {
       "id": "T230",
       "title": "Accept committed spend replay after eligible balance is exhausted",
@@ -309,6 +301,8 @@
       "submittedBase": "769715d45ba3e11520a40f73fa4432391b7a1eca",
       "submissionId": "2cb29e82-840a-40e0-ba75-d98d8c2e1328",
       "submittedAt": "2026-11-07T16:50:30.275Z",
+      "integratedCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+      "integratedAt": "2026-11-07T16:54:55.789Z",
       "risk": null,
       "review": {
         "id": "6deeaaee-69c2-4fca-90d2-0079b388a849",
@@ -343,6 +337,13 @@
           "startedAt": "2026-11-07T16:50:29.193Z",
           "finishedAt": "2026-11-07T16:50:29.930Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T16:54:55.212Z",
+          "finishedAt": "2026-11-07T16:54:55.570Z"
+        }
       ]
     },
     {
@@ -357,7 +358,7 @@
       "contributors": [
         "ratchetworker"
       ],
-      "status": "ready",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:25.658Z",
       "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41",
@@ -366,6 +367,19 @@
       "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
       "submittedAt": "2026-11-07T16:49:57.269Z",
       "risk": null,
+      "review": {
+        "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T229 removes exactly the departed DEFAULT_SKY_EFFECT debt identity (180 to179), preserves its export and production consumers, and refreshes the UI aggregate1095 to1085 plus exactly six measured diagnostic buckets. Independent measurement exactly equals both submitted JSON files; all25 existing meaningful guard tests and both actual guards pass. Guard algorithms, scope, aggregate-only enforcement, remaining debt, runtime source and required gates are unchanged. The new T228 target changes no export surface or measured UI input.",
+        "findings": [],
+        "commit": "095e9c9057507c2b9c3591a725dd6ce8794b3d77",
+        "baseCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+        "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
+        "createdAt": "2026-11-07T16:55:20.503Z",
+        "finishedAt": "2026-11-07T16:57:15.911Z"
+      },
       "steps": [
         {
           "taskId": "T229",
@@ -1745,6 +1759,101 @@
       "group": "local8h",
       "attemptId": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
       "taskId": "T228",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 67,
+      "at": "2026-11-07T16:54:55.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
+      "taskId": "T228",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T16:54:55.212Z",
+            "finishedAt": "2026-11-07T16:54:55.570Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 68,
+      "at": "2026-11-07T16:54:55.789Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
+      "taskId": "T228",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+        "integratedAt": "2026-11-07T16:54:55.789Z"
+      }
+    },
+    {
+      "sequence": 69,
+      "at": "2026-11-07T16:55:20.503Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "095e9c9057507c2b9c3591a725dd6ce8794b3d77",
+          "baseCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+          "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
+          "createdAt": "2026-11-07T16:55:20.503Z"
+        }
+      }
+    },
+    {
+      "sequence": 70,
+      "at": "2026-11-07T16:57:15.911Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "050276ee-4eeb-4d6b-8b2f-280199f8b49d",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T229 removes exactly the departed DEFAULT_SKY_EFFECT debt identity (180 to179), preserves its export and production consumers, and refreshes the UI aggregate1095 to1085 plus exactly six measured diagnostic buckets. Independent measurement exactly equals both submitted JSON files; all25 existing meaningful guard tests and both actual guards pass. Guard algorithms, scope, aggregate-only enforcement, remaining debt, runtime source and required gates are unchanged. The new T228 target changes no export surface or measured UI input.",
+          "findings": [],
+          "commit": "095e9c9057507c2b9c3591a725dd6ce8794b3d77",
+          "baseCommit": "45ce11b5efb5d728771eb43822671bf0ce918103",
+          "submissionId": "a973d392-eccf-4761-8911-4224f1820b21",
+          "createdAt": "2026-11-07T16:55:20.503Z",
+          "finishedAt": "2026-11-07T16:57:15.911Z"
+        }
+      }
+    },
+    {
+      "sequence": 71,
+      "at": "2026-11-07T16:57:23.667Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
+      "taskId": "T229",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
