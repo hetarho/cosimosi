@@ -14,7 +14,13 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
+
 ## inbox
+- 261108 decided self-improve-local: the user delegated an eight-hour local improvement run (2026-11-07T15:10:49Z..23:10:49Z); the calling coordinator adopts only bounded behavior-preserving scout proposals, assigns approved task IDs and integrates independently reviewed changes on main. Existing push/plan policy is preserved; no product-rule changes or PRs. See reports/261108-local8h.
 - 261103 decided T223 T224: the user explicitly requested commit and push after the local-delivery report; publish main with the documented Docker verification limits and check CI after push.
 - 261103 parked T223 T224: implementation and all TypeScript tests/typechecks, Go hermetic tests/vet/build and site build passed; Docker is unavailable in WSL, blocking Postgres integration and full generation freshness. Final batch on 3a6804d6 stopped at db:migrate. See reports/261103-rcui.
 - 261103 decided RECALL TWINK DIARY: reconstruction is free; paid original retrieval means restoring the star's stored current text, not charging for archive reading. Existing price coefficients stay; no historical ledger is rewritten. Diary-star browsing becomes a pure selection action.
@@ -108,6 +114,7 @@
 - T222: OpenRouter cutover — phase 1 is hermetic; phase 2 needs OpenRouter, Anthropic and DeepSeek keys, the prompt-logging check and a named reviewer before phase 3 removes the direct adapters
 
 ## log
+- 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
 - 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
 - 261103 T224 done: free gap-only recall and ordered diary-member selection on web/mobile; reports/261103-rcui
@@ -127,10 +134,3 @@
 - 261103 T219 done
 - 261103 T218 done
 - 261103 T217 done
-- 261103 T216 done
-- 261103 T215 done
-- 261103 T214 done
-- 261103 T213 done
-- 261103 create-task T222: replaces the legacy OpenRouter task (file deleted) in the current format; AI@2 unchanged, ADMIN r3 and ERR r3 consumed
-- 261103 update-ssot ERR ADMIN: ERR-12✎ ADMIN-19✎ name the refused LLM model saves
-- 261103 fix api: regenerate sqlc output whose query comments T199 edited (CI check:gen)
