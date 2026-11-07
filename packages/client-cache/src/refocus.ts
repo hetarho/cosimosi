@@ -26,7 +26,8 @@ export function subscribeRevisionGatedRefocus<TData>(
 ): () => void {
   const { queryClient, queryKey, staleTime, revisionOf, readRevision } = options
   let checking = false
-  return focusManager.subscribe((focused) => {
+  let active = true
+  const unsubscribe = focusManager.subscribe((focused) => {
     if (!focused || checking) return
     const query = queryClient.getQueryCache().find<TData>({ queryKey, exact: true })
     const cached = query?.state.data
@@ -34,7 +35,7 @@ export function subscribeRevisionGatedRefocus<TData>(
     checking = true
     void readRevision()
       .then((revision) => {
-        if (revision === revisionOf(cached)) return
+        if (!active || revision === revisionOf(cached)) return
         return queryClient.refetchQueries({ queryKey, exact: true })
       })
       .catch(() => undefined)
@@ -42,4 +43,9 @@ export function subscribeRevisionGatedRefocus<TData>(
         checking = false
       })
   })
+  return () => {
+    // A pending revision may outlive its event subscription.
+    active = false
+    unsubscribe()
+  }
 }
