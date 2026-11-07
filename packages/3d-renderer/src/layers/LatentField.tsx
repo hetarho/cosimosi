@@ -225,11 +225,10 @@ export function LatentField({
     [color, drift, uTime],
   )
 
-  // Write the instance matrices once from the static field (re-run only when the field, size, or
-  // the consumed set changes) — a consumed point collapses to scale 0 so it stops being drawn.
-  // `geometry` is a dependency because a new one rebuilds the mesh through `args`, and the attach
-  // ref hides it at count 0 until this effect fills it: without the dep, a field whose only change
-  // was its tessellation would stay blank.
+  // Write the static field matrices when their inputs change or the mesh is rebuilt. A consumed
+  // point collapses to scale 0 so it stops being drawn.
+  // Geometry or material replacement rebuilds the mesh through `args`; the attach ref hides it at
+  // count 0 until this effect fills it, even when the field, size and consumed set are unchanged.
   useEffect(() => {
     const mesh = ref.current
     if (!mesh || !positions) return
@@ -248,7 +247,7 @@ export function LatentField({
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
     mesh.visible = true
-  }, [positions, count, size, consumed, geometry])
+  }, [positions, count, size, consumed, geometry, material])
 
   // One resource per effect: a geometry rebuilt for a new count or tessellation must not take the
   // still-mounted material down with it.
