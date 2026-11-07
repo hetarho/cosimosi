@@ -20,6 +20,8 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:47Z | - |
 
 ## inbox
+
+- 261108 parked VIS-18: static worker-error/equal-refetch recovery lead needs a new successful-read event contract across public read/assembly seams while preserving T137 sharing; independent design audit confirms no authorized private repair, no probe or change adopted; see review/local-reliability-261108 F18
 - 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
 - 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
 - 261108 decided T237: direct local8h delegation adopts independently audited eight-case mapper-cache proof; VIS30 reconciles accepted T217 settled skipping and changed mapper input, preserving output precision/quality and zero clean/brightness writes; no current production trigger claimed
@@ -131,6 +133,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
 - 261107 T238 integrated
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
@@ -150,4 +153,3 @@
 - 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
-- 261107 T236 integrated
