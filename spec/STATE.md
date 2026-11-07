@@ -14,7 +14,14 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-07T23:54Z | - |
+
 ## inbox
+
+- 261108 decided -: user extends self-improve-local until2026-11-08T01:00Z/10:00KST; currentmain36dad042 is clean and prior14units complete. Root may adopt bounded existing-contract fixes after controlled evidence, reuse local8h history with explicit new IDs, reserve independent reviews/final gate/CI, and publish source once this round under existing cfg. See reports/261108-local10.
 - 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no Task239/code/rerun, preserve criteria/raw evidence and require separate mutation-lifetime calibration
 - 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
 - 261108 parked VIS-18: static worker-error/equal-refetch recovery lead needs a new successful-read event contract across public read/assembly seams while preserving T137 sharing; independent design audit confirms no authorized private repair, no probe or change adopted; see review/local-reliability-261108 F18
@@ -128,6 +135,8 @@
 - local8h timed run closed; fourteen scoped improvements/gates/source CI are complete. Follow reports/261108-local8h for separately scoped future observations and existing T222 owner gates.
 
 ## log
+
+- 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
@@ -147,4 +156,3 @@
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
 - 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
-- 261108 spec integration preflight: normalize inbox references/report tags; inspect canonical ownership and refresh stale review evidence before retrying the refused integration
