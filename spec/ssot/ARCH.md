@@ -1,6 +1,6 @@
 # ARCH architecture
 
-> r4 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
+> r5 | system shape, stack, placement and dependency rules, conventions, quality gates, test policy and verification tiers that every change follows
 
 ## decisions
 - ARCH-1 [o] cosimosi is one pnpm workspace of peer apps, shared packages and one RPC contract; each app builds and ships on its own
@@ -322,10 +322,13 @@
   - the Go version moves together in `apps/api/go.mod`, the `golang:1.26` image and CI `setup-go`
   - `pnpm test:api` runs `pnpm db:migrate` first and points the Go suite at the compose Postgres
 - ARCH-47 [o] verification runs in three tiers: task (fast, before each task commit), batch (the full gate once on the final candidate), CI (once per code push)
-  - task, before each done commit: `pnpm lint` `pnpm -r --filter "...[${HAERAM_DIFF_BASE:-HEAD}]" typecheck` `pnpm -r --filter "...[${HAERAM_DIFF_BASE:-HEAD}]" test`
+  - task, before each done commit: `pnpm lint` `pnpm typecheck:affected` `pnpm test:affected`
   - batch, before code push or final completion: `pnpm check`
   - CI, after code push: the `CI` workflow (`.github/workflows/ci.yml`) job `check` on every push and pull request to `main` and `develop`: `pnpm install --frozen-lockfile`, then `pnpm check`, with Node from `.node-version` and Go 1.26 from `setup-go`
-  - the task tier's filter selects every workspace package changed since the task start and every package depending on one (`git diff` sees modified and staged files, not untracked ones); Go is outside the pnpm workspace
+  - affected checks select every workspace package changed since the task start and every package depending on one; `scripts/check-affected.mjs` resolves the actual root through Git and expands explicit package-name selectors through pnpm, including linked worktrees
+  - the base is an explicit `--base` commit/ref, else `HAERAM_DIFF_BASE`, else `HEAD`; the tracked Git diff includes committed, modified and staged files, not untracked ones; rename/deletion handling retains both affected owners
+  - shared workspace inputs or uncertain ownership conservatively select all child workspace projects; known non-workspace documentation, backend and guard-only changes report an intentional empty TypeScript selection, which never substitutes for their conditional Go, generation or guard obligations; discovery/inventory/selection failures are errors
+  - Go is outside the pnpm workspace; the final full gate and every conditional check below remain required
   - a change under `apps/api/` or `proto/` adds `pnpm check:api` to the task tier (gofmt, vet, the Go suite against the local compose Postgres, build)
   - a change under `scripts/`, to an ESLint, oxlint or steiger config, or to a probe adds `pnpm test:guards` to the task tier
   - a change to a generator input (`spec/values.yaml`, `packages/i18n/messages/`, `packages/ui/src/tokens.ts`, `proto/`, `apps/api/db/`) runs `pnpm gen` and commits the regenerated output with it
@@ -370,6 +373,7 @@
 - the `be-architecture`, `fe-architecture` and `mobile-architecture` skills are procedures over these decisions, never a second source of their rules
 
 ## chg
+- r5 261108 ARCH-47✎ pnpm diff selectors→Git-root-aware affected check entrypoints; task, batch and CI obligations preserved
 
 - r4 261103 ARCH-28✎ parity guards: copied pure modules only→also same-named slices export the same names, platform-only additions listed (slice-api-parity guard)
 - r3 261103 ARCH-7✎ +`cmd/internal/wiring` ; ARCH-21✎ feature "one action"→"views of one action", widget "reused across pages"→"binds a controller or composes features", entity "domain mirror"→"read-only views of one noun" ; ARCH-27✎ +`account` +`color`, auth "platform seam"→"session only", React "seam entries only"→"plus root hook stores", +named exports ; ARCH-34✎ +MEM `persistence` ; ARCH-41✎ +`lint:package-entries`

@@ -20,6 +20,7 @@
 | local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T15:12Z | - |
 
 ## inbox
+- 261108 decided ARCH-47 review/local-reliability-261108 T227 T228: reproduced linked-worktree selection skips required tests → route the same coverage through Git-root-aware project commands (alt: upgrade pnpm | keep manual closures). Separately adopt bounded shared-component resource updates after actual lifecycle reproduction; fixed current caller values limit demonstrated production exposure.
 - 261108 decided TWINK-4 review/frontend-rendering-experience-260726: two canonical references conflate price ownership with a consumed weight → retain economy ownership and classify its forgetting input as required (alt: split decisions broadly | remove a dependency); all rules and transitive brief inclusion remain. Close the historical review's fulfilled task conversion while preserving its original audit provenance.
 - 261108 decided review/local-reliability-261108 T226: actual R3F/React reproduction confirms a settled field disappears on unchanged rerender → adopt F2 under the direct eight-hour delegation (alt: retain the defect | invalidate/recompose every frame); stable attachment preserves visibility and the existing zero-work frame gate without shader/API changes.
 - 261108 decided review/local-reliability-261108 T225: interrupted verification can return success → adopt F1 under the direct eight-hour self-improve-local delegation (alt: leave the reproduced false success | duplicate ad hoc checks); one shared completion policy preserves all ordinary outcomes and gate coverage, with real subprocess regressions and independent review.
@@ -50,7 +51,7 @@
 ## ssot
 | id | rev | tasked | pending | [?] |
 | ------ | --- | ------ | ------- | --- |
-| ARCH | 4 | 4 | - | 0 |
+| ARCH | 5 | 5 | - | 0 |
 | PROD | 2 | 2 | - | 0 |
 | INV | 1 | 1 | - | 0 |
 | SCI | 1 | 1 | - | 0 |
@@ -109,6 +110,8 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
+| T227 | Resolve affected checks correctly in linked Git worktrees | ARCH | T225 | todo |
+| T228 | Preserve color-field attributes and independent resource lifetimes | ARCH | T226 T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
@@ -117,9 +120,13 @@
 | local8h | 2 | 2 | 2 | 0 | 0 | 0 | 0 | 2026-11-07T15:41:07.426Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- local8h: implement approved T227, independently review/integrate it, then T228; coordinator retains the final full gate
+- T222 phase 2 still needs provider-evaluation evidence; pending DEMO/ONB product deltas remain outside this run
+- Historical review/frontend-rendering-experience-260726: revalidate its six unadopted candidates against current code before any adoption
 
 ## log
+- 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
+- 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
 - 261107 T226 integrated
 - 261107 T225 integrated
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
@@ -138,5 +145,3 @@
 - 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decor)
 - 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recallfb)
 - 261103 fix demo clarity: readable dialogs, current words first, real partial erosion in every sample; demo dwell 4500→2800ms and sweep settle 800→200ms (reports/261103-democlr)
-- 261103 fix universe visual: clear captions from controls, pin dialog actions, complete decoration return, fit gist overview; hardware-browser review (reports/261103-univvis)
-- 261103 fix universe experience: synchronize tutorial signals, reading time, displayed date and memory arrival; preserve 40abb60 and add /review (reports/261103-universe)
