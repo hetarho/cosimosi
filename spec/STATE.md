@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T19:47Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T20:30Z | - |
 
 ## inbox
+- 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
 - 261108 parked VIS-18: static worker-error/equal-refetch recovery lead needs a new successful-read event contract across public read/assembly seams while preserving T137 sharing; independent design audit confirms no authorized private repair, no probe or change adopted; see review/local-reliability-261108 F18
 - 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
 - 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
@@ -152,6 +153,7 @@
 - implement-task T236 and T237 in their separate assigned workspaces
 - reserve root DB integration and final integrated gate
 - implement-task T238
+- complete local8h integrated-source audit and final root pnpm check before source push/exact CI
 
 ## log
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
