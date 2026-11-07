@@ -2,8 +2,10 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,326 @@ import (
 	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type recoverySnapshot struct {
+	columns map[string]any
+	targets []map[string]any
+}
+
+func readRecoverySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool, scope platform.UserScope, kind jobqueue.Kind, key string) recoverySnapshot {
+	t.Helper()
+	var data []byte
+	if err := pool.QueryRow(ctx, "SELECT to_jsonb(j) FROM jobs j WHERE user_id=$1 AND kind=$2 AND dedup_key=$3", scope.UserID(), string(kind), key).Scan(&data); err != nil {
+		t.Fatal(err)
+	}
+	var result recoverySnapshot
+	if err := json.Unmarshal(data, &result.columns); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT coalesce(json_agg(to_jsonb(jt) ORDER BY target_kind,target_id),'[]'::json) FROM job_targets jt WHERE user_id=$1 AND job_id=$2", scope.UserID(), result.columns["id"]).Scan(&data); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &result.targets); err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func recoveryInput(scope platform.UserScope, kind jobqueue.Kind, key, id string, due time.Time) jobqueue.Record {
+	return jobqueue.Record{ID: id, UserID: scope.UserID(), Kind: kind, DedupKey: &key, Payload: []byte(`{}`), Status: jobqueue.StatusPending,
+		CreatedAt: time.Unix(1, 0).UTC(), NextRunAt: due, Targets: []jobqueue.Target{{Kind: jobqueue.TargetUser, ID: scope.UserID()}}}
+}
+
+// The epoch due makes this named fixture older than the other integration tests' current-time jobs.
+func seedRecoveryState(t *testing.T, ctx context.Context, pool *pgxpool.Pool, store Store, scope platform.UserScope, kind jobqueue.Kind, key, id, state string) jobqueue.Record {
+	t.Helper()
+	t.Cleanup(func() {
+		cleanup, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		defer stop()
+		_, err := pool.Exec(cleanup, "DELETE FROM jobs WHERE user_id=$1", scope.UserID())
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	input := recoveryInput(scope, kind, key, id, time.Unix(1, 0).UTC())
+	input.Attempts = 3
+	if _, err := store.EnqueueJob(ctx, scope, input); err != nil {
+		t.Fatal(err)
+	}
+	if state == "pending" {
+		return jobqueue.Record{}
+	}
+	claimed, err := store.ClaimDue(ctx, time.Now().UTC(), time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claimed.ID != id {
+		t.Fatalf("claimed %s, want named fixture %s", claimed.ID, id)
+	}
+	switch state {
+	case "running":
+	case "done":
+		err = store.Complete(ctx, claimed)
+	case "failed":
+		err = store.Fail(ctx, claimed, 4)
+	case "dead_letter":
+		err = store.DeadLetter(ctx, claimed, jobqueue.DeadLetterUnhandledKind)
+	case "cancelled":
+		// User-job cancellation normally deletes; this valid defensive row must still stay inactive.
+		_, err = pool.Exec(ctx, "UPDATE jobs SET status='cancelled',terminal_at=clock_timestamp() WHERE user_id=$1 AND id=$2", scope.UserID(), id)
+	default:
+		t.Fatalf("unknown fixture state %s", state)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return claimed
+}
+
+func TestCompletedUserJobRecoveryPreservesStatesAndEnvelope(t *testing.T) {
+	pool := openQueueTestPool(t)
+	store := NewStore(pool)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	for _, state := range []string{"pending", "running", "done", "failed", "dead_letter", "cancelled"} {
+		t.Run(state, func(t *testing.T) {
+			prefix := fmt.Sprintf("recovery-state-%s-%d", state, time.Now().UnixNano())
+			scope, _ := platform.NewUserScope(prefix)
+			kind := jobqueue.Kind("recovery_test")
+			key := "fixed"
+			seedRecoveryState(t, ctx, pool, store, scope, kind, key, prefix+"-old", state)
+			before := readRecoverySnapshot(t, ctx, pool, scope, kind, key)
+			due := time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour)
+			if state == "done" {
+				ordinary, err := jobqueue.NewUserScheduler(store, nil, func() string { return prefix + "-ordinary" })
+				if err != nil {
+					t.Fatal(err)
+				}
+				identity, _ := jobqueue.NewUserJobIdentity(kind, key)
+				if err = ordinary.Schedule(ctx, scope, identity, due); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(before, readRecoverySnapshot(t, ctx, pool, scope, kind, key)) {
+					t.Fatal("ordinary enqueue changed terminal dedup")
+				}
+			}
+			inputID := prefix + "-new"
+			if state == "done" {
+				// A valid repeated minted ID must not change an existing target on conflict.
+				inputID = before.columns["id"].(string)
+			}
+			got, err := store.EnqueueOrRearmCompletedUserJob(ctx, scope, recoveryInput(scope, kind, key, inputID, due))
+			if err != nil {
+				t.Fatal(err)
+			}
+			after := readRecoverySnapshot(t, ctx, pool, scope, kind, key)
+			if state == "done" {
+				changed := map[string]bool{"status": true, "attempts": true, "terminal_at": true, "next_run_at": true, "lease_generation": true}
+				for name, value := range before.columns {
+					if !changed[name] && !reflect.DeepEqual(value, after.columns[name]) {
+						t.Fatalf("rearm changed %s", name)
+					}
+				}
+				if got.Status != jobqueue.StatusPending || got.Attempts != 0 || got.TerminalAt != nil || !got.NextRunAt.Equal(due) || got.LeaseGeneration != int64(before.columns["lease_generation"].(float64))+1 {
+					t.Fatalf("rearmed lifecycle = %+v", got)
+				}
+				if !reflect.DeepEqual(before.targets, after.targets) {
+					t.Fatal("rearm changed persisted targets")
+				}
+			} else if !reflect.DeepEqual(before, after) {
+				t.Fatalf("%s row changed: before=%+v after=%+v", state, before, after)
+			}
+			scheduler, err := jobqueue.NewRearmingUserScheduler(store, nil, func() string { return prefix + "-scheduler" })
+			if err != nil {
+				t.Fatal(err)
+			}
+			identity, _ := jobqueue.NewUserJobIdentity(kind, key)
+			err = scheduler.Schedule(ctx, scope, identity, due)
+			inactive := state == "failed" || state == "dead_letter" || state == "cancelled"
+			if (err != nil) != inactive {
+				t.Fatalf("Schedule(%s) = %v", state, err)
+			}
+			if !reflect.DeepEqual(after, readRecoverySnapshot(t, ctx, pool, scope, kind, key)) {
+				t.Fatal("duplicate scheduling changed existing state")
+			}
+			if _, err := store.EnqueueOrRearmCompletedUserJob(ctx, scope, recoveryInput(scope, kind, key, got.ID, due.Add(time.Hour))); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(after, readRecoverySnapshot(t, ctx, pool, scope, kind, key)) {
+				t.Fatal("repeated ID and dedup changed the retained envelope or target")
+			}
+		})
+	}
+}
+
+func TestCompletedUserJobRecoveryScopesUserAndKind(t *testing.T) {
+	pool := openQueueTestPool(t)
+	store := NewStore(pool)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	prefix := fmt.Sprintf("recovery-scope-%d", time.Now().UnixNano())
+	a, _ := platform.NewUserScope(prefix + "-a")
+	b, _ := platform.NewUserScope(prefix + "-b")
+	kind := jobqueue.Kind("recovery_test")
+	key := "same-key"
+	seedRecoveryState(t, ctx, pool, store, a, kind, key, prefix+"-old", "done")
+	before := readRecoverySnapshot(t, ctx, pool, a, kind, key)
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), "DELETE FROM jobs WHERE user_id=$1", b.UserID()) })
+	due := time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour)
+	for _, input := range []jobqueue.Record{recoveryInput(b, kind, key, prefix+"-b", due), recoveryInput(a, "other_recovery_test", key, prefix+"-kind", due)} {
+		scope, _ := platform.NewUserScope(input.UserID)
+		if _, err := store.EnqueueOrRearmCompletedUserJob(ctx, scope, input); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !reflect.DeepEqual(before, readRecoverySnapshot(t, ctx, pool, a, kind, key)) {
+		t.Fatal("another user/kind revived the completed row")
+	}
+	if _, err := store.EnqueueOrRearmCompletedUserJob(ctx, a, recoveryInput(a, kind, key, prefix+"-new", due)); err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []jobqueue.Record{recoveryInput(b, kind, key, "", due), recoveryInput(a, "other_recovery_test", key, "", due)} {
+		scope, _ := platform.NewUserScope(input.UserID)
+		s := readRecoverySnapshot(t, ctx, pool, scope, input.Kind, key)
+		if s.columns["status"] != "pending" || s.columns["lease_generation"] != float64(0) {
+			t.Fatal("unrelated identity changed")
+		}
+	}
+}
+
+func TestCompletedUserJobRecoveryRejectsMalformedPersistedTarget(t *testing.T) {
+	pool := openQueueTestPool(t)
+	store := NewStore(pool)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	prefix := fmt.Sprintf("recovery-target-%d", time.Now().UnixNano())
+	scope, _ := platform.NewUserScope(prefix)
+	kind := jobqueue.Kind("recovery_test")
+	key := "fixed"
+	input := recoveryInput(scope, kind, key, prefix+"-old", time.Now().Add(time.Hour))
+	input.Targets = []jobqueue.Target{{Kind: jobqueue.TargetMemory, ID: prefix + "-memory", ExpectedRevision: 1}}
+	if _, err := store.EnqueueJob(ctx, scope, input); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanup, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		defer stop()
+		_, err := pool.Exec(cleanup, "DELETE FROM jobs WHERE user_id=$1", scope.UserID())
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	before := readRecoverySnapshot(t, ctx, pool, scope, kind, key)
+	scheduler, err := jobqueue.NewRearmingUserScheduler(store, nil, func() string { return prefix + "-new" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, _ := jobqueue.NewUserJobIdentity(kind, key)
+	if err = scheduler.Schedule(ctx, scope, identity, time.Now().Add(time.Hour)); err == nil {
+		t.Fatal("malformed persisted target was accepted as a user trigger")
+	}
+	if !reflect.DeepEqual(before, readRecoverySnapshot(t, ctx, pool, scope, kind, key)) {
+		t.Fatal("recovery modified a malformed active envelope or its targets")
+	}
+}
+
+func TestCompletedUserJobRecoverySerializesAndFencesStaleTransitions(t *testing.T) {
+	pool := openQueueTestPool(t)
+	store := NewStore(pool)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	prefix := fmt.Sprintf("recovery-fence-%d", time.Now().UnixNano())
+	scope, _ := platform.NewUserScope(prefix)
+	kind := jobqueue.Kind("recovery_test")
+	key := "fixed"
+	old := seedRecoveryState(t, ctx, pool, store, scope, kind, key, prefix+"-old", "done")
+	due := time.Unix(2, 0).UTC()
+	start := make(chan struct{})
+	results := make(chan jobqueue.Record, 2)
+	failures := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			row, err := store.EnqueueOrRearmCompletedUserJob(ctx, scope, recoveryInput(scope, kind, key, fmt.Sprintf("%s-new-%d", prefix, i), due))
+			results <- row
+			failures <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	for range 2 {
+		if err := <-failures; err != nil {
+			t.Fatal(err)
+		}
+		row := <-results
+		if row.ID != old.ID || row.LeaseGeneration != old.LeaseGeneration+1 || row.Status != jobqueue.StatusPending {
+			t.Fatalf("concurrent rearm = %+v", row)
+		}
+	}
+	claimed, err := store.ClaimDue(ctx, time.Now().UTC(), time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claimed.ID != old.ID || claimed.LeaseGeneration != old.LeaseGeneration+2 {
+		t.Fatalf("fresh claim = %+v", claimed)
+	}
+	before := readRecoverySnapshot(t, ctx, pool, scope, kind, key)
+	for _, transition := range []func() error{func() error { return store.Complete(ctx, old) }, func() error { return store.Retry(ctx, old, 99, time.Now().Add(time.Hour)) }, func() error { return store.Fail(ctx, old, 99) }} {
+		if err := transition(); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before, readRecoverySnapshot(t, ctx, pool, scope, kind, key)) {
+			t.Fatal("stale transition changed the fresh attempt")
+		}
+	}
+}
+
+func TestCompletedUserJobRecoverySurvivesConcurrentCleanup(t *testing.T) {
+	pool := openQueueTestPool(t)
+	store := NewStore(pool)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	prefix := fmt.Sprintf("recovery-cleanup-%d", time.Now().UnixNano())
+	scope, _ := platform.NewUserScope(prefix)
+	kind := jobqueue.Kind("recovery_test")
+	key := "fixed"
+	seedRecoveryState(t, ctx, pool, store, scope, kind, key, prefix+"-old", "done")
+	due := time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour)
+	start := make(chan struct{})
+	failures := make(chan error, 2)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		_, err := store.EnqueueOrRearmCompletedUserJob(ctx, scope, recoveryInput(scope, kind, key, prefix+"-new", due))
+		failures <- err
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		_, err := store.PurgeTerminalJobs(ctx, time.Now().Add(time.Second), 100)
+		failures <- err
+	}()
+	close(start)
+	wg.Wait()
+	for range 2 {
+		if err := <-failures; err != nil {
+			t.Fatal(err)
+		}
+	}
+	after := readRecoverySnapshot(t, ctx, pool, scope, kind, key)
+	var count int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM jobs WHERE user_id=$1 AND kind=$2 AND dedup_key=$3", scope.UserID(), string(kind), key).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 || after.columns["status"] != "pending" || after.columns["terminal_at"] != nil || len(after.targets) != 1 {
+		t.Fatalf("cleanup/rearm result = %+v count=%d", after, count)
+	}
+}
 
 func openQueueTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()

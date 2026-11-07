@@ -15,18 +15,251 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/cmd/internal/wiring"
+	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/account"
+	accountpg "github.com/cosimosi/api/internal/account/pg"
 	accounttestregistry "github.com/cosimosi/api/internal/account/testregistry"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
+	queuepg "github.com/cosimosi/api/internal/platform/jobqueue/pg"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
+	"github.com/jackc/pgx/v5"
 )
+
+type unavailableWithdrawalTargets struct {
+	dbgen.DBTX
+	err error
+}
+
+func (d unavailableWithdrawalTargets) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+	return nil, d.err
+}
+
+func TestWithdrawalTargetReadFailurePrecedesMarkAgainstDatabase(t *testing.T) {
+	pool := openWithdrawalTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	userID := fmt.Sprintf("withdrawal-target-error-%d", time.Now().UnixNano())
+	scope, _ := platform.NewUserScope(userID)
+	cleanupWithdrawalRows(t, pool, userID, userID, userID+"-cleanup")
+	if _, err := pool.PgxPool().Exec(ctx, `INSERT INTO users(user_id,nickname,timezone,locale) VALUES($1,'target-read','UTC','en')`, userID); err != nil {
+		t.Fatal(err)
+	}
+	readErr := errors.New("target read unavailable")
+	queue := queuepg.NewStore(unavailableWithdrawalTargets{DBTX: pool.PgxPool(), err: readErr})
+	scheduler, err := account.NewWithdrawalJobScheduler(queue, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := accountpg.NewStore(pool.PgxPool())
+	failOnce := false
+	markCalls := 0
+	directory := accountDirectoryAdapter{source: platformsupabase.Fake{}}
+	service, err := account.NewService(account.ServiceDeps{Store: store, Directory: directory, InviteSigner: account.UnavailableInviteSigner{}, InviteGranter: accountNoInviteGranter{}, SignupBonusGranter: accountNoSignupBonusGranter{}, Achievements: account.NoAchievementRecorder{}, Withdrawals: failedWithdrawalMark{WithdrawalStore: store, failOnce: &failOnce, calls: &markCalls}, Scheduler: scheduler, Purgers: mustWithdrawal(t, pool).Purgers, Credentials: directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.Withdraw(ctx, scope); !errors.Is(err, readErr) || markCalls != 0 {
+		t.Fatalf("target read failure: error=%v mark calls=%d", err, markCalls)
+	}
+	var marker *time.Time
+	if err = pool.PgxPool().QueryRow(ctx, "SELECT deleted_at FROM users WHERE user_id=$1", userID).Scan(&marker); err != nil {
+		t.Fatal(err)
+	}
+	if marker != nil {
+		t.Fatal("failed target read committed the account mark")
+	}
+	if trigger := readWithdrawalTrigger(t, ctx, pool, scope); trigger.status != "pending" || trigger.active != 1 {
+		t.Fatal("failed post-enqueue read did not leave an inert durable trigger")
+	}
+}
+
+type failedWithdrawalMark struct {
+	account.WithdrawalStore
+	failOnce *bool
+	calls    *int
+}
+
+func (s failedWithdrawalMark) InWithdrawalTx(ctx context.Context, fn func(account.WithdrawalStore) error) error {
+	return s.WithdrawalStore.InWithdrawalTx(ctx, func(tx account.WithdrawalStore) error {
+		return fn(failedWithdrawalMark{WithdrawalStore: tx, failOnce: s.failOnce, calls: s.calls})
+	})
+}
+
+func (s failedWithdrawalMark) MarkWithdrawn(ctx context.Context, scope platform.UserScope, at time.Time) (time.Time, bool, error) {
+	*s.calls++
+	if *s.failOnce {
+		*s.failOnce = false
+		return time.Time{}, false, errors.New("injected tx-bound withdrawal mark failure")
+	}
+	return s.WithdrawalStore.MarkWithdrawn(ctx, scope, at)
+}
+
+type observedWithdrawalPurger struct {
+	account.UserDataPurger
+	calls *int
+}
+
+func (p observedWithdrawalPurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
+	*p.calls++
+	return p.UserDataPurger.PurgeUser(ctx, scope)
+}
+
+type withdrawalTriggerState struct {
+	id, status string
+	due        time.Time
+	terminal   *time.Time
+	generation int64
+	active     int
+}
+
+func readWithdrawalTrigger(t *testing.T, ctx context.Context, pool *platformdb.Pool, scope platform.UserScope) withdrawalTriggerState {
+	t.Helper()
+	identity, err := account.WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var s withdrawalTriggerState
+	if err = pool.PgxPool().QueryRow(ctx, `SELECT id,status,next_run_at,terminal_at,lease_generation FROM jobs WHERE user_id=$1 AND kind=$2 AND dedup_key=$3`, scope.UserID(), string(identity.Kind()), identity.DedupKey()).Scan(&s.id, &s.status, &s.due, &s.terminal, &s.generation); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM jobs WHERE user_id=$1 AND kind=$2 AND dedup_key=$3 AND status IN ('pending','running') AND terminal_at IS NULL`, scope.UserID(), string(identity.Kind()), identity.DedupKey()).Scan(&s.active); err != nil {
+		t.Fatal(err)
+	}
+	var targets, correct int
+	if err = pool.PgxPool().QueryRow(ctx, `SELECT count(*),count(*) FILTER(WHERE target_kind='user' AND target_id=$1 AND expected_revision IS NULL) FROM job_targets WHERE user_id=$1 AND job_id=$2`, scope.UserID(), s.id).Scan(&targets, &correct); err != nil {
+		t.Fatal(err)
+	}
+	if targets != 1 || correct != 1 {
+		t.Fatalf("persisted withdrawal targets: total=%d correct=%d", targets, correct)
+	}
+	return s
+}
+
+func TestCompletedWithdrawalTriggerRecoveryAgainstDatabase(t *testing.T) {
+	pool := openWithdrawalTestPool(t)
+	for _, existingMarker := range []bool{false, true} {
+		t.Run(fmt.Sprintf("existing-due-marker-%v", existingMarker), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			userID := fmt.Sprintf("completed-withdrawal-%v-%d", existingMarker, time.Now().UnixNano())
+			scope, err := platform.NewUserScope(userID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cleanupWithdrawalRows(t, pool, userID, userID, userID+"-cleanup")
+			if _, err = pool.PgxPool().Exec(ctx, `INSERT INTO users(user_id,nickname,timezone,locale) VALUES($1,'recovery','UTC','en')`, userID); err != nil {
+				t.Fatal(err)
+			}
+			retention := values.AccountWithdrawalRetentionWindow()
+			// The old orphan is the oldest due job; only its eventual completion uses current DB time.
+			now := time.Unix(1, 0).UTC().Add(-retention)
+			store := accountpg.NewStore(pool.PgxPool())
+			queue := queuepg.NewStore(pool.PgxPool())
+			failOnce := true
+			markCalls := 0
+			purgeCalls := 0
+			nextID := 0
+			scheduler, err := account.NewWithdrawalJobScheduler(queue, func() time.Time { return now }, func() string { nextID++; return fmt.Sprintf("%s-job-%d", userID, nextID) })
+			if err != nil {
+				t.Fatal(err)
+			}
+			withdrawal := mustWithdrawal(t, pool)
+			purgers := []account.UserDataPurger{}
+			for _, leg := range withdrawal.Purgers {
+				purgers = append(purgers, observedWithdrawalPurger{UserDataPurger: leg, calls: &purgeCalls})
+			}
+			banned, deleted := map[string]bool{}, map[string]bool{}
+			directory := accountDirectoryAdapter{source: platformsupabase.Fake{BannedUsers: banned, DeletedUsers: deleted}}
+			service, err := account.NewService(account.ServiceDeps{Store: store, Directory: directory, InviteSigner: account.UnavailableInviteSigner{}, InviteGranter: accountNoInviteGranter{}, SignupBonusGranter: accountNoSignupBonusGranter{}, Achievements: account.NoAchievementRecorder{}, Withdrawals: failedWithdrawalMark{WithdrawalStore: store, failOnce: &failOnce, calls: &markCalls}, Scheduler: scheduler, Purgers: purgers, Credentials: directory, Now: func() time.Time { return now }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = service.Withdraw(ctx, scope); err == nil || failOnce || markCalls != 1 {
+				t.Fatalf("first mark fault: error=%v pending=%v calls=%d", err, failOnce, markCalls)
+			}
+			pending := readWithdrawalTrigger(t, ctx, pool, scope)
+			var marker *time.Time
+			if err = pool.PgxPool().QueryRow(ctx, "SELECT deleted_at FROM users WHERE user_id=$1", userID).Scan(&marker); err != nil {
+				t.Fatal(err)
+			}
+			if pending.active != 1 || marker != nil {
+				t.Fatal("failed transaction did not leave a live account and committed trigger")
+			}
+			if err = pool.PgxPool().QueryRow(ctx, "SELECT clock_timestamp()").Scan(&now); err != nil {
+				t.Fatal(err)
+			}
+			handler := account.NewWithdrawalSweepJobHandler(service, func() time.Time { return now })
+			var claimed jobqueue.Record
+			observed := func(ctx context.Context, j jobqueue.Record) error {
+				claimed = j
+				if j.ID != pending.id || j.UserID != userID {
+					return fmt.Errorf("unexpected claimed job %s", j.ID)
+				}
+				return handler(ctx, j)
+			}
+			cleaned := jobqueue.WithTerminalCleanup[jobqueue.Record](queue, queue, jobqueue.CleanupPolicy{Interval: time.Duration(values.WorkerCleanupIntervalS) * time.Second, BatchSize: int32(values.WorkerCleanupBatchSize), Retention: time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour})
+			runner, err := jobqueue.NewRunner[jobqueue.Record](cleaned, map[string]jobqueue.Registration[jobqueue.Record]{string(account.WithdrawalJobKind): {Handler: observed, RetryForever: true}}, jobqueue.Config{Lease: time.Duration(values.AiJobLeaseMs) * time.Millisecond, MaxAttempts: int32(values.AiJobMaxAttempts), MaxClaims: int32(values.AiJobMaxClaims), BackoffBase: time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond, Now: func() time.Time { return now }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			ran, err := runner.RunOnce(ctx)
+			if err != nil || !ran || claimed.ID != pending.id {
+				t.Fatalf("inert worker: ran=%v claim=%s error=%v", ran, claimed.ID, err)
+			}
+			done := readWithdrawalTrigger(t, ctx, pool, scope)
+			if done.status != "done" || done.terminal == nil || purgeCalls != 0 || len(banned) != 0 || len(deleted) != 0 {
+				t.Fatal("inert completion purged or failed to terminalize")
+			}
+			if err = pool.PgxPool().QueryRow(ctx, "SELECT clock_timestamp()").Scan(&now); err != nil {
+				t.Fatal(err)
+			}
+			cutoff := now.Add(-time.Duration(values.AiJobTerminalRetentionDays) * 24 * time.Hour)
+			if done.terminal.Before(cutoff) || done.terminal.After(now) || now.Sub(*done.terminal) > time.Minute {
+				t.Fatal("DB terminal timestamp is not current and retained")
+			}
+			if _, err = queue.PurgeTerminalJobs(ctx, cutoff, int32(values.WorkerCleanupBatchSize)); err != nil {
+				t.Fatal(err)
+			}
+			if retained := readWithdrawalTrigger(t, ctx, pool, scope); retained.id != done.id || retained.status != "done" {
+				t.Fatal("cleanup erased retained precondition")
+			}
+			wantMarker := now
+			if existingMarker {
+				wantMarker = now.Add(-retention - time.Hour)
+				if err = store.InWithdrawalTx(ctx, func(tx account.WithdrawalStore) error {
+					_, marked, err := tx.MarkWithdrawn(ctx, scope, wantMarker)
+					if err != nil {
+						return err
+					}
+					if !marked {
+						return errors.New("fixture existing marker did not land")
+					}
+					return nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			window, err := service.Withdraw(ctx, scope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rearmed := readWithdrawalTrigger(t, ctx, pool, scope)
+			if rearmed.active != 1 || rearmed.status != "pending" || rearmed.terminal != nil || rearmed.id != done.id || rearmed.generation != done.generation+1 || !rearmed.due.Equal(wantMarker.Add(retention)) || !window.WithdrawnAt.Equal(wantMarker) || !window.RestoreDeadlineAt.Equal(wantMarker.Add(retention)) {
+				t.Fatalf("recovery: trigger=%+v window=%+v", rearmed, window)
+			}
+			if purgeCalls != 0 || len(banned) != 0 || len(deleted) != 0 {
+				t.Fatal("scheduling recovery performed product or credential purge")
+			}
+		})
+	}
+}
 
 func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing.T) {
 	pool := openWithdrawalTestPool(t)

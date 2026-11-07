@@ -176,7 +176,7 @@ func appendWithdrawalEvent(events *[]string, event string) {
 func newWithdrawalTestService(
 	t *testing.T,
 	store *fakeWithdrawalStore,
-	scheduler *fakeWithdrawalScheduler,
+	scheduler WithdrawalSweepScheduler,
 	purgers []UserDataPurger,
 	credentials *fakeCredentialDirectory,
 	now time.Time,
@@ -237,6 +237,22 @@ func TestWithdrawPairsOneDeadlineAndPreservesOriginalWindow(t *testing.T) {
 	}
 	if !scheduler.scheduled[0].Equal(wantAt.Add(retention)) {
 		t.Fatalf("first due = %v, want %v", scheduler.scheduled[0], wantAt.Add(retention))
+	}
+	if !scheduler.scheduled[1].Equal(scheduler.scheduled[0]) {
+		t.Fatalf("duplicate due moved: %v", scheduler.scheduled)
+	}
+}
+
+func TestWithdrawRecoverySchedulesFromExistingMarker(t *testing.T) {
+	marker := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
+	for _, now := range []time.Time{marker.Add(time.Hour), marker.Add(withdrawalRetentionWindow() + time.Hour)} {
+		store := &fakeWithdrawalStore{found: true, withdrawnAt: marker}
+		scheduler := &fakeWithdrawalScheduler{}
+		service := newWithdrawalTestService(t, store, scheduler, []UserDataPurger{&fakeUserDataPurger{name: "memory"}}, &fakeCredentialDirectory{}, now)
+		window, err := service.Withdraw(context.Background(), mustScope(t, "withdraw-user"))
+		if err != nil || !window.WithdrawnAt.Equal(marker) || !window.RestoreDeadlineAt.Equal(marker.Add(withdrawalRetentionWindow())) || len(scheduler.scheduled) != 1 || !scheduler.scheduled[0].Equal(window.RestoreDeadlineAt) {
+			t.Fatalf("existing marker recovery: window=%+v schedule=%v error=%v", window, scheduler.scheduled, err)
+		}
 	}
 }
 
