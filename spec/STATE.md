@@ -133,7 +133,6 @@
 - freeze fourteen adopted local8h tasks, run final root pnpm check, publish source once and verify exact CI; continue bounded read-only follow-up until the eight-hour deadline
 
 ## log
-
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
 - 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
