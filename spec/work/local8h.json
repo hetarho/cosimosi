@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-07T17:37:50.050Z",
-  "sourceCommit": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
+  "snapshotAt": "2026-11-07T18:29:09.772Z",
+  "sourceCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -14,11 +14,11 @@
     },
     "push": null,
     "review": "all",
-    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
+    "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232", "T233", "T234"]
   },
   "summary": {
-    "total": 8,
-    "completed": 8,
+    "total": 10,
+    "completed": 10,
     "remaining": 0,
     "running": 0,
     "review": 0,
@@ -532,6 +532,8 @@
       "submittedBase": "f7c625d3e5dc48f90b2cd5e22c1e35629d48a753",
       "submissionId": "c828b139-71ec-4af9-883b-b8141922002b",
       "submittedAt": "2026-11-07T17:30:50.664Z",
+      "integratedCommit": "b99f9ddd58997c34bacf121d2e5f02eebd963a0d",
+      "integratedAt": "2026-11-07T17:37:50.737Z",
       "risk": null,
       "review": {
         "id": "04d30ed1-ba15-4089-9e22-7a5f43602863",
@@ -565,6 +567,126 @@
           "command": "pnpm --filter @cosimosi/3d-renderer exec vitest run src/layers/LatentField.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T232/submitted-vitest.json",
           "startedAt": "2026-11-07T17:30:49.608Z",
           "finishedAt": "2026-11-07T17:30:50.349Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T17:37:50.175Z",
+          "finishedAt": "2026-11-07T17:37:50.518Z"
+        }
+      ]
+    },
+    {
+      "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "group": "local8h",
+      "taskId": "T233",
+      "tasks": ["T233"],
+      "lane": null,
+      "owner": "dialogworker",
+      "contributors": ["dialogworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T18:14:38.752Z",
+      "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+      "verifiedCommit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+      "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
+      "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+      "submittedAt": "2026-11-07T18:22:13.985Z",
+      "risk": null,
+      "review": {
+        "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T233 correctly reconciles private flung state with controlled openness before commit: refused or reopened dialogs return to rest, while accepted open=false exits retain the existing throw and presence deadline. All78 UI tests pass independently at exact7ba9c0e1, including44 primitives and real refusing/accepting/reopen parents. Original red proof fails only refusal/reopen; public/native/presence/threshold/domain/baseline bytes and current T234 contracts are preserved. Actual affected checks and normal hook evidence match submission.",
+        "findings": [],
+        "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+        "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+        "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+        "createdAt": "2026-11-07T18:26:40.636Z",
+        "finishedAt": "2026-11-07T18:28:54.525Z"
+      },
+      "steps": [
+        {
+          "taskId": "T233",
+          "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+          "at": "2026-11-07T18:22:13.975Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+              "startedAt": "2026-11-07T18:22:11.446Z",
+              "finishedAt": "2026-11-07T18:22:13.597Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+          "startedAt": "2026-11-07T18:22:11.446Z",
+          "finishedAt": "2026-11-07T18:22:13.597Z"
+        }
+      ]
+    },
+    {
+      "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "group": "local8h",
+      "taskId": "T234",
+      "tasks": ["T234"],
+      "lane": null,
+      "owner": "refocusworker",
+      "contributors": ["refocusworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-07T18:14:53.465Z",
+      "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+      "verifiedCommit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+      "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
+      "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
+      "submittedAt": "2026-11-07T18:20:49.311Z",
+      "integratedCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+      "integratedAt": "2026-11-07T18:25:38.130Z",
+      "risk": null,
+      "review": {
+        "id": "18e8fe0e-6c31-41e1-9442-df4e5495214f",
+        "owner": "localreviewer",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T234 synchronously fences late refetch dispatch after helper disposal while preserving live revision comparison, independent subscriptions and already-started I/O. All11 real QueryObserver tests pass independently at exact be3f62c7; calibrated original-source proof fails only the2 disposal cases. Five-project affected selection,893-test worker receipts and actual normal-hook execution match the submitted source. No public/default/caller/auth/mobile policy change or broader session/security claim.",
+        "findings": [],
+        "commit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+        "baseCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+        "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
+        "createdAt": "2026-11-07T18:22:40.332Z",
+        "finishedAt": "2026-11-07T18:25:21.442Z"
+      },
+      "steps": [
+        {
+          "taskId": "T234",
+          "commit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+          "at": "2026-11-07T18:20:49.301Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/client-cache exec vitest run src/refocus.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T234/submitted-vitest.json",
+              "startedAt": "2026-11-07T18:20:47.660Z",
+              "finishedAt": "2026-11-07T18:20:48.951Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/client-cache exec vitest run src/refocus.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T234/submitted-vitest.json",
+          "startedAt": "2026-11-07T18:20:47.660Z",
+          "finishedAt": "2026-11-07T18:20:48.951Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-07T18:25:37.490Z",
+          "finishedAt": "2026-11-07T18:25:37.861Z"
         }
       ]
     }
@@ -2574,6 +2696,394 @@
       "group": "local8h",
       "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
       "taskId": "T232",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 101,
+      "at": "2026-11-07T17:37:50.684Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T17:37:50.175Z",
+            "finishedAt": "2026-11-07T17:37:50.518Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 102,
+      "at": "2026-11-07T17:37:50.737Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
+      "taskId": "T232",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "b99f9ddd58997c34bacf121d2e5f02eebd963a0d",
+        "integratedAt": "2026-11-07T17:37:50.737Z"
+      }
+    },
+    {
+      "sequence": 103,
+      "at": "2026-11-07T18:14:35.670Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234"
+        ]
+      }
+    },
+    {
+      "sequence": 104,
+      "at": "2026-11-07T18:14:38.752Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+        "group": "local8h",
+        "taskId": "T233",
+        "tasks": ["T233"],
+        "lane": null,
+        "owner": "dialogworker",
+        "contributors": ["dialogworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T18:14:38.752Z",
+        "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
+      }
+    },
+    {
+      "sequence": 105,
+      "at": "2026-11-07T18:14:39.233Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 106,
+      "at": "2026-11-07T18:14:53.465Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+        "group": "local8h",
+        "taskId": "T234",
+        "tasks": ["T234"],
+        "lane": null,
+        "owner": "refocusworker",
+        "contributors": ["refocusworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-07T18:14:53.465Z",
+        "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
+      }
+    },
+    {
+      "sequence": 107,
+      "at": "2026-11-07T18:14:53.932Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 108,
+      "at": "2026-11-07T18:20:47.388Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 109,
+      "at": "2026-11-07T18:20:49.311Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+        "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
+        "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
+        "submittedAt": "2026-11-07T18:20:49.311Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T234",
+            "commit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+            "at": "2026-11-07T18:20:49.301Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/client-cache exec vitest run src/refocus.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T234/submitted-vitest.json",
+                "startedAt": "2026-11-07T18:20:47.660Z",
+                "finishedAt": "2026-11-07T18:20:48.951Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/client-cache exec vitest run src/refocus.test.ts --reporter=json --outputFile=/Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local8h/T234/submitted-vitest.json",
+            "startedAt": "2026-11-07T18:20:47.660Z",
+            "finishedAt": "2026-11-07T18:20:48.951Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 110,
+      "at": "2026-11-07T18:22:11.143Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 111,
+      "at": "2026-11-07T18:22:13.985Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+        "submittedBase": "d0b622193f9666483b065b2080b445323f8db6c6",
+        "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+        "submittedAt": "2026-11-07T18:22:13.985Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T233",
+            "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+            "at": "2026-11-07T18:22:13.975Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+                "startedAt": "2026-11-07T18:22:11.446Z",
+                "finishedAt": "2026-11-07T18:22:13.597Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/primitives.test.tsx",
+            "startedAt": "2026-11-07T18:22:11.446Z",
+            "finishedAt": "2026-11-07T18:22:13.597Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 112,
+      "at": "2026-11-07T18:22:40.332Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "18e8fe0e-6c31-41e1-9442-df4e5495214f",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+          "baseCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+          "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
+          "createdAt": "2026-11-07T18:22:40.332Z"
+        }
+      }
+    },
+    {
+      "sequence": 113,
+      "at": "2026-11-07T18:25:21.442Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "18e8fe0e-6c31-41e1-9442-df4e5495214f",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T234 synchronously fences late refetch dispatch after helper disposal while preserving live revision comparison, independent subscriptions and already-started I/O. All11 real QueryObserver tests pass independently at exact be3f62c7; calibrated original-source proof fails only the2 disposal cases. Five-project affected selection,893-test worker receipts and actual normal-hook execution match the submitted source. No public/default/caller/auth/mobile policy change or broader session/security claim.",
+          "findings": [],
+          "commit": "be3f62c79fb7a2c8eb556e5364480249281371c0",
+          "baseCommit": "d0b622193f9666483b065b2080b445323f8db6c6",
+          "submissionId": "657cdc92-438e-4b70-9473-6d8f0d111ac7",
+          "createdAt": "2026-11-07T18:22:40.332Z",
+          "finishedAt": "2026-11-07T18:25:21.442Z"
+        }
+      }
+    },
+    {
+      "sequence": 114,
+      "at": "2026-11-07T18:25:36.319Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 115,
+      "at": "2026-11-07T18:25:38.067Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-07T18:25:37.490Z",
+            "finishedAt": "2026-11-07T18:25:37.861Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 116,
+      "at": "2026-11-07T18:25:38.130Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
+      "taskId": "T234",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+        "integratedAt": "2026-11-07T18:25:38.130Z"
+      }
+    },
+    {
+      "sequence": 117,
+      "at": "2026-11-07T18:26:40.636Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+          "owner": "localreviewer",
+          "status": "reviewing",
+          "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+          "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+          "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+          "createdAt": "2026-11-07T18:26:40.636Z"
+        }
+      }
+    },
+    {
+      "sequence": 118,
+      "at": "2026-11-07T18:28:54.525Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "5e35ae89-31e0-444d-9279-f564c3bde87d",
+          "owner": "localreviewer",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T233 correctly reconciles private flung state with controlled openness before commit: refused or reopened dialogs return to rest, while accepted open=false exits retain the existing throw and presence deadline. All78 UI tests pass independently at exact7ba9c0e1, including44 primitives and real refusing/accepting/reopen parents. Original red proof fails only refusal/reopen; public/native/presence/threshold/domain/baseline bytes and current T234 contracts are preserved. Actual affected checks and normal hook evidence match submission.",
+          "findings": [],
+          "commit": "7ba9c0e1d8ec5b241b1f70c83260698fe1951762",
+          "baseCommit": "5d87459151fe28a711eb3a94f4209ca1d8a03222",
+          "submissionId": "4291f4bd-c220-4e7b-ac4b-3ad75b889489",
+          "createdAt": "2026-11-07T18:26:40.636Z",
+          "finishedAt": "2026-11-07T18:28:54.525Z"
+        }
+      }
+    },
+    {
+      "sequence": 119,
+      "at": "2026-11-07T18:29:08.687Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
+      "taskId": "T233",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

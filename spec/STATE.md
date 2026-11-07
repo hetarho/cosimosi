@@ -17,9 +17,11 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T17:16Z | - |
+| local8h | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T15:12Z | 2026-11-07T18:40Z | - |
 
 ## inbox
+- 261108 decided T235: direct local8h delegation adopts six-case actual Sheet proof; fix only retained private fling state, preserve height and all public/native/domain/T233 contracts, require independent review and final gate
+- 261108 decided T233 T234: direct local8h delegation adopts actual refused-dialog swipe and disposed-refocus callback reproductions; preserve public APIs and live behavior, limit to existing private helpers/tests, require separate native reviews and final gate
 - 261108 decided T232: direct local8h delegation adopts reproduced LatentField material invalidation only, preserving all renderer contracts; fixed production caller values limit current exposure; separate native review and final gate required
 - 261108 decided T231: direct local8h delegation adopts reproduced runner/guard collection mismatch; preserve runner configs and helpers, add actual discovery negatives; no existing lost assertion or production incident claimed
 - 261108 decided T229 T230: direct local8h delegation adopts measured ratchet maintenance and reproduced exhausted-balance committed replay; preserve existing aggregate policy, pricing, receipt behavior and scoped deduplication; independent review and coordinator DB/full gates required
@@ -114,18 +116,20 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T235 | Restore retained Sheet swipe state on reopen or refusal | ARCH | T233 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 8 | 8 | 0 | 0 | 0 | 0 | 2026-11-07T17:37:50.050Z | [history](work/local8h.json) |
+| local8h | 2 | 10 | 10 | 0 | 0 | 0 | 0 | 2026-11-07T18:29:09.772Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- implement-task T235 in an isolated assigned workspace
+- inspect the frozen withdrawal probe and preserve final-gate time
 
 ## log
-- 261107 T232 integrated
-- 261107 T231 integrated
+- 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
+- 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
@@ -138,9 +142,9 @@
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
+- 261107 T233 integrated
+- 261107 T234 integrated
+- 261107 T232 integrated
+- 261107 T231 integrated
 - 261107 T230 integrated
 - 261107 T229 integrated
-- 261107 T228 integrated
-- 261107 T227 integrated
-- 261107 T226 integrated
-- 261107 T225 integrated

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { Alert } from './alert.tsx'
@@ -349,6 +349,112 @@ describe('Dialog', () => {
       </Dialog>,
     )
   }
+
+  function ControlledDialog({ pending, onClose }: { pending: boolean; onClose: () => void }) {
+    const [open, setOpen] = useState(true)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Reopen
+        </button>
+        <Dialog
+          open={open}
+          onClose={() => {
+            onClose()
+            if (!pending) setOpen(false)
+          }}
+          title="Confirm"
+          closeLabel="Close"
+        >
+          <p>{pending ? 'Pending operation' : 'Completed result'}</p>
+        </Dialog>
+      </>
+    )
+  }
+
+  it('keeps a refused swipe visible through the pending operation and its result', async () => {
+    stubViewport(true)
+    const onClose = vi.fn()
+    const mounted = render(<ControlledDialog pending onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Confirm' })
+
+    swipeDown(SHEET_GESTURE.dialogDismissPx + 1)
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(dialog).toBeInTheDocument()
+    expect(dialog.style.opacity).not.toBe('0')
+    expect(dialog.style.transform).not.toBe('translate3d(0, 100%, 0)')
+    mounted.rerender(<ControlledDialog pending={false} onClose={onClose} />)
+    expect(screen.getByText('Completed result')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Confirm' })).toBe(dialog)
+    expect(dialog.style.opacity).not.toBe('0')
+    expect(dialog.style.transform).not.toBe('translate3d(0, 100%, 0)')
+
+    // A later accepted close follows the ordinary leave, not a stale rejected throw.
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(dialog).toHaveClass('dialog-leave')
+    expect(dialog.style.opacity).not.toBe('0')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('retains an accepted swipe throw until the controlled presence exit completes', () => {
+    stubViewport(true)
+    vi.useFakeTimers()
+    try {
+      const onClose = vi.fn()
+      render(<ControlledDialog pending={false} onClose={onClose} />)
+      const dialog = screen.getByRole('dialog', { name: 'Confirm' })
+
+      swipeDown(SHEET_GESTURE.dialogDismissPx + 1)
+
+      expect(onClose).toHaveBeenCalledOnce()
+      expect(dialog.style.opacity).toBe('0')
+      expect(dialog.style.transform).toBe('translate3d(0, 100%, 0)')
+      expect(dialog).not.toHaveClass('dialog-leave')
+      act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs - 1))
+      expect(dialog).toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(1))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
+
+  it('restores a dialog reopened before its swipe exit unmounts', () => {
+    stubViewport(true)
+    vi.useFakeTimers()
+    try {
+      render(<ControlledDialog pending={false} onClose={vi.fn()} />)
+      const dialog = screen.getByRole('dialog', { name: 'Confirm' })
+      swipeDown(SHEET_GESTURE.dialogDismissPx + 1)
+      expect(dialog.style.opacity).toBe('0')
+      act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs / 2))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reopen' }))
+
+      expect(screen.getByRole('dialog', { name: 'Confirm' })).toBe(dialog)
+      expect(dialog.style.opacity).not.toBe('0')
+      expect(dialog.style.transform).not.toBe('translate3d(0, 100%, 0)')
+      expect(dialog).toHaveClass('dialog-enter')
+      act(() => vi.advanceTimersByTime(SHEET_GESTURE.settleMs))
+      expect(dialog).toBeInTheDocument()
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
+
+  it('still closes a controlled dialog through its scrim', async () => {
+    const onClose = vi.fn()
+    render(<ControlledDialog pending={false} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Confirm' })
+
+    fireEvent.click(dialog.previousElementSibling!)
+
+    expect(onClose).toHaveBeenCalledOnce()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
 
   it('closes when a bottom sheet is swiped down', () => {
     stubViewport(true)
