@@ -74,6 +74,21 @@ Run the complete local merge gate with:
 pnpm check
 ```
 
+For task checks, run `pnpm typecheck:affected` and `pnpm test:affected`. They select tracked
+changes since `HAERAM_DIFF_BASE` (default `HEAD`) and every dependent workspace package. Override
+that base with `--base <commit-or-ref>`; add `--list` to print the JSON selection without running
+package checks, for example `pnpm typecheck:affected --base HEAD~1 --list`.
+
+The diff includes committed, staged and unstaged tracked changes; stage new files before relying
+on their selection. Shared configuration, generator inputs, proto changes and uncertain ownership
+conservatively select every child project. Known documentation, backend-only and guard-only
+changes may report an intentional empty TypeScript selection. Their separate Go, generation and
+guard checks still apply, and `pnpm check` remains the final gate.
+
+These entrypoints use Git's actual root in ordinary and linked worktrees. The installed pnpm
+Git-diff selector can miss linked-worktree changes; direct `pnpm --filter "...[<base>]"` commands
+do not receive this project wrapper's correction.
+
 The root gate is split into composable commands:
 
 | Command          | Runs                                                                                               |

@@ -111,7 +111,6 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T227 | Resolve affected checks correctly in linked Git worktrees | ARCH | T225 | todo |
 | T228 | Preserve color-field attributes and independent resource lifetimes | ARCH | T226 T227 | todo |
 | T229 | Refresh existing guard ratchets to measured debt | ARCH | T227 | todo |
 | T230 | Accept committed spend replay after eligible balance is exhausted | TWINK ARCH | T227 | todo |
@@ -120,14 +119,13 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 2 | 2 | 0 | 0 | 0 | 0 | 2026-11-07T15:41:07.426Z | [history](work/local8h.json) |
+| local8h | 2 | 6 | 3 | 3 | 0 | 0 | 0 | 2026-11-07T16:38:57.098Z | [history](work/local8h.json) |
 
 ## next
-- local8h: independently review/integrate submitted T227, then implement approved T228 T229 T230; coordinator retains DB and final full gates
-- T222 phase 2 still needs provider-evaluation evidence; pending DEMO/ONB product deltas remain outside this run
-- Historical review/frontend-rendering-experience-260726: revalidate its six unadopted candidates against current code before any adoption
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T227 integrated
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
@@ -147,4 +145,3 @@
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
 - 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decor)
 - 261103 fix decoration guide: focused dim, real sky then body change, panel auto-scroll and live close-up; compact phone preview (reports/261103-decor)
-- 261103 fix recall feedback: commit after dialog departure and camera focus, visible target pulse, actual before/after comparison; reduced-motion handoff (reports/261103-recallfb)
