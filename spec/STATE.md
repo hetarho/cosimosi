@@ -128,6 +128,7 @@
 - T222 and pending DEMO/ONB product deltas remain outside this run
 
 ## log
+- 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
@@ -147,4 +148,3 @@
 - 261103 T224 start: gap-only free reconstruction and free ordered diary-star navigation
 - 261103 T223 done: free reconstruction and separate paid stored-text restoration; zero-economy and idempotency tests passed
 - 261103 update-ssot RECALL TWINK FORGET DIARY PROD UL MEM: separate free reconstruction, paid stored-text recovery and free diary-star browsing; create T223 T224
-- 261103 tune decoration preview: hold new sky in overview for 1000ms before zoom/scroll; restart on reselection and cancel stale handoff (reports/261103-decor)
