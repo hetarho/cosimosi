@@ -129,7 +129,6 @@
 
 ## log
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
-- 261107 T227 integrated
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
@@ -139,6 +138,7 @@
 - 261108 create-task review/local-reliability-261108 F2 → T226: actual R3F lifecycle reproduced settled mesh hiding; preserve matrices, visibility and skipped-frame work
 - 261108 create-task review/local-reliability-261108 F1 → T225: coordinator adopted reproduced subprocess false success; bounded local approval, no product or validation-scope change
 - 261108 self-improve-local start: clean main b3387f84, no other assignments/design; eight-hour user budget, two read-only scouts, separate implementation/review workspaces; reports/261108-local8h
+- 261107 T227 integrated
 - 261107 T226 integrated
 - 261107 T225 integrated
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
