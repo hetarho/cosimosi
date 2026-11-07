@@ -111,6 +111,34 @@ func (s Store) EnqueueJob(ctx context.Context, scope platform.UserScope, job job
 	return mapped, nil
 }
 
+// EnqueueOrRearmCompletedUserJob is the producer-selected completed-trigger capability.
+func (s Store) EnqueueOrRearmCompletedUserJob(ctx context.Context, scope platform.UserScope, job jobqueue.Record) (jobqueue.Record, error) {
+	if err := s.ready(scope); err != nil {
+		return jobqueue.Record{}, err
+	}
+	if job.ID == "" || job.UserID != scope.UserID() || job.Kind == "" || job.DedupKey == nil || *job.DedupKey == "" ||
+		job.Status != jobqueue.StatusPending || job.TerminalAt != nil || job.NextRunAt.IsZero() || jobqueue.ValidateUserJob(job) != nil {
+		return jobqueue.Record{}, jobqueue.ErrUserJobSpecInvalid
+	}
+	row, err := s.queries.EnqueueOrRearmCompletedUserJob(ctx, dbgen.EnqueueOrRearmCompletedUserJobParams{
+		ID: job.ID, UserID: scope.UserID(), Kind: string(job.Kind), Payload: job.Payload,
+		Status: string(job.Status), Attempts: job.Attempts, NextRunAt: pgTime(job.NextRunAt),
+		CreatedAt: pgTime(timeOrNow(job.CreatedAt)), DedupKey: pgText(job.DedupKey),
+		TargetKinds: []string{string(job.Targets[0].Kind)}, TargetIds: []string{job.Targets[0].ID},
+		ExpectedRevisions: []int64{job.Targets[0].ExpectedRevision},
+	})
+	if err != nil {
+		return jobqueue.Record{}, err
+	}
+	mapped := mapEnqueuedJob(dbgen.EnqueueJobRow(row))
+	targets, err := s.queries.ListJobTargets(ctx, dbgen.ListJobTargetsParams{UserID: scope.UserID(), JobID: mapped.ID})
+	if err != nil {
+		return jobqueue.Record{}, err
+	}
+	mapped.Targets = mapJobTargets(targets)
+	return mapped, nil
+}
+
 func (s Store) ClaimDue(ctx context.Context, now time.Time, lease time.Duration) (jobqueue.Record, error) {
 	if s.queries == nil {
 		return jobqueue.Record{}, ErrQueriesRequired

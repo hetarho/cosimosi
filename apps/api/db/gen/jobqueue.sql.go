@@ -304,6 +304,134 @@ func (q *Queries) EnqueueJobs(ctx context.Context, arg EnqueueJobsParams) error 
 	return err
 }
 
+const enqueueOrRearmCompletedUserJob = `-- name: EnqueueOrRearmCompletedUserJob :one
+WITH inserted_job AS (
+    INSERT INTO jobs (
+        id,
+        user_id,
+        kind,
+        payload,
+        status,
+        attempts,
+        next_run_at,
+        created_at,
+        dedup_key
+    ) VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+    )
+    ON CONFLICT (user_id, kind, dedup_key) WHERE dedup_key IS NOT NULL
+    DO UPDATE SET
+        status = CASE WHEN jobs.status = 'done' THEN 'pending' ELSE jobs.status END,
+        attempts = CASE WHEN jobs.status = 'done' THEN 0 ELSE jobs.attempts END,
+        terminal_at = CASE WHEN jobs.status = 'done' THEN NULL ELSE jobs.terminal_at END,
+        next_run_at = CASE WHEN jobs.status = 'done' THEN EXCLUDED.next_run_at ELSE jobs.next_run_at END,
+        lease_generation = CASE WHEN jobs.status = 'done' THEN jobs.lease_generation + 1 ELSE jobs.lease_generation END
+    RETURNING
+        id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+        lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+), inserted_targets AS (
+    INSERT INTO job_targets (
+        job_id,
+        user_id,
+        target_kind,
+        target_id,
+        expected_revision
+    )
+    SELECT
+        inserted_job.id,
+        inserted_job.user_id,
+        target.target_kind,
+        target.target_id,
+        NULLIF(target.expected_revision, 0)
+    FROM inserted_job
+    CROSS JOIN LATERAL (
+        SELECT
+            UNNEST($10::text[]) AS target_kind,
+            UNNEST($11::text[]) AS target_id,
+            UNNEST($12::bigint[]) AS expected_revision
+    ) AS target
+    WHERE inserted_job.id = $1
+    ON CONFLICT DO NOTHING
+    RETURNING job_id
+)
+SELECT
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+FROM inserted_job
+`
+
+type EnqueueOrRearmCompletedUserJobParams struct {
+	ID                string
+	UserID            string
+	Kind              string
+	Payload           []byte
+	Status            string
+	Attempts          int32
+	NextRunAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	DedupKey          pgtype.Text
+	TargetKinds       []string
+	TargetIds         []string
+	ExpectedRevisions []int64
+}
+
+type EnqueueOrRearmCompletedUserJobRow struct {
+	ID                   string
+	UserID               string
+	Kind                 string
+	Payload              []byte
+	Status               string
+	Attempts             int32
+	NextRunAt            pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	LeaseGeneration      int64
+	DedupKey             pgtype.Text
+	TerminalAt           pgtype.Timestamptz
+	CancelledByReleaseID pgtype.Text
+}
+
+// Completed user triggers may re-arm under their existing identity. Other states retain their envelope.
+func (q *Queries) EnqueueOrRearmCompletedUserJob(ctx context.Context, arg EnqueueOrRearmCompletedUserJobParams) (EnqueueOrRearmCompletedUserJobRow, error) {
+	row := q.db.QueryRow(ctx, enqueueOrRearmCompletedUserJob,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.Payload,
+		arg.Status,
+		arg.Attempts,
+		arg.NextRunAt,
+		arg.CreatedAt,
+		arg.DedupKey,
+		arg.TargetKinds,
+		arg.TargetIds,
+		arg.ExpectedRevisions,
+	)
+	var i EnqueueOrRearmCompletedUserJobRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.Payload,
+		&i.Status,
+		&i.Attempts,
+		&i.NextRunAt,
+		&i.CreatedAt,
+		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
+	)
+	return i, err
+}
+
 const failJob = `-- name: FailJob :one
 UPDATE jobs
 SET status = 'failed',

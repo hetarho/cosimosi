@@ -62,6 +62,51 @@ func (s UserScheduler) Cancel(ctx context.Context, scope platform.UserScope, ide
 	}
 	return s.store.CancelUserJob(ctx, scope, identity.kind, identity.dedupKey)
 }
+
+// CompletedUserJobStore opts a producer into completed-trigger recovery without changing enqueue.
+type CompletedUserJobStore interface {
+	EnqueueOrRearmCompletedUserJob(context.Context, platform.UserScope, Record) (Record, error)
+	CancelUserJob(context.Context, platform.UserScope, Kind, string) error
+}
+
+type RearmingUserScheduler struct{ scheduler UserScheduler }
+
+func NewRearmingUserScheduler(store CompletedUserJobStore, now func() time.Time, newID func() string) (RearmingUserScheduler, error) {
+	if store == nil {
+		return RearmingUserScheduler{}, errors.New("rearming user job scheduler requires a store")
+	}
+	scheduler, err := NewUserScheduler(completedUserJobStore{store: store}, now, newID)
+	return RearmingUserScheduler{scheduler: scheduler}, err
+}
+
+func (s RearmingUserScheduler) Schedule(ctx context.Context, scope platform.UserScope, identity UserJobIdentity, due time.Time) error {
+	return s.scheduler.Schedule(ctx, scope, identity, due)
+}
+
+func (s RearmingUserScheduler) Cancel(ctx context.Context, scope platform.UserScope, identity UserJobIdentity) error {
+	return s.scheduler.Cancel(ctx, scope, identity)
+}
+
+type completedUserJobStore struct{ store CompletedUserJobStore }
+
+func (s completedUserJobStore) EnqueueJob(ctx context.Context, scope platform.UserScope, input Record) (Record, error) {
+	job, err := s.store.EnqueueOrRearmCompletedUserJob(ctx, scope, input)
+	if err != nil {
+		return Record{}, err
+	}
+	if job.ID == "" || job.UserID != scope.UserID() || job.Kind != input.Kind ||
+		job.DedupKey == nil || input.DedupKey == nil || *job.DedupKey != *input.DedupKey ||
+		(job.Status != StatusPending && job.Status != StatusRunning) || job.TerminalAt != nil ||
+		ValidateUserJob(job) != nil {
+		return Record{}, errors.New("completed user job recovery did not ensure an active user trigger")
+	}
+	return job, nil
+}
+
+func (s completedUserJobStore) CancelUserJob(ctx context.Context, scope platform.UserScope, kind Kind, key string) error {
+	return s.store.CancelUserJob(ctx, scope, kind, key)
+}
+
 func ValidateUserJob(job Record) error {
 	if job.UserID == "" || len(job.Targets) != 1 || job.Targets[0].Kind != TargetUser ||
 		job.Targets[0].ID != job.UserID || job.Targets[0].ExpectedRevision != 0 {

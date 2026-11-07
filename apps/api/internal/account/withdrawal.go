@@ -134,7 +134,7 @@ func (s *Service) Withdraw(ctx context.Context, scope platform.UserScope) (Withd
 	if scope.UserID() == "" {
 		return WithdrawalWindow{}, ErrScopeRequired
 	}
-	_, found, err := s.withdrawals.WithdrawalStatus(ctx, scope)
+	observedWithdrawnAt, found, err := s.withdrawals.WithdrawalStatus(ctx, scope)
 	if err != nil {
 		return WithdrawalWindow{}, err
 	}
@@ -142,7 +142,11 @@ func (s *Service) Withdraw(ctx context.Context, scope platform.UserScope) (Withd
 		return WithdrawalWindow{}, ErrSignupRequired
 	}
 	now := s.now().UTC()
-	if err := s.scheduler.Schedule(ctx, scope, now.Add(withdrawalRetentionWindow())); err != nil {
+	scheduleFrom := now
+	if !observedWithdrawnAt.IsZero() {
+		scheduleFrom = observedWithdrawnAt.UTC()
+	}
+	if err := s.scheduler.Schedule(ctx, scope, scheduleFrom.Add(withdrawalRetentionWindow())); err != nil {
 		return WithdrawalWindow{}, err
 	}
 
