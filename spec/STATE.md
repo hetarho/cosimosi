@@ -128,7 +128,6 @@
 - local8h timed run closed; fourteen scoped improvements/gates/source CI are complete. Follow reports/261108-local8h for separately scoped future observations and existing T222 owner gates.
 
 ## log
-
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
