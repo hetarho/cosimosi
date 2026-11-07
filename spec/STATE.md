@@ -20,7 +20,6 @@
 | local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-07T23:54Z | - |
 
 ## inbox
-
 - 261108 decided -: user extends self-improve-local until2026-11-08T01:00Z/10:00KST; currentmain36dad042 is clean and prior14units complete. Root may adopt bounded existing-contract fixes after controlled evidence, reuse local8h history with explicit new IDs, reserve independent reviews/final gate/CI, and publish source once this round under existing cfg. See reports/261108-local10.
 - 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no Task239/code/rerun, preserve criteria/raw evidence and require separate mutation-lifetime calibration
 - 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
@@ -135,7 +134,6 @@
 - local8h timed run closed; fourteen scoped improvements/gates/source CI are complete. Follow reports/261108-local8h for separately scoped future observations and existing T222 owner gates.
 
 ## log
-
 - 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
