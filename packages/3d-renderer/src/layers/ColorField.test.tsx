@@ -75,10 +75,15 @@ async function createFieldHarness() {
     mesh() {
       const mesh = store.getState().scene.children.find((child) => 'isInstancedMesh' in child)
       expect(mesh).toBeInstanceOf(THREE.InstancedMesh)
-      return mesh as THREE.InstancedMesh
+      return mesh as THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>
     },
     async frame() {
       await act(async () => store.getState().advance((timestamp += 1 / 60)))
+    },
+    async unmount() {
+      await act(async () => {
+        root.render(null)
+      })
     },
     async dispose() {
       vi.useFakeTimers()
@@ -170,4 +175,124 @@ describe('ColorField settled-frame lifecycle', () => {
       await field.dispose()
     }
   })
+})
+
+describe('ColorField resource ownership', () => {
+  it('uploads unchanged tint and radius channels when resolution replaces the geometry', async () => {
+    const field = await createFieldHarness()
+    try {
+      await field.render()
+      await field.frame()
+      const initial = field.mesh()
+      const matrices = Array.from(initial.instanceMatrix.array)
+
+      field.props.resolution = 12
+      await field.render()
+      const changed = field.mesh()
+      expect(changed.geometry).not.toBe(initial.geometry)
+      expect(changed.geometry.getAttribute('aFieldTint')?.array).toEqual(field.props.tints)
+      expect(changed.geometry.getAttribute('aFieldRadius')?.array).toEqual(field.props.radii)
+      await field.frame()
+      expect(Array.from(changed.instanceMatrix.array)).toEqual(matrices)
+      expect(changed.count).toBe(field.props.count)
+      expect(changed.visible).toBe(true)
+    } finally {
+      await field.dispose()
+    }
+  })
+
+  it.each([
+    {
+      name: 'resolution-only',
+      change: { resolution: 12 },
+      geometryChanges: true,
+      materialChanges: false,
+    },
+    {
+      name: 'falloff-only',
+      change: { falloffExponent: 3 },
+      geometryChanges: false,
+      materialChanges: true,
+    },
+    {
+      name: 'intensity-only',
+      change: { baseIntensity: 0.75 },
+      geometryChanges: false,
+      materialChanges: true,
+    },
+    {
+      name: 'both-resource replacement',
+      change: { resolution: 12, falloffExponent: 3 },
+      geometryChanges: true,
+      materialChanges: true,
+    },
+    { name: 'genuine keyed remount', change: {}, geometryChanges: true, materialChanges: true },
+  ])(
+    'disposes only departed resources on $name and releases current resources once on unmount',
+    async ({ name, change, geometryChanges, materialChanges }) => {
+      const field = await createFieldHarness()
+      try {
+        await field.render()
+        await field.frame()
+        const initial = field.mesh()
+        const initialGeometryDisposed = vi.fn()
+        const initialMaterialDisposed = vi.fn()
+        initial.geometry.addEventListener('dispose', initialGeometryDisposed)
+        initial.material.addEventListener('dispose', initialMaterialDisposed)
+        const matrices = Array.from(initial.instanceMatrix.array)
+
+        await field.render()
+        await field.frame()
+        expect(field.mesh()).toBe(initial)
+        expect(initialGeometryDisposed).not.toHaveBeenCalled()
+        expect(initialMaterialDisposed).not.toHaveBeenCalled()
+
+        Object.assign(field.props, change)
+        await field.render(name === 'genuine keyed remount' ? 'remounted' : 'field')
+        const changed = field.mesh()
+        expect(changed.geometry === initial.geometry).toBe(!geometryChanges)
+        expect(changed.material === initial.material).toBe(!materialChanges)
+        expect(initialGeometryDisposed).toHaveBeenCalledTimes(geometryChanges ? 1 : 0)
+        expect(initialMaterialDisposed).toHaveBeenCalledTimes(materialChanges ? 1 : 0)
+        const currentGeometryDisposed = vi.fn()
+        const currentMaterialDisposed = vi.fn()
+        changed.geometry.addEventListener('dispose', currentGeometryDisposed)
+        changed.material.addEventListener('dispose', currentMaterialDisposed)
+        const tint = changed.geometry.getAttribute('aFieldTint') as THREE.InstancedBufferAttribute
+        const radius = changed.geometry.getAttribute(
+          'aFieldRadius',
+        ) as THREE.InstancedBufferAttribute
+        expect(tint?.array).toEqual(field.props.tints)
+        expect(radius?.array).toEqual(field.props.radii)
+        await field.frame()
+        expect(Array.from(changed.instanceMatrix.array)).toEqual(matrices)
+        expect(changed.count).toBe(field.props.count)
+        expect(changed.visible).toBe(true)
+        const matrixWrites = vi.spyOn(changed, 'setMatrixAt')
+        const matrixVersion = changed.instanceMatrix.version
+        const tintVersion = tint.version
+        const radiusVersion = radius.version
+        await field.render(name === 'genuine keyed remount' ? 'remounted' : 'field')
+        await field.frame()
+        expect(field.mesh()).toBe(changed)
+        expect(matrixWrites).not.toHaveBeenCalled()
+        expect(changed.instanceMatrix.version).toBe(matrixVersion)
+        expect(tint.version).toBe(tintVersion)
+        expect(radius.version).toBe(radiusVersion)
+        expect(currentGeometryDisposed).not.toHaveBeenCalled()
+        expect(currentMaterialDisposed).not.toHaveBeenCalled()
+
+        await field.unmount()
+        expect(currentGeometryDisposed).toHaveBeenCalledOnce()
+        expect(currentMaterialDisposed).toHaveBeenCalledOnce()
+        expect(initialGeometryDisposed).toHaveBeenCalledOnce()
+        expect(initialMaterialDisposed).toHaveBeenCalledOnce()
+        await field.dispose()
+        expect(currentGeometryDisposed).toHaveBeenCalledOnce()
+        expect(currentMaterialDisposed).toHaveBeenCalledOnce()
+      } finally {
+        await field.dispose()
+      }
+    },
+  )
 })
