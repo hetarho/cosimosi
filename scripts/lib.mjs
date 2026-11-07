@@ -21,6 +21,9 @@ const posix = (p) => p.replace(/\\/g, '/')
 export const mount = (hostRel, container) =>
   `${posix(hostRel ? `${repoRoot}/${hostRel}` : repoRoot)}:${container}`
 
+// A signaled child has no exit status and cannot satisfy a successful-completion gate.
+export const subprocessExitCode = (result) => (Number.isInteger(result.status) ? result.status : 1)
+
 /** Run a command, inheriting stdio, rooted at the repo. Returns exit code. */
 export function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot, shell: false, ...opts })
@@ -28,8 +31,9 @@ export function run(cmd, args, opts = {}) {
     if (r.error.code === 'ENOENT') fail(`'${cmd}' 를 찾을 수 없어요. 설치/PATH를 확인하세요.`)
     throw r.error
   }
-  if (r.status) fail(`'${cmd} ${args.join(' ')}' 가 코드 ${r.status} 로 실패했어요.`)
-  return r.status ?? 0
+  const status = subprocessExitCode(r)
+  if (status) fail(`'${cmd} ${args.join(' ')}' 가 코드 ${status} 로 실패했어요.`)
+  return status
 }
 
 // pnpm is a .cmd shim on Windows → libuv can't exec it directly; go via cmd /c
