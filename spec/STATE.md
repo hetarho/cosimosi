@@ -113,20 +113,19 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T231 | Reject test-shaped files excluded by their actual runner | ARCH | T227 | todo |
 | T232 | Repopulate latent-field transforms after material replacement | ARCH | T227 | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 7 | 6 | 1 | 0 | 1 | 0 | 2026-11-07T17:13:43.115Z | [history](work/local8h.json) |
+| local8h | 2 | 8 | 7 | 1 | 1 | 0 | 0 | 2026-11-07T17:24:11.458Z | [history](work/local8h.json) |
 
 ## next
-- local8h: six units integrated, corrected T231 awaits fresh native review; implement/review approved T232, then freeze browser source/build
-- Existing T222 and pending DEMO/ONB product deltas remain excluded; root retains final integrated gate
+- inspect work board for remaining tasks
 
 ## log
+- 261107 T231 integrated
 - 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
@@ -146,4 +145,3 @@
 - 261107 T226 integrated
 - 261107 T225 integrated
 - 261103 T223 T224 local delivery: free reconstruction, separate paid restoration, gap-only inputs and ordered star navigation complete; 1688 TypeScript tests passed; full batch blocked only by Docker, push parked; reports/261103-rcui
-- 261103 fix recall verification: update native gap-only flow coverage and assert the consumed onboarding signal reaches its draft caption
