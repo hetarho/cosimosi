@@ -1,6 +1,6 @@
 # VIS visual expression
 
-> r2 | how the memory universe is drawn and moved through: the 3D scene, what each visual channel means, the emergent layout, the sky and backdrop, and the rendering substrate web and mobile share
+> r3 | how the memory universe is drawn and moved through: the 3D scene, what each visual channel means, the emergent layout, the sky and backdrop, and the rendering substrate web and mobile share
 
 ## decisions
 - VIS-0 [o] the universe page is a rendered 3D space: memories float in it as shader-built 3D bodies, the viewer moves through it with standard 3D navigation (zoom, rotate, pan), and the two z-layers read as its depth →~VIS-9
@@ -157,7 +157,8 @@
   - `PostFX` takes over the render loop, so it mounts last
 - VIS-30 [o] instanced layers size to the live count and never draw empty: one `InstancedMesh` or one batched ribbon per body kind, kept `visible = false` until it has an instance ← a 0-count geometry inside the post pass builds an invalid bind group and wedges the WebGPU device
   - no fixed-capacity buckets
-  - a clean frame recomposes nothing: `InstancedNodeLayer` rewrites matrices only when the coordinate version, channels, slot window, scale or animation revision moved (`instance-frame-gate.ts`); fail-open: a buffer with no version always recomposes, and a layer with its own position mapper opts out
+  - a clean frame recomposes nothing: `InstancedNodeLayer` rewrites matrices when the coordinate version or array, scale channels, slot window, scale, animation revision or committed position mapper changes (`instance-frame-gate.ts`); brightness-only changes upload their attribute without rewriting matrices
+  - fail-open: a buffer with no version always recomposes. A position mapper opts out of clean-frame skipping by default and while animating; an explicitly settled mapper may use the versioned skip. Replacing, adding or removing that mapper changes the matrix input even when the buffer is unchanged
   - a just-launched memory keeps its slots at zero scale until the next `GetUniverse` positions it, so no false geometry flashes at the origin
   - a pick resolves through the entity stores' id lists (server rows plus the optimistic tail), never the graph, so the newest star stays openable
 - VIS-31 [o] the domain-to-visual projection is one-way and every channel has exactly one owner: a visual difference no stored fact explains must not exist →=VIS-1–6
@@ -308,6 +309,7 @@
 - the demo draws the same layers and projections over its own fixtures →~DEMO-30
 
 ## chg
+- r3 261108 VIS-30✎ blanket mapper opt-out→default/animating opt-out plus existing explicit-settled skip; matrix input list→includes committed mapper changes
 
 - r2 261102 VIS-13✎ continuous residual solver work→deterministic quiet-interval sleep with graph/reheat wakeup; active motion and rendering animations preserved
 - r1 261102 initial
