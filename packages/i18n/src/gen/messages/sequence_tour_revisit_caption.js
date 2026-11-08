@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Sequence_Tour_Revisit_CaptionInputs */
 
 const en_sequence_tour_revisit_caption = /** @type {(inputs: Sequence_Tour_Revisit_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`A star keeps what you wrote. Remembering it again is its own act, and it costs stardust.`)
+	return /** @type {LocalizedString} */ (`A star keeps what you wrote. Remembering it again is its own act.`)
 };
 
 const ko_sequence_tour_revisit_caption = /** @type {(inputs: Sequence_Tour_Revisit_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`별은 당신이 쓴 것을 간직해요. 다시 떠올리는 일은 그 자체로 하나의 행위이고, 별가루가 듭니다.`)
+	return /** @type {LocalizedString} */ (`별은 내가 쓴 것을 간직해요. 다시 떠올리는 건 또 다른 일이에요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "A star keeps what you wrote. Remembering it again is its own act, and it costs stardust." |
+* | "A star keeps what you wrote. Remembering it again is its own act." |
 *
 * @param {Sequence_Tour_Revisit_CaptionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

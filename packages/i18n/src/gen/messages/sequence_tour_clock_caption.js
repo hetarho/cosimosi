@@ -10,7 +10,7 @@ const en_sequence_tour_clock_caption = /** @type {(inputs: Sequence_Tour_Clock_C
 };
 
 const ko_sequence_tour_clock_caption = /** @type {(inputs: Sequence_Tour_Clock_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`저 날짜가 당신 우주의 시간이에요. 바라보는 것만으로는 움직이지 않습니다.`)
+	return /** @type {LocalizedString} */ (`저 날짜가 내 우주의 시간이에요. 바라보는 것만으로는 움직이지 않아요.`)
 };
 
 /**

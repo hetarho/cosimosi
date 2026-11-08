@@ -163,8 +163,6 @@
 | T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
 | T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
-| T254 | Onboarding tour copy speaks the product register and states recall truthfully | ONB UI RECALL MKT ARCH | - | todo |
-| T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
 | T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
 | T258 | Sky facing costs nothing where unused and keeps its wiring guarded | VIS MKT ARCH | T256 | todo |
@@ -172,12 +170,13 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 33 | 26 | 7 | 3 | 2 | 0 | 2026-11-08T19:26:53.140Z | [history](work/local8h.json) |
+| local8h | 2 | 34 | 28 | 6 | 2 | 0 | 3 | 2026-11-08T19:37:53.824Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T254 T255 integrated
 - 261109 local13 T250 independently reviewed b8200053 and integrated b38bd150; create-task F26 → T258 (lane landing-scene with T256)
 - 261108 T250 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
@@ -197,5 +196,3 @@
 - 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
 - 261109 local12 T245 independent38test approval; native candidate blocked only by coordinator active.doing metadata, preserve candidate and clear doing before fresh integration; F30 original1failure/8controls confirmed
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
-- 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
-- 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
