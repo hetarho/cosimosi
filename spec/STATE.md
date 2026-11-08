@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T15:35Z | - |
+| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T16:13Z | - |
 
 ## inbox
+- 261109 decided T242 T243 T244 T245 T246 T247: six resumed improvements independently reviewed/integrated, exact latest source hashes and post-fix8caseRPC/log verification pass; final combined gate/main publication pending; continuous run continues to17:35:57Z
 - 261109 decided AI-9 OBS-7 T247: separately frozen original schema-name and unknown-finish causes reach ordinary RPC logs, each1failure/3controls; adopt combined two-file category-only repair with unchanged typed/cache/wire behavior, mandatory DB-backed task gate/independent review; T222 remains excluded
 - 261109 decided ONB-10 T246: original actual-hook step0→1 preserves oldrectA after geometryB, one feature failure/eight controls; adopt only existing per-step remeasurement after T245, preserve pending-rect/replay/pending host policies and require independent review
 - 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
@@ -149,6 +150,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 six reviewed integrations complete23/23; repairedRPC8/8 verified; F32 originaldisabled1failure/9controls confirmed, task conversion next; hourlywip4d11bb67 preserved
 - 261108 T247 integrated
 - 261108 T246 integrated
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
@@ -164,7 +166,3 @@
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
-- 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
-- 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
-- 261108 T241 integrated
-- 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
