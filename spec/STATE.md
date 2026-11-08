@@ -166,6 +166,7 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T267 | Tour chrome review follow-ups: home indicator, script locators, doc width | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -176,6 +177,7 @@
 - owner decisions for review/landing-tutorial-ux-261109 [?] findings (decision page linked in reports/261109-local13), then update-ssot and create-task
 
 ## log
+- 261109 local13 T266 reviewed 08db5aad and integrated bdbd7329; final gate passes d32d4b83 (pnpm check 191s); create-task F43 → T267 as a last small cycle
 - 261108 T266 integrated
 - 261109 local13 final gate passes cc042070 (pnpm check 197s) with T250–T265 integrated; create-task F42 → T266 as the last cycle before publication
 - 261108 T263 integrated
