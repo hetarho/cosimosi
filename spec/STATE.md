@@ -20,6 +20,7 @@
 | local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T14:13Z | - |
 
 ## inbox
+- 261109 decided T242 T243 T244: three resumed improvements independently reviewed and locally integrated; root combined DB/full gate and single source publication remain for final candidate, continuous cycles continue until17:35:57Z
 - 261108 decided AUTH-9 T243 ENC-19 T244: original actual-source proofs confirm3late token/header failures+5controls and3confirmed-launch Name refusals+2controls; adopt two narrow existing-contract repairs, retain all raw evidence and independent code review/final gates; continuous cycles continue
 - 261108 decided ARCH-47 T242: actual T241 Go-only wrapper changes select28TS projects solely through one unknown path → apply exact known ownership classification (alt: retain irrelevant task checks); preserve every guard/Go/full/CI gate and conservative shared/unknown fallback, require independent review
 - 261108 decided -: user corrects local11 premature single-item stop: four hours means continuous improvement cycles. Resume local12, exclude inactive gap, remaining active3h23m until2026-11-08T17:35:57Z/Nov9 02:36KST; preserve prior T241 and existing boundaries, see reports/261108-local12
@@ -145,6 +146,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
 - 261108 T244 integrated
 - 261108 T243 integrated
 - 261108 T242 integrated
@@ -163,5 +165,3 @@
 - 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
 - 261108 T240 integrated
 - 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
-- 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
-- 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
