@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T17:40Z | - |
+| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided T251 DEMO-27: the way-out ring rendered 79px high on desktop because the guide's top-clearance remeasure never reached the page measure → T251 also wires a page remeasure token through DemoPage.tsx, which is already lane demo-guide's file (alt: split a new task | accept the offset)
 - 261109 decided T250: static sky facing drifts because grainient spins its own frame → widen T250 to publish each effect's existing spin and track it, keeping effect visuals unchanged; prototype shows LOVE leading 57%→70% desktop (alt: accept drift and follow up | compensate only at facing changes)
 - 261109 decided ONB-18 ONB-19 RECALL-1 T254: the tour's step 8 told new users recalling costs stardust, but 회고하기 is free since RECALL@3 → ONB r4 drops the cost from step 8 and the ONB-19 rationale, following the owner's newer RECALL decision (alt: keep the stale caption | restate a cost for paid restoration only)
 - 261109 decided review/landing-tutorial-ux-261109 T250 T251 T252 T253 T254 T255: local13 adopts six gaps against existing MKT-17, DEMO-27, ONB-12, UI-6, UI-62 and DEMO-8 rules, each with screenshot evidence, independent review and a UI-15 round where the look changes; root verified the raw frames
