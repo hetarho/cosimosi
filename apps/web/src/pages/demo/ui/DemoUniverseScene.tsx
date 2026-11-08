@@ -62,6 +62,7 @@ function DemoCanvasHost({
   cameraFree,
   rightInset,
   bottomInset,
+  viewportHeight,
   captionRoom,
   captionBandHeight,
   onSelectMemory,
@@ -77,6 +78,7 @@ function DemoCanvasHost({
   cameraFree: boolean
   rightInset: number
   bottomInset: number
+  viewportHeight: number
   captionRoom: CaptionSlotKind | null
   captionBandHeight: number
   onSelectMemory: (memoryId: string) => void
@@ -100,14 +102,14 @@ function DemoCanvasHost({
         ? 96
         : framingTopInset({
             top: 96,
-            viewportHeight: window.innerHeight,
+            viewportHeight,
             captionRoom,
             captionBandHeight,
           }),
       right: rightInset + 24,
       bottom: recallFocusId ? 96 : bottomInset + 128,
     }),
-    [rightInset, bottomInset, recallFocusId, captionRoom, captionBandHeight],
+    [rightInset, bottomInset, recallFocusId, viewportHeight, captionRoom, captionBandHeight],
   )
 
   // A picked star opens its entry, the demo's one reading surface. The layers hand back instance
@@ -259,6 +261,7 @@ export function DemoUniverseScene({
   cameraFree,
   rightInset = 0,
   bottomInset = 0,
+  viewportHeight = 0,
   captionRoom = null,
   captionBandHeight = 0,
   onSelectMemory,
@@ -277,6 +280,8 @@ export function DemoUniverseScene({
   cameraFree: boolean
   rightInset?: number
   bottomInset?: number
+  /** The tracked window height the caption band's position is measured against. */
+  viewportHeight?: number
   /** Where the tutorial caption sits on this screen; `null` while none shows. */
   captionRoom?: CaptionSlotKind | null
   /** The caption band's rendered height, which an eyeline caption makes the frame clear. */
@@ -311,6 +316,7 @@ export function DemoUniverseScene({
         cameraFree={cameraFree}
         rightInset={rightInset}
         bottomInset={bottomInset}
+        viewportHeight={viewportHeight}
         captionRoom={captionRoom}
         captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}

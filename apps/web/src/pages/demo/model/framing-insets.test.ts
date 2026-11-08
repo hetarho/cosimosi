@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
+import { VALUES } from '@cosimosi/config'
+import { UNIVERSE_SKINS, resolveActiveSkin } from '@cosimosi/3d-renderer'
 import { CAPTION_EYELINE, CAPTION_SURFACE_GAP_PX } from '@cosimosi/sequence'
+import {
+  UNIVERSE_ARRIVAL_CAMERA_POSITION,
+  UNIVERSE_CAMERA_ENVELOPE,
+} from '@cosimosi/universe/scene'
 
 import { framingTopInset, guideCaptionRoom } from './framing-insets.ts'
+// The fit `SceneFraming` runs every frame. It is not on the renderer's public entry, so the test
+// reads it from source to compose it with the page's inset.
+import { fitSceneBounds } from '../../../../../../packages/3d-renderer/src/layers/scene-framing.ts'
 
 const TOP = 96
 const PHONE_HEIGHT = 844
@@ -36,7 +45,7 @@ describe('guideCaptionRoom', () => {
 })
 
 describe('framingTopInset', () => {
-  it('starts a narrow eyeline frame one gap below the caption band', () => {
+  it('puts a narrow eyeline top inset one gap below the caption band', () => {
     const room = guideCaptionRoom({ captionShowing: true, narrow: true, bottomSurface: false })
     const bandBottom = PHONE_HEIGHT * CAPTION_EYELINE + BAND / 2
     const inset = topFor(room)
@@ -74,5 +83,67 @@ describe('framingTopInset', () => {
         captionBandHeight: 40,
       }),
     ).toBe(600)
+  })
+})
+
+type Point = readonly [number, number, number]
+
+// Screen y, in CSS pixels from the top, of a world point seen by a z-up perspective camera.
+function screenY(point: Point, eye: Point, target: Point, fov: number, height: number): number {
+  const sub = (a: Point, b: Point): Point => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+  const dot = (a: Point, b: Point) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  const cross = (a: Point, b: Point): Point => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ]
+  const unit = (a: Point): Point => {
+    const length = Math.hypot(...a)
+    return [a[0] / length, a[1] / length, a[2] / length]
+  }
+  const forward = unit(sub(target, eye))
+  const up = cross(unit(cross(forward, [0, 0, 1])), forward)
+  const relative = sub(point, eye)
+  const ndcY = dot(relative, up) / (dot(relative, forward) * Math.tan((fov * Math.PI) / 360))
+  return ((1 - ndcY) * height) / 2
+}
+
+describe('the overview framed under an eyeline caption', () => {
+  it('keeps every corner of a tall scene at or below the caption band at 390 × 844', () => {
+    // A tall scene: memories spread wide with gists lifted high above them.
+    const bounds = { min: [-28, -24, -16] as Point, max: [28, 24, 74] as Point }
+    const fov = UNIVERSE_SKINS[resolveActiveSkin(VALUES.rendering.activeSkin)].camera.fov
+    const room = guideCaptionRoom({ captionShowing: true, narrow: true, bottomSurface: false })
+    const top = topFor(room)
+    const bandBottom = PHONE_HEIGHT * CAPTION_EYELINE + BAND / 2
+
+    const fit = fitSceneBounds(
+      bounds,
+      390,
+      PHONE_HEIGHT,
+      fov,
+      UNIVERSE_ARRIVAL_CAMERA_POSITION,
+      { left: 24, top, right: 24, bottom: 128 },
+      Math.hypot(...UNIVERSE_ARRIVAL_CAMERA_POSITION),
+      UNIVERSE_CAMERA_ENVELOPE.maxDistance,
+    )
+    const eye = fit.position.toArray() as Point
+    const target = fit.target.toArray() as Point
+    const ys = Array.from({ length: 8 }, (_, corner) =>
+      screenY(
+        [
+          corner & 1 ? bounds.max[0] : bounds.min[0],
+          corner & 2 ? bounds.max[1] : bounds.min[1],
+          corner & 4 ? bounds.max[2] : bounds.min[2],
+        ],
+        eye,
+        target,
+        fov,
+        PHONE_HEIGHT,
+      ),
+    )
+
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(bandBottom + CAPTION_SURFACE_GAP_PX - 0.001)
+    expect(Math.max(...ys)).toBeLessThanOrEqual(PHONE_HEIGHT - 128 + 0.001)
   })
 })

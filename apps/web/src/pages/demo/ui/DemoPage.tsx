@@ -448,6 +448,18 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   const shownCaption = sceneRevealing ? null : beatCaption
   const captionText = shownCaption?.() ?? null
 
+  // The window size the caption room and the framing inset are read against, tracked so a resize or
+  // a rotation re-derives both.
+  const [viewport, setViewport] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }))
+  useEffect(() => {
+    const read = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', read)
+    return () => window.removeEventListener('resize', read)
+  }, [])
+
   // The guide places its own line; the scene frames the universe clear of it. The band is read from
   // the guide's live region as rendered, and the last reading holds while a scene moment hides the
   // line, so the frame stays put while the scene is speaking.
@@ -471,7 +483,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   }, [captionText])
   const captionRoom = guideCaptionRoom({
     captionShowing: run.active && beatCaption !== null,
-    narrow: window.innerWidth < SHEET_BREAKPOINT.px,
+    narrow: viewport.width < SHEET_BREAKPOINT.px,
     bottomSurface: surfaceLayout.bottom !== null,
   })
 
@@ -495,6 +507,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         cameraFree={phase.kind === 'freePlay'}
         rightInset={surfaceLayout.right}
         bottomInset={surfaceLayout.bottom ? window.innerHeight - surfaceLayout.bottom.y : 0}
+        viewportHeight={viewport.height}
         captionRoom={captionRoom}
         captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}

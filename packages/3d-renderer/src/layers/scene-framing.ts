@@ -12,6 +12,9 @@ export interface FrameInsets {
   readonly left: number
 }
 
+/** The thinnest half-span, in normalized device units, either axis of the open region may shrink to. */
+const MIN_HALF_SPAN = 0.05
+
 export function createSceneFrame() {
   return {
     towardEye: new Vector3(),
@@ -53,11 +56,13 @@ export function fitSceneBounds(
   const xMin = (2 * Math.min(insets.left, width * 0.4)) / width - 1
   const xMax = 1 - (2 * Math.min(insets.right, width * 0.8)) / width
   const yMin = (2 * Math.min(insets.bottom, height * 0.8)) / height - 1
-  const yMax = 1 - (2 * Math.min(insets.top, height * 0.4)) / height
+  // The top inset passes through whole, however tall, and stops only where the open region above
+  // the bottom inset would get thinner than the minimum span, so the frame never inverts.
+  const yMax = Math.max(yMin + 2 * MIN_HALF_SPAN, 1 - (2 * insets.top) / height)
   const xMid = (xMin + xMax) / 2
   const yMid = (yMin + yMax) / 2
-  const halfX = Math.max(0.05, (xMax - xMin) / 2)
-  const halfY = Math.max(0.05, (yMax - yMin) / 2)
+  const halfX = Math.max(MIN_HALF_SPAN, (xMax - xMin) / 2)
+  const halfY = Math.max(MIN_HALF_SPAN, (yMax - yMin) / 2)
   let distance = minDistance
   for (let corner = 0; corner < 8; corner++) {
     relative
