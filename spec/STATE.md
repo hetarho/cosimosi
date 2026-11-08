@@ -170,7 +170,7 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 42 | 42 | 0 | 0 | 0 | 0 | 2026-11-08T21:45:16.500Z | [history](work/local8h.json) |
+| local8h | 2 | 42 | 42 | 0 | 0 | 0 | 0 | 2026-11-08T21:50:57.416Z | [history](work/local8h.json) |
 
 ## next
 - owner decisions for review/landing-tutorial-ux-261109 [?] findings (decision page linked in reports/261109-local13), then update-ssot and create-task
