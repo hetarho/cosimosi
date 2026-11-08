@@ -152,6 +152,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
 - 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
 - 261108 T248 integrated
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
