@@ -147,7 +147,7 @@
 | T246 | Remeasure the current anchor when a sequence step changes | ONB ARCH | T245 | todo |
 | T247 | Keep DeepSeek malformed-output error causes content-free | AI OBS ERR ARCH | - | todo |
 | T248 | Honor disabled state in retained native Select options | UI ARCH | - | todo |
-| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo@261109 |
+| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
