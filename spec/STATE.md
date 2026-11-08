@@ -175,6 +175,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 lane demo-guide (T251 T252 T253) passed third review 610e450a and integrated 344242ad; T257 assigned
 - 261108 T251 T252 T253 integrated
 - 261109 local13 lane landing-scene (T256 T258) reviewed 4dc258d3 and integrated bc281117; T259 reviewed 1701a333 and integrated 2e1d2e54; create-task F34 → T260
 - 261108 T256 T258 integrated
