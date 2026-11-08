@@ -20,6 +20,8 @@
 | local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T16:13Z | - |
 
 ## inbox
+- 261109 decided T241 T249: nine total improvements/eight resumed now independently reviewed/integrated,25/25explicit scope complete; exact15source matches, new finalgate/main CI+configuredautodeploy/resourcecloseout pending; corrected4activehourdeadline17:35:57Z
+- 261109 decided OBS-7 ERR-6 T249: sole actual SDK/RPC proof confirms generated mood/type values in causes/logs,2failures/4controls with19hardcontrols and9RPC/8vendor counts; adopt only fixed extractor messages/twofiles preserving ordinaryerrors/cache/wire/normalization, require precommitconditional DBgate/independentreview/NEWfullgate; T222excluded
 - 261109 decided T241 T242 T243 T244 T245 T246 T247 T248: eight improvements across corrected four-active-hour request, seven resumed units independently reviewed/integrated and24/24approvedscope complete; final combined gate/main source CI/resource closeout remain pending through17:35:57Z
 - 261109 decided UI-28 UI-29 UI-58 T248: actual native Select retained-open disabled transition still changes value,1featurefailure/9controls; adopt existing option disabled interaction/semantics/style binding only, preserve modal/callback/public policy and require independent review; current shipped exposure/device validation unproven
 - 261109 decided T242 T243 T244 T245 T246 T247: six resumed improvements independently reviewed/integrated, exact latest source hashes and post-fix8caseRPC/log verification pass; final combined gate/main publication pending; continuous run continues to17:35:57Z
@@ -146,14 +148,17 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 24 | 24 | 0 | 0 | 0 | 0 | 2026-11-08T16:29:06.027Z | [history](work/local8h.json) |
+| local8h | 2 | 25 | 25 | 0 | 0 | 0 | 0 | 2026-11-08T17:18:09.461Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
+- 261108 T249 integrated
+- 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
+- 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
 - 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
-- 261108 T248 integrated
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
 - 261109 local12 six reviewed integrations complete23/23; repairedRPC8/8 verified; F32 originaldisabled1failure/9controls confirmed, task conversion next; hourlywip4d11bb67 preserved
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
@@ -162,9 +167,6 @@
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
+- 261108 T248 integrated
 - 261108 T247 integrated
 - 261108 T246 integrated
-- 261108 T245 integrated
-- 261108 T244 integrated
-- 261108 T243 integrated
-- 261108 T242 integrated

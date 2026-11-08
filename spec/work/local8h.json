@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T16:29:06.027Z",
-  "sourceCommit": "228bab4af0fa4a84794fd987f62f1d08cefd073f",
+  "snapshotAt": "2026-11-08T17:18:09.461Z",
+  "sourceCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -13,15 +13,15 @@
       "maxPending": 8
     },
     "verified": {
-      "commit": "134825972b6566a31b1c94368e153e32ebdfdf0e",
+      "commit": "53a2936527fdd4d1b15c304ee8678aa65df2ecf9",
       "checks": [
         {
-          "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local11/final-pnpm-check.raw.log 2>&1",
-          "startedAt": "2026-11-08T13:12:49.599Z",
-          "finishedAt": "2026-11-08T13:16:15.342Z"
+          "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local12/final-pnpm-check.raw.log 2>&1",
+          "startedAt": "2026-11-08T16:45:06.563Z",
+          "finishedAt": "2026-11-08T16:48:55.205Z"
         }
       ],
-      "at": "2026-11-08T13:16:15.418Z",
+      "at": "2026-11-08T16:48:55.318Z",
       "excluded": ["T222"]
     },
     "push": null,
@@ -50,12 +50,13 @@
       "T245",
       "T246",
       "T247",
-      "T248"
+      "T248",
+      "T249"
     ]
   },
   "summary": {
-    "total": 24,
-    "completed": 24,
+    "total": 25,
+    "completed": 25,
     "remaining": 0,
     "running": 0,
     "review": 0,
@@ -1597,6 +1598,9 @@
       "submittedBase": "228bab4af0fa4a84794fd987f62f1d08cefd073f",
       "submissionId": "8b5637ca-06b4-4c9b-82fe-f2ad38455326",
       "submittedAt": "2026-11-08T16:25:46.752Z",
+      "integratedCommit": "616b63976dddaefc3b3db8afd391c70b0965ad10",
+      "integratedAt": "2026-11-08T16:29:06.914Z",
+      "cleanedAt": "2026-11-08T16:38:26.235Z",
       "risk": null,
       "review": {
         "id": "274598b5-ddd8-432d-8a64-8fecf4ab2478",
@@ -1630,6 +1634,65 @@
           "command": "pnpm --filter @cosimosi/ui exec vitest run src/primitives/native-primitives.test.tsx",
           "startedAt": "2026-11-08T16:25:44.901Z",
           "finishedAt": "2026-11-08T16:25:46.386Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T16:29:06.281Z",
+          "finishedAt": "2026-11-08T16:29:06.663Z"
+        }
+      ]
+    },
+    {
+      "id": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "group": "local8h",
+      "taskId": "T249",
+      "tasks": ["T249"],
+      "lane": null,
+      "owner": "extractor-local12",
+      "contributors": ["extractor-local12"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T17:05:06.457Z",
+      "startCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+      "verifiedCommit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+      "submittedBase": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+      "submissionId": "d91e015f-a0e0-4b87-b924-ddff7e49f6e3",
+      "submittedAt": "2026-11-08T17:15:47.389Z",
+      "risk": null,
+      "review": {
+        "id": "5d94a93f-7e7b-4f52-8af6-86ab3ea2fc15",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T249: Two existing enum-rejection branches now return fixed category errors with no rejected generated value or underlying raw cause. Ordinary consumer error type, zero partial results, accepted sets, normalization, validation order, cache/wire/reporter behavior and all other source paths are preserved. Independent exact-submission AI and Anthropic tests passed64 named cases with no skips, plus focused vet/build; the mandatory37-package DB-backed API gate passed before both normal commits.",
+        "findings": [],
+        "commit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+        "baseCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+        "submissionId": "d91e015f-a0e0-4b87-b924-ddff7e49f6e3",
+        "createdAt": "2026-11-08T17:16:16.153Z",
+        "finishedAt": "2026-11-08T17:17:53.312Z"
+      },
+      "steps": [
+        {
+          "taskId": "T249",
+          "commit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+          "at": "2026-11-08T17:15:47.363Z",
+          "verification": [
+            {
+              "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT -u ANTHROPIC_BASE_URL ANTHROPIC_API_KEY=synthetic-anthropic-key GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run '^TestParseExtractResult' ./internal/ai",
+              "startedAt": "2026-11-08T17:15:43.901Z",
+              "finishedAt": "2026-11-08T17:15:46.074Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT -u ANTHROPIC_BASE_URL ANTHROPIC_API_KEY=synthetic-anthropic-key GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run '^TestParseExtractResult' ./internal/ai",
+          "startedAt": "2026-11-08T17:15:43.901Z",
+          "finishedAt": "2026-11-08T17:15:46.074Z"
         }
       ]
     }
@@ -7781,6 +7844,275 @@
       "group": "local8h",
       "attemptId": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
       "taskId": "T248",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 318,
+      "at": "2026-11-08T16:29:06.850Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
+      "taskId": "T248",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T16:29:06.281Z",
+            "finishedAt": "2026-11-08T16:29:06.663Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 319,
+      "at": "2026-11-08T16:29:06.914Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
+      "taskId": "T248",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "616b63976dddaefc3b3db8afd391c70b0965ad10",
+        "integratedAt": "2026-11-08T16:29:06.914Z"
+      }
+    },
+    {
+      "sequence": 320,
+      "at": "2026-11-08T16:38:25.104Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
+      "taskId": "T248",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 321,
+      "at": "2026-11-08T16:38:26.235Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
+      "taskId": "T248",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T16:38:26.235Z"
+      }
+    },
+    {
+      "sequence": 322,
+      "at": "2026-11-08T16:48:55.322Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "verified": {
+          "commit": "53a2936527fdd4d1b15c304ee8678aa65df2ecf9",
+          "checks": [
+            {
+              "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local12/final-pnpm-check.raw.log 2>&1",
+              "startedAt": "2026-11-08T16:45:06.563Z",
+              "finishedAt": "2026-11-08T16:48:55.205Z"
+            }
+          ],
+          "at": "2026-11-08T16:48:55.318Z",
+          "excluded": ["T222"]
+        }
+      }
+    },
+    {
+      "sequence": 323,
+      "at": "2026-11-08T17:03:14.518Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249"
+        ]
+      }
+    },
+    {
+      "sequence": 324,
+      "at": "2026-11-08T17:05:06.458Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+        "group": "local8h",
+        "taskId": "T249",
+        "tasks": ["T249"],
+        "lane": null,
+        "owner": "extractor-local12",
+        "contributors": ["extractor-local12"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T17:05:06.457Z",
+        "startCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9"
+      }
+    },
+    {
+      "sequence": 325,
+      "at": "2026-11-08T17:05:08.020Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 326,
+      "at": "2026-11-08T17:15:43.009Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 327,
+      "at": "2026-11-08T17:15:47.389Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+        "submittedBase": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+        "submissionId": "d91e015f-a0e0-4b87-b924-ddff7e49f6e3",
+        "submittedAt": "2026-11-08T17:15:47.389Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T249",
+            "commit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+            "at": "2026-11-08T17:15:47.363Z",
+            "verification": [
+              {
+                "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT -u ANTHROPIC_BASE_URL ANTHROPIC_API_KEY=synthetic-anthropic-key GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run '^TestParseExtractResult' ./internal/ai",
+                "startedAt": "2026-11-08T17:15:43.901Z",
+                "finishedAt": "2026-11-08T17:15:46.074Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT -u ANTHROPIC_BASE_URL ANTHROPIC_API_KEY=synthetic-anthropic-key GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run '^TestParseExtractResult' ./internal/ai",
+            "startedAt": "2026-11-08T17:15:43.901Z",
+            "finishedAt": "2026-11-08T17:15:46.074Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 328,
+      "at": "2026-11-08T17:16:16.153Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "5d94a93f-7e7b-4f52-8af6-86ab3ea2fc15",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+          "baseCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+          "submissionId": "d91e015f-a0e0-4b87-b924-ddff7e49f6e3",
+          "createdAt": "2026-11-08T17:16:16.153Z"
+        }
+      }
+    },
+    {
+      "sequence": 329,
+      "at": "2026-11-08T17:17:53.313Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "5d94a93f-7e7b-4f52-8af6-86ab3ea2fc15",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T249: Two existing enum-rejection branches now return fixed category errors with no rejected generated value or underlying raw cause. Ordinary consumer error type, zero partial results, accepted sets, normalization, validation order, cache/wire/reporter behavior and all other source paths are preserved. Independent exact-submission AI and Anthropic tests passed64 named cases with no skips, plus focused vet/build; the mandatory37-package DB-backed API gate passed before both normal commits.",
+          "findings": [],
+          "commit": "a85bafa13a70f8d0a58911b3dd624d1e322ce6f6",
+          "baseCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9",
+          "submissionId": "d91e015f-a0e0-4b87-b924-ddff7e49f6e3",
+          "createdAt": "2026-11-08T17:16:16.153Z",
+          "finishedAt": "2026-11-08T17:17:53.312Z"
+        }
+      }
+    },
+    {
+      "sequence": 330,
+      "at": "2026-11-08T17:18:08.066Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
+      "taskId": "T249",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
