@@ -245,29 +245,31 @@ describe('sky facing under a spinning frame', () => {
   })
 
   it('does no work in a frame while nothing is faced or held', () => {
-    let reads = 0
-    const spin = {
-      get axis() {
-        reads++
-        return GRAINIENT_SPIN.axis
-      },
-      get rate() {
-        reads++
-        return GRAINIENT_SPIN.rate
-      },
-    }
+    // Every input past the facing itself is counted: the spin a goal would compose, and the
+    // reduced-motion flag and responsiveness a step would read. None may be touched.
+    const reads = { spin: 0, step: 0 }
     const orientation = new THREE.Quaternion()
+    const scratch = new THREE.Quaternion()
     const plan = {
       facing: null,
-      spin,
-      lambda: 4,
-      instant: false,
-      scratch: new THREE.Quaternion(),
+      get spin() {
+        reads.spin++
+        return GRAINIENT_SPIN
+      },
+      get lambda() {
+        reads.step++
+        return 4
+      },
+      get instant() {
+        reads.step++
+        return false
+      },
+      scratch,
     }
     expect(frameSkyFacing(orientation, false, plan, 31, 1 / 60)).toBe(false)
     expect(orientation.equals(new THREE.Quaternion())).toBe(true)
-    expect(plan.scratch.equals(new THREE.Quaternion())).toBe(true)
-    expect(reads).toBe(0)
+    expect(scratch.equals(new THREE.Quaternion())).toBe(true)
+    expect(reads).toEqual({ spin: 0, step: 0 })
   })
 
   it('holds a faced slice through a frame and lets it go once the facing is dropped', () => {

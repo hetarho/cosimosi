@@ -47,10 +47,10 @@ export interface SkySphereProps {
    */
   readonly radius?: number
   /**
-   * Which slice of `stops` the sky turns to face the camera's view direction (−Z): the whole mesh
-   * rotates so that slice's `emotionAnchors` direction, the centre of its territory, sits straight
-   * ahead. When the effect spins its own frame, the mesh turns with that spin every frame, so the
-   * faced territory holds still on screen. Absent, the mesh keeps its identity orientation. A facing
+   * Which slice of `stops` the sky turns onto −Z: the whole mesh rotates so that slice's
+   * `emotionAnchors` direction, the centre of its territory, lies on −Z, which is the frame centre for
+   * a canvas camera looking down −Z (see `VIEW_DIRECTION`). When the effect spins its own frame, the
+   * mesh turns with that spin every frame, so the faced territory holds still on −Z. Absent, the mesh keeps its identity orientation. A facing
    * that appears or disappears is taken at once, since there is no previous facing to turn from; a
    * change between two slices eases at `facingLambda`. An index outside `stops` faces nothing.
    */
