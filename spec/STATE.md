@@ -20,6 +20,9 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided review/landing-tutorial-ux-261109 T257: throttled first-paint scout measured the beat-1 caption painting stale, jumping and blinking on font swap (CLS 0.13) → adopt the reveal-on-commit fix under ONB-12 after the demo-guide lane (alt: leave it | hide until fonts load)
+- 261109 parked review/landing-tutorial-ux-261109 CLIENT-33 CLIENT-35 MKT-20 MKT-24: first-paint options need the owner — lazy renderer chunk for the hero words (F22, ~0.5s earlier), /demo chunk preload hint (F23), deferred observability SDKs (F24), poster priority and WebP once F18 regenerates it (F25)
+- 261109 decided T252 ONB-12: independent review found fitSceneBounds caps the top inset at 0.4·H, so the clearing inset never reached the frame → let the renderer honour a larger top inset while top plus bottom always leave a minimum frame (sole consumer is the demo's UniverseFraming), and track viewport resizes (alt: keep the cap and document the weaker behaviour | new task after integration)
 - 261109 decided review/landing-tutorial-ux-261109 T256: second-cycle scout covered no-WebGPU, reduced motion, English and small viewports; adopt only the 360px clipped walkthrough star (staging fix, MKT-19), since WebGL2 fallback and English hold
 - 261109 parked review/landing-tutorial-ux-261109 MKT-19 MKT-20 UI-10: reduced-motion visitors get a CSS-striped poster instead of the frozen 3D scene (F15), and the hero raster is stale against the live sky (F18); landscape dialog clipping (F16), landscape stage height (F17) and the English restart label (F20) need owner choices
 - 261109 decided T251 DEMO-27: the way-out ring rendered 79px high on desktop because the guide's top-clearance remeasure never reached the page measure → T251 also wires a page remeasure token through DemoPage.tsx, which is already lane demo-guide's file (alt: split a new task | accept the offset)
@@ -164,6 +167,7 @@
 | T254 | Onboarding tour copy speaks the product register and states recall truthfully | ONB UI RECALL MKT ARCH | - | todo |
 | T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
 | T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
+| T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -174,6 +178,7 @@
 - local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
 
 ## log
+- 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
 - 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
 - 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
 - 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
