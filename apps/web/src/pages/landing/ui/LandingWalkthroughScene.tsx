@@ -27,19 +27,25 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 
 import { useDocumentVisible } from '../../../shared/lib/document-visibility.ts'
 
-// Where each star stands, by launch order — a staged group portrait, not a simulation. The camera is
-// the production rig (fixed at z=90), so nearness is the slot's z; a handful of stars has no
-// force-sim to emerge positions from, and staging them here keeps every coordinate out of the
-// authored content ([I5]). `poster` is the same slot as CSS percentages for the no-WebGPU stand-in.
-const STAR_SLOTS = [
+// The camera the slots are staged against: on the z axis looking down −Z at the origin, the canvas's
+// straight-down staging pose and the view direction the sky facing turns toward.
+const WALKTHROUGH_CAMERA_POSITION = [0, 0, 90] as const
+
+// Where each star stands, by launch order — a staged group portrait, not a simulation. Nearness is
+// the slot's z; a handful of stars has no force-sim to emerge positions from, and staging them here
+// keeps every coordinate out of the authored content ([I5]). The camera's field of view is vertical,
+// so a narrow stage keeps the height and loses width: every slot, with the largest body a star can
+// render, stays inside the frame down to a phone-width stage (aspect about 0.95). `poster` is the
+// same slot as CSS percentages for the no-WebGPU stand-in.
+const WALKTHROUGH_STAR_SLOTS = [
   { position: [-14, 7, 46], poster: [30, 33] },
   { position: [2, -6, 50], poster: [52, 62] },
   { position: [16, 9, 44], poster: [72, 29] },
-  { position: [-26, -9, 36], poster: [16, 68] },
-  { position: [24, -12, 34], poster: [82, 74] },
+  { position: [-20, -9, 36], poster: [24, 68] },
+  { position: [21, -12, 34], poster: [78, 74] },
   { position: [-8, 16, 38], poster: [40, 16] },
   { position: [10, -18, 40], poster: [62, 84] },
-  { position: [28, 15, 32], poster: [88, 18] },
+  { position: [22, 15, 32], poster: [80, 18] },
 ] as const
 
 // The channel projection sizes stars for a whole navigable universe; a framed group shot needs a
@@ -80,7 +86,9 @@ function WalkthroughCanvas({
   const positions = useMemo<CoordinateBufferRef>(
     () => ({
       current: Float32Array.from(
-        memories.flatMap((_, index) => STAR_SLOTS[index % STAR_SLOTS.length].position),
+        memories.flatMap(
+          (_, index) => WALKTHROUGH_STAR_SLOTS[index % WALKTHROUGH_STAR_SLOTS.length].position,
+        ),
       ),
     }),
     [memories],
@@ -115,6 +123,7 @@ function WalkthroughCanvas({
     <UniverseCanvas
       dpr={[1, VALUES.rendering.maxPixelRatio]}
       fov={skin.camera.fov}
+      cameraPosition={WALKTHROUGH_CAMERA_POSITION}
       clearColor={skin.sky.night}
       active={active}
     >
@@ -154,7 +163,7 @@ function WalkthroughPoster({ memories, universeTime, skyStops }: LandingWalkthro
       {memories.map((memory, index) => {
         const channel = starChannels(memory, universeTime)
         const color = moodColor(memory.emotion.mood)
-        const slot = STAR_SLOTS[index % STAR_SLOTS.length]
+        const slot = WALKTHROUGH_STAR_SLOTS[index % WALKTHROUGH_STAR_SLOTS.length]
         return (
           <div
             key={memory.id}
