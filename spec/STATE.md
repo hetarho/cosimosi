@@ -20,6 +20,7 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T17:40Z | - |
 
 ## inbox
+- 261109 decided T250: static sky facing drifts because grainient spins its own frame → widen T250 to publish each effect's existing spin and track it, keeping effect visuals unchanged; prototype shows LOVE leading 57%→70% desktop (alt: accept drift and follow up | compensate only at facing changes)
 - 261109 decided ONB-18 ONB-19 RECALL-1 T254: the tour's step 8 told new users recalling costs stardust, but 회고하기 is free since RECALL@3 → ONB r4 drops the cost from step 8 and the ONB-19 rationale, following the owner's newer RECALL decision (alt: keep the stale caption | restate a cost for paid restoration only)
 - 261109 decided review/landing-tutorial-ux-261109 T250 T251 T252 T253 T254 T255: local13 adopts six gaps against existing MKT-17, DEMO-27, ONB-12, UI-6, UI-62 and DEMO-8 rules, each with screenshot evidence, independent review and a UI-15 round where the look changes; root verified the raw frames
 - 261109 parked review/landing-tutorial-ux-261109 MKT-17 MKT-18 MKT-20 UI-40: landing concept-delivery options need the owner — hero paragraph (F2), walkthrough framing line (F3), sentence tie (F4), invisible "form from the sentence" claim (F5), hero focal point (F6); each finding lists options with a recommendation
@@ -169,6 +170,7 @@
 - local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
 
 ## log
+- 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
 - 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
 - 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
 - 261109 local13 start: six-hour self-improve-local on landing/tutorial 3D UX, local12 row closed after its deadline passed with no live process
