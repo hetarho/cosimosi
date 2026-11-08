@@ -36,8 +36,10 @@ import {
   UniverseFraming,
   useSceneAssembly,
 } from '@cosimosi/universe-render'
+import type { CaptionSlotKind } from '@cosimosi/sequence'
 import { useReducedMotion } from '@cosimosi/ui'
 
+import { framingTopInset } from '../model/framing-insets.ts'
 import type { DemoScene, DemoTaste } from '../model/use-demo-run.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
@@ -60,6 +62,8 @@ function DemoCanvasHost({
   cameraFree,
   rightInset,
   bottomInset,
+  captionRoom,
+  captionBandHeight,
   onSelectMemory,
   recallFocusId,
   recallPulsing,
@@ -73,6 +77,8 @@ function DemoCanvasHost({
   cameraFree: boolean
   rightInset: number
   bottomInset: number
+  captionRoom: CaptionSlotKind | null
+  captionBandHeight: number
   onSelectMemory: (memoryId: string) => void
   recallFocusId: string | null
   recallPulsing: boolean
@@ -85,14 +91,23 @@ function DemoCanvasHost({
   const focusId = recallFocusId ?? decorationFocusId
   const targetRef = useRef<[number, number, number]>([0, 0, 0])
   const getInitialTarget = useCallback(() => targetRef.current, [])
+  // The overview starts below a phone's eyeline caption, so the line never lies across the memories
+  // it describes; a recall focus keeps its own frame.
   const insets = useMemo(
     () => ({
       left: 24,
-      top: 96,
+      top: recallFocusId
+        ? 96
+        : framingTopInset({
+            top: 96,
+            viewportHeight: window.innerHeight,
+            captionRoom,
+            captionBandHeight,
+          }),
       right: rightInset + 24,
       bottom: recallFocusId ? 96 : bottomInset + 128,
     }),
-    [rightInset, bottomInset, recallFocusId],
+    [rightInset, bottomInset, recallFocusId, captionRoom, captionBandHeight],
   )
 
   // A picked star opens its entry, the demo's one reading surface. The layers hand back instance
@@ -244,6 +259,8 @@ export function DemoUniverseScene({
   cameraFree,
   rightInset = 0,
   bottomInset = 0,
+  captionRoom = null,
+  captionBandHeight = 0,
   onSelectMemory,
   recallFocusId,
   recallPulsing,
@@ -260,6 +277,10 @@ export function DemoUniverseScene({
   cameraFree: boolean
   rightInset?: number
   bottomInset?: number
+  /** Where the tutorial caption sits on this screen; `null` while none shows. */
+  captionRoom?: CaptionSlotKind | null
+  /** The caption band's rendered height, which an eyeline caption makes the frame clear. */
+  captionBandHeight?: number
   /** A star (or gist body) was picked on the canvas. */
   onSelectMemory: (memoryId: string) => void
   recallFocusId: string | null
@@ -290,6 +311,8 @@ export function DemoUniverseScene({
         cameraFree={cameraFree}
         rightInset={rightInset}
         bottomInset={bottomInset}
+        captionRoom={captionRoom}
+        captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}
         recallFocusId={recallFocusId}
         recallPulsing={recallPulsing}
