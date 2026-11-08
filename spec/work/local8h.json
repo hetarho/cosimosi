@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T21:25:15.541Z",
-  "sourceCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+  "snapshotAt": "2026-11-08T21:30:31.609Z",
+  "sourceCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -74,23 +74,14 @@
   },
   "summary": {
     "total": 41,
-    "completed": 40,
-    "remaining": 1,
-    "running": 1,
+    "completed": 41,
+    "remaining": 0,
+    "running": 0,
     "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T263",
-      "title": "The tour's arrival caption waits until the star has arrived",
-      "dep": [
-        "T262"
-      ],
-      "status": "doing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -2738,6 +2729,8 @@
       "submittedBase": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
       "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
       "submittedAt": "2026-11-08T21:22:26.244Z",
+      "integratedCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+      "integratedAt": "2026-11-08T21:26:37.002Z",
       "risk": null,
       "review": {
         "id": "d7a8d49d-1158-4408-99dd-f0526b6dfee8",
@@ -2778,6 +2771,13 @@
           "startedAt": "2026-11-08T21:20:56.278Z",
           "finishedAt": "2026-11-08T21:22:25.883Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:25:15.821Z",
+          "finishedAt": "2026-11-08T21:26:36.549Z"
+        }
       ]
     },
     {
@@ -2792,9 +2792,55 @@
       "contributors": [
         "skyworker"
       ],
-      "status": "doing",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-08T21:20:07.157Z",
-      "startCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3"
+      "startCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+      "verifiedCommit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+      "submittedBase": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+      "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+      "submittedAt": "2026-11-08T21:27:21.006Z",
+      "risk": null,
+      "review": {
+        "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+        "owner": "reviewer-sky",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T263 meets its acceptance. One `captionHeld = advancePending || sweeping` now drives both the existing dwell pause and the shown caption, so the two cannot disagree.\n\nThe hold cannot outlive the advance. `pending` clears on the overlay's `take()` as soon as its machine is idle, and both universe pages always mount the overlay. `sampledTime` clears through `sweep.end()` when the sweep finishes or on unmount mid-sweep. Under reduced motion the sweep never begins and `onDone` fires at once. An empty interval never announces and releases at once. A failed launch announces nothing and reports no `launch-succeeded`. So every path that held the dwell before releases the caption with it, and nothing new can stick.\n\nThere is no early flash. The write flow calls `announceAdvance` before `LAUNCH_OK`, and the report the host turns into step 6 arrives one commit later. That is the same effect flush that calls `sweep.begin()`, so step 6 renders already held.\n\nThe ONB-20 channel is untouched (`takeOnboardingReport` and `onboardingReportAction` are unchanged), so a held `launch-succeeded` still advances on the step that awaits it. The demo does not use `useUniverseScreen` (only the web and mobile UniversePage do), so it is unaffected. Mobile `pointerEvents=\"box-none\"` on `topRight` is correct: the column's empty area passes touches through while its children stay hittable. It is recorded as device-unverified.\n\nThe new tests import `tourCaptionHeld` and `shownTourCaption`, which the base lacks, so they fail there. The probe shots show no caption at t02 while the clock rolls (2026-11-07), then the caption at t03 with the clock on 11-09 and the new star in place.\n\nRan: `packages/universe` `use-universe-screen.test.ts` 8/8, `apps/web` `tsc -b` clean, `apps/mobile` `tsc --noEmit` clean.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/universe/ui/UniversePage.tsx:201, apps/mobile/src/pages/universe/ui/UniversePage.tsx:161 (T263)",
+            "message": "Nothing guards the pages' wiring. The new tests pin the pure functions, but `SequenceGuide` still accepts `tour.step?.caption`. A page that went back to passing it would compile and pass every test, and it would show the caption during the advance again. Optional: return the run without a raw caption accessor for pages, or add a hook-level test that renders `useUniverseScreen` with a pending announcement and expects `tourCaption` to be null."
+          }
+        ],
+        "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+        "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+        "createdAt": "2026-11-08T21:27:49.331Z",
+        "finishedAt": "2026-11-08T21:30:05.675Z"
+      },
+      "steps": [
+        {
+          "taskId": "T263",
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "at": "2026-11-08T21:27:20.995Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:25:57.215Z",
+              "finishedAt": "2026-11-08T21:27:20.654Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:25:57.215Z",
+          "finishedAt": "2026-11-08T21:27:20.654Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -13205,6 +13251,160 @@
       "group": "local8h",
       "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
       "taskId": "T265",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 482,
+      "at": "2026-11-08T21:25:56.852Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 483,
+      "at": "2026-11-08T21:26:36.906Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:25:15.821Z",
+            "finishedAt": "2026-11-08T21:26:36.549Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 484,
+      "at": "2026-11-08T21:26:37.002Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "integratedAt": "2026-11-08T21:26:37.002Z"
+      }
+    },
+    {
+      "sequence": 485,
+      "at": "2026-11-08T21:27:21.006Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+        "submittedBase": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+        "submittedAt": "2026-11-08T21:27:21.006Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T263",
+            "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+            "at": "2026-11-08T21:27:20.995Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:25:57.215Z",
+                "finishedAt": "2026-11-08T21:27:20.654Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:25:57.215Z",
+            "finishedAt": "2026-11-08T21:27:20.654Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 486,
+      "at": "2026-11-08T21:27:49.331Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+          "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+          "createdAt": "2026-11-08T21:27:49.331Z"
+        }
+      }
+    },
+    {
+      "sequence": 487,
+      "at": "2026-11-08T21:30:05.675Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T263 meets its acceptance. One `captionHeld = advancePending || sweeping` now drives both the existing dwell pause and the shown caption, so the two cannot disagree.\n\nThe hold cannot outlive the advance. `pending` clears on the overlay's `take()` as soon as its machine is idle, and both universe pages always mount the overlay. `sampledTime` clears through `sweep.end()` when the sweep finishes or on unmount mid-sweep. Under reduced motion the sweep never begins and `onDone` fires at once. An empty interval never announces and releases at once. A failed launch announces nothing and reports no `launch-succeeded`. So every path that held the dwell before releases the caption with it, and nothing new can stick.\n\nThere is no early flash. The write flow calls `announceAdvance` before `LAUNCH_OK`, and the report the host turns into step 6 arrives one commit later. That is the same effect flush that calls `sweep.begin()`, so step 6 renders already held.\n\nThe ONB-20 channel is untouched (`takeOnboardingReport` and `onboardingReportAction` are unchanged), so a held `launch-succeeded` still advances on the step that awaits it. The demo does not use `useUniverseScreen` (only the web and mobile UniversePage do), so it is unaffected. Mobile `pointerEvents=\"box-none\"` on `topRight` is correct: the column's empty area passes touches through while its children stay hittable. It is recorded as device-unverified.\n\nThe new tests import `tourCaptionHeld` and `shownTourCaption`, which the base lacks, so they fail there. The probe shots show no caption at t02 while the clock rolls (2026-11-07), then the caption at t03 with the clock on 11-09 and the new star in place.\n\nRan: `packages/universe` `use-universe-screen.test.ts` 8/8, `apps/web` `tsc -b` clean, `apps/mobile` `tsc --noEmit` clean.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/universe/ui/UniversePage.tsx:201, apps/mobile/src/pages/universe/ui/UniversePage.tsx:161 (T263)",
+              "message": "Nothing guards the pages' wiring. The new tests pin the pure functions, but `SequenceGuide` still accepts `tour.step?.caption`. A page that went back to passing it would compile and pass every test, and it would show the caption during the advance again. Optional: return the run without a raw caption accessor for pages, or add a hook-level test that renders `useUniverseScreen` with a pending announcement and expects `tourCaption` to be null."
+            }
+          ],
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+          "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+          "createdAt": "2026-11-08T21:27:49.331Z",
+          "finishedAt": "2026-11-08T21:30:05.675Z"
+        }
+      }
+    },
+    {
+      "sequence": 488,
+      "at": "2026-11-08T21:30:30.546Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

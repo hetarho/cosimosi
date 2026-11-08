@@ -166,17 +166,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T263 | The tour's arrival caption waits until the star has arrived | ONB TIME ARCH | T262 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 41 | 40 | 1 | 1 | 0 | 0 | 2026-11-08T21:25:15.541Z | [history](work/local8h.json) |
+| local8h | 2 | 41 | 41 | 0 | 0 | 0 | 0 | 2026-11-08T21:30:31.609Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T263 integrated
 - 261108 T265 integrated
 - 261109 local13 lane universe-tour (T261 T262) reviewed e57b8322 and integrated e7485e08; T263 assigned with the mobile toggle box-none note
 - 261108 T261 T262 integrated
@@ -196,4 +196,3 @@
 - 261108 T250 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
 - 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
-- 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim

@@ -61,6 +61,7 @@ export function UniversePage({
   const {
     navigationActorRef,
     tour,
+    tourCaption,
     firstRun,
     handleRecallRequested,
     handleOpenDiary,
@@ -102,7 +103,9 @@ export function UniversePage({
             route) and the archive ([D2]) — a quiet column against the screen edge instead of a row
             of labelled buttons competing with the universe. There is no hover on touch, so each
             one's `label` is the whole of its name (UI-57). */}
-        <View style={styles.topRight}>
+        {/* `box-none`: the column spans the chrome's width under its skip-band padding, so its empty
+            area must pass touches through to the view toggle beneath it (ONB-13). */}
+        <View style={styles.topRight} pointerEvents="box-none">
           <StardustOverlay onOpenAchievements={onOpenAchievements} />
           <IconButton
             variant="outlined"
@@ -155,7 +158,7 @@ export function UniversePage({
           `completed`, `skipped` and `abandoned` all leave exactly nothing behind ([O4]). */}
       <SequenceGuide
         active={tour.active}
-        caption={tour.step?.caption ?? null}
+        caption={tourCaption}
         anchorRect={tour.anchorRect}
         progress={tour.progress}
         onSkip={tour.skip}

@@ -60,6 +60,7 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
   const {
     navigationActorRef,
     tour,
+    tourCaption,
     firstRun,
     handleRecallRequested,
     handleOpenDiary,
@@ -197,7 +198,7 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
           `completed`, `skipped` and `abandoned` all leave exactly nothing behind ([O4]). */}
       <SequenceGuide
         active={tour.active}
-        caption={tour.step?.caption ?? null}
+        caption={tourCaption}
         anchorRect={tour.anchorRect}
         progress={tour.progress}
         onSkip={tour.skip}
