@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T15:59:29.506Z",
-  "sourceCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+  "snapshotAt": "2026-11-08T16:04:09.878Z",
+  "sourceCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -56,21 +56,14 @@
   },
   "summary": {
     "total": 23,
-    "completed": 22,
-    "remaining": 1,
+    "completed": 23,
+    "remaining": 0,
     "running": 0,
-    "review": 1,
+    "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T247",
-      "title": "Keep DeepSeek malformed-output error causes content-free",
-      "dep": [],
-      "status": "reviewing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -1573,6 +1566,8 @@
       "submittedBase": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
       "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
       "submittedAt": "2026-11-08T15:55:15.944Z",
+      "integratedCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
+      "integratedAt": "2026-11-08T15:59:30.467Z",
       "risk": null,
       "review": {
         "id": "8cdabef9-9a54-43fe-9ba1-f862f0df0215",
@@ -1607,6 +1602,13 @@
           "startedAt": "2026-11-08T15:55:14.504Z",
           "finishedAt": "2026-11-08T15:55:15.586Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T15:59:29.796Z",
+          "finishedAt": "2026-11-08T15:59:30.154Z"
+        }
       ]
     },
     {
@@ -1621,7 +1623,7 @@
       "contributors": [
         "deepseek-local12"
       ],
-      "status": "reviewing",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T15:49:14.647Z",
       "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
@@ -1633,11 +1635,15 @@
       "review": {
         "id": "75ea3fbf-cd4e-4a11-912f-4e5a98b1c7c4",
         "owner": "review-local12",
-        "status": "reviewing",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T247: The schema-validation and non-stop-finish malformed branches now retain only fixed category causes, with no underlying generated/property/finish text reachable through the chain. Typed errors, local schema enforcement, capacity/status classification, caller cancellation and genuine transport causes remain intact. Independent fixed-source AI and DeepSeek tests passed 87 named cases, plus focused vet/build; the complete required pre-commit API gate evidence was separately verified.",
+        "findings": [],
         "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
         "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
         "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
-        "createdAt": "2026-11-08T15:59:27.377Z"
+        "createdAt": "2026-11-08T15:59:27.377Z",
+        "finishedAt": "2026-11-08T16:03:17.220Z"
       },
       "steps": [
         {
@@ -7599,6 +7605,79 @@
       "group": "local8h",
       "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
       "taskId": "T246",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 300,
+      "at": "2026-11-08T15:59:30.400Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T15:59:29.796Z",
+            "finishedAt": "2026-11-08T15:59:30.154Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 301,
+      "at": "2026-11-08T15:59:30.467Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
+        "integratedAt": "2026-11-08T15:59:30.467Z"
+      }
+    },
+    {
+      "sequence": 302,
+      "at": "2026-11-08T16:03:17.220Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "75ea3fbf-cd4e-4a11-912f-4e5a98b1c7c4",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T247: The schema-validation and non-stop-finish malformed branches now retain only fixed category causes, with no underlying generated/property/finish text reachable through the chain. Typed errors, local schema enforcement, capacity/status classification, caller cancellation and genuine transport causes remain intact. Independent fixed-source AI and DeepSeek tests passed 87 named cases, plus focused vet/build; the complete required pre-commit API gate evidence was separately verified.",
+          "findings": [],
+          "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+          "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+          "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+          "createdAt": "2026-11-08T15:59:27.377Z",
+          "finishedAt": "2026-11-08T16:03:17.220Z"
+        }
+      }
+    },
+    {
+      "sequence": 303,
+      "at": "2026-11-08T16:04:08.790Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

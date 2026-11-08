@@ -208,7 +208,7 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 		}
 	}
 	if choice.FinishReason != "stop" {
-		return ai.LLMResponse{}, malformed(fmt.Sprintf("non-stop finish reason %q", choice.FinishReason))
+		return ai.LLMResponse{}, malformed("non-stop finish reason")
 	}
 	content := []byte(strings.TrimSpace(choice.Message.Content))
 	instance, err := jsonschema.UnmarshalJSON(bytes.NewReader(content))
@@ -220,10 +220,7 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 	}
 	if compiledSchema != nil {
 		if err := compiledSchema.Validate(instance); err != nil {
-			return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{
-				Provider: providerName,
-				Err:      fmt.Errorf("response violates output schema: %w", err),
-			}
+			return ai.LLMResponse{}, malformed("response violates the requested output schema")
 		}
 	}
 	return ai.LLMResponse{JSON: content}, nil
