@@ -74,12 +74,16 @@ export function Select({
                 <Pressable
                   key={item.value}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: item.value === value }}
+                  accessibilityState={{
+                    selected: item.value === value,
+                    disabled: Boolean(disabled),
+                  }}
+                  disabled={disabled}
                   onPress={() => {
                     onValueChange(item.value)
                     setOpen(false)
                   }}
-                  style={styles.option}
+                  style={[styles.option, disabled ? styles.disabled : null]}
                 >
                   <Text style={styles.optionLabel}>{item.label}</Text>
                   {item.value === value ? <Text style={styles.optionMark}>✓</Text> : null}
