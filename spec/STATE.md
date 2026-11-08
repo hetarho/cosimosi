@@ -20,6 +20,7 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided T257 ONB-13 ONB-2: review 32f1051c found the reveal-on-commit fix hid the aria-live element itself, so captions would appear inside a freshly exposed live region → keep aria-live on a stable never-hidden container and give visibility to the positioned child band; T257 may also retarget DemoPage's band-height selector (alt: hidden live copy plus aria-hidden band | keep and record screen-reader checks)
 - 261109 decided T252 ONB-12: re-review 7917c936 found the uncapped clearing inset squeezes landscape phones under 768px to a dot during reveals → apply the clearing inset only on portrait narrow screens and keep landscape on the existing framing until the owner's short-viewport rules (F16/F17) (alt: a minimum-area threshold | accept the landscape regression)
 - 261109 parked DEMO-30 DEMO-24 DEMO-34 DEMO-4 ONB-3 DEMO-7: demo free play needs owner rules — re-framing so early skippers see the gist rise (F29), a one-line arrival caption so picking and repeat recall are discoverable (F30), beat-9 captions that tie decoration to INV-11 (F31), a stated end of the prepared-diary pool (F32), and history re-entry not replaying the tour (F33); see review/landing-tutorial-ux-261109
 - 261109 parked DIARY-21: whole-diary recall is free in code, but DIARY.md:75, PROD.md:107 and the dead `twinkle_cost_diary_label` still say it costs stardust; needs update-ssot then cleanup (review/landing-tutorial-ux-261109 F28)
