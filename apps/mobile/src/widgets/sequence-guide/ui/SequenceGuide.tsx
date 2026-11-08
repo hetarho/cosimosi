@@ -11,6 +11,7 @@ import {
 import { SequenceSpotlight } from './SequenceSpotlight.tsx'
 import { CAPTION_BAND_HEIGHT, SequenceCaption } from './SequenceCaption.tsx'
 import { SequenceSkip } from '../../../features/skip-sequence/index.ts'
+import { useScreenInsets } from '../../../shared/native/index.ts'
 import { useViewport } from '../lib/use-viewport.ts'
 
 export interface SequenceGuideProps {
@@ -38,6 +39,7 @@ export function SequenceGuide({
   onRemeasure,
 }: SequenceGuideProps) {
   const viewport = useViewport()
+  const insets = useScreenInsets()
 
   useEffect(() => {
     if (active) onRemeasure()
@@ -47,12 +49,16 @@ export function SequenceGuide({
 
   // The edge slot: a native screen's surfaces are not marked panels this fork can measure, so the
   // line takes the free edge and gets off the highlighted control when that control owns the bottom.
-  const position = resolveCaptionPosition({
+  const placed = resolveCaptionPosition({
     slot: { kind: 'edge' },
     anchorRect,
     viewport,
     bandHeight: CAPTION_BAND_HEIGHT,
   })
+  // The top room is measured from the overlay's own top, which on a notched phone is under the status
+  // bar; it clears the same inset the skip does, so a top-band caption stays below the skip.
+  const position =
+    placed.from === 'top' ? { ...placed, insetPx: placed.insetPx + insets.top } : placed
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

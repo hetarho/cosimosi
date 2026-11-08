@@ -1,8 +1,12 @@
+import { StyleSheet } from 'react-native'
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context'
 import { fireEvent, render } from '@testing-library/react-native'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 
 import { SequenceGuide, type SequenceGuideProps } from './SequenceGuide.tsx'
+
+const NOTCHED = { top: 59, right: 0, bottom: 34, left: 0 }
 
 function mount(overrides: Partial<SequenceGuideProps> = {}) {
   return render(
@@ -49,5 +53,49 @@ describe('SequenceGuide (mobile)', () => {
   it('renders no chrome at all when no run is active', () => {
     const view = mount({ active: false })
     expect(view.queryByText(m.sequence_skip_action())).toBeNull()
+  })
+
+  it('places the skip below the status bar inset of a notched phone and clears its right inset', () => {
+    const view = render(
+      <SafeAreaInsetsContext.Provider value={{ ...NOTCHED, right: 12 }}>
+        <SequenceGuide
+          active
+          caption={() => 'Write one line about today.'}
+          anchorRect={null}
+          progress={{ current: 1, total: 9 }}
+          onSkip={jest.fn()}
+          onRemeasure={jest.fn()}
+        />
+      </SafeAreaInsetsContext.Provider>,
+    )
+    const bar = StyleSheet.flatten(view.getByTestId('sequence-skip').props.style)
+    const flat = StyleSheet.flatten(
+      mount({ anchorRect: null }).getByTestId('sequence-skip').props.style,
+    )
+    expect(bar.top).toBe(NOTCHED.top + flat.top)
+    expect(bar.right).toBe(12 + flat.right)
+  })
+
+  it('keeps a top-band caption below the same inset', () => {
+    // A highlight crossing the bottom band sends the caption to the top band.
+    const bottomAnchor = { x: 40, y: 1200, width: 200, height: 48 }
+    const notched = render(
+      <SafeAreaInsetsContext.Provider value={NOTCHED}>
+        <SequenceGuide
+          active
+          caption={() => 'Write one line about today.'}
+          anchorRect={bottomAnchor}
+          progress={{ current: 1, total: 9 }}
+          onSkip={jest.fn()}
+          onRemeasure={jest.fn()}
+        />
+      </SafeAreaInsetsContext.Provider>,
+    )
+    const bare = mount({ anchorRect: bottomAnchor })
+    const band = (view: ReturnType<typeof render>) =>
+      StyleSheet.flatten(view.getByText('Write one line about today.').parent?.parent?.props.style)
+    const flatTop = band(bare).top
+    expect(typeof flatTop).toBe('number')
+    expect(band(notched).top).toBe(NOTCHED.top + (flatTop as number))
   })
 })
