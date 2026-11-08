@@ -2,7 +2,7 @@ import { float, pow, smoothstep, vec3 } from 'three/tsl'
 
 import { domainWarp } from '../../shader-art/field'
 import { fbm01 } from '../../shader-art/noise'
-import { skyDir, skySpin } from './sky-domain.ts'
+import { skyDir, skySpin, type SkyFrameSpin } from './sky-domain.ts'
 import { emotionField } from './sky-emotion.ts'
 import { skyFinish, skyVoid } from './sky-finish.ts'
 import { skySeconds, type SkyNodeArgs } from './sky-node.ts'
@@ -27,15 +27,26 @@ const DYE_ONSET = 0.34
 /** Above this it is fully dye. Between the two, an edge you can see the night through. */
 const DYE_FULL = 0.78
 
+/** How fast the water's own clock runs against the sky's seconds. */
+const CLOCK = 0.08
+
+/** The turn of the base frame the flow is advected on, 0.1 radians per second of its clock. */
+export const LIQUID_ETHER_SPIN: SkyFrameSpin = { axis: [0.25, 1, 0.2], rate: 0.1 * CLOCK }
+
 export function liquidEtherSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
-  const t = skySeconds(time, 0.08)
+  const t = skySeconds(time, CLOCK)
 
   // Advect the sample frame by an fbm domain warp — the velocity field that smears the dye. The dye
   // flows by translation (fbm eats unbounded coordinates forever), but the frame the territories are
   // read at must not (skyDrift's contract: normalize of a translating frame collapses to the drift
   // axis). So the drift is subtracted back out below before the normalize — the territories keep the
   // warp the flow computed, on a base frame that only ever spins.
-  const spun = skySpin(skyDir(), t, [0.25, 1, 0.2], 0.1).mul(2.4)
+  const spun = skySpin(
+    skyDir(),
+    skySeconds(time),
+    LIQUID_ETHER_SPIN.axis,
+    LIQUID_ETHER_SPIN.rate,
+  ).mul(2.4)
   const drift = vec3(0, 0, 1).mul(t)
   const warped = domainWarp(spun.add(drift), {
     amount: 1.2,

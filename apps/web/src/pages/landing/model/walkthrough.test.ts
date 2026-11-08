@@ -204,3 +204,62 @@ describe('the scene facts, through the production functions', () => {
     expect(mirrored.facts.focusText).toBe(content.recall.reconsolidatedText)
   })
 })
+
+describe('the sky facing', () => {
+  const facing = (content: ReturnType<typeof walkthroughContent>, state: WalkthroughState) => {
+    const facts = walkthroughSceneFacts(content, state)
+    return { facts, index: facts.skyFacing, slice: facts.skyStops[facts.skyFacing ?? -1] }
+  }
+
+  it('faces nothing while there is no sky', () => {
+    const content = walkthroughContent('ko')
+    for (const state of [
+      at('split', false),
+      at('split', true),
+      at('launch', false),
+      at('launch', true),
+      at('color', false),
+    ]) {
+      expect(walkthroughSceneFacts(content, state).skyFacing, state.step).toBeUndefined()
+    }
+  })
+
+  it('faces the heaviest slice while the sky only reflects what was written', () => {
+    for (const locale of ['ko', 'en'] as const) {
+      const content = walkthroughContent(locale)
+      // The recall prompt still shows the faded sky: nothing has been returned to yet.
+      for (const state of [
+        at('color', true),
+        at('fade', false),
+        at('fade', true),
+        at('recall', false),
+      ]) {
+        const { facts, slice } = facing(content, state)
+        const heaviest = Math.max(...facts.skyStops.map((stop) => stop.weight))
+        expect(slice?.weight, `${locale} ${state.step}`).toBe(heaviest)
+      }
+    }
+  })
+
+  it("faces the returned-to memory's feeling from the recall on, as its share grows", () => {
+    for (const locale of ['ko', 'en'] as const) {
+      const content = walkthroughContent(locale)
+      const mood = content.splitScenes[content.recall.sceneIndex].mood
+      const recalled = facing(content, at('recall', true))
+      const prompted = facing(content, at('mirror', false))
+      const mirrored = facing(content, at('mirror', true))
+      for (const { slice } of [recalled, prompted, mirrored]) expect(slice?.mood).toBe(mood)
+      // The facing names the feeling the caption names, and the mirror step widens the very slice
+      // the frame is centred on.
+      expect(mirrored.slice?.weight ?? 0).toBeGreaterThan(recalled.slice?.weight ?? 0)
+    }
+  })
+
+  it('faces a different feeling at the colour step than at the mirror', () => {
+    // The story's argument on the canvas: what was written most (a quiet week) leads first, and what
+    // was returned to leads at the end.
+    const content = walkthroughContent('ko')
+    expect(facing(content, at('color', true)).slice?.mood).toBe('CALM')
+    expect(facing(content, at('mirror', true)).slice?.mood).toBe('LOVE')
+  })
+})

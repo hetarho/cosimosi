@@ -20,12 +20,18 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided review/landing-tutorial-ux-261109 T257: throttled first-paint scout measured the beat-1 caption painting stale, jumping and blinking on font swap (CLS 0.13) → adopt the reveal-on-commit fix under ONB-12 after the demo-guide lane (alt: leave it | hide until fonts load)
+- 261109 parked review/landing-tutorial-ux-261109 CLIENT-33 CLIENT-35 MKT-20 MKT-24: first-paint options need the owner — lazy renderer chunk for the hero words (F22, ~0.5s earlier), /demo chunk preload hint (F23), deferred observability SDKs (F24), poster priority and WebP once F18 regenerates it (F25)
+- 261109 decided T252 ONB-12: independent review found fitSceneBounds caps the top inset at 0.4·H, so the clearing inset never reached the frame → let the renderer honour a larger top inset while top plus bottom always leave a minimum frame (sole consumer is the demo's UniverseFraming), and track viewport resizes (alt: keep the cap and document the weaker behaviour | new task after integration)
+- 261109 decided review/landing-tutorial-ux-261109 T256: second-cycle scout covered no-WebGPU, reduced motion, English and small viewports; adopt only the 360px clipped walkthrough star (staging fix, MKT-19), since WebGL2 fallback and English hold
+- 261109 parked review/landing-tutorial-ux-261109 MKT-19 MKT-20 UI-10: reduced-motion visitors get a CSS-striped poster instead of the frozen 3D scene (F15), and the hero raster is stale against the live sky (F18); landscape dialog clipping (F16), landscape stage height (F17) and the English restart label (F20) need owner choices
+- 261109 decided T251 DEMO-27: the way-out ring rendered 79px high on desktop because the guide's top-clearance remeasure never reached the page measure → T251 also wires a page remeasure token through DemoPage.tsx, which is already lane demo-guide's file (alt: split a new task | accept the offset)
 - 261109 decided T250: static sky facing drifts because grainient spins its own frame → widen T250 to publish each effect's existing spin and track it, keeping effect visuals unchanged; prototype shows LOVE leading 57%→70% desktop (alt: accept drift and follow up | compensate only at facing changes)
 - 261109 decided ONB-18 ONB-19 RECALL-1 T254: the tour's step 8 told new users recalling costs stardust, but 회고하기 is free since RECALL@3 → ONB r4 drops the cost from step 8 and the ONB-19 rationale, following the owner's newer RECALL decision (alt: keep the stale caption | restate a cost for paid restoration only)
 - 261109 decided review/landing-tutorial-ux-261109 T250 T251 T252 T253 T254 T255: local13 adopts six gaps against existing MKT-17, DEMO-27, ONB-12, UI-6, UI-62 and DEMO-8 rules, each with screenshot evidence, independent review and a UI-15 round where the look changes; root verified the raw frames
 - 261109 parked review/landing-tutorial-ux-261109 MKT-17 MKT-18 MKT-20 UI-40: landing concept-delivery options need the owner — hero paragraph (F2), walkthrough framing line (F3), sentence tie (F4), invisible "form from the sentence" claim (F5), hero focal point (F6); each finding lists options with a recommendation
-- 261109 parked review/landing-tutorial-ux-261109 DEMO-21 DEMO-26 VIS: tutorial options need the owner — gist bodies already rise at beat 5 so beat 7 shows nothing new (F7), the closing honesty caption vanishes after 2.8s (F9), the desktop overview is too far for four memories (F10)
-- 261109 parked DEMO: commit dab1cd87 appears to implement DEMO r2–r5 without tasks; confirm before DEMO tasked moves from 1 to 5
+- 261109 parked review/landing-tutorial-ux-261109 DEMO-21 DEMO-26 DEMO-30: tutorial options need the owner — gist bodies already rise at beat 5 so beat 7 shows nothing new (F7), the closing honesty caption vanishes after 2.8s (F9), the desktop overview is too far for four memories (F10)
+- 261109 parked DEMO-14 DEMO-22 DEMO-25 DEMO-26 DEMO-27 DEMO-29 DEMO-31: commit dab1cd87 appears to implement DEMO r2–r5 without tasks; confirm before DEMO tasked moves from 1 to 5
 - 261109 decided T241 T249: corrected4activehours fulfilled; total9fixes/eightresumed independentlyreviewed/integrated,25/25scope verifiedd2cba8c0; source9c58d1b4 publishedonce, CI42505396917/check12 andautomaticdeploy42505397032/build9+rollout9 allsuccess;24ownedworkspaces/DBvolumeclosed, oldownedawakealreadygone/newerunownedawakepreserved
 - 261109 decided -: direct self-improve-local six-hour invocation starts local13 at 2026-11-08T17:39Z until 23:39Z (Nov9 08:39 KST) as continuous cycles. Focus: how well the landing page and tutorial convey the product through 3D UX/UI. Root adopts only fixes under existing SSOT/UI rules; new product rules are parked as option packets for the owner, see reports/261109-local13
 - 261109 decided T241 T249: finalnine pnpmcheck PASSESd2cba8c0/254.882s,25/25scope complete; F33actualgreen6/6, owned24workspaces/DBvolumecleaned anduserPGpreserved; singleconfiguredsourcepush/exactCI+autodeploy/awakeend remainpending
@@ -154,22 +160,28 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T250 | Landing walkthrough sky faces the feeling its step names | MKT PROD MOOD VIS UI ARCH | - | todo |
 | T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
 | T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
 | T254 | Onboarding tour copy speaks the product register and states recall truthfully | ONB UI RECALL MKT ARCH | - | todo |
 | T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
+| T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
+| T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
+| T258 | Sky facing costs nothing where unused and keeps its wiring guarded | VIS MKT ARCH | T256 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 25 | 25 | 0 | 0 | 0 | 0 | 2026-11-08T17:28:20.221Z | [history](work/local8h.json) |
+| local8h | 2 | 33 | 26 | 7 | 3 | 2 | 0 | 2026-11-08T19:26:53.140Z | [history](work/local8h.json) |
 
 ## next
-- local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
+- inspect work board for remaining tasks
 
 ## log
+- 261109 local13 T250 independently reviewed b8200053 and integrated b38bd150; create-task F26 → T258 (lane landing-scene with T256)
+- 261108 T250 integrated
+- 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
+- 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
 - 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
 - 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
 - 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
@@ -187,4 +199,3 @@
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
-- 261108 T249 integrated

@@ -184,6 +184,12 @@ export interface WalkthroughSceneFacts {
   readonly memories: readonly EpisodicMemory[]
   readonly universeTime: string
   readonly skyStops: readonly EmotionSlice[]
+  /**
+   * Which of `skyStops` the fixed camera faces, so the frame is led by the feeling the step talks
+   * about: the heaviest slice while the sky only reflects what was written, and the returned-to
+   * memory's slice once it has been recalled. Undefined while there is no sky.
+   */
+  readonly skyFacing: number | undefined
   /** The returned-to memory's reading as it stands now — whole, eroding, or back changed. */
   readonly focusText: string | null
   /** The same reading cut into legible and lost runs, for the renderer that draws the erosion. */
@@ -196,6 +202,20 @@ function hasHappened(state: WalkthroughState, step: WalkthroughStepId): boolean 
   const at = WALKTHROUGH_STEPS.indexOf(state.step)
   const asked = WALKTHROUGH_STEPS.indexOf(step)
   return asked < at || (asked === at && state.acted)
+}
+
+// The slices arrive primary-first, so the heaviest is the first one; after the recall the facing
+// follows the returned-to memory's feeling, wherever its grown share now ranks it.
+function skyFacing(
+  content: WalkthroughContent,
+  state: WalkthroughState,
+  skyStops: readonly EmotionSlice[],
+): number | undefined {
+  if (skyStops.length === 0) return undefined
+  if (!hasHappened(state, 'recall')) return 0
+  const mood = content.splitScenes[content.recall.sceneIndex].mood
+  const index = skyStops.findIndex((slice) => slice.mood === mood)
+  return index >= 0 ? index : undefined
 }
 
 export function walkthroughSceneFacts(
@@ -240,15 +260,18 @@ export function walkthroughSceneFacts(
 
   const focus = memories.find((memory) => memory.id === targetId) ?? null
 
+  // The sky arrives with the accumulation step, the way the demo's does — the moment the colour
+  // shows up is the moment the caption says it does.
+  const skyStops = hasHappened(state, 'color') ? universeEmotionSlices(memories) : []
+
   return {
     // Read off the facts rather than off the step list: the universe is on the stage exactly when
     // there is something in it, so the stage cannot disagree with what the canvas would draw.
     stage: memories.length > 0 ? 'universe' : hasHappened(state, 'split') ? 'scenes' : 'diary',
     memories,
     universeTime,
-    // The sky arrives with the accumulation step, the way the demo's does — the moment the colour
-    // shows up is the moment the caption says it does.
-    skyStops: hasHappened(state, 'color') ? universeEmotionSlices(memories) : [],
+    skyStops,
+    skyFacing: skyFacing(content, state, skyStops),
     // The plain string stays as the crossfade's identity — what changed is the words — while the
     // spans beside it are what gets drawn.
     focusText: focus === null ? null : currentDecayText(focus, universeTime),
