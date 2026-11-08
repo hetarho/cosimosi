@@ -81,6 +81,7 @@
 - 261103 decided MEM-9 T196: the explore's measurement showed the global HNSW index unused by the per-user dedup read and costly on writes → dropped it (migration 00031) and amended MEM-9 to an exact per-user scan (alt: keep the index | SET LOCAL hnsw.iterative_scan) ← recall stays 100% and latency unchanged, which the exit criterion requires; T198 moves to 00032
 - 261103 decided T203 T207: R4 refuses a byte-identical `pages/me/model/tabs.ts` in both apps, so the `/me` tab list gets ONE owner instead → `ME_TABS` in `packages/auth` (moves to `packages/account` with T207), both pages import it (alt: keep identical copies | differ the files to evade R4) ← one tab list is the point of the finding, and R4 forbids the copy
 - 261103 parked T198: both stacks' production `.env` need `DATABASE_URL=…?default_query_exec_mode=cache_describe` (session pooler 5432, DEPLOY.md §3) — an operator change on the VPS outside the repository
+- 261109 decided T241 T249: corrected4activehours fulfilled; total9fixes/eightresumed independentlyreviewed/integrated,25/25scope verifiedd2cba8c0; source9c58d1b4 publishedonce, CI42505396917/check12 andautomaticdeploy42505397032/build9+rollout9 allsuccess;24ownedworkspaces/DBvolumeclosed, oldownedawakealreadygone/newerunownedawakepreserved
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -152,12 +153,11 @@
 | local8h | 2 | 25 | 25 | 0 | 0 | 0 | 0 | 2026-11-08T17:28:20.221Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
 
 ## log
 - 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
 - 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
-- 261108 T249 integrated
 - 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
 - 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
 - 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
@@ -169,5 +169,5 @@
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
-- 261108 T248 integrated
-- 261108 T247 integrated
+- 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
+- 261108 T249 integrated
