@@ -10,7 +10,7 @@ const en_achievement_shared_neuron_8_body = /** @type {(inputs: Achievement_Shar
 };
 
 const ko_achievement_shared_neuron_8_body = /** @type {(inputs: Achievement_Shared_Neuron_8_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`당신 삶의 꽤 많은 부분이 여기 걸려 있어요.`)
+	return /** @type {LocalizedString} */ (`내 삶의 꽤 많은 부분이 여기 걸려 있어요.`)
 };
 
 /**

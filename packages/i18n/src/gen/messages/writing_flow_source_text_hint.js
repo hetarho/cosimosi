@@ -10,7 +10,7 @@ const en_writing_flow_source_text_hint = /** @type {(inputs: Writing_Flow_Source
 };
 
 const ko_writing_flow_source_text_hint = /** @type {(inputs: Writing_Flow_Source_Text_HintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`일기에서 이 별이 가져온 부분이에요. 당신이 쓴 말 그대로 담았어요 — 고치고 싶으면 고쳐요.`)
+	return /** @type {LocalizedString} */ (`일기에서 이 별이 가져온 부분이에요. 직접 쓴 말 그대로 담았어요 — 고치고 싶으면 고쳐요.`)
 };
 
 /**
