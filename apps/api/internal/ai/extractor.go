@@ -143,14 +143,14 @@ func normalizeMood(value string) (memory.Mood, error) {
 		memory.MoodEmptiness:
 		return mood, nil
 	default:
-		return "", fmt.Errorf("extractor response mood %q is not supported", value)
+		return "", errors.New("extractor response mood is not supported")
 	}
 }
 
 func normalizeNeuronType(value string) (memory.NeuronType, error) {
 	neuronType := memory.NeuronType(strings.ToLower(strings.TrimSpace(value)))
 	if !neuronType.Valid() {
-		return "", fmt.Errorf("extractor response neuron type %q is not supported", value)
+		return "", errors.New("extractor response neuron type is not supported")
 	}
 	return neuronType, nil
 }
