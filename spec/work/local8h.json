@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T00:13:01.536Z",
-  "sourceCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4",
+  "snapshotAt": "2026-11-08T00:27:32.742Z",
+  "sourceCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -22,7 +22,9 @@
         }
       ],
       "at": "2026-11-07T21:12:08.978Z",
-      "excluded": ["T222"]
+      "excluded": [
+        "T222"
+      ]
     },
     "push": null,
     "review": "all",
@@ -47,30 +49,27 @@
   },
   "summary": {
     "total": 16,
-    "completed": 15,
-    "remaining": 1,
-    "running": 1,
+    "completed": 16,
+    "remaining": 0,
+    "running": 0,
     "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T239",
-      "title": "Invalidate profile-dependent reads after a successful full profile write",
-      "dep": [],
-      "status": "doing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": ["T225"],
+      "tasks": [
+        "T225"
+      ],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": ["gatesworker"],
+      "contributors": [
+        "gatesworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -146,10 +145,14 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": ["T226"],
+      "tasks": [
+        "T226"
+      ],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": ["fieldworker"],
+      "contributors": [
+        "fieldworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -225,10 +228,14 @@
       "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
       "group": "local8h",
       "taskId": "T227",
-      "tasks": ["T227"],
+      "tasks": [
+        "T227"
+      ],
       "lane": null,
       "owner": "checksworker",
-      "contributors": ["checksworker"],
+      "contributors": [
+        "checksworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:59:37.533Z",
@@ -287,10 +294,14 @@
       "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
       "group": "local8h",
       "taskId": "T228",
-      "tasks": ["T228"],
+      "tasks": [
+        "T228"
+      ],
       "lane": null,
       "owner": "resourceworker",
-      "contributors": ["resourceworker"],
+      "contributors": [
+        "resourceworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:20.204Z",
@@ -349,10 +360,14 @@
       "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "group": "local8h",
       "taskId": "T229",
-      "tasks": ["T229"],
+      "tasks": [
+        "T229"
+      ],
       "lane": null,
       "owner": "ratchetworker",
-      "contributors": ["ratchetworker"],
+      "contributors": [
+        "ratchetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:25.658Z",
@@ -411,10 +426,14 @@
       "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
       "group": "local8h",
       "taskId": "T231",
-      "tasks": ["T231"],
+      "tasks": [
+        "T231"
+      ],
       "lane": null,
       "owner": "collectionworker",
-      "contributors": ["collectionworker"],
+      "contributors": [
+        "collectionworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:50:25.131Z",
@@ -496,10 +515,14 @@
       "id": "ef070033-58bc-48af-94bf-84637877b087",
       "group": "local8h",
       "taskId": "T230",
-      "tasks": ["T230"],
+      "tasks": [
+        "T230"
+      ],
       "lane": null,
       "owner": "replayworker",
-      "contributors": ["replayworker"],
+      "contributors": [
+        "replayworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:51:01.837Z",
@@ -563,10 +586,14 @@
       "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
       "group": "local8h",
       "taskId": "T232",
-      "tasks": ["T232"],
+      "tasks": [
+        "T232"
+      ],
       "lane": null,
       "owner": "latentworker",
-      "contributors": ["latentworker"],
+      "contributors": [
+        "latentworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T17:21:14.121Z",
@@ -625,10 +652,14 @@
       "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
       "group": "local8h",
       "taskId": "T233",
-      "tasks": ["T233"],
+      "tasks": [
+        "T233"
+      ],
       "lane": null,
       "owner": "dialogworker",
-      "contributors": ["dialogworker"],
+      "contributors": [
+        "dialogworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:38.752Z",
@@ -687,10 +718,14 @@
       "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
       "group": "local8h",
       "taskId": "T234",
-      "tasks": ["T234"],
+      "tasks": [
+        "T234"
+      ],
       "lane": null,
       "owner": "refocusworker",
-      "contributors": ["refocusworker"],
+      "contributors": [
+        "refocusworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:53.465Z",
@@ -749,10 +784,14 @@
       "id": "a666c552-3a57-4484-933b-f1288868d0f2",
       "group": "local8h",
       "taskId": "T235",
-      "tasks": ["T235"],
+      "tasks": [
+        "T235"
+      ],
       "lane": null,
       "owner": "sheetworker",
-      "contributors": ["sheetworker"],
+      "contributors": [
+        "sheetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:43:20.470Z",
@@ -811,10 +850,14 @@
       "id": "652bb260-f071-477b-92fd-1d87c29495fc",
       "group": "local8h",
       "taskId": "T236",
-      "tasks": ["T236"],
+      "tasks": [
+        "T236"
+      ],
       "lane": null,
       "owner": "withdrawalworker",
-      "contributors": ["withdrawalworker"],
+      "contributors": [
+        "withdrawalworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:06:12.161Z",
@@ -878,10 +921,14 @@
       "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
       "group": "local8h",
       "taskId": "T237",
-      "tasks": ["T237"],
+      "tasks": [
+        "T237"
+      ],
       "lane": null,
       "owner": "mapperworker",
-      "contributors": ["mapperworker"],
+      "contributors": [
+        "mapperworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:20:26.074Z",
@@ -940,10 +987,14 @@
       "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
       "group": "local8h",
       "taskId": "T238",
-      "tasks": ["T238"],
+      "tasks": [
+        "T238"
+      ],
       "lane": null,
       "owner": "assetworker",
-      "contributors": ["assetworker"],
+      "contributors": [
+        "assetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:58:43.759Z",
@@ -1002,22 +1053,32 @@
       "id": "092ef632-399a-4cdb-a9a1-dcd90b52c6c6",
       "group": "local8h",
       "taskId": "T239",
-      "tasks": ["T239"],
+      "tasks": [
+        "T239"
+      ],
       "lane": null,
       "owner": "profile-local10",
-      "contributors": ["profile-local10"],
-      "status": "doing",
+      "contributors": [
+        "profile-local10"
+      ],
+      "status": "released",
+      "reason": "Worker stopped; preserve four-file patch; amend T239 to share cache invalidation in existing owning package after immutable ratchet failure",
       "createdAt": "2026-11-08T00:04:25.805Z",
-      "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4"
+      "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4",
+      "releasedAt": "2026-11-08T00:13:35.258Z"
     },
     {
       "id": "310f5024-5656-4a24-b1ee-c6eff7554186",
       "group": "local8h",
       "taskId": "T240",
-      "tasks": ["T240"],
+      "tasks": [
+        "T240"
+      ],
       "lane": null,
       "owner": "private-local10",
-      "contributors": ["private-local10"],
+      "contributors": [
+        "private-local10"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T00:04:27.142Z",
@@ -1026,6 +1087,8 @@
       "submittedBase": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4",
       "submissionId": "2debb714-4e95-4a38-b45e-49376e121095",
       "submittedAt": "2026-11-08T00:10:58.097Z",
+      "integratedCommit": "df4f618577980d7655a7eb7bcfcacad43127f027",
+      "integratedAt": "2026-11-08T00:13:02.619Z",
       "risk": null,
       "review": {
         "id": "d1af32e6-b924-4b26-bc1b-d13b0a7b0987",
@@ -1060,6 +1123,79 @@
           "startedAt": "2026-11-08T00:10:55.745Z",
           "finishedAt": "2026-11-08T00:10:57.596Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T00:13:01.817Z",
+          "finishedAt": "2026-11-08T00:13:02.288Z"
+        }
+      ]
+    },
+    {
+      "id": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "group": "local8h",
+      "taskId": "T239",
+      "tasks": [
+        "T239"
+      ],
+      "lane": null,
+      "owner": "profile-local10-v2",
+      "contributors": [
+        "profile-local10-v2"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T00:18:25.840Z",
+      "startCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+      "verifiedCommit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+      "submittedBase": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+      "submissionId": "ade9b44d-eabd-4cb5-b90e-cd163ec01d8d",
+      "submittedAt": "2026-11-08T00:25:03.945Z",
+      "risk": null,
+      "review": {
+        "id": "32fef52c-58a2-41f4-a11a-bdc54f29ee77",
+        "owner": "independent-local10",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T239 exacta2409249 againste4c7e1a1 preserves current contracts: one pure awaited commonprofile/Twinkle/SyncStatus invalidator consumed by bothactualhosts, webAdminfiniteinputless separate, unchangedcontroller/defaults/keys/ratchet. Full6source diff/currenttask read. Independentfixedcheckout web7/mobileApp18/client-cache24 allpass0skip; expanded5project899tests/5typechecks andnormalfinalhooks/rawred/green verified with6hash identity. Root integrated fullgate/CI remain pending.",
+        "findings": [],
+        "commit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+        "baseCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+        "submissionId": "ade9b44d-eabd-4cb5-b90e-cd163ec01d8d",
+        "createdAt": "2026-11-08T00:25:03.989Z",
+        "finishedAt": "2026-11-08T00:27:16.647Z"
+      },
+      "steps": [
+        {
+          "taskId": "T239",
+          "commit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+          "at": "2026-11-08T00:25:03.934Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/web exec vitest run src/features/account-profile/ui/AccountProfile.test.tsx",
+              "startedAt": "2026-11-08T00:24:49.198Z",
+              "finishedAt": "2026-11-08T00:24:54.322Z"
+            },
+            {
+              "command": "pnpm --filter @cosimosi/mobile exec jest src/app/App.test.tsx --runInBand",
+              "startedAt": "2026-11-08T00:24:54.396Z",
+              "finishedAt": "2026-11-08T00:25:03.572Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/web exec vitest run src/features/account-profile/ui/AccountProfile.test.tsx",
+          "startedAt": "2026-11-08T00:24:49.198Z",
+          "finishedAt": "2026-11-08T00:24:54.322Z"
+        },
+        {
+          "command": "pnpm --filter @cosimosi/mobile exec jest src/app/App.test.tsx --runInBand",
+          "startedAt": "2026-11-08T00:24:54.396Z",
+          "finishedAt": "2026-11-08T00:25:03.572Z"
+        }
       ]
     }
   ],
@@ -1083,7 +1219,9 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": ["T225"]
+        "taskScope": [
+          "T225"
+        ]
       }
     },
     {
@@ -1110,10 +1248,14 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": ["T225"],
+        "tasks": [
+          "T225"
+        ],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": ["gatesworker"],
+        "contributors": [
+          "gatesworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -1140,7 +1282,10 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226"]
+        "taskScope": [
+          "T225",
+          "T226"
+        ]
       }
     },
     {
@@ -1156,10 +1301,14 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": ["T226"],
+        "tasks": [
+          "T226"
+        ],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": ["fieldworker"],
+        "contributors": [
+          "fieldworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
@@ -1721,7 +1870,12 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228"
+        ]
       }
     },
     {
@@ -1737,10 +1891,14 @@
         "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
         "group": "local8h",
         "taskId": "T227",
-        "tasks": ["T227"],
+        "tasks": [
+          "T227"
+        ],
         "lane": null,
         "owner": "checksworker",
-        "contributors": ["checksworker"],
+        "contributors": [
+          "checksworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:59:37.533Z",
         "startCommit": "864544d4a2eb68176891d49da259c44eb59d2a3e"
@@ -1832,7 +1990,14 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230"
+        ]
       }
     },
     {
@@ -1943,10 +2108,14 @@
         "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
         "group": "local8h",
         "taskId": "T228",
-        "tasks": ["T228"],
+        "tasks": [
+          "T228"
+        ],
         "lane": null,
         "owner": "resourceworker",
-        "contributors": ["resourceworker"],
+        "contributors": [
+          "resourceworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:20.204Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -1978,10 +2147,14 @@
         "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
         "group": "local8h",
         "taskId": "T229",
-        "tasks": ["T229"],
+        "tasks": [
+          "T229"
+        ],
         "lane": null,
         "owner": "ratchetworker",
-        "contributors": ["ratchetworker"],
+        "contributors": [
+          "ratchetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:25.658Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -2008,7 +2181,15 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231"
+        ]
       }
     },
     {
@@ -2171,10 +2352,14 @@
         "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
         "group": "local8h",
         "taskId": "T231",
-        "tasks": ["T231"],
+        "tasks": [
+          "T231"
+        ],
         "lane": null,
         "owner": "collectionworker",
-        "contributors": ["collectionworker"],
+        "contributors": [
+          "collectionworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:50:25.131Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -2257,10 +2442,14 @@
         "id": "ef070033-58bc-48af-94bf-84637877b087",
         "group": "local8h",
         "taskId": "T230",
-        "tasks": ["T230"],
+        "tasks": [
+          "T230"
+        ],
         "lane": null,
         "owner": "replayworker",
-        "contributors": ["replayworker"],
+        "contributors": [
+          "replayworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:51:01.837Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -2827,7 +3016,16 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232"
+        ]
       }
     },
     {
@@ -2843,10 +3041,14 @@
         "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
         "group": "local8h",
         "taskId": "T232",
-        "tasks": ["T232"],
+        "tasks": [
+          "T232"
+        ],
         "lane": null,
         "owner": "latentworker",
-        "contributors": ["latentworker"],
+        "contributors": [
+          "latentworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T17:21:14.121Z",
         "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc"
@@ -3143,10 +3345,14 @@
         "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
         "group": "local8h",
         "taskId": "T233",
-        "tasks": ["T233"],
+        "tasks": [
+          "T233"
+        ],
         "lane": null,
         "owner": "dialogworker",
-        "contributors": ["dialogworker"],
+        "contributors": [
+          "dialogworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:38.752Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -3178,10 +3384,14 @@
         "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
         "group": "local8h",
         "taskId": "T234",
-        "tasks": ["T234"],
+        "tasks": [
+          "T234"
+        ],
         "lane": null,
         "owner": "refocusworker",
-        "contributors": ["refocusworker"],
+        "contributors": [
+          "refocusworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:53.465Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -3532,10 +3742,14 @@
         "id": "a666c552-3a57-4484-933b-f1288868d0f2",
         "group": "local8h",
         "taskId": "T235",
-        "tasks": ["T235"],
+        "tasks": [
+          "T235"
+        ],
         "lane": null,
         "owner": "sheetworker",
-        "contributors": ["sheetworker"],
+        "contributors": [
+          "sheetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:43:20.470Z",
         "startCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f"
@@ -3739,10 +3953,14 @@
         "id": "652bb260-f071-477b-92fd-1d87c29495fc",
         "group": "local8h",
         "taskId": "T236",
-        "tasks": ["T236"],
+        "tasks": [
+          "T236"
+        ],
         "lane": null,
         "owner": "withdrawalworker",
-        "contributors": ["withdrawalworker"],
+        "contributors": [
+          "withdrawalworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:06:12.161Z",
         "startCommit": "5f73743831ec03a6a43fde570fbb3a7300f168aa"
@@ -3799,10 +4017,14 @@
         "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
         "group": "local8h",
         "taskId": "T237",
-        "tasks": ["T237"],
+        "tasks": [
+          "T237"
+        ],
         "lane": null,
         "owner": "mapperworker",
-        "contributors": ["mapperworker"],
+        "contributors": [
+          "mapperworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:20:26.074Z",
         "startCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661"
@@ -4161,10 +4383,14 @@
         "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
         "group": "local8h",
         "taskId": "T238",
-        "tasks": ["T238"],
+        "tasks": [
+          "T238"
+        ],
         "lane": null,
         "owner": "assetworker",
-        "contributors": ["assetworker"],
+        "contributors": [
+          "assetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:58:43.759Z",
         "startCommit": "6be0e30690b1ef878be68ff2db5892625dfb811e"
@@ -4349,7 +4575,9 @@
             }
           ],
           "at": "2026-11-07T21:12:08.978Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -4772,10 +5000,14 @@
         "id": "092ef632-399a-4cdb-a9a1-dcd90b52c6c6",
         "group": "local8h",
         "taskId": "T239",
-        "tasks": ["T239"],
+        "tasks": [
+          "T239"
+        ],
         "lane": null,
         "owner": "profile-local10",
-        "contributors": ["profile-local10"],
+        "contributors": [
+          "profile-local10"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T00:04:25.805Z",
         "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4"
@@ -4807,10 +5039,14 @@
         "id": "310f5024-5656-4a24-b1ee-c6eff7554186",
         "group": "local8h",
         "taskId": "T240",
-        "tasks": ["T240"],
+        "tasks": [
+          "T240"
+        ],
         "lane": null,
         "owner": "private-local10",
-        "contributors": ["private-local10"],
+        "contributors": [
+          "private-local10"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T00:04:27.142Z",
         "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4"
@@ -4937,6 +5173,258 @@
       "group": "local8h",
       "attemptId": "310f5024-5656-4a24-b1ee-c6eff7554186",
       "taskId": "T240",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 201,
+      "at": "2026-11-08T00:13:02.552Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "310f5024-5656-4a24-b1ee-c6eff7554186",
+      "taskId": "T240",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T00:13:01.817Z",
+            "finishedAt": "2026-11-08T00:13:02.288Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 202,
+      "at": "2026-11-08T00:13:02.619Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "310f5024-5656-4a24-b1ee-c6eff7554186",
+      "taskId": "T240",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "df4f618577980d7655a7eb7bcfcacad43127f027",
+        "integratedAt": "2026-11-08T00:13:02.619Z"
+      }
+    },
+    {
+      "sequence": 203,
+      "at": "2026-11-08T00:13:35.259Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "092ef632-399a-4cdb-a9a1-dcd90b52c6c6",
+      "taskId": "T239",
+      "previousStatus": "doing",
+      "status": "released",
+      "changes": {
+        "status": "released",
+        "reason": "Worker stopped; preserve four-file patch; amend T239 to share cache invalidation in existing owning package after immutable ratchet failure",
+        "releasedAt": "2026-11-08T00:13:35.258Z"
+      }
+    },
+    {
+      "sequence": 204,
+      "at": "2026-11-08T00:18:25.841Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+        "group": "local8h",
+        "taskId": "T239",
+        "tasks": [
+          "T239"
+        ],
+        "lane": null,
+        "owner": "profile-local10-v2",
+        "contributors": [
+          "profile-local10-v2"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-08T00:18:25.840Z",
+        "startCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0"
+      }
+    },
+    {
+      "sequence": 205,
+      "at": "2026-11-08T00:18:26.530Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 206,
+      "at": "2026-11-08T00:23:18.721Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 207,
+      "at": "2026-11-08T00:23:18.966Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "verifying",
+      "status": "blocked",
+      "changes": {
+        "status": "blocked",
+        "reason": "T239: 태스크 계약이 상위 브랜치와 다릅니다. 기획 변경을 확인하고 작업을 동기화하세요."
+      }
+    },
+    {
+      "sequence": 208,
+      "at": "2026-11-08T00:24:07.628Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "blocked",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "reason": null
+      }
+    },
+    {
+      "sequence": 209,
+      "at": "2026-11-08T00:24:48.913Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 210,
+      "at": "2026-11-08T00:25:03.945Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "verifiedCommit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+        "submittedBase": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+        "submissionId": "ade9b44d-eabd-4cb5-b90e-cd163ec01d8d",
+        "submittedAt": "2026-11-08T00:25:03.945Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T239",
+            "commit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+            "at": "2026-11-08T00:25:03.934Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/web exec vitest run src/features/account-profile/ui/AccountProfile.test.tsx",
+                "startedAt": "2026-11-08T00:24:49.198Z",
+                "finishedAt": "2026-11-08T00:24:54.322Z"
+              },
+              {
+                "command": "pnpm --filter @cosimosi/mobile exec jest src/app/App.test.tsx --runInBand",
+                "startedAt": "2026-11-08T00:24:54.396Z",
+                "finishedAt": "2026-11-08T00:25:03.572Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/web exec vitest run src/features/account-profile/ui/AccountProfile.test.tsx",
+            "startedAt": "2026-11-08T00:24:49.198Z",
+            "finishedAt": "2026-11-08T00:24:54.322Z"
+          },
+          {
+            "command": "pnpm --filter @cosimosi/mobile exec jest src/app/App.test.tsx --runInBand",
+            "startedAt": "2026-11-08T00:24:54.396Z",
+            "finishedAt": "2026-11-08T00:25:03.572Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 211,
+      "at": "2026-11-08T00:25:03.989Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "32fef52c-58a2-41f4-a11a-bdc54f29ee77",
+          "owner": "independent-local10",
+          "status": "reviewing",
+          "commit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+          "baseCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+          "submissionId": "ade9b44d-eabd-4cb5-b90e-cd163ec01d8d",
+          "createdAt": "2026-11-08T00:25:03.989Z"
+        }
+      }
+    },
+    {
+      "sequence": 212,
+      "at": "2026-11-08T00:27:16.647Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "32fef52c-58a2-41f4-a11a-bdc54f29ee77",
+          "owner": "independent-local10",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T239 exacta2409249 againste4c7e1a1 preserves current contracts: one pure awaited commonprofile/Twinkle/SyncStatus invalidator consumed by bothactualhosts, webAdminfiniteinputless separate, unchangedcontroller/defaults/keys/ratchet. Full6source diff/currenttask read. Independentfixedcheckout web7/mobileApp18/client-cache24 allpass0skip; expanded5project899tests/5typechecks andnormalfinalhooks/rawred/green verified with6hash identity. Root integrated fullgate/CI remain pending.",
+          "findings": [],
+          "commit": "a2409249d66bbc9ca14174fa6ce331d62fcccf2d",
+          "baseCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0",
+          "submissionId": "ade9b44d-eabd-4cb5-b90e-cd163ec01d8d",
+          "createdAt": "2026-11-08T00:25:03.989Z",
+          "finishedAt": "2026-11-08T00:27:16.647Z"
+        }
+      }
+    },
+    {
+      "sequence": 213,
+      "at": "2026-11-08T00:27:31.127Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
+      "taskId": "T239",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

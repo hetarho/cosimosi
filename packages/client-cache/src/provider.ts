@@ -1,5 +1,10 @@
 import type { ApiTransport } from '@cosimosi/api-client'
-import { createApiTransport } from '@cosimosi/api-client'
+import {
+  createApiTransport,
+  createGetProfileQueryKey,
+  createTwinkleServiceQueryKey,
+  createSyncStatusQueryOptions,
+} from '@cosimosi/api-client'
 import type { AuthFacade } from '@cosimosi/auth'
 import {
   createTelemetryRequestIdInterceptor,
@@ -55,4 +60,15 @@ export function clearOwnedClientCache(
   ownsQueryClient: boolean,
 ): void {
   if (ownsQueryClient) queryClient.clear()
+}
+
+export async function invalidateProfileDependentQueries(
+  queryClient: ClientCacheQueryClient,
+  transport: ApiTransport,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: createGetProfileQueryKey(transport) }),
+    queryClient.invalidateQueries({ queryKey: createTwinkleServiceQueryKey(transport) }),
+    queryClient.invalidateQueries({ queryKey: createSyncStatusQueryOptions(transport).queryKey }),
+  ])
 }

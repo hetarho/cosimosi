@@ -3,11 +3,8 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  createGetProfileQueryKey,
-  createGetProfileQueryOptions,
-  updateProfile,
-} from '@cosimosi/api-client'
+import { createGetProfileQueryOptions, updateProfile } from '@cosimosi/api-client'
+import { invalidateProfileDependentQueries } from '@cosimosi/client-cache'
 import { useAccountProfileController, type ProfileUpdate } from '@cosimosi/account/react'
 import { VALUES } from '@cosimosi/config'
 import {
@@ -37,8 +34,7 @@ export function AccountProfile() {
       profile: query.data?.profile,
       pending: mutation.isPending,
       update: (request) => mutation.mutateAsync(request),
-      invalidate: () =>
-        queryClient.invalidateQueries({ queryKey: createGetProfileQueryKey(transport) }),
+      invalidate: () => invalidateProfileDependentQueries(queryClient, transport),
       locale: { read: getActiveLocale, activate: setActiveLocale, persist: writeStoredLocale },
       deviceTimeZone,
       onError: showError,

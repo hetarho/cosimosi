@@ -125,18 +125,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T239 | Invalidate profile-dependent reads after a successful full profile write | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 16 | 15 | 1 | 1 | 0 | 0 | 2026-11-08T00:13:01.536Z | [history](work/local8h.json) |
+| local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:27:32.742Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T239 integrated
 - 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
 - 261108 T240 integrated
 - 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
@@ -156,4 +156,3 @@
 - 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
 - 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
-- 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
