@@ -519,6 +519,99 @@ describe('createAuthFacade', () => {
   })
 })
 
+describe('pending access tokens', () => {
+  it.each([
+    'pending_forced_signout',
+    'pending_dispose',
+    'pending_external_signout',
+    'live_authenticated',
+    'adapter_rejects',
+    'begun_after_forced_signout',
+    'failed_signout_restores',
+    'live_refreshing',
+  ] as const)('preserves current session access: %s', async (scenario) => {
+    const session = { userId: 'token-user', expiresAt: 60_000 }
+    const base = new FakeAuthAdapter({
+      initial: session,
+      now: () => 1_000,
+      ...(scenario === 'failed_signout_restores' ? { signOutError: 'network unavailable' } : {}),
+    })
+    const token = deferred<string | null>()
+    const refresh = deferred<AuthSession>()
+    let adapterReads = 0
+    let subscriptions = 0
+    const facade = createAuthFacade({
+      adapter: {
+        ...adapterOf(base),
+        getAccessToken: () => {
+          adapterReads += 1
+          return token.promise
+        },
+        refresh: () => refresh.promise,
+        onChange: (listener) => {
+          subscriptions += 1
+          const unsubscribe = base.onChange(listener)
+          return () => {
+            subscriptions -= 1
+            unsubscribe()
+          }
+        },
+      },
+    })
+    let reading: Promise<string | null> | undefined
+    let refreshing: Promise<void> | undefined
+    try {
+      await flush()
+      expect(facade.snapshot).toMatchObject({ status: 'authenticated', userId: session.userId })
+      if (scenario === 'begun_after_forced_signout') facade.forceLocalSignOut()
+      reading = facade.getAccessToken()
+      expect(adapterReads).toBe(scenario === 'begun_after_forced_signout' ? 0 : 1)
+
+      if (scenario === 'pending_forced_signout') facade.forceLocalSignOut()
+      if (scenario === 'pending_dispose') facade.dispose()
+      if (scenario === 'pending_external_signout') {
+        base.emit({ status: 'signedOut', userId: null, expiresAt: null, error: null }, 'signedOut')
+      }
+      if (scenario === 'failed_signout_restores') {
+        await expect(facade.signOut()).rejects.toThrow('network unavailable')
+      }
+      if (scenario === 'live_refreshing') refreshing = facade.refresh()
+
+      const signedOut = [
+        'pending_forced_signout',
+        'pending_external_signout',
+        'begun_after_forced_signout',
+      ].includes(scenario)
+      expect(facade.snapshot).toMatchObject({
+        status: signedOut
+          ? 'signedOut'
+          : scenario === 'live_refreshing'
+            ? 'refreshing'
+            : 'authenticated',
+        userId: signedOut ? null : session.userId,
+      })
+      expect(subscriptions).toBe(scenario === 'pending_dispose' ? 0 : 1)
+
+      if (scenario === 'adapter_rejects') token.reject(new Error('storage unavailable'))
+      else token.resolve('current-token')
+      const accessible = [
+        'live_authenticated',
+        'failed_signout_restores',
+        'live_refreshing',
+      ].includes(scenario)
+      await expect(reading).resolves.toBe(accessible ? 'current-token' : null)
+      expect(adapterReads).toBe(scenario === 'begun_after_forced_signout' ? 0 : 1)
+    } finally {
+      token.resolve(null)
+      refresh.resolve(session)
+      await reading?.catch(() => undefined)
+      await refreshing
+      facade.dispose()
+      expect(subscriptions).toBe(0)
+    }
+  })
+})
+
 /**
  * An adapter whose Google flow leaves the app (resolves null) and completes only
  * through the callback — the web-redirect / mobile-deep-link shape. A callback URL
@@ -547,12 +640,18 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
-function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve(value: T): void
+  reject(error: unknown): void
+} {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((innerResolve) => {
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((innerResolve, innerReject) => {
     resolve = innerResolve
+    reject = innerReject
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 function adapterOf(base: FakeAuthAdapter): AuthAdapter {
