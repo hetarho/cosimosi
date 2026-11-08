@@ -75,6 +75,7 @@
 - 261109 decided AI-9 OBS-7 T247: separately frozen original schema-name and unknown-finish causes reach ordinary RPC logs, each1failure/3controls; adopt combined two-file category-only repair with unchanged typed/cache/wire behavior, mandatory DB-backed task gate/independent review; T222 remains excluded
 - 261109 decided ONB-10 T246: original actual-hook step0→1 preserves oldrectA after geometryB, one feature failure/eight controls; adopt only existing per-step remeasurement after T245, preserve pending-rect/replay/pending host policies and require independent review
 - 261109 decided UI-28 UI-29 UI-58 T248: actual native Select retained-open disabled transition still changes value,1featurefailure/9controls; adopt existing option disabled interaction/semantics/style binding only, preserve modal/callback/public policy and require independent review; current shipped exposure/device validation unproven
+- 261109 decided OBS-7 ERR-6 T249: sole actual SDK/RPC proof confirms generated mood/type values in causes/logs,2failures/4controls with19hardcontrols and9RPC/8vendor counts; adopt only fixed extractor messages/twofiles preserving ordinaryerrors/cache/wire/normalization, require precommitconditional DBgate/independentreview/NEWfullgate; T222excluded
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -146,6 +147,7 @@
 | T246 | Remeasure the current anchor when a sequence step changes | ONB ARCH | T245 | todo |
 | T247 | Keep DeepSeek malformed-output error causes content-free | AI OBS ERR ARCH | - | todo |
 | T248 | Honor disabled state in retained native Select options | UI ARCH | - | todo |
+| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo@261109 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -160,6 +162,7 @@
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
 - 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
+- 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
