@@ -132,7 +132,7 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:27:32.742Z | [history](work/local8h.json) |
+| local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:37:30.187Z | [history](work/local8h.json) |
 
 ## next
 - local10 T239/T240 source integration complete; root final gate/source CI and timed closeout remain. Preserve F22 unexecuted future confirmation and existing T222/DEMO/ONB owner scope.
