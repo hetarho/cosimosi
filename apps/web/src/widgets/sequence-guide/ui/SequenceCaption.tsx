@@ -47,7 +47,8 @@ export function SequenceCaption({
       style={{ ...bandStyle(position), right: rightInset }}
     >
       {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has to
-          carry from the middle of a page whose everything-else is deliberately dimmed. */}
+          carry from the middle of a page whose everything-else is deliberately dimmed. Short display
+          copy, so Korean breaks between words and the lines balance (UI-6). */}
       <motion.p
         ref={measureRef}
         key={text}
@@ -55,7 +56,7 @@ export function SequenceCaption({
         initial={reducedMotion ? false : { opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="max-w-lg rounded-lg border border-primary/20 bg-surface-raised/90 px-5 py-3.5 text-center text-base leading-relaxed text-text shadow-lg"
+        className="max-w-lg rounded-lg border border-primary/20 bg-surface-raised/90 px-5 py-3.5 text-center text-base leading-relaxed break-keep wrap-break-word text-balance text-text shadow-lg"
       >
         {text}
       </motion.p>

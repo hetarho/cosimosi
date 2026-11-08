@@ -163,21 +163,19 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
-| T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
-| T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
 | T260 | Landing scene tests pin what they claim and stay fast | ARCH MKT VIS | T258 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 35 | 31 | 4 | 0 | 3 | 0 | 2026-11-08T20:06:52.175Z | [history](work/local8h.json) |
+| local8h | 2 | 36 | 34 | 2 | 1 | 0 | 0 | 2026-11-08T20:19:25.789Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T251 T252 T253 integrated
 - 261109 local13 lane landing-scene (T256 T258) reviewed 4dc258d3 and integrated bc281117; T259 reviewed 1701a333 and integrated 2e1d2e54; create-task F34 → T260
 - 261108 T256 T258 integrated
 - 261108 T259 integrated
@@ -197,5 +195,3 @@
 - 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
 - 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
-- 261109 local12 six reviewed integrations complete23/23; repairedRPC8/8 verified; F32 originaldisabled1failure/9controls confirmed, task conversion next; hourlywip4d11bb67 preserved
-- 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment

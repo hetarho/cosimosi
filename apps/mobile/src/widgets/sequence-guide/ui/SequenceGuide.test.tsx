@@ -39,6 +39,13 @@ describe('SequenceGuide (mobile)', () => {
     expect(onSkip).toHaveBeenCalledTimes(1)
   })
 
+  it('breaks Korean captions between words on iOS', () => {
+    const view = mount()
+    expect(view.getByText('Write one line about today.').props.lineBreakStrategyIOS).toBe(
+      'hangul-word',
+    )
+  })
+
   it('renders no chrome at all when no run is active', () => {
     const view = mount({ active: false })
     expect(view.queryByText(m.sequence_skip_action())).toBeNull()
