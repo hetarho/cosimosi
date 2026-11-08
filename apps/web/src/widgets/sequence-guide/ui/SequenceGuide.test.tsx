@@ -180,6 +180,14 @@ describe('SequenceGuide (web)', () => {
     await waitFor(() => expect(band().style.bottom).toBe('90px'))
   })
 
+  it('breaks Korean between words and balances the caption lines (UI-6)', () => {
+    const { container } = mount(createElement(SequenceGuide, baseProps()) as never)
+    const line = container.querySelector('[aria-live="polite"] p')
+    expect(line?.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['break-keep', 'wrap-break-word', 'text-balance']),
+    )
+  })
+
   it('resolves the caption through the accessor at render time, so a locale change re-reads it', () => {
     let locale = 'en'
     const html = render({ caption: () => (locale === 'en' ? 'first' : 'second') })
