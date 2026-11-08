@@ -71,6 +71,7 @@
 - 261103 decided MEM-9 T196: the explore's measurement showed the global HNSW index unused by the per-user dedup read and costly on writes → dropped it (migration 00031) and amended MEM-9 to an exact per-user scan (alt: keep the index | SET LOCAL hnsw.iterative_scan) ← recall stays 100% and latency unchanged, which the exit criterion requires; T198 moves to 00032
 - 261103 decided T203 T207: R4 refuses a byte-identical `pages/me/model/tabs.ts` in both apps, so the `/me` tab list gets ONE owner instead → `ME_TABS` in `packages/auth` (moves to `packages/account` with T207), both pages import it (alt: keep identical copies | differ the files to evade R4) ← one tab list is the point of the finding, and R4 forbids the copy
 - 261103 parked T198: both stacks' production `.env` need `DATABASE_URL=…?default_query_exec_mode=cache_describe` (session pooler 5432, DEPLOY.md §3) — an operator change on the VPS outside the repository
+- 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -138,6 +139,7 @@
 | T242 | Classify the known Go gate without unrelated TypeScript checks | ARCH | - | todo |
 | T243 | Fence token reads that settle after session access closes | ARCH AUTH | - | todo |
 | T244 | Keep confirmed-launch validation refusals content-free | ARCH ENC ERR OBS | - | todo |
+| T245 | Give each fresh sequence run its full dwell time | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -148,6 +150,7 @@
 - local12 active until2026-11-08T17:35:57Z: continuously discover/approve/implement/review bounded improvements; a completed item starts the next cycle. Preserve17completed prior units and owner-gated backlog; reports/261108-local12.
 
 ## log
+- 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
