@@ -14,7 +14,13 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T14:13Z | - |
+
 ## inbox
+- 261108 decided -: user corrects local11 premature single-item stop: four hours means continuous improvement cycles. Resume local12, exclude inactive gap, remaining active3h23m until2026-11-08T17:35:57Z/Nov9 02:36KST; preserve prior T241 and existing boundaries, see reports/261108-local12
 - 261108 decided T241: independently reviewed/integratedd2e40965, final pnpm check passes13482597, configured source634e862d and exact CI42484422140 allpass; local11scope17/17complete and owned resources cleaned, F24 stays owner-gated
 - 261108 decided ARCH-46 T241: actual unchanged Docker fmt shell falsely succeeds on real syntax-error fixture → adopt bounded two-file failure propagation under local11 invocation (alt: retain weaker Docker gate); preserve all checks and require hermetic real-shell negatives, independent review and final gate
 - 261108 parked ACCT-7: F24 stored Local alias is a source-only consistency lead; explicit read-fallback policy needs owner interpretation before any experiment or repair, no task/adoption
@@ -134,9 +140,10 @@
 | local8h | 2 | 17 | 17 | 0 | 0 | 0 | 0 | 2026-11-08T13:17:52.124Z | [history](work/local8h.json) |
 
 ## next
-- local11 complete: T241 fixes Docker formatter fail-open; scope17/17, final gate13482597 and source634e862d CI pass. Evidence reports/261108-local11; F24 timezone interpretation and existing owner-gated backlog remain parked.
+- local12 active until2026-11-08T17:35:57Z: continuously discover/approve/implement/review bounded improvements; a completed item starts the next cycle. Preserve17completed prior units and owner-gated backlog; reports/261108-local12.
 
 ## log
+- 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
 - 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
 - 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
@@ -155,5 +162,3 @@
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
 - 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
-- 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
-- 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
