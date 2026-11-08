@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T13:16:16.248Z",
-  "sourceCommit": "134825972b6566a31b1c94368e153e32ebdfdf0e",
+  "snapshotAt": "2026-11-08T13:17:52.124Z",
+  "sourceCommit": "940e10f82ceae91e08b29879bdf9da94f156734a",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -1232,6 +1232,7 @@
       "submittedAt": "2026-11-08T13:07:53.133Z",
       "integratedCommit": "d2e40965199e06cf240f13954d42c777377bfbc1",
       "integratedAt": "2026-11-08T13:09:46.361Z",
+      "cleanedAt": "2026-11-08T13:16:47.224Z",
       "risk": null,
       "review": {
         "id": "e4d28d95-198d-456b-9c86-233f923f7f31",
@@ -5897,6 +5898,33 @@
             "T222"
           ]
         }
+      }
+    },
+    {
+      "sequence": 235,
+      "at": "2026-11-08T13:16:46.011Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d9dba66e-801f-41fb-8377-31e4d884931e",
+      "taskId": "T241",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 236,
+      "at": "2026-11-08T13:16:47.224Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "d9dba66e-801f-41fb-8377-31e4d884931e",
+      "taskId": "T241",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T13:16:47.224Z"
       }
     }
   ]
