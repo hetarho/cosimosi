@@ -188,6 +188,23 @@ describe('SequenceGuide (web)', () => {
     )
   })
 
+  it('matches the locators the manual tour review script reads the caption through', async () => {
+    // scripts/universe-review/check-tour.mjs waits for the band that holds the line (the live region
+    // root has no box, so a visibility wait on it never resolves), reads the line as
+    // `[aria-live="polite"] p`, and skips anything inside `[data-sequence-chrome]`.
+    const text = 'Write one line about today.'
+    const band = await mountGuide({ caption: () => text })
+    const holding = [...document.querySelectorAll('[data-sequence-caption-band]')].filter((node) =>
+      node.textContent?.includes(text),
+    )
+    expect(holding).toEqual([band()])
+    await waitFor(() => expect(band().style.visibility).toBe('visible'))
+    const line = document.querySelector('[aria-live="polite"] p')
+    expect(line?.textContent).toBe(text)
+    expect(band().contains(line)).toBe(true)
+    expect(band().closest('[aria-live="polite"]')?.matches('[data-sequence-chrome]')).toBe(true)
+  })
+
   it('resolves the caption through the accessor at render time, so a locale change re-reads it', () => {
     let locale = 'en'
     const html = render({ caption: () => (locale === 'en' ? 'first' : 'second') })
