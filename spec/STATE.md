@@ -20,6 +20,7 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 parked DIARY-21: whole-diary recall is free in code, but DIARY.md:75, PROD.md:107 and the dead `twinkle_cost_diary_label` still say it costs stardust; needs update-ssot then cleanup (review/landing-tutorial-ux-261109 F28)
 - 261109 decided review/landing-tutorial-ux-261109 T257: throttled first-paint scout measured the beat-1 caption painting stale, jumping and blinking on font swap (CLS 0.13) → adopt the reveal-on-commit fix under ONB-12 after the demo-guide lane (alt: leave it | hide until fonts load)
 - 261109 parked review/landing-tutorial-ux-261109 CLIENT-33 CLIENT-35 MKT-20 MKT-24: first-paint options need the owner — lazy renderer chunk for the hero words (F22, ~0.5s earlier), /demo chunk preload hint (F23), deferred observability SDKs (F24), poster priority and WebP once F18 regenerates it (F25)
 - 261109 decided T252 ONB-12: independent review found fitSceneBounds caps the top inset at 0.4·H, so the clearing inset never reached the frame → let the renderer honour a larger top inset while top plus bottom always leave a minimum frame (sole consumer is the demo's UniverseFraming), and track viewport resizes (alt: keep the cap and document the weaker behaviour | new task after integration)
@@ -166,6 +167,7 @@
 | T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
 | T258 | Sky facing costs nothing where unused and keeps its wiring guarded | VIS MKT ARCH | T256 | todo |
+| T259 | Remaining Korean product copy stops calling the reader 당신 | UI MKT ARCH | T255 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -176,6 +178,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 lane tutorial-copy (T254 T255) independently reviewed 82167b51 and integrated d39274d0; create-task F27 → T259, F28 parked
 - 261108 T254 T255 integrated
 - 261109 local13 T250 independently reviewed b8200053 and integrated b38bd150; create-task F26 → T258 (lane landing-scene with T256)
 - 261108 T250 integrated
