@@ -152,12 +152,12 @@
 
 ## log
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
-- 261108 T245 integrated
 - 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
 - 261109 local12 T245 independent38test approval; native candidate blocked only by coordinator active.doing metadata, preserve candidate and clear doing before fresh integration; F30 original1failure/8controls confirmed
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
+- 261108 T245 integrated
 - 261108 T244 integrated
 - 261108 T243 integrated
 - 261108 T242 integrated
