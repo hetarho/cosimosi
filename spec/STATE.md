@@ -170,7 +170,7 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 41 | 41 | 0 | 0 | 0 | 0 | 2026-11-08T21:30:31.609Z | [history](work/local8h.json) |
+| local8h | 2 | 41 | 41 | 0 | 0 | 0 | 0 | 2026-11-08T21:36:18.900Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
