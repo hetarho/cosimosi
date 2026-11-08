@@ -178,6 +178,68 @@ func TestCompleteJSONGatesOnFinishReason(t *testing.T) {
 	}
 }
 
+func TestCompleteJSONKeepsFailureCausesContentFree(t *testing.T) {
+	const privateMarker = "PRIVATE_GENERATED_OUTPUT_MARKER"
+	const valid = `{"mood":"CALM"}`
+	schema := ai.JSONSchema{
+		"type": "object", "additionalProperties": false,
+		"required":   []string{"mood"},
+		"properties": map[string]any{"mood": map[string]any{"type": "string", "enum": []string{"CALM"}}},
+	}
+	for _, tc := range []struct {
+		name, finishReason, content, kind, category string
+	}{
+		{"generated property name", "stop", `{"mood":"CALM","` + privateMarker + `":1}`, "malformed", "response violates the requested output schema"},
+		{"unknown finish reason", privateMarker, valid, "malformed", "non-stop finish reason"},
+		{"rejected enum value", "stop", `{"mood":"` + privateMarker + `"}`, "malformed", ""},
+		{"known length", "length", valid, "malformed", ""},
+		{"known capacity", "insufficient_system_resource", valid, "rate limited", ""},
+		{"valid stop", "stop", valid, "success", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := json.Marshal(map[string]any{"choices": []any{map[string]any{
+				"finish_reason": tc.finishReason, "message": map[string]any{"content": tc.content},
+			}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := &observedBody{reader: strings.NewReader(string(payload))}
+			client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: body, Request: req}, nil
+			}))
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			response, err := client.CompleteJSON(ctx, ai.LLMRequest{Prompt: "synthetic prompt", MaxOutputTokens: 1200, OutputSchema: schema})
+			if !body.closed || !body.sawEOF || body.bytesAtClose != len(payload) {
+				t.Fatal("response body was not fully consumed and closed")
+			}
+			if tc.kind == "success" {
+				if err != nil || string(response.JSON) != tc.content {
+					t.Fatalf("conforming stop response = %q, error = %v", response.JSON, err)
+				}
+				return
+			}
+			if err == nil || len(response.JSON) != 0 || ai.IsMalformedStructuredOutput(err) != (tc.kind == "malformed") || ai.IsRateLimited(err) != (tc.kind == "rate limited") {
+				t.Fatalf("response = %q, error = %v; want %s without a result", response.JSON, err, tc.kind)
+			}
+			for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+				if strings.Contains(cause.Error(), privateMarker) {
+					t.Error("provider-controlled content remains reachable in the error chain")
+				}
+			}
+			if tc.category != "" {
+				var malformed *ai.MalformedStructuredOutputError
+				if !errors.As(err, &malformed) || malformed.Err == nil {
+					t.Fatal("missing malformed-output category cause")
+				}
+				if malformed.Err.Error() != tc.category || errors.Unwrap(malformed.Err) != nil {
+					t.Errorf("cause = %v; want terminal category %q", malformed.Err, tc.category)
+				}
+			}
+		})
+	}
+}
+
 func TestCompleteJSONRejectsMalformedResponses(t *testing.T) {
 	cases := []struct {
 		name string

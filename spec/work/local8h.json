@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T15:08:39.191Z",
-  "sourceCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+  "snapshotAt": "2026-11-08T16:04:09.878Z",
+  "sourceCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -48,12 +48,15 @@
       "T241",
       "T242",
       "T243",
-      "T244"
+      "T244",
+      "T245",
+      "T246",
+      "T247"
     ]
   },
   "summary": {
-    "total": 20,
-    "completed": 20,
+    "total": 23,
+    "completed": 23,
     "remaining": 0,
     "running": 0,
     "review": 0,
@@ -1301,6 +1304,7 @@
       "submittedAt": "2026-11-08T14:49:26.647Z",
       "integratedCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
       "integratedAt": "2026-11-08T14:55:15.408Z",
+      "cleanedAt": "2026-11-08T15:21:11.232Z",
       "risk": null,
       "review": {
         "id": "4d78a9ee-6e88-4e1b-9ec3-92127b143f0a",
@@ -1366,6 +1370,7 @@
       "submittedAt": "2026-11-08T14:50:40.841Z",
       "integratedCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
       "integratedAt": "2026-11-08T15:00:04.540Z",
+      "cleanedAt": "2026-11-08T15:21:22.430Z",
       "risk": null,
       "review": {
         "id": "f26a1dd8-73b1-4cde-ae42-a6fd9f987fff",
@@ -1429,6 +1434,9 @@
       "submittedBase": "b2c4bac1422d39853a70ddf59f02f21834899824",
       "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
       "submittedAt": "2026-11-08T15:01:36.865Z",
+      "integratedCommit": "65b9504718ac3de5feb4695eb8034b2dd499cd3f",
+      "integratedAt": "2026-11-08T15:08:40.087Z",
+      "cleanedAt": "2026-11-08T15:21:29.757Z",
       "risk": null,
       "review": {
         "id": "2313ae00-2f44-4358-85f6-4dcfced6bebd",
@@ -1462,6 +1470,200 @@
           "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run 'TestPersistEncodedRejectsInvalidConfirmedSplit|TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog' ./internal/memory ./internal/memory/rpc",
           "startedAt": "2026-11-08T15:01:34.772Z",
           "finishedAt": "2026-11-08T15:01:36.431Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T15:08:39.347Z",
+          "finishedAt": "2026-11-08T15:08:39.774Z"
+        }
+      ]
+    },
+    {
+      "id": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "group": "local8h",
+      "taskId": "T245",
+      "tasks": [
+        "T245"
+      ],
+      "lane": null,
+      "owner": "dwell-local12",
+      "contributors": [
+        "dwell-local12"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T15:20:11.742Z",
+      "startCommit": "45c8e8f1e6d53f10cd0d24c07a39292641967664",
+      "verifiedCommit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+      "submittedBase": "5ac582d155bac458dcebb69e2cbd73fd3e2083e9",
+      "submissionId": "358cdb2e-1939-4a4f-af39-d1d1271692ac",
+      "submittedAt": "2026-11-08T15:30:07.718Z",
+      "integratedCommit": "640d724b348c521826a264e45b0868e6199a1300",
+      "integratedAt": "2026-11-08T15:41:05.646Z",
+      "cleanedAt": "2026-11-08T15:51:17.488Z",
+      "risk": null,
+      "review": {
+        "id": "49edf21b-1629-4d8c-8a2f-6abc02b5ace4",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T245: The private dwell effect now includes the existing runId as well as step index, so a distinct fresh START replaces the old timer and receives its full host duration. Public API/events, same-ID semantics, pause behavior, anchor logic and dependencies are unchanged. Independent exact-source checks passed all 38 meaningful tests (9 actual-hook and 29 sequence) and the sequence typecheck.",
+        "findings": [],
+        "commit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+        "baseCommit": "5ac582d155bac458dcebb69e2cbd73fd3e2083e9",
+        "submissionId": "358cdb2e-1939-4a4f-af39-d1d1271692ac",
+        "createdAt": "2026-11-08T15:30:53.690Z",
+        "finishedAt": "2026-11-08T15:34:15.472Z"
+      },
+      "steps": [
+        {
+          "taskId": "T245",
+          "commit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+          "at": "2026-11-08T15:30:07.707Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+              "startedAt": "2026-11-08T15:30:06.193Z",
+              "finishedAt": "2026-11-08T15:30:07.280Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+          "startedAt": "2026-11-08T15:30:06.193Z",
+          "finishedAt": "2026-11-08T15:30:07.280Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T15:41:04.982Z",
+          "finishedAt": "2026-11-08T15:41:05.337Z"
+        }
+      ]
+    },
+    {
+      "id": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "group": "local8h",
+      "taskId": "T246",
+      "tasks": [
+        "T246"
+      ],
+      "lane": null,
+      "owner": "anchor-local12",
+      "contributors": [
+        "anchor-local12"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T15:49:08.404Z",
+      "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+      "verifiedCommit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+      "submittedBase": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+      "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
+      "submittedAt": "2026-11-08T15:55:15.944Z",
+      "integratedCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
+      "integratedAt": "2026-11-08T15:59:30.467Z",
+      "risk": null,
+      "review": {
+        "id": "8cdabef9-9a54-43fe-9ba1-f862f0df0215",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T246: The private anchor measurement effect now owns the actual current step index, honoring ONB-10 for distinct steps sharing one stable anchor. Existing asynchronous live cleanup, pending geometry, unchanged rerender, registry/fallback behavior and the exact T245 dwell implementation/tests are preserved. Independent fixed-source checks passed all 47 tests (18 actual-hook plus 29 sequence) and the sequence typecheck.",
+        "findings": [],
+        "commit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+        "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+        "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
+        "createdAt": "2026-11-08T15:55:52.892Z",
+        "finishedAt": "2026-11-08T15:58:10.539Z"
+      },
+      "steps": [
+        {
+          "taskId": "T246",
+          "commit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+          "at": "2026-11-08T15:55:15.934Z",
+          "verification": [
+            {
+              "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+              "startedAt": "2026-11-08T15:55:14.504Z",
+              "finishedAt": "2026-11-08T15:55:15.586Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+          "startedAt": "2026-11-08T15:55:14.504Z",
+          "finishedAt": "2026-11-08T15:55:15.586Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T15:59:29.796Z",
+          "finishedAt": "2026-11-08T15:59:30.154Z"
+        }
+      ]
+    },
+    {
+      "id": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "group": "local8h",
+      "taskId": "T247",
+      "tasks": [
+        "T247"
+      ],
+      "lane": null,
+      "owner": "deepseek-local12",
+      "contributors": [
+        "deepseek-local12"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T15:49:14.647Z",
+      "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+      "verifiedCommit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+      "submittedBase": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+      "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+      "submittedAt": "2026-11-08T15:57:09.561Z",
+      "risk": null,
+      "review": {
+        "id": "75ea3fbf-cd4e-4a11-912f-4e5a98b1c7c4",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T247: The schema-validation and non-stop-finish malformed branches now retain only fixed category causes, with no underlying generated/property/finish text reachable through the chain. Typed errors, local schema enforcement, capacity/status classification, caller cancellation and genuine transport causes remain intact. Independent fixed-source AI and DeepSeek tests passed 87 named cases, plus focused vet/build; the complete required pre-commit API gate evidence was separately verified.",
+        "findings": [],
+        "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+        "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+        "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+        "createdAt": "2026-11-08T15:59:27.377Z",
+        "finishedAt": "2026-11-08T16:03:17.220Z"
+      },
+      "steps": [
+        {
+          "taskId": "T247",
+          "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+          "at": "2026-11-08T15:57:09.551Z",
+          "verification": [
+            {
+              "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s ./internal/ai/deepseek",
+              "startedAt": "2026-11-08T15:57:08.079Z",
+              "finishedAt": "2026-11-08T15:57:09.166Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s ./internal/ai/deepseek",
+          "startedAt": "2026-11-08T15:57:08.079Z",
+          "finishedAt": "2026-11-08T15:57:09.166Z"
         }
       ]
     }
@@ -6711,6 +6913,771 @@
       "group": "local8h",
       "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
       "taskId": "T244",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 265,
+      "at": "2026-11-08T15:08:39.976Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T15:08:39.347Z",
+            "finishedAt": "2026-11-08T15:08:39.774Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 266,
+      "at": "2026-11-08T15:08:40.087Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "65b9504718ac3de5feb4695eb8034b2dd499cd3f",
+        "integratedAt": "2026-11-08T15:08:40.087Z"
+      }
+    },
+    {
+      "sequence": 267,
+      "at": "2026-11-08T15:20:06.049Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245"
+        ]
+      }
+    },
+    {
+      "sequence": 268,
+      "at": "2026-11-08T15:20:11.742Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+        "group": "local8h",
+        "taskId": "T245",
+        "tasks": [
+          "T245"
+        ],
+        "lane": null,
+        "owner": "dwell-local12",
+        "contributors": [
+          "dwell-local12"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-08T15:20:11.742Z",
+        "startCommit": "45c8e8f1e6d53f10cd0d24c07a39292641967664"
+      }
+    },
+    {
+      "sequence": 269,
+      "at": "2026-11-08T15:20:12.291Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 270,
+      "at": "2026-11-08T15:21:10.137Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
+      "taskId": "T242",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 271,
+      "at": "2026-11-08T15:21:11.232Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
+      "taskId": "T242",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T15:21:11.232Z"
+      }
+    },
+    {
+      "sequence": 272,
+      "at": "2026-11-08T15:21:21.322Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 273,
+      "at": "2026-11-08T15:21:22.430Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T15:21:22.430Z"
+      }
+    },
+    {
+      "sequence": 274,
+      "at": "2026-11-08T15:21:28.645Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 275,
+      "at": "2026-11-08T15:21:29.757Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T15:21:29.757Z"
+      }
+    },
+    {
+      "sequence": 276,
+      "at": "2026-11-08T15:30:05.928Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 277,
+      "at": "2026-11-08T15:30:07.718Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+        "submittedBase": "5ac582d155bac458dcebb69e2cbd73fd3e2083e9",
+        "submissionId": "358cdb2e-1939-4a4f-af39-d1d1271692ac",
+        "submittedAt": "2026-11-08T15:30:07.718Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T245",
+            "commit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+            "at": "2026-11-08T15:30:07.707Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+                "startedAt": "2026-11-08T15:30:06.193Z",
+                "finishedAt": "2026-11-08T15:30:07.280Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+            "startedAt": "2026-11-08T15:30:06.193Z",
+            "finishedAt": "2026-11-08T15:30:07.280Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 278,
+      "at": "2026-11-08T15:30:53.690Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "49edf21b-1629-4d8c-8a2f-6abc02b5ace4",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+          "baseCommit": "5ac582d155bac458dcebb69e2cbd73fd3e2083e9",
+          "submissionId": "358cdb2e-1939-4a4f-af39-d1d1271692ac",
+          "createdAt": "2026-11-08T15:30:53.690Z"
+        }
+      }
+    },
+    {
+      "sequence": 279,
+      "at": "2026-11-08T15:34:15.472Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "49edf21b-1629-4d8c-8a2f-6abc02b5ace4",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T245: The private dwell effect now includes the existing runId as well as step index, so a distinct fresh START replaces the old timer and receives its full host duration. Public API/events, same-ID semantics, pause behavior, anchor logic and dependencies are unchanged. Independent exact-source checks passed all 38 meaningful tests (9 actual-hook and 29 sequence) and the sequence typecheck.",
+          "findings": [],
+          "commit": "5fa8b1e72385bbcf6155899434bef0b38fa46c85",
+          "baseCommit": "5ac582d155bac458dcebb69e2cbd73fd3e2083e9",
+          "submissionId": "358cdb2e-1939-4a4f-af39-d1d1271692ac",
+          "createdAt": "2026-11-08T15:30:53.690Z",
+          "finishedAt": "2026-11-08T15:34:15.472Z"
+        }
+      }
+    },
+    {
+      "sequence": 280,
+      "at": "2026-11-08T15:34:59.014Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 281,
+      "at": "2026-11-08T15:35:00.160Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "통합 후보의 spec 검증에 실패했습니다."
+      }
+    },
+    {
+      "sequence": 282,
+      "at": "2026-11-08T15:41:03.548Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 283,
+      "at": "2026-11-08T15:41:05.594Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T15:41:04.982Z",
+            "finishedAt": "2026-11-08T15:41:05.337Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 284,
+      "at": "2026-11-08T15:41:05.646Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "640d724b348c521826a264e45b0868e6199a1300",
+        "integratedAt": "2026-11-08T15:41:05.646Z"
+      }
+    },
+    {
+      "sequence": 285,
+      "at": "2026-11-08T15:49:07.581Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247"
+        ]
+      }
+    },
+    {
+      "sequence": 286,
+      "at": "2026-11-08T15:49:08.405Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+        "group": "local8h",
+        "taskId": "T246",
+        "tasks": [
+          "T246"
+        ],
+        "lane": null,
+        "owner": "anchor-local12",
+        "contributors": [
+          "anchor-local12"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-08T15:49:08.404Z",
+        "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c"
+      }
+    },
+    {
+      "sequence": 287,
+      "at": "2026-11-08T15:49:08.864Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 288,
+      "at": "2026-11-08T15:49:14.647Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+        "group": "local8h",
+        "taskId": "T247",
+        "tasks": [
+          "T247"
+        ],
+        "lane": null,
+        "owner": "deepseek-local12",
+        "contributors": [
+          "deepseek-local12"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-08T15:49:14.647Z",
+        "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c"
+      }
+    },
+    {
+      "sequence": 289,
+      "at": "2026-11-08T15:49:15.100Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 290,
+      "at": "2026-11-08T15:51:16.303Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "integrated",
+      "status": "cleaning",
+      "changes": {
+        "status": "cleaning"
+      }
+    },
+    {
+      "sequence": 291,
+      "at": "2026-11-08T15:51:17.488Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
+      "taskId": "T245",
+      "previousStatus": "cleaning",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "cleanedAt": "2026-11-08T15:51:17.488Z"
+      }
+    },
+    {
+      "sequence": 292,
+      "at": "2026-11-08T15:55:14.217Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 293,
+      "at": "2026-11-08T15:55:15.944Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+        "submittedBase": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+        "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
+        "submittedAt": "2026-11-08T15:55:15.944Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T246",
+            "commit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+            "at": "2026-11-08T15:55:15.934Z",
+            "verification": [
+              {
+                "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+                "startedAt": "2026-11-08T15:55:14.504Z",
+                "finishedAt": "2026-11-08T15:55:15.586Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm --filter @cosimosi/web exec vitest run src/widgets/sequence-guide/ui/sequence-timing.test.tsx",
+            "startedAt": "2026-11-08T15:55:14.504Z",
+            "finishedAt": "2026-11-08T15:55:15.586Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 294,
+      "at": "2026-11-08T15:55:52.892Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "8cdabef9-9a54-43fe-9ba1-f862f0df0215",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+          "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+          "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
+          "createdAt": "2026-11-08T15:55:52.892Z"
+        }
+      }
+    },
+    {
+      "sequence": 295,
+      "at": "2026-11-08T15:57:07.751Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 296,
+      "at": "2026-11-08T15:57:09.561Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+        "submittedBase": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+        "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+        "submittedAt": "2026-11-08T15:57:09.561Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T247",
+            "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+            "at": "2026-11-08T15:57:09.551Z",
+            "verification": [
+              {
+                "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s ./internal/ai/deepseek",
+                "startedAt": "2026-11-08T15:57:08.079Z",
+                "finishedAt": "2026-11-08T15:57:09.166Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s ./internal/ai/deepseek",
+            "startedAt": "2026-11-08T15:57:08.079Z",
+            "finishedAt": "2026-11-08T15:57:09.166Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 297,
+      "at": "2026-11-08T15:58:10.539Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "8cdabef9-9a54-43fe-9ba1-f862f0df0215",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T246: The private anchor measurement effect now owns the actual current step index, honoring ONB-10 for distinct steps sharing one stable anchor. Existing asynchronous live cleanup, pending geometry, unchanged rerender, registry/fallback behavior and the exact T245 dwell implementation/tests are preserved. Independent fixed-source checks passed all 47 tests (18 actual-hook plus 29 sequence) and the sequence typecheck.",
+          "findings": [],
+          "commit": "d9a8a0a39528cbc9b4f571238b49ac9acfc2dec8",
+          "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+          "submissionId": "1056edeb-543f-44f3-b161-7c3f08f9f528",
+          "createdAt": "2026-11-08T15:55:52.892Z",
+          "finishedAt": "2026-11-08T15:58:10.539Z"
+        }
+      }
+    },
+    {
+      "sequence": 298,
+      "at": "2026-11-08T15:59:27.377Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "75ea3fbf-cd4e-4a11-912f-4e5a98b1c7c4",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+          "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+          "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+          "createdAt": "2026-11-08T15:59:27.377Z"
+        }
+      }
+    },
+    {
+      "sequence": 299,
+      "at": "2026-11-08T15:59:28.502Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 300,
+      "at": "2026-11-08T15:59:30.400Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T15:59:29.796Z",
+            "finishedAt": "2026-11-08T15:59:30.154Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 301,
+      "at": "2026-11-08T15:59:30.467Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
+      "taskId": "T246",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "2a75aa33ff22e881f835364c1be5f3454699908c",
+        "integratedAt": "2026-11-08T15:59:30.467Z"
+      }
+    },
+    {
+      "sequence": 302,
+      "at": "2026-11-08T16:03:17.220Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "75ea3fbf-cd4e-4a11-912f-4e5a98b1c7c4",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T247: The schema-validation and non-stop-finish malformed branches now retain only fixed category causes, with no underlying generated/property/finish text reachable through the chain. Typed errors, local schema enforcement, capacity/status classification, caller cancellation and genuine transport causes remain intact. Independent fixed-source AI and DeepSeek tests passed 87 named cases, plus focused vet/build; the complete required pre-commit API gate evidence was separately verified.",
+          "findings": [],
+          "commit": "2949642c65924efd0a8a564b8f6bae8c99cf65c5",
+          "baseCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c",
+          "submissionId": "54fe93f7-479f-4e1c-a699-2d4205db7ffe",
+          "createdAt": "2026-11-08T15:59:27.377Z",
+          "finishedAt": "2026-11-08T16:03:17.220Z"
+        }
+      }
+    },
+    {
+      "sequence": 303,
+      "at": "2026-11-08T16:04:08.790Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
+      "taskId": "T247",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

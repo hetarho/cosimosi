@@ -17,9 +17,12 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T14:13Z | - |
+| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T15:35Z | - |
 
 ## inbox
+- 261109 decided AI-9 OBS-7 T247: separately frozen original schema-name and unknown-finish causes reach ordinary RPC logs, each1failure/3controls; adopt combined two-file category-only repair with unchanged typed/cache/wire behavior, mandatory DB-backed task gate/independent review; T222 remains excluded
+- 261109 decided ONB-10 T246: original actual-hook step0→1 preserves oldrectA after geometryB, one feature failure/eight controls; adopt only existing per-step remeasurement after T245, preserve pending-rect/replay/pending host policies and require independent review
+- 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
 - 261109 decided T242 T243 T244: three resumed improvements independently reviewed and locally integrated; root combined DB/full gate and single source publication remain for final candidate, continuous cycles continue until17:35:57Z
 - 261108 decided AUTH-9 T243 ENC-19 T244: original actual-source proofs confirm3late token/header failures+5controls and3confirmed-launch Name refusals+2controls; adopt two narrow existing-contract repairs, retain all raw evidence and independent code review/final gates; continuous cycles continue
 - 261108 decided ARCH-47 T242: actual T241 Go-only wrapper changes select28TS projects solely through one unknown path → apply exact known ownership classification (alt: retain irrelevant task checks); preserve every guard/Go/full/CI gate and conservative shared/unknown fallback, require independent review
@@ -140,13 +143,21 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 20 | 20 | 0 | 0 | 0 | 0 | 2026-11-08T15:08:39.191Z | [history](work/local8h.json) |
+| local8h | 2 | 23 | 23 | 0 | 0 | 0 | 0 | 2026-11-08T16:04:09.878Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T247 integrated
+- 261108 T246 integrated
+- 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
+- 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
+- 261109 local12 T245 independent38test approval; native candidate blocked only by coordinator active.doing metadata, preserve candidate and clear doing before fresh integration; F30 original1failure/8controls confirmed
+- 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
+- 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
+- 261108 T245 integrated
 - 261108 T244 integrated
 - 261108 T243 integrated
 - 261108 T242 integrated
@@ -157,11 +168,3 @@
 - 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
 - 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
-- 261108 self-improve-local local11 start: four-hour bounded delegation, cleanmain8459fa5b, independent backend/tooling scouts; no new task/code approval
-- 261108 local10 closed: T239 T240 complete, final gate d7d4c4ac/source f8512f9c CI+backend allpass, own resources cleaned and evidence archived; final metadata-only publication
-- 261108 local10 final integrated pnpm check passed atd7d4c4ac; source unchanged,16/16scope complete, native snapshot log-limit repair and publication pending
-- 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
-- 261108 T239 integrated
-- 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
-- 261108 T240 integrated
-- 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
