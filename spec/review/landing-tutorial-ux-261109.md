@@ -35,3 +35,37 @@
   - One recall walk uses 회고하기, 회고, 떠올리기 and 회상 전·후.
   - On narrow web, the post-signup tour probably has F8's eyeline overlap at step 6 (needs auth to observe).
 - Bookkeeping: commit dab1cd87 appears to implement DEMO r2–r5 and ONB r3 without tasks. STATE still lists those deltas as pending. ONB r3 is verified in code (host-supplied dwell), and T254 consumes ONB through r4. DEMO tasked is left for owner confirmation.
+- Owner packets: throwaway prototypes of the [?] options were built in detached worktrees, never committed and since removed. Each option is an independently applicable patch on 8a22355e, under `.git/haeram/v1/artifacts/261109-local13/`.
+  - F2 `proto-landing/F2-A-hero-two-sentences.patch` (recommended)
+    - At 390px the Korean paragraph keeps three lines, so the hero loses no height.
+    - Option B (`F2-B-hero-plus-mirror.patch`) previews the MOOD-5 definition that the walkthrough's last step owns.
+    - Shots: `proto-landing/compare/F2-*`.
+  - F3 `proto-landing/F3-A-framing-line.patch` (recommended)
+    - Adds 28px, and the section still fits 844/900.
+    - Combined with F4, the mobile section overflows by 20px unless the stage shrinks to about `h-92`.
+    - Option B (`F3-B-named-counter.patch`) costs no height, but it names the step, not the story.
+    - SSOT: MKT-21's chrome band gains one framing line.
+  - F4 `proto-landing/F4-AB-focus-row-under-stage.patch` (recommended)
+    - The sentence moves to a row under the canvas, prefixed by the split card's mood dot, name and feeling.
+    - No star is covered, and the pager position is fixed.
+    - The canvas shrinks about 6%.
+    - SSOT: a new MKT-18 sub-rule.
+  - F5 `proto-landing/F5-A-visible-only-captions.patch` (recommended)
+    - The launch caption claims colour and arousal-driven size.
+    - The recall caption claims changed words, borrowing MKT-13's English phrase.
+    - A safer colour-only alternative is drafted.
+    - SSOT: the MKT-17 `launch` and `recall` rows drop "form".
+  - F7 `proto-demo/F7-optionA.patch` (recommended with F10)
+    - All three fixture sets go from gist stages b5→b7 `1111`→`2123..3123` to `0000`→`1111`.
+    - Brightness and word-loss stages are identical to the baseline.
+    - Cost: the just-recalled memory rises with the others.
+    - SSOT: DEMO-21 gains the `time_accelerates` hold, and DEMO-3 row 7 drops "unrecalled".
+    - Copy-only option B is drafted.
+  - F10 `proto-demo/F10-optionA.patch` (overview floor 45; recommended only together with F7, as `F7A+F10A-combined.patch`)
+    - Desktop beats 3–5 cluster share goes from 5.5–7.9% to 27–35%.
+    - Alone, it makes beat 5's early rise a 49→102 zoom-out.
+    - `UniverseFraming` has one consumer (the demo), so product screens are unchanged.
+    - Side effect: a faint band-fog line near the top HUD at distance 45.
+    - Recording it in DEMO-30 is recommended.
+  - Comparison sheets: `proto-demo/shots/sheet-f7-*.png` and `sheet-f10-desktop.png`.
+- T250's first attempt noted that LOVE (crimson) and STRESS (magenta) read alike after tonemapping on the sky. It has no home yet; this is a palette/finish question for the owner.
