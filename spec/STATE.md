@@ -138,18 +138,18 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T245 | Give each fresh sequence run its full dwell time | ONB ARCH | - | todo |
 | T246 | Remeasure the current anchor when a sequence step changes | ONB ARCH | T245 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 20 | 20 | 0 | 0 | 0 | 0 | 2026-11-08T15:08:39.191Z | [history](work/local8h.json) |
+| local8h | 2 | 21 | 21 | 0 | 0 | 0 | 0 | 2026-11-08T15:41:04.643Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T245 integrated
 - 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
 - 261109 local12 T245 independent38test approval; native candidate blocked only by coordinator active.doing metadata, preserve candidate and clear doing before fresh integration; F30 original1failure/8controls confirmed
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
