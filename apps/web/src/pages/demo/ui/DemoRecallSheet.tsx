@@ -25,10 +25,11 @@ export interface DemoRecallSheetProps {
 }
 
 // pages/demo ui: 회고하기, in the product's own shapes — the read-only twin of `widgets/recall-flow`
-// ([R1]). The shipped flow is the paid one: a cost quote, a sync-consent modal, an operation-id'd
-// call and a fenced in-flight state, none of which is reachable from here and none of which [Z2] /
-// [Z8] would let render if it were. What the twin keeps is the walk: the faded words as they are
-// now, the invitation to write them back, the confirm, then what the memory reads as afterwards.
+// ([R1]). The shipped flow carries a sync-consent modal, an operation-id'd call, a fenced in-flight
+// state and a cost quote for paid restoration, none of which is reachable from here and none of
+// which [Z2] / [Z8] would let render if it were. What the twin keeps is the walk: the faded words as
+// they are now, the invitation to write them back, the confirm, then what the memory reads as
+// afterwards.
 //
 // The rewrite field is READ-ONLY and already filled, the way the writing sheet's fields are: the
 // demo's re-readings are precomputed ([Z5]), so the honest presentation is a prepared sentence the
@@ -137,7 +138,12 @@ export function DemoRecallSheet({
                 obscured: span.lost,
               }))}
             />
-            <p className="text-sm leading-relaxed text-text-muted">{m.recall_rewrite_prompt()}</p>
+            {/* The demo's own instruction, not the product prompt: that one also says recalling is
+                free, and naming a price by its absence is still a price on a page that has none
+                (DEMO-8). */}
+            <p className="text-sm leading-relaxed text-text-muted">
+              {m.demo_recall_rewrite_prompt()}
+            </p>
             <TextArea
               label={m.recall_rewrite_label()}
               value={rewrite}

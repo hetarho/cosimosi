@@ -857,6 +857,7 @@
   "demo_beat_signup_cta": "이 우주는 지어낸 것이에요. 내 우주는 비어 있는 채로 시작해서, 하루씩 쓰여요. 마음이 생기면 오른쪽 위에서 시작할 수 있어요.",
   "demo_diary_label": "일기",
   "demo_diary_read_action": "다 읽었어요",
+  "demo_recall_rewrite_prompt": "흐려진 부분만 지금 기억나는 대로 채워 보세요.",
   "demo_recall_prepared_note": "이 데모에서는 다시 적을 문장이 미리 준비돼 있어요.",
   "demo_split_label": "무엇으로 이루어졌는지",
   "demo_split_action": "별 쪼개기",

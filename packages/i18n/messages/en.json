@@ -857,6 +857,7 @@
   "demo_beat_signup_cta": "This universe was made up. Yours would start empty, and be written a day at a time — the top-right corner starts it, whenever you feel like it.",
   "demo_diary_label": "The diary",
   "demo_diary_read_action": "I've read it",
+  "demo_recall_rewrite_prompt": "Fill only the faded parts as you remember them.",
   "demo_recall_prepared_note": "In this demo the words you'd write back are already prepared.",
   "demo_split_label": "What it was made of",
   "demo_split_action": "Split into stars",
