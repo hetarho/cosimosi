@@ -5,10 +5,10 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
 import { VALUES } from '@cosimosi/config'
+import { arousalToInitialStrength, createEmotion } from '@cosimosi/emotion'
 import { starChannels } from '@cosimosi/universe/scene'
 
-import { walkthroughContent } from '../config/walkthrough-content.ts'
-import { walkthroughSceneFacts } from '../model/walkthrough.ts'
+import type { EpisodicMemory } from '@cosimosi/memory'
 
 // The renderer cannot run in jsdom; the stub stands in for the facts this page decides — whether a
 // canvas exists, whether its loop is asked to run, what the sky is handed, and where the camera and
@@ -179,20 +179,51 @@ describe('the staged slots', () => {
   // The narrowest stage the page lays out: a 360px-wide phone gives the stage about 0.98.
   const NARROWEST_ASPECT = 0.95
 
-  // The whole story at its last step, plus one more memory, so every one of the eight slots is used.
+  // One fresh memory per slot: the slots, not the story, are under test, so the memories carry only
+  // what the channel projection reads, and the size ceiling below covers any strength they reach.
+  function slotMemory(index: number): EpisodicMemory {
+    const emotion = createEmotion('CALM')
+    return {
+      id: `landing-walk-slot-${index}`,
+      diaryId: `landing-walk-slot-${index}-diary`,
+      name: `slot ${index}`,
+      emotion,
+      baseStrength: arousalToInitialStrength(emotion.arousal),
+      recallCount: 0,
+      createdUniverseTime: '2026-01-01',
+      lastRecalledUniverseTime: null,
+      seed: BigInt(index),
+      activations: [],
+      decayStages: [],
+      forgettingOffsetDays: 0,
+      currentText: `slot ${index}`,
+      semanticStage: 0,
+    }
+  }
+
+  /**
+   * Whether a ball of `radius` at lateral offset `offset` and `depth` in front of the camera lies
+   * inside the two side planes of a frustum whose half-angle on that axis is `halfAngle`. A plane
+   * through the eye at that angle is `radius / cos(halfAngle)` from the centre measured along the
+   * offset axis, so the bound is exact rather than read at the centre's depth alone.
+   */
+  function insideSidePlanes(offset: number, depth: number, radius: number, halfAngle: number) {
+    return Math.abs(offset) + radius / Math.cos(halfAngle) <= depth * Math.tan(halfAngle)
+  }
+
   function renderEverySlot() {
-    const facts = walkthroughSceneFacts(walkthroughContent('ko'), { step: 'mirror', acted: true })
-    const memories = [...facts.memories, { ...facts.memories[0], id: 'landing-walk-extra' }]
+    const universeTime = '2026-01-01'
+    const memories = Array.from({ length: 8 }, (_, index) => slotMemory(index))
     const view = render(
       <LandingWalkthroughScene
         memories={memories}
-        universeTime={facts.universeTime}
-        skyStops={facts.skyStops}
-        skyFacing={facts.skyFacing}
+        universeTime={universeTime}
+        skyStops={[]}
+        skyFacing={undefined}
       />,
     )
     act(() => intersect?.(true))
-    return { view, memories, universeTime: facts.universeTime }
+    return { view, memories, universeTime }
   }
 
   it('keep every star, at its largest rendered body, inside a phone-width frame', () => {
@@ -204,7 +235,8 @@ describe('the staged slots', () => {
     }
     expect(memories).toHaveLength(8)
 
-    const halfTan = Math.tan(((camera.fov / 2) * Math.PI) / 180)
+    const vertical = ((camera.fov / 2) * Math.PI) / 180
+    const horizontal = Math.atan(Math.tan(vertical) * NARROWEST_ASPECT)
     // Bodies are authored at unit radius and scaled by the star's size channel times the scene's
     // group scale, so the largest body is the size ceiling at that same scale.
     const groupScale = layer.channels.scales[0] / starChannels(memories[0], universeTime).size
@@ -214,11 +246,20 @@ describe('the staged slots', () => {
 
     for (let index = 0; index < memories.length; index++) {
       const [x, y, z] = layer.positions.current.slice(index * 3, index * 3 + 3)
-      const halfHeight = (cameraZ - z) * halfTan
-      const halfWidth = halfHeight * NARROWEST_ASPECT
-      expect(Math.abs(x) + radius, `slot ${index} width`).toBeLessThanOrEqual(halfWidth)
-      expect(Math.abs(y) + radius, `slot ${index} height`).toBeLessThanOrEqual(halfHeight)
+      const depth = cameraZ - z
+      expect(insideSidePlanes(x, depth, radius, horizontal), `slot ${index} width`).toBe(true)
+      expect(insideSidePlanes(y, depth, radius, vertical), `slot ${index} height`).toBe(true)
     }
+  })
+
+  it('bound a body against the slanted side plane, not the extent at its centre', () => {
+    // A body that clears the half-extent at its centre's depth by a hair still crosses the plane.
+    const halfAngle = Math.atan(Math.tan((27.5 * Math.PI) / 180) * NARROWEST_ASPECT)
+    const depth = 54
+    const radius = 3.84
+    const grazing = depth * Math.tan(halfAngle) - radius - 0.01
+    expect(insideSidePlanes(grazing, depth, radius, halfAngle)).toBe(false)
+    expect(insideSidePlanes(grazing - radius, depth, radius, halfAngle)).toBe(true)
   })
 
   it('put each poster dot on the same side of the frame as its star', () => {

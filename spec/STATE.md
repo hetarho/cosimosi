@@ -164,17 +164,17 @@
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
-| T260 | Landing scene tests pin what they claim and stay fast | ARCH MKT VIS | T258 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 36 | 34 | 2 | 1 | 0 | 0 | 2026-11-08T20:19:25.789Z | [history](work/local8h.json) |
+| local8h | 2 | 36 | 35 | 1 | 1 | 0 | 0 | 2026-11-08T20:29:59.075Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T260 integrated
 - 261109 local13 lane demo-guide (T251 T252 T253) passed third review 610e450a and integrated 344242ad; T257 assigned
 - 261108 T251 T252 T253 integrated
 - 261109 local13 lane landing-scene (T256 T258) reviewed 4dc258d3 and integrated bc281117; T259 reviewed 1701a333 and integrated 2e1d2e54; create-task F34 → T260
@@ -194,5 +194,3 @@
 - 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
 - 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
 - 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
-- 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
-- 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
