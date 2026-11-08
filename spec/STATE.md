@@ -14,11 +14,6 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-08T00:34Z | - |
-
 ## inbox
 - 261108 parked ERR-6 OBS-7: F22 LaunchStars confirmed-input Name refusal path is source-supported but unexecuted; preserve bounded future proof packet with mandatory zone read separated from zero transaction/provider effects, no task/adoption this round
 - 261108 decided T239 T240: both exact submissions independently approved and locally integrated by00:27:34Z; nine source files match reviews, guard1085 unchanged/actual1083; close implementation scope and run one new final integrated gate before single source publication
@@ -135,9 +130,10 @@
 | local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:37:30.187Z | [history](work/local8h.json) |
 
 ## next
-- local10 T239/T240 source integration complete; root final gate/source CI and timed closeout remain. Preserve F22 unexecuted future confirmation and existing T222/DEMO/ONB owner scope.
+- local10 complete: T239/T240 add two improvements (local8h scope16/16), verified/source CI/backend pipeline all pass atf8512f9c. Follow reports/261108-local10 for evidence and separately approved F22 confirmation; existing owner-gated backlog stays unchanged.
 
 ## log
+- 261108 local10 closed: T239 T240 complete, final gate d7d4c4ac/source f8512f9c CI+backend allpass, own resources cleaned and evidence archived; final metadata-only publication
 - 261108 local10 final integrated pnpm check passed atd7d4c4ac; source unchanged,16/16scope complete, native snapshot log-limit repair and publication pending
 - 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
 - 261108 T239 integrated
@@ -155,4 +151,3 @@
 - 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
 - 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
 - 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
-- 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
