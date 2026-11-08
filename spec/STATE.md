@@ -74,6 +74,7 @@
 - 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
 - 261109 decided AI-9 OBS-7 T247: separately frozen original schema-name and unknown-finish causes reach ordinary RPC logs, each1failure/3controls; adopt combined two-file category-only repair with unchanged typed/cache/wire behavior, mandatory DB-backed task gate/independent review; T222 remains excluded
 - 261109 decided ONB-10 T246: original actual-hook step0→1 preserves oldrectA after geometryB, one feature failure/eight controls; adopt only existing per-step remeasurement after T245, preserve pending-rect/replay/pending host policies and require independent review
+- 261109 decided UI-28 UI-29 UI-58 T248: actual native Select retained-open disabled transition still changes value,1featurefailure/9controls; adopt existing option disabled interaction/semantics/style binding only, preserve modal/callback/public policy and require independent review; current shipped exposure/device validation unproven
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -144,6 +145,7 @@
 | T245 | Give each fresh sequence run its full dwell time | ONB ARCH | - | todo |
 | T246 | Remeasure the current anchor when a sequence step changes | ONB ARCH | T245 | todo |
 | T247 | Keep DeepSeek malformed-output error causes content-free | AI OBS ERR ARCH | - | todo |
+| T248 | Honor disabled state in retained native Select options | UI ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -157,9 +159,9 @@
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
 - 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
+- 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
-- 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
 - 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
 - 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
