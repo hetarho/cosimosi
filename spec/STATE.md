@@ -166,7 +166,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
 | T261 | The universe HUD stays clear of the tour's skip | ONB VIS UI ARCH | - | todo |
 | T262 | The first-run welcome and the tour caption never overlap | ONB UI ARCH | T261 | todo |
 | T263 | The tour's arrival caption waits until the star has arrived | ONB TIME ARCH | T262 | todo |
@@ -175,12 +174,13 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 36 | 35 | 1 | 1 | 0 | 0 | 2026-11-08T20:29:59.075Z | [history](work/local8h.json) |
+| local8h | 2 | 39 | 36 | 3 | 3 | 0 | 0 | 2026-11-08T20:56:19.090Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T257 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F35 F36 F37 F38 → T261 T262 (lane universe-tour) T263 (not started) T264; F39 F40 parked
 - 261108 T260 integrated
 - 261109 local13 lane demo-guide (T251 T252 T253) passed third review 610e450a and integrated 344242ad; T257 assigned
@@ -200,5 +200,3 @@
 - 261109 local13 start: six-hour self-improve-local on landing/tutorial 3D UX, local12 row closed after its deadline passed with no live process
 - 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
 - 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
-- 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
-- 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption

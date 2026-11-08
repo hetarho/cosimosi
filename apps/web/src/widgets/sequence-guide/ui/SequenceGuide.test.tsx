@@ -59,7 +59,7 @@ async function mountGuide(overrides: Partial<SequenceGuideProps> = {}) {
   const { container } = mount(
     createElement(SequenceGuide, { ...baseProps(), ...overrides }) as never,
   )
-  const band = () => container.querySelector('[aria-live="polite"]') as HTMLElement
+  const band = () => container.querySelector('[data-sequence-caption-band]') as HTMLElement
   // The surface read is deferred to a frame, so the first paint may still be the no-surface answer.
   await act(async () => {
     await new Promise((resolve) => requestAnimationFrame(resolve))
