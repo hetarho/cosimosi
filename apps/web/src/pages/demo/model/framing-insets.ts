@@ -1,4 +1,9 @@
-import { CAPTION_EYELINE, CAPTION_SURFACE_GAP_PX, type CaptionSlotKind } from '@cosimosi/sequence'
+import {
+  CAPTION_EYELINE,
+  CAPTION_SURFACE_GAP_PX,
+  type CaptionSlotKind,
+  type SequenceViewport,
+} from '@cosimosi/sequence'
 
 export interface CaptionRoomInputs {
   /** A tutorial caption is on this beat, even while a scene moment holds it back. */
@@ -27,7 +32,7 @@ export function guideCaptionRoom({
 export interface FramingTopInputs {
   /** The overview's top inset with nothing to clear. */
   readonly top: number
-  readonly viewportHeight: number
+  readonly viewport: SequenceViewport
   readonly captionRoom: CaptionSlotKind | null
   /** The caption band's rendered height; 0 until it has been measured. */
   readonly captionBandHeight: number
@@ -35,17 +40,19 @@ export interface FramingTopInputs {
 
 /**
  * The overview framing's top inset. A caption in the eyeline sits centred just above the middle of a
- * phone, exactly where the overview would put the memories it describes, so the frame starts one gap
- * below the band's lower edge. Every other room leaves the inset as it is: the bottom band and the
- * room above a surface are already outside the frame.
+ * portrait phone, exactly where the overview would put the memories it describes, so the frame
+ * starts one gap below the band's lower edge. A landscape screen keeps the inset as it is: the room
+ * below the eyeline there is a strip too short to frame the universe in. Every other room leaves it
+ * too: the bottom band and the room above a surface are already outside the frame.
  */
 export function framingTopInset({
   top,
-  viewportHeight,
+  viewport,
   captionRoom,
   captionBandHeight,
 }: FramingTopInputs): number {
   if (captionRoom !== 'eyeline' || captionBandHeight <= 0) return top
-  const bandBottom = viewportHeight * CAPTION_EYELINE + captionBandHeight / 2
+  if (viewport.height <= viewport.width) return top
+  const bandBottom = viewport.height * CAPTION_EYELINE + captionBandHeight / 2
   return Math.max(top, Math.ceil(bandBottom + CAPTION_SURFACE_GAP_PX))
 }

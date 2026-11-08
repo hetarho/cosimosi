@@ -36,13 +36,14 @@ import {
   UniverseFraming,
   useSceneAssembly,
 } from '@cosimosi/universe-render'
-import type { CaptionSlotKind } from '@cosimosi/sequence'
+import type { CaptionSlotKind, SequenceViewport } from '@cosimosi/sequence'
 import { useReducedMotion } from '@cosimosi/ui'
 
 import { framingTopInset } from '../model/framing-insets.ts'
 import type { DemoScene, DemoTaste } from '../model/use-demo-run.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
+const NO_VIEWPORT: SequenceViewport = { width: 0, height: 0 }
 const noAnchors = () => []
 
 // pages/demo ui: the demo's OWN canvas host, following the product widget's layer composition rather
@@ -62,7 +63,7 @@ function DemoCanvasHost({
   cameraFree,
   rightInset,
   bottomInset,
-  viewportHeight,
+  viewport,
   captionRoom,
   captionBandHeight,
   onSelectMemory,
@@ -78,7 +79,7 @@ function DemoCanvasHost({
   cameraFree: boolean
   rightInset: number
   bottomInset: number
-  viewportHeight: number
+  viewport: SequenceViewport
   captionRoom: CaptionSlotKind | null
   captionBandHeight: number
   onSelectMemory: (memoryId: string) => void
@@ -102,14 +103,14 @@ function DemoCanvasHost({
         ? 96
         : framingTopInset({
             top: 96,
-            viewportHeight,
+            viewport,
             captionRoom,
             captionBandHeight,
           }),
       right: rightInset + 24,
       bottom: recallFocusId ? 96 : bottomInset + 128,
     }),
-    [rightInset, bottomInset, recallFocusId, viewportHeight, captionRoom, captionBandHeight],
+    [rightInset, bottomInset, recallFocusId, viewport, captionRoom, captionBandHeight],
   )
 
   // A picked star opens its entry, the demo's one reading surface. The layers hand back instance
@@ -261,7 +262,7 @@ export function DemoUniverseScene({
   cameraFree,
   rightInset = 0,
   bottomInset = 0,
-  viewportHeight = 0,
+  viewport = NO_VIEWPORT,
   captionRoom = null,
   captionBandHeight = 0,
   onSelectMemory,
@@ -280,8 +281,8 @@ export function DemoUniverseScene({
   cameraFree: boolean
   rightInset?: number
   bottomInset?: number
-  /** The tracked window height the caption band's position is measured against. */
-  viewportHeight?: number
+  /** The tracked window size the caption band's position is measured against. */
+  viewport?: SequenceViewport
   /** Where the tutorial caption sits on this screen; `null` while none shows. */
   captionRoom?: CaptionSlotKind | null
   /** The caption band's rendered height, which an eyeline caption makes the frame clear. */
@@ -316,7 +317,7 @@ export function DemoUniverseScene({
         cameraFree={cameraFree}
         rightInset={rightInset}
         bottomInset={bottomInset}
-        viewportHeight={viewportHeight}
+        viewport={viewport}
         captionRoom={captionRoom}
         captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}

@@ -20,7 +20,7 @@ const BAND = 108
 function topFor(room: ReturnType<typeof guideCaptionRoom>, bandHeight = BAND) {
   return framingTopInset({
     top: TOP,
-    viewportHeight: PHONE_HEIGHT,
+    viewport: { width: 390, height: PHONE_HEIGHT },
     captionRoom: room,
     captionBandHeight: bandHeight,
   })
@@ -74,11 +74,39 @@ describe('framingTopInset', () => {
     expect(topFor('eyeline', 0)).toBe(TOP)
   })
 
+  it.each([
+    [667, 375, 82],
+    [740, 360, 108],
+  ])('keeps the existing inset on a narrow landscape screen (%s × %s)', (width, height, band) => {
+    const room = guideCaptionRoom({ captionShowing: true, narrow: true, bottomSurface: false })
+    expect(room).toBe('eyeline')
+    expect(
+      framingTopInset({
+        top: TOP,
+        viewport: { width, height },
+        captionRoom: room,
+        captionBandHeight: band,
+      }),
+    ).toBe(TOP)
+  })
+
+  it('still clears the band on a narrow portrait screen', () => {
+    const room = guideCaptionRoom({ captionShowing: true, narrow: true, bottomSurface: false })
+    const inset = framingTopInset({
+      top: TOP,
+      viewport: { width: 375, height: 667 },
+      captionRoom: room,
+      captionBandHeight: 82,
+    })
+    expect(inset).toBe(Math.ceil(667 * CAPTION_EYELINE + 82 / 2 + CAPTION_SURFACE_GAP_PX))
+    expect(inset).toBeGreaterThan(TOP)
+  })
+
   it('never lifts the frame above the existing inset', () => {
     expect(
       framingTopInset({
         top: 600,
-        viewportHeight: 844,
+        viewport: { width: 390, height: 844 },
         captionRoom: 'eyeline',
         captionBandHeight: 40,
       }),

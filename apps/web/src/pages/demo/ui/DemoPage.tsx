@@ -506,8 +506,8 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         displayTime={displayTime}
         cameraFree={phase.kind === 'freePlay'}
         rightInset={surfaceLayout.right}
-        bottomInset={surfaceLayout.bottom ? window.innerHeight - surfaceLayout.bottom.y : 0}
-        viewportHeight={viewport.height}
+        bottomInset={surfaceLayout.bottom ? viewport.height - surfaceLayout.bottom.y : 0}
+        viewport={viewport}
         captionRoom={captionRoom}
         captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}
@@ -605,13 +605,13 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         focused={phaseKey === 'ornament_taster'}
         clearRegion={
           decorateOpen && surfaceLayout.bottom
-            ? { x: 0, y: 0, width: window.innerWidth, height: Math.max(0, surfaceLayout.bottom.y) }
+            ? { x: 0, y: 0, width: viewport.width, height: Math.max(0, surfaceLayout.bottom.y) }
             : decorateOpen && surfaceLayout.right
               ? {
                   x: 0,
                   y: 0,
-                  width: window.innerWidth - surfaceLayout.right,
-                  height: window.innerHeight,
+                  width: viewport.width - surfaceLayout.right,
+                  height: viewport.height,
                 }
               : undefined
         }
