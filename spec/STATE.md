@@ -142,7 +142,7 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo@261109 |
+| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
