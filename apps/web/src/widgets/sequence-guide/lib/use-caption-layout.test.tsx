@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CAPTION_EYELINE, type CaptionPosition } from '@cosimosi/sequence'
 
 import { SequenceCaption } from '../ui/SequenceCaption.tsx'
+import { SequenceGuide } from '../ui/SequenceGuide.tsx'
 import { useCaptionLayout } from './use-caption-layout.ts'
 
 const VIEWPORT = { width: 390, height: 844 }
@@ -160,14 +161,53 @@ describe('useCaptionLayout', () => {
     expect(paragraph.style.visibility).toBe('visible')
   })
 
-  it('hides the whole band, not only its line, until the place is ready', () => {
+  it('hides the positioned band until the place is ready, never the live region', () => {
     const props = { caption: () => '한 줄의 안내예요.', position: EYELINE }
     const { container, rerender } = render(
       createElement(SequenceCaption, { ...props, ready: false }),
     )
-    const band = container.querySelector<HTMLElement>('[aria-live="polite"]')!
+    const live = container.querySelector<HTMLElement>('[aria-live="polite"]')!
+    const band = live.querySelector<HTMLElement>('[data-sequence-caption-band]')!
     expect(band.style.visibility).toBe('hidden')
+    expect(getComputedStyle(live).visibility).not.toBe('hidden')
     rerender(createElement(SequenceCaption, { ...props, ready: true }))
+    expect(band.style.visibility).toBe('visible')
+  })
+
+  it('keeps the live region exposed while its line changes in place', async () => {
+    const props = {
+      active: true,
+      anchorRect: null,
+      progress: { current: 1, total: 3 },
+      onSkip: noop,
+      onRemeasure: noop,
+    }
+    const { container, rerender } = render(
+      createElement(SequenceGuide, { ...props, caption: () => '첫 줄이에요.' }),
+    )
+    const live = container.querySelector<HTMLElement>('[aria-live="polite"]')!
+    const hidden: boolean[] = []
+    const check = () => hidden.push(getComputedStyle(live).visibility === 'hidden')
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(live, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
+    await nextFrame()
+    await nextFrame()
+    rerender(createElement(SequenceGuide, { ...props, caption: () => '다음 줄이에요.' }))
+    await nextFrame()
+    await nextFrame()
+    observer.disconnect()
+
+    expect(container.querySelector('[aria-live="polite"]')).toBe(live)
+    expect(live.textContent).toContain('다음 줄이에요.')
+    expect(hidden.length).toBeGreaterThan(1)
+    expect(hidden.every((state) => !state)).toBe(true)
+    const band = live.querySelector<HTMLElement>('[data-sequence-caption-band]')!
     expect(band.style.visibility).toBe('visible')
   })
 })

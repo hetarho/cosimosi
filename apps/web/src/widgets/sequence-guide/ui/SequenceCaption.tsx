@@ -35,36 +35,42 @@ export function SequenceCaption({
   const reducedMotion = useReducedMotion()
   const text = caption()
   return (
+    // The live region stays exposed and still: it never hides and never moves, so a new line is
+    // announced as it changes in place. `z-guide` sits above `z-modal`: the steps that point INTO
+    // the writing dialog would otherwise put the line behind the very panel it describes.
     <div
       aria-live="polite"
       data-sequence-chrome=""
-      className={cx(
-        // `z-guide` sits above `z-modal`: the steps that point INTO the writing dialog would otherwise
-        // put the line behind the very panel it describes.
-        'pointer-events-none fixed inset-x-0 z-[var(--z-guide)] flex justify-center px-6',
-        position.from === 'midline' && '-translate-y-1/2',
-      )}
-      // The whole band hides until its measured place commits, so the layout never reports the
-      // unplaced band moving into position.
-      style={{
-        ...bandStyle(position),
-        right: rightInset,
-        visibility: ready ? 'visible' : 'hidden',
-      }}
+      className="pointer-events-none fixed top-0 left-0 z-[var(--z-guide)]"
     >
-      {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has to
-          carry from the middle of a page whose everything-else is deliberately dimmed. Short display
-          copy, so Korean breaks between words and the lines balance (UI-6). */}
-      <motion.p
-        ref={measureRef}
-        key={text}
-        initial={reducedMotion ? false : { opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="max-w-lg rounded-lg border border-primary/20 bg-surface-raised/90 px-5 py-3.5 text-center text-base leading-relaxed break-keep wrap-break-word text-balance text-text shadow-lg"
+      {/* The band hides until its measured place commits, so it is never painted at the fallback
+          and the layout never reports it moving into position. */}
+      <div
+        data-sequence-caption-band=""
+        className={cx(
+          'fixed inset-x-0 flex justify-center px-6',
+          position.from === 'midline' && '-translate-y-1/2',
+        )}
+        style={{
+          ...bandStyle(position),
+          right: rightInset,
+          visibility: ready ? 'visible' : 'hidden',
+        }}
       >
-        {text}
-      </motion.p>
+        {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has
+            to carry from the middle of a page whose everything-else is deliberately dimmed. Short
+            display copy, so Korean breaks between words and the lines balance (UI-6). */}
+        <motion.p
+          ref={measureRef}
+          key={text}
+          initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="max-w-lg rounded-lg border border-primary/20 bg-surface-raised/90 px-5 py-3.5 text-center text-base leading-relaxed break-keep wrap-break-word text-balance text-text shadow-lg"
+        >
+          {text}
+        </motion.p>
+      </div>
     </div>
   )
 }

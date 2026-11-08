@@ -461,14 +461,14 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
   }, [])
 
   // The guide places its own line; the scene frames the universe clear of it. The band is read from
-  // the guide's live region as rendered, and the last reading holds while a scene moment hides the
+  // the guide's caption band as rendered, and the last reading holds while a scene moment hides the
   // line, so the frame stays put while the scene is speaking.
   const [captionBandHeight, setCaptionBandHeight] = useState(0)
   useEffect(() => {
     if (!captionText) return
     let observer: ResizeObserver | null = null
     const frame = requestAnimationFrame(() => {
-      const band = document.querySelector<HTMLElement>('[data-sequence-chrome][aria-live]')
+      const band = document.querySelector<HTMLElement>('[data-sequence-caption-band]')
       if (!band) return
       const read = () => setCaptionBandHeight(band.offsetHeight)
       read()
