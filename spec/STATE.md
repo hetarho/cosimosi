@@ -20,6 +20,7 @@
 | local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T14:13Z | - |
 
 ## inbox
+- 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
 - 261109 decided T242 T243 T244: three resumed improvements independently reviewed and locally integrated; root combined DB/full gate and single source publication remain for final candidate, continuous cycles continue until17:35:57Z
 - 261108 decided AUTH-9 T243 ENC-19 T244: original actual-source proofs confirm3late token/header failures+5controls and3confirmed-launch Name refusals+2controls; adopt two narrow existing-contract repairs, retain all raw evidence and independent code review/final gates; continuous cycles continue
 - 261108 decided ARCH-47 T242: actual T241 Go-only wrapper changes select28TS projects solely through one unknown path → apply exact known ownership classification (alt: retain irrelevant task checks); preserve every guard/Go/full/CI gate and conservative shared/unknown fallback, require independent review
@@ -136,6 +137,7 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T245 | Give each fresh sequence run its full dwell time | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -146,6 +148,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
 - 261108 T244 integrated
 - 261108 T243 integrated
