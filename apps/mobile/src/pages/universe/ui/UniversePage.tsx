@@ -86,18 +86,16 @@ export function UniversePage({
       </View>
       {/* The top chrome is ONE column below the device inset, not absolutely-placed rows: fixed
           offsets guessed each row's height, so the balance and the account/archive buttons overlapped
-          as soon as either grew — and all of it sat under the status bar. The clock is the exception,
-          and deliberately so: it is centred on the SCREEN and out of this column's flow, so it neither
-          pushes the balance reading down nor depends on the reading's width to stay centred. */}
+          as soon as either grew — and all of it sat under the status bar. The left pair is the
+          exception: it sits out of this column's flow so it never pushes the balance reading down. */}
       <View style={[styles.topChrome, { top: insets.top + tokens.spacing[3] }]}>
-        <View style={styles.clock} pointerEvents="box-none">
-          <UniverseTimeOverlay />
-        </View>
-        {/* How the universe is being held, in the corner the eye starts from and out of the column's
-            flow — it belongs to the SPACE, like the clock across from it, rather than to the row of
-            ways out of the canvas. Last of the two, so it takes the touches where they overlap. */}
-        <View style={styles.viewMode}>
+        {/* How the universe is being held, in the corner the eye starts from, and under it the
+            universe's time: both belong to the SPACE rather than to the row of ways out of the canvas.
+            The clock keeps left because the sequence chrome's always-visible skip owns the top edge's
+            right half on a phone, and a centred reading would run under it. */}
+        <View style={styles.topLeft} pointerEvents="box-none">
           <UniverseViewToggle />
+          <UniverseTimeOverlay />
         </View>
         {/* The persistent Twinkle balance + charge host ([G2][G3]), then a dense toolbar of
             icon-only controls: the account home, 꾸미기 ([P5], a panel over the canvas rather than a
@@ -175,10 +173,20 @@ const styles = StyleSheet.create({
     right: tokens.spacing[4],
     gap: tokens.spacing[2],
   },
-  // Out of the column's flow and spanning it, so `alignItems: 'center'` inside centres on the screen.
-  clock: { position: 'absolute', left: 0, right: 0, top: 0 },
-  viewMode: { position: 'absolute', left: 0, top: 0 },
-  topRight: { alignItems: 'flex-end', gap: tokens.spacing[3] },
+  topLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    alignItems: 'flex-start',
+    gap: tokens.spacing[2],
+  },
+  // Held clear of the top band the sequence chrome's always-visible skip owns (its small button set
+  // `spacing[4]` into the screen), the same band the web HUD holds clear.
+  topRight: {
+    alignItems: 'flex-end',
+    gap: tokens.spacing[3],
+    paddingTop: tokens.spacing[8] + tokens.spacing[3],
+  },
   hud: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: tokens.spacing[3] },
   welcome: {
     color: tokens.color['text-muted'],
