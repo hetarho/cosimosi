@@ -119,7 +119,11 @@ export function skyWeightsKey(weights: readonly number[]): string {
   return weights.map((weight) => weight.toFixed(6)).join(',')
 }
 
-/** The camera's view direction: the rig looks down −Z, so this is the sky point at frame centre. */
+/**
+ * The direction a facing turns its slice toward. It is the frame centre only for a canvas camera
+ * that looks down −Z, as a staged scene's straight-down camera does (the landing walkthrough's); a
+ * host whose camera looks elsewhere gets the slice on −Z, wherever that falls in its frame.
+ */
 const VIEW_DIRECTION = new THREE.Vector3(0, 0, -1)
 
 /**
@@ -178,6 +182,36 @@ export function advanceSkyFacing(
   if (held && step < 1) orientation.slerp(goal, step)
   else orientation.copy(goal)
   return true
+}
+
+/** What a sphere's facing reads each frame and only changes when its props do. */
+export interface SkyFacingPlan {
+  /** The static facing, or null when the sphere faces nothing. */
+  readonly facing: THREE.Quaternion | null
+  readonly spin: SkyFrameSpin | undefined
+  readonly lambda: number | undefined
+  /** Take the facing at once (reduced motion). */
+  readonly instant: boolean
+  /** Written every frame, so a frame allocates nothing. */
+  readonly scratch: THREE.Quaternion
+}
+
+/**
+ * One frame of the sphere's facing, applied to `orientation` in place; returns whether a facing is
+ * held afterwards. While nothing is faced and nothing is still held it returns before any work, so a
+ * sky that never faces pays nothing per frame.
+ */
+export function frameSkyFacing(
+  orientation: THREE.Quaternion,
+  held: boolean,
+  plan: SkyFacingPlan,
+  seconds: number,
+  delta: number,
+): boolean {
+  if (plan.facing === null && !held) return false
+  const goal = plan.facing && skyFacingAt(plan.facing, plan.spin, seconds, plan.scratch)
+  const step = plan.instant ? 1 : skyFacingStep(delta, plan.lambda)
+  return advanceSkyFacing(orientation, goal, held, step)
 }
 
 export function SkySphere({
@@ -259,15 +293,29 @@ export function SkySphere({
     [count, facing],
   )
   const facingHeld = useRef(false)
-  const facingNow = useMemo(() => new THREE.Quaternion(), [])
+  const facingScratch = useMemo(() => new THREE.Quaternion(), [])
   const spin = resolved.spin
+  const facingPlan = useMemo<SkyFacingPlan>(
+    () => ({
+      facing: staticFacing,
+      spin,
+      lambda: facingLambda,
+      instant: reducedMotion,
+      scratch: facingScratch,
+    }),
+    [staticFacing, spin, facingLambda, reducedMotion, facingScratch],
+  )
   // Registered after the clock's frame above, so the spin is read at the time this frame draws.
   useFrame((_, delta) => {
     const body = mesh.current
     if (!body) return
-    const goal = staticFacing && skyFacingAt(staticFacing, spin, time.value, facingNow)
-    const step = reducedMotion ? 1 : skyFacingStep(delta, facingLambda)
-    facingHeld.current = advanceSkyFacing(body.quaternion, goal, facingHeld.current, step)
+    facingHeld.current = frameSkyFacing(
+      body.quaternion,
+      facingHeld.current,
+      facingPlan,
+      time.value,
+      delta,
+    )
   })
 
   return (

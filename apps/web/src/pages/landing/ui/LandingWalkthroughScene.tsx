@@ -68,8 +68,9 @@ export interface LandingWalkthroughSceneProps {
   readonly memories: readonly EpisodicMemory[]
   readonly universeTime: string
   readonly skyStops: readonly EmotionSlice[]
-  /** Which of `skyStops` the sky turns to face the fixed camera; the poster has no facing. */
-  readonly skyFacing?: number
+  /** Which of `skyStops` the sky turns to face the fixed camera; the poster has no facing. Required
+   *  though it may be undefined, so a host that stops forwarding the step's facing fails to compile. */
+  readonly skyFacing: number | undefined
 }
 
 // Mounted only without reduced motion (see `LandingWalkthroughScene`), so the body always animates.
