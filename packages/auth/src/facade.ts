@@ -164,7 +164,10 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
     },
     getAccessToken() {
       if (!holdsAccessToken(actor.getSnapshot())) return Promise.resolve(null)
-      return adapter.getAccessToken().catch(() => null)
+      return adapter
+        .getAccessToken()
+        .then((token) => (holdsAccessToken(actor.getSnapshot()) ? token : null))
+        .catch(() => null)
     },
     subscribe(listener) {
       if (!running()) return () => {}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T14:55:14.000Z",
-  "sourceCommit": "437f6233895310179151568611490673a7d502f5",
+  "snapshotAt": "2026-11-08T15:00:03.506Z",
+  "sourceCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -53,20 +53,14 @@
   },
   "summary": {
     "total": 20,
-    "completed": 18,
-    "remaining": 2,
+    "completed": 19,
+    "remaining": 1,
     "running": 1,
-    "review": 1,
+    "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
   "tasks": [
-    {
-      "id": "T243",
-      "title": "Fence token reads that settle after session access closes",
-      "dep": [],
-      "status": "ready"
-    },
     {
       "id": "T244",
       "title": "Keep confirmed-launch validation refusals content-free",
@@ -1312,6 +1306,8 @@
       "submittedBase": "437f6233895310179151568611490673a7d502f5",
       "submissionId": "bbde2bb5-6a41-4af1-a1c6-6a0393ee9f8e",
       "submittedAt": "2026-11-08T14:49:26.647Z",
+      "integratedCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+      "integratedAt": "2026-11-08T14:55:15.408Z",
       "risk": null,
       "review": {
         "id": "4d78a9ee-6e88-4e1b-9ec3-92127b143f0a",
@@ -1346,6 +1342,13 @@
           "startedAt": "2026-11-08T14:48:51.160Z",
           "finishedAt": "2026-11-08T14:49:26.279Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T14:55:14.296Z",
+          "finishedAt": "2026-11-08T14:55:14.941Z"
+        }
       ]
     },
     {
@@ -1360,7 +1363,7 @@
       "contributors": [
         "token-local12"
       ],
-      "status": "ready",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T14:44:31.481Z",
       "startCommit": "437f6233895310179151568611490673a7d502f5",
@@ -1369,6 +1372,19 @@
       "submissionId": "6b98c33c-e95c-47d6-a30a-958a32f148b4",
       "submittedAt": "2026-11-08T14:50:40.841Z",
       "risk": null,
+      "review": {
+        "id": "f26a1dd8-73b1-4cde-ae42-a6fd9f987fff",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T243: Rechecking the existing live, open session predicate after the adapter resolves closes the three demonstrated pending-token cases while preserving live authentication, refresh, failed-signout restoration, initial short circuit and error-to-null behavior. The change stays in the shared auth facade, introduces no dependency or broader epoch policy, and the independent fixed-commit facade 34 cases and API platform 5 cases pass.",
+        "findings": [],
+        "commit": "4c94282d94809ee64e966920ba44ae352aa13cca",
+        "baseCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+        "submissionId": "6b98c33c-e95c-47d6-a30a-958a32f148b4",
+        "createdAt": "2026-11-08T14:55:57.792Z",
+        "finishedAt": "2026-11-08T14:59:01.613Z"
+      },
       "steps": [
         {
           "taskId": "T243",
@@ -6410,6 +6426,101 @@
       "group": "local8h",
       "attemptId": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
       "taskId": "T242",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 253,
+      "at": "2026-11-08T14:55:15.294Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
+      "taskId": "T242",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T14:55:14.296Z",
+            "finishedAt": "2026-11-08T14:55:14.941Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 254,
+      "at": "2026-11-08T14:55:15.408Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
+      "taskId": "T242",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+        "integratedAt": "2026-11-08T14:55:15.408Z"
+      }
+    },
+    {
+      "sequence": 255,
+      "at": "2026-11-08T14:55:57.792Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "f26a1dd8-73b1-4cde-ae42-a6fd9f987fff",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "4c94282d94809ee64e966920ba44ae352aa13cca",
+          "baseCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+          "submissionId": "6b98c33c-e95c-47d6-a30a-958a32f148b4",
+          "createdAt": "2026-11-08T14:55:57.792Z"
+        }
+      }
+    },
+    {
+      "sequence": 256,
+      "at": "2026-11-08T14:59:01.614Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "f26a1dd8-73b1-4cde-ae42-a6fd9f987fff",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T243: Rechecking the existing live, open session predicate after the adapter resolves closes the three demonstrated pending-token cases while preserving live authentication, refresh, failed-signout restoration, initial short circuit and error-to-null behavior. The change stays in the shared auth facade, introduces no dependency or broader epoch policy, and the independent fixed-commit facade 34 cases and API platform 5 cases pass.",
+          "findings": [],
+          "commit": "4c94282d94809ee64e966920ba44ae352aa13cca",
+          "baseCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+          "submissionId": "6b98c33c-e95c-47d6-a30a-958a32f148b4",
+          "createdAt": "2026-11-08T14:55:57.792Z",
+          "finishedAt": "2026-11-08T14:59:01.613Z"
+        }
+      }
+    },
+    {
+      "sequence": 257,
+      "at": "2026-11-08T15:00:01.976Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
