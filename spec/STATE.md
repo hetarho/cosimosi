@@ -166,20 +166,19 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T261 | The universe HUD stays clear of the tour's skip | ONB VIS UI ARCH | - | todo |
-| T262 | The first-run welcome and the tour caption never overlap | ONB UI ARCH | T261 | todo |
 | T263 | The tour's arrival caption waits until the star has arrived | ONB TIME ARCH | T262 | todo |
 | T265 | The manual tour review script waits for the visible caption band | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 39 | 37 | 2 | 0 | 2 | 0 | 2026-11-08T21:10:07.982Z | [history](work/local8h.json) |
+| local8h | 2 | 40 | 39 | 1 | 1 | 0 | 0 | 2026-11-08T21:17:24.340Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T261 T262 integrated
 - 261109 local13 T264 reviewed b4174ae0 and integrated 98a91639; create-task F41 → T265 (run debt)
 - 261108 T264 integrated
 - 261108 T257 integrated
@@ -199,5 +198,3 @@
 - 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
 - 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
 - 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
-- 261109 local13 start: six-hour self-improve-local on landing/tutorial 3D UX, local12 row closed after its deadline passed with no live process
-- 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
