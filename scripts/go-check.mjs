@@ -17,7 +17,8 @@ const mode = process.argv[2] ?? 'all'
 
 const checks = {
   fmt: {
-    docker: 'files=$(gofmt -l .); if [ -n "$files" ]; then printf "%s\\n" "$files"; exit 1; fi',
+    docker:
+      'files=$(gofmt -l .); gofmt_status=$?; if [ -n "$files" ]; then printf "%s\\n" "$files"; exit 1; fi; [ "$gofmt_status" -eq 0 ]',
     host: ['gofmt', ['-l', '.']],
     failOnStdout: true,
   },
