@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-07T23:54Z | - |
+| local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-08T00:34Z | - |
 
 ## inbox
 - 261108 parked ERR-6 OBS-7: F22 LaunchStars confirmed-input Name refusal path is source-supported but unexecuted; preserve bounded future proof packet with mandatory zone read separated from zero transaction/provider effects, no task/adoption this round
@@ -138,6 +138,7 @@
 - local10 T239/T240 source integration complete; root final gate/source CI and timed closeout remain. Preserve F22 unexecuted future confirmation and existing T222/DEMO/ONB owner scope.
 
 ## log
+- 261108 local10 final integrated pnpm check passed atd7d4c4ac; source unchanged,16/16scope complete, native snapshot log-limit repair and publication pending
 - 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
 - 261108 T239 integrated
 - 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
@@ -155,7 +156,3 @@
 - 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
 - 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
 - 261108 create-task review/local-reliability-261108 F11 F12 → T233 T234: actual controlled-dialog and disposed-query-helper evidence; public contracts and live behavior preserved
-- 261108 create-task review/local-reliability-261108 F10 → T232: actual material-only mesh reconstruction leaves latent field hidden; preserve shader/ownership and unchanged-frame work
-- 261108 task handoff correction T228 T229 T230 T231: worker acceptance records reviewable delivery; mandatory post-submit native review and coordinator DB/final gates remain unchanged
-- 261108 create-task review/local-reliability-261108 F9 → T231: actual Vitest collection excludes guard-accepted paths; preserve runner configs and meaningful helpers
-- 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
