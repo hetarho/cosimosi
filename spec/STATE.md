@@ -131,17 +131,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T241 | Docker formatting rejects failed formatter execution | ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:37:30.187Z | [history](work/local8h.json) |
+| local8h | 2 | 17 | 17 | 0 | 0 | 0 | 0 | 2026-11-08T13:09:45.448Z | [history](work/local8h.json) |
 
 ## next
-- local11: implement-task T241 only, isolated claim and independent review before current-main integration. Four-hour deadline2026-11-08T16:55Z; report261108-local11, prior scope16/16 unchanged, F24 owner-gated.
+- inspect work board for remaining tasks
 
 ## log
+- 261108 T241 integrated
 - 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
 - 261108 self-improve-local local11 start: four-hour bounded delegation, cleanmain8459fa5b, independent backend/tooling scouts; no new task/code approval
 - 261108 local10 closed: T239 T240 complete, final gate d7d4c4ac/source f8512f9c CI+backend allpass, own resources cleaned and evidence archived; final metadata-only publication
@@ -161,4 +161,3 @@
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
 - 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
 - 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
-- 261108 create-task review/local-reliability-261108 F13 → T235: retained actual Sheet stays hidden after full/mid-exit reopening or refused swipe; preserve height and public contracts
