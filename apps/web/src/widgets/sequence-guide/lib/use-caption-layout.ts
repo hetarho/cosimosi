@@ -15,6 +15,12 @@ const CONTROLS =
   'button, a[href], input, textarea, select, [contenteditable="true"], [role="button"], [role="slider"]'
 const PANEL = `[${SURFACE_PANEL_ATTR}]`
 
+/** The surfaces that decide the caption's room: the topmost modal and the marked panels. */
+interface RoomSurfaces {
+  readonly modal: Element | null
+  readonly panels: readonly Element[]
+}
+
 /** DOM measurements belong to the guide; the reusable placement policy stays platform neutral. */
 export function useCaptionLayout({
   active,
@@ -36,6 +42,11 @@ export function useCaptionLayout({
   const ref = useRef<HTMLParagraphElement>(null)
   const key = JSON.stringify([text, preferred, viewport, right, anchorRect])
   const [layout, setLayout] = useState<{ key: string; position: CaptionPosition } | null>(null)
+  // The surfaces the placed line was measured among. The line is visible only while `layout`
+  // matches the key, and that state commits together with its position, so it never paints at the
+  // fallback first. A change of surfaces is a new room and hides it until it is measured there;
+  // anything else (a font swap, a size tick, a scroll) re-measures it where it stands.
+  const placedRoom = useRef<RoomSurfaces | null>(null)
 
   useEffect(() => {
     if (!active) return
@@ -75,8 +86,7 @@ export function useCaptionLayout({
       const width = paragraph.offsetWidth || Math.min(512, viewport.width - right - 48)
       const height = paragraph.offsetHeight || 112
       const x = (viewport.width - right - width) / 2
-      const modals = [...document.querySelectorAll('[aria-modal="true"]')]
-      const modal = modals.at(-1)
+      const { modal } = roomSurfaces()
       const controls = [...(modal ?? document).querySelectorAll(CONTROLS)].filter(
         (node) => !node.closest('[data-sequence-chrome]') && visible(node),
       )
@@ -105,12 +115,12 @@ export function useCaptionLayout({
         caption: { x, width, height },
         obstacles,
       })
+      placedRoom.current = { modal, panels }
       setLayout((previous) =>
         previous?.key === key && JSON.stringify(previous.position) === JSON.stringify(position)
           ? previous
           : { key, position },
       )
-      paragraph.style.visibility = 'visible'
       for (const node of [paragraph, ...panels]) {
         if (observed.has(node)) continue
         observed.add(node)
@@ -123,9 +133,16 @@ export function useCaptionLayout({
       }
     }
     function schedule() {
+      const placed = placedRoom.current
+      if (placed && !sameRoom(placed, roomSurfaces())) {
+        placedRoom.current = null
+        setLayout(null)
+      }
+      remeasure()
+    }
+    function remeasure() {
       const version = ++revision
       cancelAnimationFrame(frame)
-      if (ref.current) ref.current.style.visibility = 'hidden'
       frame = requestAnimationFrame(() => {
         void measure(version)
       })
@@ -134,7 +151,7 @@ export function useCaptionLayout({
     mutations.observe(document.body, { childList: true, subtree: true })
     window.addEventListener('scroll', schedule, true)
     window.addEventListener('resize', schedule)
-    schedule()
+    remeasure()
     return () => {
       live = false
       cancelAnimationFrame(frame)
@@ -150,6 +167,21 @@ export function useCaptionLayout({
     position: layout?.key === key ? layout.position : preferred,
     ready: layout?.key === key,
   }
+}
+
+function roomSurfaces(): RoomSurfaces {
+  return {
+    modal: [...document.querySelectorAll('[aria-modal="true"]')].at(-1) ?? null,
+    panels: [...document.querySelectorAll(PANEL)],
+  }
+}
+
+function sameRoom(a: RoomSurfaces, b: RoomSurfaces): boolean {
+  return (
+    a.modal === b.modal &&
+    a.panels.length === b.panels.length &&
+    a.panels.every((panel, index) => panel === b.panels[index])
+  )
 }
 
 function visible(node: Element): boolean {

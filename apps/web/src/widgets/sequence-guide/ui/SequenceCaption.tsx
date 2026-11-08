@@ -44,7 +44,13 @@ export function SequenceCaption({
         'pointer-events-none fixed inset-x-0 z-[var(--z-guide)] flex justify-center px-6',
         position.from === 'midline' && '-translate-y-1/2',
       )}
-      style={{ ...bandStyle(position), right: rightInset }}
+      // The whole band hides until its measured place commits, so the layout never reports the
+      // unplaced band moving into position.
+      style={{
+        ...bandStyle(position),
+        right: rightInset,
+        visibility: ready ? 'visible' : 'hidden',
+      }}
     >
       {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has to
           carry from the middle of a page whose everything-else is deliberately dimmed. Short display
@@ -52,7 +58,6 @@ export function SequenceCaption({
       <motion.p
         ref={measureRef}
         key={text}
-        style={{ visibility: ready ? 'visible' : 'hidden' }}
         initial={reducedMotion ? false : { opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
