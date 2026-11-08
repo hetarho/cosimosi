@@ -95,6 +95,7 @@ export function useSequenceRun<Anchor extends string, Signal extends string>(
 
   useDwellAdvance(
     active && step?.advance.on === 'dwell' && !options.paused,
+    snapshot.runId,
     snapshot.stepIndex,
     options.captionDwellMs,
     advance,
@@ -119,10 +120,11 @@ export function useSequenceRun<Anchor extends string, Signal extends string>(
 }
 
 // Dwell timing lives here rather than in the machine, so the machine never reads a clock. The timer
-// is keyed on the step index and cleared on every change and on unmount, so no suite can leave one
+// is keyed on the run and step index and cleared on every change and on unmount, so no suite can leave one
 // pending — and a timer that does fire late carries a stale index the machine's echo guard drops.
 function useDwellAdvance(
   enabled: boolean,
+  runId: string | null,
   stepIndex: number,
   captionDwellMs: number,
   advance: (fromStepIndex: number) => void,
@@ -131,7 +133,7 @@ function useDwellAdvance(
     if (!enabled) return
     const timer = setTimeout(() => advance(stepIndex), captionDwellMs)
     return () => clearTimeout(timer)
-  }, [advance, captionDwellMs, enabled, stepIndex])
+  }, [advance, captionDwellMs, enabled, runId, stepIndex])
 }
 
 function useAnchorRect(anchorId: string | undefined, measureToken: number): SequenceRect | null {
