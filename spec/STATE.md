@@ -20,6 +20,7 @@
 | local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T14:13Z | - |
 
 ## inbox
+- 261108 decided AUTH-9 T243 ENC-19 T244: original actual-source proofs confirm3late token/header failures+5controls and3confirmed-launch Name refusals+2controls; adopt two narrow existing-contract repairs, retain all raw evidence and independent code review/final gates; continuous cycles continue
 - 261108 decided ARCH-47 T242: actual T241 Go-only wrapper changes select28TS projects solely through one unknown path → apply exact known ownership classification (alt: retain irrelevant task checks); preserve every guard/Go/full/CI gate and conservative shared/unknown fallback, require independent review
 - 261108 decided -: user corrects local11 premature single-item stop: four hours means continuous improvement cycles. Resume local12, exclude inactive gap, remaining active3h23m until2026-11-08T17:35:57Z/Nov9 02:36KST; preserve prior T241 and existing boundaries, see reports/261108-local12
 - 261108 decided T241: independently reviewed/integratedd2e40965, final pnpm check passes13482597, configured source634e862d and exact CI42484422140 allpass; local11scope17/17complete and owned resources cleaned, F24 stays owner-gated
@@ -135,6 +136,8 @@
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 | T242 | Classify the known Go gate without unrelated TypeScript checks | ARCH | - | todo |
+| T243 | Fence token reads that settle after session access closes | ARCH AUTH | - | todo |
+| T244 | Keep confirmed-launch validation refusals content-free | ARCH ENC ERR OBS | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -145,6 +148,7 @@
 - local12 active until2026-11-08T17:35:57Z: continuously discover/approve/implement/review bounded improvements; a completed item starts the next cycle. Preserve17completed prior units and owner-gated backlog; reports/261108-local12.
 
 ## log
+- 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
 - 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
@@ -163,4 +167,3 @@
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
 - 261108 self-improve-local final scope frozen at T225..T238 after F20 profile diagnostic control failure; no additional repair task adopted
-- 261108 doc-review ARCH chg r3 inspected, no edit (rev unchanged); essential old→new summary retained
