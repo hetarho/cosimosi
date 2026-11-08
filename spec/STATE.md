@@ -20,6 +20,8 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided review/landing-tutorial-ux-261109 T261 T262 T264: a throwaway probe ran the real post-signup tour on a mock transport → adopt the skip/HUD collision (ONB-12/13), the welcome-line overlap and -습니다 (ONB-3/UI-62) and the draft ring missing split (ONB-17); T263 (arrival caption before the star, ONB-9) is planned but left for the next run (alt: start all four and risk an unintegrated lane at the deadline)
+- 261109 parked VIS-46 WRITE-3 ONB-18: on phones the first launched memories sit off-screen under the tour caption (F39, decide with F10/F29), and the revisit caption says a star keeps what you wrote instead of naming fading and recall (F40)
 - 261109 decided T257 ONB-13 ONB-2: review 32f1051c found the reveal-on-commit fix hid the aria-live element itself, so captions would appear inside a freshly exposed live region → keep aria-live on a stable never-hidden container and give visibility to the positioned child band; T257 may also retarget DemoPage's band-height selector (alt: hidden live copy plus aria-hidden band | keep and record screen-reader checks)
 - 261109 decided T252 ONB-12: re-review 7917c936 found the uncapped clearing inset squeezes landscape phones under 768px to a dot during reveals → apply the clearing inset only on portrait narrow screens and keep landscape on the existing framing until the owner's short-viewport rules (F16/F17) (alt: a minimum-area threshold | accept the landscape regression)
 - 261109 parked DEMO-30 DEMO-24 DEMO-34 DEMO-4 ONB-3 DEMO-7: demo free play needs owner rules — re-framing so early skippers see the gist rise (F29), a one-line arrival caption so picking and repeat recall are discoverable (F30), beat-9 captions that tie decoration to INV-11 (F31), a stated end of the prepared-diary pool (F32), and history re-entry not replaying the tour (F33); see review/landing-tutorial-ux-261109
@@ -165,6 +167,10 @@
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
+| T261 | The universe HUD stays clear of the tour's skip | ONB VIS UI ARCH | - | todo |
+| T262 | The first-run welcome and the tour caption never overlap | ONB UI ARCH | T261 | todo |
+| T263 | The tour's arrival caption waits until the star has arrived | ONB TIME ARCH | T262 | todo |
+| T264 | The tour's draft step rings the split control too | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -175,6 +181,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 create-task review/landing-tutorial-ux-261109 F35 F36 F37 F38 → T261 T262 (lane universe-tour) T263 (not started) T264; F39 F40 parked
 - 261108 T260 integrated
 - 261109 local13 lane demo-guide (T251 T252 T253) passed third review 610e450a and integrated 344242ad; T257 assigned
 - 261108 T251 T252 T253 integrated
