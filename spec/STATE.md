@@ -20,6 +20,8 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 decided review/landing-tutorial-ux-261109 T256: second-cycle scout covered no-WebGPU, reduced motion, English and small viewports; adopt only the 360px clipped walkthrough star (staging fix, MKT-19), since WebGL2 fallback and English hold
+- 261109 parked review/landing-tutorial-ux-261109 MKT-19 MKT-20 UI-10: reduced-motion visitors get a CSS-striped poster instead of the frozen 3D scene (F15), and the hero raster is stale against the live sky (F18); landscape dialog clipping (F16), landscape stage height (F17) and the English restart label (F20) need owner choices
 - 261109 decided T251 DEMO-27: the way-out ring rendered 79px high on desktop because the guide's top-clearance remeasure never reached the page measure → T251 also wires a page remeasure token through DemoPage.tsx, which is already lane demo-guide's file (alt: split a new task | accept the offset)
 - 261109 decided T250: static sky facing drifts because grainient spins its own frame → widen T250 to publish each effect's existing spin and track it, keeping effect visuals unchanged; prototype shows LOVE leading 57%→70% desktop (alt: accept drift and follow up | compensate only at facing changes)
 - 261109 decided ONB-18 ONB-19 RECALL-1 T254: the tour's step 8 told new users recalling costs stardust, but 회고하기 is free since RECALL@3 → ONB r4 drops the cost from step 8 and the ONB-19 rationale, following the owner's newer RECALL decision (alt: keep the stale caption | restate a cost for paid restoration only)
@@ -161,6 +163,7 @@
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
 | T254 | Onboarding tour copy speaks the product register and states recall truthfully | ONB UI RECALL MKT ARCH | - | todo |
 | T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
+| T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -171,6 +174,7 @@
 - local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
 
 ## log
+- 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
 - 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
 - 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
 - 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
