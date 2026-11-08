@@ -10,7 +10,7 @@ const en_achievement_recall_200_body = /** @type {(inputs: Achievement_Recall_20
 };
 
 const ko_achievement_recall_200_body = /** @type {(inputs: Achievement_Recall_200_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`이 하늘에서 가장 밝은 곳은 당신이 돌아간 자리예요.`)
+	return /** @type {LocalizedString} */ (`이 하늘에서 가장 밝은 곳은 내가 돌아간 자리예요.`)
 };
 
 /**

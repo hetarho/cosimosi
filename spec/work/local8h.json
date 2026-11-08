@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T19:37:53.824Z",
-  "sourceCommit": "e129ed86b3e2e617be262fd7044a327071054816",
+  "snapshotAt": "2026-11-08T20:00:15.501Z",
+  "sourceCommit": "7ab1461acb508b1fad05f3cf646321d3e53f991a",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -22,7 +22,9 @@
         }
       ],
       "at": "2026-11-08T17:28:18.216Z",
-      "excluded": ["T222"]
+      "excluded": [
+        "T222"
+      ]
     },
     "push": null,
     "review": "all",
@@ -60,16 +62,17 @@
       "T255",
       "T256",
       "T257",
-      "T258"
+      "T258",
+      "T259"
     ]
   },
   "summary": {
-    "total": 34,
-    "completed": 28,
+    "total": 35,
+    "completed": 29,
     "remaining": 6,
-    "running": 2,
-    "review": 0,
-    "blocked": 3,
+    "running": 3,
+    "review": 2,
+    "blocked": 0,
     "unassigned": 1
   },
   "tasks": [
@@ -78,41 +81,51 @@
       "title": "Demo recall result rings its way out",
       "dep": [],
       "lane": "demo-guide",
-      "status": "blocked"
+      "status": "doing"
     },
     {
       "id": "T252",
       "title": "Phone demo framing keeps the eyeline caption off the universe",
-      "dep": ["T251"],
+      "dep": [
+        "T251"
+      ],
       "lane": "demo-guide",
-      "status": "blocked"
+      "status": "doing"
     },
     {
       "id": "T253",
       "title": "Sequence captions break Korean at word boundaries",
-      "dep": ["T252"],
+      "dep": [
+        "T252"
+      ],
       "lane": "demo-guide",
-      "status": "blocked"
+      "status": "doing"
     },
     {
       "id": "T256",
       "title": "Walkthrough stars stay inside the stage on narrow phones",
-      "dep": ["T250"],
+      "dep": [
+        "T250"
+      ],
       "lane": "landing-scene",
-      "status": "doing"
+      "status": "reviewing"
     },
     {
       "id": "T257",
       "title": "A guide caption appears once, already in its measured place",
-      "dep": ["T253"],
+      "dep": [
+        "T253"
+      ],
       "status": "todo"
     },
     {
       "id": "T258",
       "title": "Sky facing costs nothing where unused and keeps its wiring guarded",
-      "dep": ["T256"],
+      "dep": [
+        "T256"
+      ],
       "lane": "landing-scene",
-      "status": "doing"
+      "status": "reviewing"
     }
   ],
   "attempts": [
@@ -120,10 +133,14 @@
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
       "group": "local8h",
       "taskId": "T225",
-      "tasks": ["T225"],
+      "tasks": [
+        "T225"
+      ],
       "lane": null,
       "owner": "gatesworker",
-      "contributors": ["gatesworker"],
+      "contributors": [
+        "gatesworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:16:26.012Z",
@@ -199,10 +216,14 @@
       "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
       "group": "local8h",
       "taskId": "T226",
-      "tasks": ["T226"],
+      "tasks": [
+        "T226"
+      ],
       "lane": null,
       "owner": "fieldworker",
-      "contributors": ["fieldworker"],
+      "contributors": [
+        "fieldworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:19:21.301Z",
@@ -278,10 +299,14 @@
       "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
       "group": "local8h",
       "taskId": "T227",
-      "tasks": ["T227"],
+      "tasks": [
+        "T227"
+      ],
       "lane": null,
       "owner": "checksworker",
-      "contributors": ["checksworker"],
+      "contributors": [
+        "checksworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T15:59:37.533Z",
@@ -340,10 +365,14 @@
       "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
       "group": "local8h",
       "taskId": "T228",
-      "tasks": ["T228"],
+      "tasks": [
+        "T228"
+      ],
       "lane": null,
       "owner": "resourceworker",
-      "contributors": ["resourceworker"],
+      "contributors": [
+        "resourceworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:20.204Z",
@@ -402,10 +431,14 @@
       "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
       "group": "local8h",
       "taskId": "T229",
-      "tasks": ["T229"],
+      "tasks": [
+        "T229"
+      ],
       "lane": null,
       "owner": "ratchetworker",
-      "contributors": ["ratchetworker"],
+      "contributors": [
+        "ratchetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:40:25.658Z",
@@ -464,10 +497,14 @@
       "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
       "group": "local8h",
       "taskId": "T231",
-      "tasks": ["T231"],
+      "tasks": [
+        "T231"
+      ],
       "lane": null,
       "owner": "collectionworker",
-      "contributors": ["collectionworker"],
+      "contributors": [
+        "collectionworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:50:25.131Z",
@@ -549,10 +586,14 @@
       "id": "ef070033-58bc-48af-94bf-84637877b087",
       "group": "local8h",
       "taskId": "T230",
-      "tasks": ["T230"],
+      "tasks": [
+        "T230"
+      ],
       "lane": null,
       "owner": "replayworker",
-      "contributors": ["replayworker"],
+      "contributors": [
+        "replayworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T16:51:01.837Z",
@@ -616,10 +657,14 @@
       "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
       "group": "local8h",
       "taskId": "T232",
-      "tasks": ["T232"],
+      "tasks": [
+        "T232"
+      ],
       "lane": null,
       "owner": "latentworker",
-      "contributors": ["latentworker"],
+      "contributors": [
+        "latentworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T17:21:14.121Z",
@@ -678,10 +723,14 @@
       "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
       "group": "local8h",
       "taskId": "T233",
-      "tasks": ["T233"],
+      "tasks": [
+        "T233"
+      ],
       "lane": null,
       "owner": "dialogworker",
-      "contributors": ["dialogworker"],
+      "contributors": [
+        "dialogworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:38.752Z",
@@ -740,10 +789,14 @@
       "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
       "group": "local8h",
       "taskId": "T234",
-      "tasks": ["T234"],
+      "tasks": [
+        "T234"
+      ],
       "lane": null,
       "owner": "refocusworker",
-      "contributors": ["refocusworker"],
+      "contributors": [
+        "refocusworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:14:53.465Z",
@@ -802,10 +855,14 @@
       "id": "a666c552-3a57-4484-933b-f1288868d0f2",
       "group": "local8h",
       "taskId": "T235",
-      "tasks": ["T235"],
+      "tasks": [
+        "T235"
+      ],
       "lane": null,
       "owner": "sheetworker",
-      "contributors": ["sheetworker"],
+      "contributors": [
+        "sheetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T18:43:20.470Z",
@@ -864,10 +921,14 @@
       "id": "652bb260-f071-477b-92fd-1d87c29495fc",
       "group": "local8h",
       "taskId": "T236",
-      "tasks": ["T236"],
+      "tasks": [
+        "T236"
+      ],
       "lane": null,
       "owner": "withdrawalworker",
-      "contributors": ["withdrawalworker"],
+      "contributors": [
+        "withdrawalworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:06:12.161Z",
@@ -931,10 +992,14 @@
       "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
       "group": "local8h",
       "taskId": "T237",
-      "tasks": ["T237"],
+      "tasks": [
+        "T237"
+      ],
       "lane": null,
       "owner": "mapperworker",
-      "contributors": ["mapperworker"],
+      "contributors": [
+        "mapperworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:20:26.074Z",
@@ -993,10 +1058,14 @@
       "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
       "group": "local8h",
       "taskId": "T238",
-      "tasks": ["T238"],
+      "tasks": [
+        "T238"
+      ],
       "lane": null,
       "owner": "assetworker",
-      "contributors": ["assetworker"],
+      "contributors": [
+        "assetworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-07T19:58:43.759Z",
@@ -1055,10 +1124,14 @@
       "id": "092ef632-399a-4cdb-a9a1-dcd90b52c6c6",
       "group": "local8h",
       "taskId": "T239",
-      "tasks": ["T239"],
+      "tasks": [
+        "T239"
+      ],
       "lane": null,
       "owner": "profile-local10",
-      "contributors": ["profile-local10"],
+      "contributors": [
+        "profile-local10"
+      ],
       "status": "released",
       "reason": "Worker stopped; preserve four-file patch; amend T239 to share cache invalidation in existing owning package after immutable ratchet failure",
       "createdAt": "2026-11-08T00:04:25.805Z",
@@ -1069,10 +1142,14 @@
       "id": "310f5024-5656-4a24-b1ee-c6eff7554186",
       "group": "local8h",
       "taskId": "T240",
-      "tasks": ["T240"],
+      "tasks": [
+        "T240"
+      ],
       "lane": null,
       "owner": "private-local10",
-      "contributors": ["private-local10"],
+      "contributors": [
+        "private-local10"
+      ],
       "status": "integrated",
       "reason": "ignored 파일을 포함해 남은 파일이 있습니다. 확인 후 정리하세요.",
       "createdAt": "2026-11-08T00:04:27.142Z",
@@ -1131,10 +1208,14 @@
       "id": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
       "group": "local8h",
       "taskId": "T239",
-      "tasks": ["T239"],
+      "tasks": [
+        "T239"
+      ],
       "lane": null,
       "owner": "profile-local10-v2",
-      "contributors": ["profile-local10-v2"],
+      "contributors": [
+        "profile-local10-v2"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T00:18:25.840Z",
@@ -1203,10 +1284,14 @@
       "id": "d9dba66e-801f-41fb-8377-31e4d884931e",
       "group": "local8h",
       "taskId": "T241",
-      "tasks": ["T241"],
+      "tasks": [
+        "T241"
+      ],
       "lane": null,
       "owner": "formatter-local11",
-      "contributors": ["formatter-local11"],
+      "contributors": [
+        "formatter-local11"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T12:59:20.827Z",
@@ -1265,10 +1350,14 @@
       "id": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
       "group": "local8h",
       "taskId": "T242",
-      "tasks": ["T242"],
+      "tasks": [
+        "T242"
+      ],
       "lane": null,
       "owner": "selector-local12",
-      "contributors": ["selector-local12"],
+      "contributors": [
+        "selector-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T14:38:34.314Z",
@@ -1327,10 +1416,14 @@
       "id": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
       "group": "local8h",
       "taskId": "T243",
-      "tasks": ["T243"],
+      "tasks": [
+        "T243"
+      ],
       "lane": null,
       "owner": "token-local12",
-      "contributors": ["token-local12"],
+      "contributors": [
+        "token-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T14:44:31.481Z",
@@ -1389,10 +1482,14 @@
       "id": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
       "group": "local8h",
       "taskId": "T244",
-      "tasks": ["T244"],
+      "tasks": [
+        "T244"
+      ],
       "lane": null,
       "owner": "launch-local12",
-      "contributors": ["launch-local12"],
+      "contributors": [
+        "launch-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T14:50:29.713Z",
@@ -1451,10 +1548,14 @@
       "id": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
       "group": "local8h",
       "taskId": "T245",
-      "tasks": ["T245"],
+      "tasks": [
+        "T245"
+      ],
       "lane": null,
       "owner": "dwell-local12",
-      "contributors": ["dwell-local12"],
+      "contributors": [
+        "dwell-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T15:20:11.742Z",
@@ -1513,10 +1614,14 @@
       "id": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
       "group": "local8h",
       "taskId": "T246",
-      "tasks": ["T246"],
+      "tasks": [
+        "T246"
+      ],
       "lane": null,
       "owner": "anchor-local12",
-      "contributors": ["anchor-local12"],
+      "contributors": [
+        "anchor-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T15:49:08.404Z",
@@ -1575,10 +1680,14 @@
       "id": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
       "group": "local8h",
       "taskId": "T247",
-      "tasks": ["T247"],
+      "tasks": [
+        "T247"
+      ],
       "lane": null,
       "owner": "deepseek-local12",
-      "contributors": ["deepseek-local12"],
+      "contributors": [
+        "deepseek-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T15:49:14.647Z",
@@ -1637,10 +1746,14 @@
       "id": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
       "group": "local8h",
       "taskId": "T248",
-      "tasks": ["T248"],
+      "tasks": [
+        "T248"
+      ],
       "lane": null,
       "owner": "select-local12",
-      "contributors": ["select-local12"],
+      "contributors": [
+        "select-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T16:19:53.140Z",
@@ -1699,10 +1812,14 @@
       "id": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
       "group": "local8h",
       "taskId": "T249",
-      "tasks": ["T249"],
+      "tasks": [
+        "T249"
+      ],
       "lane": null,
       "owner": "extractor-local12",
-      "contributors": ["extractor-local12"],
+      "contributors": [
+        "extractor-local12"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T17:05:06.457Z",
@@ -1761,10 +1878,14 @@
       "id": "c234bf85-b8b3-4485-bcce-5678dadb3647",
       "group": "local8h",
       "taskId": "T250",
-      "tasks": ["T250"],
+      "tasks": [
+        "T250"
+      ],
       "lane": null,
       "owner": "skyworker",
-      "contributors": ["skyworker"],
+      "contributors": [
+        "skyworker"
+      ],
       "status": "released",
       "reason": "ignored 파일을 포함해 남은 파일이 있습니다. 확인 후 정리하세요.",
       "createdAt": "2026-11-08T18:04:36.739Z",
@@ -1775,10 +1896,16 @@
       "id": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "group": "local8h",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "lane": "demo-guide",
       "owner": "guideworker",
-      "contributors": ["guideworker"],
+      "contributors": [
+        "guideworker"
+      ],
       "status": "released",
       "reason": "ignored 파일을 포함해 남은 파일이 있습니다. 확인 후 정리하세요.",
       "createdAt": "2026-11-08T18:04:46.079Z",
@@ -1789,10 +1916,14 @@
       "id": "716026c4-51bf-4cb3-b693-635b886b37a6",
       "group": "local8h",
       "taskId": "T250",
-      "tasks": ["T250"],
+      "tasks": [
+        "T250"
+      ],
       "lane": null,
       "owner": "skyworker",
-      "contributors": ["skyworker"],
+      "contributors": [
+        "skyworker"
+      ],
       "status": "released",
       "reason": "decision A approved: facing must track the effect's own sky spin; contract amended, re-claim with ff88f8ab carried over",
       "createdAt": "2026-11-08T18:07:03.098Z",
@@ -1803,17 +1934,23 @@
       "id": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "group": "local8h",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "lane": "demo-guide",
       "owner": "guideworker",
-      "contributors": ["guideworker"],
-      "status": "blocked",
-      "reason": "T252: 태스크 result에 limits 기록이 필요합니다.",
+      "contributors": [
+        "guideworker"
+      ],
+      "status": "doing",
+      "reason": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
       "createdAt": "2026-11-08T18:07:09.499Z",
       "startCommit": "8a22355ead70b838a64bbaa366f594d7c5c82979",
-      "submittedBase": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
-      "submissionId": "beded1ad-e775-445d-9ef9-86d16a541950",
-      "submittedAt": "2026-11-08T19:01:29.590Z",
+      "submittedBase": "d39274d0ff1819ea136caf588cda02833d78110c",
+      "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+      "submittedAt": "2026-11-08T19:43:15.433Z",
       "risk": null,
       "reviewHistory": [
         {
@@ -1846,6 +1983,32 @@
           "finishedAt": "2026-11-08T19:17:22.384Z",
           "invalidatedAt": "2026-11-08T19:18:56.033Z",
           "invalidationReason": "correction assigned"
+        },
+        {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+              "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+            },
+            {
+              "priority": "P3",
+              "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+              "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+            }
+          ],
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z",
+          "finishedAt": "2026-11-08T19:55:09.991Z",
+          "invalidatedAt": "2026-11-08T19:56:13.730Z",
+          "invalidationReason": "correction assigned"
         }
       ],
       "steps": [
@@ -1875,13 +2038,13 @@
         },
         {
           "taskId": "T253",
-          "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
-          "at": "2026-11-08T19:01:29.562Z",
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "at": "2026-11-08T19:43:15.405Z",
           "verification": [
             {
               "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-              "startedAt": "2026-11-08T19:00:16.220Z",
-              "finishedAt": "2026-11-08T19:01:28.619Z"
+              "startedAt": "2026-11-08T19:40:09.067Z",
+              "finishedAt": "2026-11-08T19:43:14.630Z"
             }
           ]
         }
@@ -1889,8 +2052,8 @@
       "verification": [
         {
           "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-          "startedAt": "2026-11-08T19:00:16.220Z",
-          "finishedAt": "2026-11-08T19:01:28.619Z"
+          "startedAt": "2026-11-08T19:40:09.067Z",
+          "finishedAt": "2026-11-08T19:43:14.630Z"
         }
       ]
     },
@@ -1898,10 +2061,14 @@
       "id": "7b0d3578-e977-4e00-b9ed-851a2cfd5f7e",
       "group": "local8h",
       "taskId": "T250",
-      "tasks": ["T250"],
+      "tasks": [
+        "T250"
+      ],
       "lane": null,
       "owner": "skyworker",
-      "contributors": ["skyworker"],
+      "contributors": [
+        "skyworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T18:37:47.769Z",
@@ -1980,10 +2147,15 @@
       "id": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "group": "local8h",
       "taskId": "T255",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "lane": "tutorial-copy",
       "owner": "copyworker",
-      "contributors": ["copyworker"],
+      "contributors": [
+        "copyworker"
+      ],
       "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T19:01:57.743Z",
@@ -1992,6 +2164,8 @@
       "submittedBase": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
       "submissionId": "6f7271c6-5913-4972-aced-9498388c8ed2",
       "submittedAt": "2026-11-08T19:26:26.627Z",
+      "integratedCommit": "d39274d0ff1819ea136caf588cda02833d78110c",
+      "integratedAt": "2026-11-08T19:41:21.171Z",
       "risk": null,
       "review": {
         "id": "82167b51-2009-4781-b068-2e9d287a56cc",
@@ -2049,19 +2223,135 @@
           "startedAt": "2026-11-08T19:22:39.286Z",
           "finishedAt": "2026-11-08T19:26:25.820Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:37:54.158Z",
+          "finishedAt": "2026-11-08T19:41:20.755Z"
+        }
       ]
     },
     {
       "id": "35cf742e-541e-468a-800b-14b2634d1211",
       "group": "local8h",
-      "taskId": "T256",
-      "tasks": ["T256", "T258"],
+      "taskId": "T258",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
       "lane": "landing-scene",
       "owner": "skyworker",
-      "contributors": ["skyworker"],
-      "status": "doing",
+      "contributors": [
+        "skyworker"
+      ],
+      "status": "reviewing",
+      "reason": null,
       "createdAt": "2026-11-08T19:34:56.878Z",
-      "startCommit": "e129ed86b3e2e617be262fd7044a327071054816"
+      "startCommit": "e129ed86b3e2e617be262fd7044a327071054816",
+      "verifiedCommit": "652b340a9ed044906aca1671720bea1c65ef1230",
+      "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+      "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+      "submittedAt": "2026-11-08T19:59:14.383Z",
+      "risk": null,
+      "review": {
+        "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+        "owner": "reviewer-sky",
+        "status": "reviewing",
+        "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+        "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+        "createdAt": "2026-11-08T19:59:56.716Z"
+      },
+      "steps": [
+        {
+          "taskId": "T256",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "at": "2026-11-08T19:59:14.347Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:56:24.733Z",
+              "finishedAt": "2026-11-08T19:59:13.467Z"
+            }
+          ]
+        },
+        {
+          "taskId": "T258",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "at": "2026-11-08T19:59:14.347Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:56:24.733Z",
+              "finishedAt": "2026-11-08T19:59:13.467Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:56:24.733Z",
+          "finishedAt": "2026-11-08T19:59:13.467Z"
+        }
+      ]
+    },
+    {
+      "id": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "group": "local8h",
+      "taskId": "T259",
+      "tasks": [
+        "T259"
+      ],
+      "lane": null,
+      "owner": "copyworker",
+      "contributors": [
+        "copyworker"
+      ],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T19:44:16.658Z",
+      "startCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+      "verifiedCommit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+      "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+      "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+      "submittedAt": "2026-11-08T19:53:58.913Z",
+      "risk": null,
+      "review": {
+        "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+        "owner": "reviewer-copy",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T259 meets its acceptance. The six ko values match the recommended wording. They drop the subject or use 내/직접, as UI-62 allows, and read as natural 해요체. grep 당신 on ko.json finds nothing. Only those six ko keys change; en is byte-identical and key order is kept. A scratch paraglide regeneration matches packages/i18n/src/gen byte for byte (884 modules, empty diff -r). No test or SSOT pins the old or new text: the hint reaches the UI through m.* in ReviseControls (web and mobile), and the achievement strings through the static achievement-copy Record (ACH-36). Each string keeps its meaning and adds no claim. achievement_recall_200_body changes only its subject. The superlative was already in both locales, and it rests on a real mechanic: brightness is a read-time function of the last-recall anchor (RECALL-1). 내가 inside a 해요체 sentence reads as the reader's own view, not the app speaking (the app would say 제가). This matches the 내가 쓴 construction T254 already shipped. achievement_first_decoration_body moves from 'because you wanted' to 'as you wanted'. Both readings keep the user's agency, and nothing is overstated. The writing-flow hint renders under the 기억의 내용 field inside the writing-proposal anchor, so a new user sees it at tour step 4 (proposal), not step 3 (draft) as T259's goal says. It reads right there next to the caption 이름과 감정은 짐작이에요. 내 것이 아니면 고쳐 주세요. Its 'your own words, verbatim' claim still holds, because source_text is a verbatim diary passage (ENC-17).",
+        "findings": [],
+        "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+        "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+        "createdAt": "2026-11-08T19:55:10.342Z",
+        "finishedAt": "2026-11-08T19:58:14.196Z"
+      },
+      "steps": [
+        {
+          "taskId": "T259",
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "at": "2026-11-08T19:53:58.897Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:51:10.265Z",
+              "finishedAt": "2026-11-08T19:53:58.408Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:51:10.265Z",
+          "finishedAt": "2026-11-08T19:53:58.408Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -2084,7 +2374,9 @@
         },
         "push": null,
         "review": "all",
-        "taskScope": ["T225"]
+        "taskScope": [
+          "T225"
+        ]
       }
     },
     {
@@ -2111,10 +2403,14 @@
         "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
         "group": "local8h",
         "taskId": "T225",
-        "tasks": ["T225"],
+        "tasks": [
+          "T225"
+        ],
         "lane": null,
         "owner": "gatesworker",
-        "contributors": ["gatesworker"],
+        "contributors": [
+          "gatesworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:16:26.012Z",
         "startCommit": "99b9c433fcdbcf378b61f28d61d26a69d6c284f5"
@@ -2141,7 +2437,10 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226"]
+        "taskScope": [
+          "T225",
+          "T226"
+        ]
       }
     },
     {
@@ -2157,10 +2456,14 @@
         "id": "f0bf6557-49a7-42bb-8137-690b7d7aa830",
         "group": "local8h",
         "taskId": "T226",
-        "tasks": ["T226"],
+        "tasks": [
+          "T226"
+        ],
         "lane": null,
         "owner": "fieldworker",
-        "contributors": ["fieldworker"],
+        "contributors": [
+          "fieldworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:19:21.301Z",
         "startCommit": "6b21631d3f5e11e20db5800f39ee669c712125da"
@@ -2722,7 +3025,12 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228"
+        ]
       }
     },
     {
@@ -2738,10 +3046,14 @@
         "id": "888e659a-0758-4cc8-8be8-09838f685b7c",
         "group": "local8h",
         "taskId": "T227",
-        "tasks": ["T227"],
+        "tasks": [
+          "T227"
+        ],
         "lane": null,
         "owner": "checksworker",
-        "contributors": ["checksworker"],
+        "contributors": [
+          "checksworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T15:59:37.533Z",
         "startCommit": "864544d4a2eb68176891d49da259c44eb59d2a3e"
@@ -2833,7 +3145,14 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230"
+        ]
       }
     },
     {
@@ -2944,10 +3263,14 @@
         "id": "d41e8edb-3495-4b4a-9da8-3667a8f69217",
         "group": "local8h",
         "taskId": "T228",
-        "tasks": ["T228"],
+        "tasks": [
+          "T228"
+        ],
         "lane": null,
         "owner": "resourceworker",
-        "contributors": ["resourceworker"],
+        "contributors": [
+          "resourceworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:20.204Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -2979,10 +3302,14 @@
         "id": "3b5acfa0-f2e1-4cf3-8668-96e28877e8e7",
         "group": "local8h",
         "taskId": "T229",
-        "tasks": ["T229"],
+        "tasks": [
+          "T229"
+        ],
         "lane": null,
         "owner": "ratchetworker",
-        "contributors": ["ratchetworker"],
+        "contributors": [
+          "ratchetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:40:25.658Z",
         "startCommit": "b1db7b873653288f445cfacb50dcb7d6d944bf41"
@@ -3009,7 +3336,15 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231"
+        ]
       }
     },
     {
@@ -3172,10 +3507,14 @@
         "id": "9ffe019c-f5b9-4236-b3a7-baef8b6130ea",
         "group": "local8h",
         "taskId": "T231",
-        "tasks": ["T231"],
+        "tasks": [
+          "T231"
+        ],
         "lane": null,
         "owner": "collectionworker",
-        "contributors": ["collectionworker"],
+        "contributors": [
+          "collectionworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:50:25.131Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -3258,10 +3597,14 @@
         "id": "ef070033-58bc-48af-94bf-84637877b087",
         "group": "local8h",
         "taskId": "T230",
-        "tasks": ["T230"],
+        "tasks": [
+          "T230"
+        ],
         "lane": null,
         "owner": "replayworker",
-        "contributors": ["replayworker"],
+        "contributors": [
+          "replayworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T16:51:01.837Z",
         "startCommit": "769715d45ba3e11520a40f73fa4432391b7a1eca"
@@ -3828,7 +4171,16 @@
       "previousStatus": "active",
       "status": "active",
       "changes": {
-        "taskScope": ["T225", "T226", "T227", "T228", "T229", "T230", "T231", "T232"]
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232"
+        ]
       }
     },
     {
@@ -3844,10 +4196,14 @@
         "id": "2e4c11ab-64c0-44a9-b575-db1c07aea267",
         "group": "local8h",
         "taskId": "T232",
-        "tasks": ["T232"],
+        "tasks": [
+          "T232"
+        ],
         "lane": null,
         "owner": "latentworker",
-        "contributors": ["latentworker"],
+        "contributors": [
+          "latentworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T17:21:14.121Z",
         "startCommit": "f98f41e11bd6a309cefc570d6604d503ecb1bfbc"
@@ -4144,10 +4500,14 @@
         "id": "ba6204dc-7146-4d3d-b84b-57c9bc87841d",
         "group": "local8h",
         "taskId": "T233",
-        "tasks": ["T233"],
+        "tasks": [
+          "T233"
+        ],
         "lane": null,
         "owner": "dialogworker",
-        "contributors": ["dialogworker"],
+        "contributors": [
+          "dialogworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:38.752Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -4179,10 +4539,14 @@
         "id": "800decb7-b4ff-4fc0-b196-f7ffc8078387",
         "group": "local8h",
         "taskId": "T234",
-        "tasks": ["T234"],
+        "tasks": [
+          "T234"
+        ],
         "lane": null,
         "owner": "refocusworker",
-        "contributors": ["refocusworker"],
+        "contributors": [
+          "refocusworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:14:53.465Z",
         "startCommit": "d0b622193f9666483b065b2080b445323f8db6c6"
@@ -4533,10 +4897,14 @@
         "id": "a666c552-3a57-4484-933b-f1288868d0f2",
         "group": "local8h",
         "taskId": "T235",
-        "tasks": ["T235"],
+        "tasks": [
+          "T235"
+        ],
         "lane": null,
         "owner": "sheetworker",
-        "contributors": ["sheetworker"],
+        "contributors": [
+          "sheetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T18:43:20.470Z",
         "startCommit": "5644013cf8f7b1bb7cab1629c040ec146c44e62f"
@@ -4740,10 +5108,14 @@
         "id": "652bb260-f071-477b-92fd-1d87c29495fc",
         "group": "local8h",
         "taskId": "T236",
-        "tasks": ["T236"],
+        "tasks": [
+          "T236"
+        ],
         "lane": null,
         "owner": "withdrawalworker",
-        "contributors": ["withdrawalworker"],
+        "contributors": [
+          "withdrawalworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:06:12.161Z",
         "startCommit": "5f73743831ec03a6a43fde570fbb3a7300f168aa"
@@ -4800,10 +5172,14 @@
         "id": "bd953359-d64b-4e9a-9b3c-d73be8d2bb94",
         "group": "local8h",
         "taskId": "T237",
-        "tasks": ["T237"],
+        "tasks": [
+          "T237"
+        ],
         "lane": null,
         "owner": "mapperworker",
-        "contributors": ["mapperworker"],
+        "contributors": [
+          "mapperworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:20:26.074Z",
         "startCommit": "b50f2896abc1d171bc79b75b4aecc9220d7aa661"
@@ -5162,10 +5538,14 @@
         "id": "c2aee843-775e-4aa3-be71-a54a8bf0f530",
         "group": "local8h",
         "taskId": "T238",
-        "tasks": ["T238"],
+        "tasks": [
+          "T238"
+        ],
         "lane": null,
         "owner": "assetworker",
-        "contributors": ["assetworker"],
+        "contributors": [
+          "assetworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-07T19:58:43.759Z",
         "startCommit": "6be0e30690b1ef878be68ff2db5892625dfb811e"
@@ -5350,7 +5730,9 @@
             }
           ],
           "at": "2026-11-07T21:12:08.978Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -5773,10 +6155,14 @@
         "id": "092ef632-399a-4cdb-a9a1-dcd90b52c6c6",
         "group": "local8h",
         "taskId": "T239",
-        "tasks": ["T239"],
+        "tasks": [
+          "T239"
+        ],
         "lane": null,
         "owner": "profile-local10",
-        "contributors": ["profile-local10"],
+        "contributors": [
+          "profile-local10"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T00:04:25.805Z",
         "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4"
@@ -5808,10 +6194,14 @@
         "id": "310f5024-5656-4a24-b1ee-c6eff7554186",
         "group": "local8h",
         "taskId": "T240",
-        "tasks": ["T240"],
+        "tasks": [
+          "T240"
+        ],
         "lane": null,
         "owner": "private-local10",
-        "contributors": ["private-local10"],
+        "contributors": [
+          "private-local10"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T00:04:27.142Z",
         "startCommit": "3de4dbc6d2d3e8b118a5e4bbe29467fa7e3f08f4"
@@ -6006,10 +6396,14 @@
         "id": "f1f5db02-4b32-4735-919f-8c108cfd71a4",
         "group": "local8h",
         "taskId": "T239",
-        "tasks": ["T239"],
+        "tasks": [
+          "T239"
+        ],
         "lane": null,
         "owner": "profile-local10-v2",
-        "contributors": ["profile-local10-v2"],
+        "contributors": [
+          "profile-local10-v2"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T00:18:25.840Z",
         "startCommit": "e4c7e1a17a191479f70950850f47e2bc617645d0"
@@ -6244,7 +6638,9 @@
             }
           ],
           "at": "2026-11-08T00:33:47.908Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -6371,10 +6767,14 @@
         "id": "d9dba66e-801f-41fb-8377-31e4d884931e",
         "group": "local8h",
         "taskId": "T241",
-        "tasks": ["T241"],
+        "tasks": [
+          "T241"
+        ],
         "lane": null,
         "owner": "formatter-local11",
-        "contributors": ["formatter-local11"],
+        "contributors": [
+          "formatter-local11"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T12:59:20.827Z",
         "startCommit": "3d213fd1a143160f84bfa1aec6ee3a42b5600bf0"
@@ -6571,7 +6971,9 @@
             }
           ],
           "at": "2026-11-08T13:16:15.418Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -6645,10 +7047,14 @@
         "id": "4db0a73a-3ff0-469b-aec0-9db7caaf8859",
         "group": "local8h",
         "taskId": "T242",
-        "tasks": ["T242"],
+        "tasks": [
+          "T242"
+        ],
         "lane": null,
         "owner": "selector-local12",
-        "contributors": ["selector-local12"],
+        "contributors": [
+          "selector-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T14:38:34.314Z",
         "startCommit": "5fc527cc69924e9883f922d4700180f9d9aea969"
@@ -6712,10 +7118,14 @@
         "id": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
         "group": "local8h",
         "taskId": "T243",
-        "tasks": ["T243"],
+        "tasks": [
+          "T243"
+        ],
         "lane": null,
         "owner": "token-local12",
-        "contributors": ["token-local12"],
+        "contributors": [
+          "token-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T14:44:31.481Z",
         "startCommit": "437f6233895310179151568611490673a7d502f5"
@@ -6834,10 +7244,14 @@
         "id": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
         "group": "local8h",
         "taskId": "T244",
-        "tasks": ["T244"],
+        "tasks": [
+          "T244"
+        ],
         "lane": null,
         "owner": "launch-local12",
-        "contributors": ["launch-local12"],
+        "contributors": [
+          "launch-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T14:50:29.713Z",
         "startCommit": "437f6233895310179151568611490673a7d502f5"
@@ -7271,10 +7685,14 @@
         "id": "79a988c3-69fd-494b-a6fb-a4636668d6c1",
         "group": "local8h",
         "taskId": "T245",
-        "tasks": ["T245"],
+        "tasks": [
+          "T245"
+        ],
         "lane": null,
         "owner": "dwell-local12",
-        "contributors": ["dwell-local12"],
+        "contributors": [
+          "dwell-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T15:20:11.742Z",
         "startCommit": "45c8e8f1e6d53f10cd0d24c07a39292641967664"
@@ -7598,10 +8016,14 @@
         "id": "c2599db6-f9b1-4c0d-b4cc-39634270bda6",
         "group": "local8h",
         "taskId": "T246",
-        "tasks": ["T246"],
+        "tasks": [
+          "T246"
+        ],
         "lane": null,
         "owner": "anchor-local12",
-        "contributors": ["anchor-local12"],
+        "contributors": [
+          "anchor-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T15:49:08.404Z",
         "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c"
@@ -7633,10 +8055,14 @@
         "id": "2224f760-ffb6-458e-a3d0-d890ba69b3b1",
         "group": "local8h",
         "taskId": "T247",
-        "tasks": ["T247"],
+        "tasks": [
+          "T247"
+        ],
         "lane": null,
         "owner": "deepseek-local12",
-        "contributors": ["deepseek-local12"],
+        "contributors": [
+          "deepseek-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T15:49:14.647Z",
         "startCommit": "ad297acbf5121199e45f437d6145ced8ef6bda7c"
@@ -8027,10 +8453,14 @@
         "id": "c123ab3c-8461-47d9-9ffb-791d8f152fa9",
         "group": "local8h",
         "taskId": "T248",
-        "tasks": ["T248"],
+        "tasks": [
+          "T248"
+        ],
         "lane": null,
         "owner": "select-local12",
-        "contributors": ["select-local12"],
+        "contributors": [
+          "select-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T16:19:53.140Z",
         "startCommit": "228bab4af0fa4a84794fd987f62f1d08cefd073f"
@@ -8296,7 +8726,9 @@
             }
           ],
           "at": "2026-11-08T16:48:55.318Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -8350,10 +8782,14 @@
         "id": "e22d5672-cb75-4fac-83f2-9b754a0e9db2",
         "group": "local8h",
         "taskId": "T249",
-        "tasks": ["T249"],
+        "tasks": [
+          "T249"
+        ],
         "lane": null,
         "owner": "extractor-local12",
-        "contributors": ["extractor-local12"],
+        "contributors": [
+          "extractor-local12"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T17:05:06.457Z",
         "startCommit": "f9ae78c4df21345fd69b021dcfad34d2815ac2d9"
@@ -8565,7 +9001,9 @@
             }
           ],
           "at": "2026-11-08T17:28:18.216Z",
-          "excluded": ["T222"]
+          "excluded": [
+            "T222"
+          ]
         }
       }
     },
@@ -8625,10 +9063,14 @@
         "id": "c234bf85-b8b3-4485-bcce-5678dadb3647",
         "group": "local8h",
         "taskId": "T250",
-        "tasks": ["T250"],
+        "tasks": [
+          "T250"
+        ],
         "lane": null,
         "owner": "skyworker",
-        "contributors": ["skyworker"],
+        "contributors": [
+          "skyworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T18:04:36.739Z",
         "startCommit": "baaaec58646399cb3411a76ead38d8dbbc75a141"
@@ -8654,17 +9096,27 @@
       "group": "local8h",
       "attemptId": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": null,
       "status": "preparing",
       "changes": {
         "id": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
         "group": "local8h",
         "taskId": "T251",
-        "tasks": ["T251", "T252", "T253"],
+        "tasks": [
+          "T251",
+          "T252",
+          "T253"
+        ],
         "lane": "demo-guide",
         "owner": "guideworker",
-        "contributors": ["guideworker"],
+        "contributors": [
+          "guideworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T18:04:46.079Z",
         "startCommit": "baaaec58646399cb3411a76ead38d8dbbc75a141"
@@ -8677,7 +9129,11 @@
       "group": "local8h",
       "attemptId": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "preparing",
       "status": "doing",
       "changes": {
@@ -8733,7 +9189,11 @@
       "group": "local8h",
       "attemptId": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "doing",
       "status": "released",
       "changes": {
@@ -8749,7 +9209,11 @@
       "group": "local8h",
       "attemptId": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "released",
       "status": "cleaning",
       "changes": {
@@ -8763,7 +9227,11 @@
       "group": "local8h",
       "attemptId": "a7c7b07a-5d25-4b9e-b032-b4d7aca924ba",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "cleaning",
       "status": "released",
       "changes": {
@@ -8784,10 +9252,14 @@
         "id": "716026c4-51bf-4cb3-b693-635b886b37a6",
         "group": "local8h",
         "taskId": "T250",
-        "tasks": ["T250"],
+        "tasks": [
+          "T250"
+        ],
         "lane": null,
         "owner": "skyworker",
-        "contributors": ["skyworker"],
+        "contributors": [
+          "skyworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T18:07:03.098Z",
         "startCommit": "8a22355ead70b838a64bbaa366f594d7c5c82979"
@@ -8813,17 +9285,27 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": null,
       "status": "preparing",
       "changes": {
         "id": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
         "group": "local8h",
         "taskId": "T251",
-        "tasks": ["T251", "T252", "T253"],
+        "tasks": [
+          "T251",
+          "T252",
+          "T253"
+        ],
         "lane": "demo-guide",
         "owner": "guideworker",
-        "contributors": ["guideworker"],
+        "contributors": [
+          "guideworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T18:07:09.499Z",
         "startCommit": "8a22355ead70b838a64bbaa366f594d7c5c82979"
@@ -8836,7 +9318,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "preparing",
       "status": "doing",
       "changes": {
@@ -8885,10 +9371,14 @@
         "id": "7b0d3578-e977-4e00-b9ed-851a2cfd5f7e",
         "group": "local8h",
         "taskId": "T250",
-        "tasks": ["T250"],
+        "tasks": [
+          "T250"
+        ],
         "lane": null,
         "owner": "skyworker",
-        "contributors": ["skyworker"],
+        "contributors": [
+          "skyworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T18:37:47.769Z",
         "startCommit": "0cc0b63bdbdec4fe4b009229077d7248c1bfb6dc"
@@ -8914,7 +9404,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "doing",
       "status": "verifying",
       "changes": {
@@ -8928,7 +9422,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "verifying",
       "status": "blocked",
       "changes": {
@@ -8943,7 +9441,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "blocked",
       "status": "blocked",
       "changes": {
@@ -8957,7 +9459,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "blocked",
       "status": "doing",
       "changes": {
@@ -8972,7 +9478,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T251",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "doing",
       "status": "verifying",
       "changes": {
@@ -9030,7 +9540,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "verifying",
       "status": "ready",
       "changes": {
@@ -9095,17 +9609,25 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T254",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": null,
       "status": "preparing",
       "changes": {
         "id": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
         "group": "local8h",
         "taskId": "T254",
-        "tasks": ["T254", "T255"],
+        "tasks": [
+          "T254",
+          "T255"
+        ],
         "lane": "tutorial-copy",
         "owner": "copyworker",
-        "contributors": ["copyworker"],
+        "contributors": [
+          "copyworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T19:01:57.743Z",
         "startCommit": "522ba6e71418738a4932f6a6e89ec9f0c09c707e"
@@ -9118,7 +9640,10 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T254",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": "preparing",
       "status": "doing",
       "changes": {
@@ -9145,7 +9670,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "ready",
       "status": "reviewing",
       "changes": {
@@ -9208,7 +9737,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "reviewing",
       "status": "changes_requested",
       "changes": {
@@ -9274,7 +9807,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "changes_requested",
       "status": "doing",
       "changes": {
@@ -9368,7 +9905,10 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T254",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": "doing",
       "status": "verifying",
       "changes": {
@@ -9483,7 +10023,10 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T255",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": "verifying",
       "status": "ready",
       "changes": {
@@ -9550,7 +10093,10 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T255",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": "ready",
       "status": "reviewing",
       "changes": {
@@ -9654,17 +10200,25 @@
       "group": "local8h",
       "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
       "taskId": "T256",
-      "tasks": ["T256", "T258"],
+      "tasks": [
+        "T256",
+        "T258"
+      ],
       "previousStatus": null,
       "status": "preparing",
       "changes": {
         "id": "35cf742e-541e-468a-800b-14b2634d1211",
         "group": "local8h",
         "taskId": "T256",
-        "tasks": ["T256", "T258"],
+        "tasks": [
+          "T256",
+          "T258"
+        ],
         "lane": "landing-scene",
         "owner": "skyworker",
-        "contributors": ["skyworker"],
+        "contributors": [
+          "skyworker"
+        ],
         "status": "preparing",
         "createdAt": "2026-11-08T19:34:56.878Z",
         "startCommit": "e129ed86b3e2e617be262fd7044a327071054816"
@@ -9677,7 +10231,10 @@
       "group": "local8h",
       "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
       "taskId": "T256",
-      "tasks": ["T256", "T258"],
+      "tasks": [
+        "T256",
+        "T258"
+      ],
       "previousStatus": "preparing",
       "status": "doing",
       "changes": {
@@ -9691,7 +10248,10 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T255",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
       "previousStatus": "reviewing",
       "status": "approved",
       "changes": {
@@ -9729,7 +10289,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "doing",
       "status": "verifying",
       "changes": {
@@ -9743,7 +10307,11 @@
       "group": "local8h",
       "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
       "taskId": "T253",
-      "tasks": ["T251", "T252", "T253"],
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
       "previousStatus": "verifying",
       "status": "blocked",
       "changes": {
@@ -9758,7 +10326,614 @@
       "group": "local8h",
       "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
       "taskId": "T255",
-      "tasks": ["T254", "T255"],
+      "tasks": [
+        "T254",
+        "T255"
+      ],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 389,
+      "at": "2026-11-08T19:40:07.814Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "blocked",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 390,
+      "at": "2026-11-08T19:41:20.970Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": [
+        "T254",
+        "T255"
+      ],
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:37:54.158Z",
+            "finishedAt": "2026-11-08T19:41:20.755Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 391,
+      "at": "2026-11-08T19:41:21.171Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": [
+        "T254",
+        "T255"
+      ],
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "d39274d0ff1819ea136caf588cda02833d78110c",
+        "integratedAt": "2026-11-08T19:41:21.171Z"
+      }
+    },
+    {
+      "sequence": 392,
+      "at": "2026-11-08T19:43:15.433Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submittedBase": "d39274d0ff1819ea136caf588cda02833d78110c",
+        "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+        "submittedAt": "2026-11-08T19:43:15.433Z",
+        "steps": [
+          {
+            "taskId": "T251",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T252",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T253",
+            "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+            "at": "2026-11-08T19:43:15.405Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:40:09.067Z",
+                "finishedAt": "2026-11-08T19:43:14.630Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:40:09.067Z",
+            "finishedAt": "2026-11-08T19:43:14.630Z"
+          }
+        ],
+        "verifiedCommit": "529fbe9a9767454da03d0024e9feb35aeb2731ed"
+      }
+    },
+    {
+      "sequence": 393,
+      "at": "2026-11-08T19:43:51.193Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259"
+        ]
+      }
+    },
+    {
+      "sequence": 394,
+      "at": "2026-11-08T19:44:16.658Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+        "group": "local8h",
+        "taskId": "T259",
+        "tasks": [
+          "T259"
+        ],
+        "lane": null,
+        "owner": "copyworker",
+        "contributors": [
+          "copyworker"
+        ],
+        "status": "preparing",
+        "createdAt": "2026-11-08T19:44:16.658Z",
+        "startCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33"
+      }
+    },
+    {
+      "sequence": 395,
+      "at": "2026-11-08T19:44:17.938Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z"
+        }
+      }
+    },
+    {
+      "sequence": 396,
+      "at": "2026-11-08T19:44:20.858Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 397,
+      "at": "2026-11-08T19:51:09.840Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 398,
+      "at": "2026-11-08T19:53:58.913Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+        "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+        "submittedAt": "2026-11-08T19:53:58.913Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T259",
+            "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+            "at": "2026-11-08T19:53:58.897Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:51:10.265Z",
+                "finishedAt": "2026-11-08T19:53:58.408Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:51:10.265Z",
+            "finishedAt": "2026-11-08T19:53:58.408Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 399,
+      "at": "2026-11-08T19:55:09.991Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "reviewing",
+      "status": "changes_requested",
+      "changes": {
+        "status": "changes_requested",
+        "reason": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+        "review": {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+              "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+            },
+            {
+              "priority": "P3",
+              "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+              "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+            }
+          ],
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z",
+          "finishedAt": "2026-11-08T19:55:09.991Z"
+        }
+      }
+    },
+    {
+      "sequence": 400,
+      "at": "2026-11-08T19:55:10.342Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+          "owner": "reviewer-copy",
+          "status": "reviewing",
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+          "createdAt": "2026-11-08T19:55:10.342Z"
+        }
+      }
+    },
+    {
+      "sequence": 401,
+      "at": "2026-11-08T19:56:13.730Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "changes_requested",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "verifiedCommit": null,
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "ad59c7c9-988d-45c6-bef7-86d36940fe13",
+            "owner": "reviewer-guide",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "T251 (way-out ring plus page remeasure token) and T253 (UI-6 caption recipe, iOS hangul-word) are correct and well tested. T252 has a P2: the renderer caps the top inset at 0.4 of the viewport height, but the eyeline band always ends below that, so the shipped frame never starts below the band. The 390x844 overview stays clear only because the small fixture cluster leaves slack, and the result and comments describe a frame the code does not produce. Phone landscape is a limit to record: at 844x390 the guide picks edge, not eyeline.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:37-50, apps/web/src/pages/demo/ui/DemoUniverseScene.tsx:94-111 vs packages/3d-renderer/src/layers/scene-framing.ts:56",
+                "message": "fitSceneBounds computes yMax = 1 - 2*min(insets.top, height*0.4)/height, so it caps any top inset at 0.4*H. The eyeline band's lower edge is always at least CAPTION_EYELINE (0.42)*H + band/2, so every inset framingTopInset raises becomes exactly 0.4*H, inside the band. The measured band height then never changes the shipped frame; only its >0 gate matters. Reproduced at 390x844 beat 5: live band 313-395, computed inset 408, effective frame top 337.6, which is 58px inside the band. The cluster centre sits at ~527 = (337.6+716)/2, matching the cap, not (408+716)/2 = 562 (review-guide/shots/r-390-beat5-outline.png; the worker's t252-after shots show the same). Beats 4/5/7 pass only because the overview's minDistance keeps the small fixture cluster inside the region. Nothing guards a draw whose bounds fill it, for example a high gist lift on beat 7, and scene sets are random per load. Several things describe a frame the code does not produce: the framingTopInset doc ('the frame starts one gap below the band's lower edge'), the test 'starts a narrow eyeline frame one gap below the caption band', the result outcome, and the UI-18 ledger ('~295px-tall region'; the actual region is ~378px). Required: make the composed frame honour the inset. SceneFraming's only consumer is the demo (UniverseFraming -> DemoUniverseScene), so lifting the top cap for this case needs coordinator scope approval for scene-framing.ts. Add a test that composes framingTopInset with fitSceneBounds at 390x844 and asserts that the fitted bounds' projected top is at or below band bottom + CAPTION_SURFACE_GAP_PX. If the cap stays instead, correct the comments, test name, result and ledger to the effective behaviour (top = 0.4*H once a band is measured), and drop the band measurement that cannot affect the output."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 result limits (phone landscape)",
+                "message": "Record this as a limit, not a T252 defect, because no rule exists for it. (1) 844x390: the width is at least SHEET_BREAKPOINT.px (48rem = 768px), so the guide's default room is edge. guideCaptionRoom correctly returns 'edge' and T252 leaves the frame alone, as designed. The scout's overlap is the edge band pushed to mid-screen by clearCaptionObstacles: the time row and the CTA row block the top, and the write control or ring blocks the bottom (scout-fallback D-land844: caption [0,164,844,82] at beat 4, [0,216,844,82] at beat 5). That is an ONB-12 edge-room matter, not the eyeline predicate. (2) Landscape under 768px wide, reproduced at 667x375 beat 4: the predicate correctly returns eyeline, yet the whole cluster sits under the caption (review-guide/shots/r-667-beat4-caption-outline.png). Three causes: the guide's obstacle clearing moved the band from the eyeline (116-198) to 164-246, which the page does not mirror; the 0.4*H cap puts the frame at 150-247; and even an honoured inset (211) leaves only ~36px above the 128px bottom inset. This is not a regression: the base frame (96-247) is covered the same way. Fixing it needs an owner rule for short viewports (compare the parked F16/F17). The current limit names only the give-way to edge, not obstacle displacement or landscape."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 apps/web/src/pages/demo/ui/DemoUniverseScene.tsx:96-111, apps/web/src/pages/demo/ui/DemoPage.tsx:474",
+                "message": "viewportHeight comes from window.innerHeight inside a useMemo whose deps track neither viewport size. narrow reads window.innerWidth during render, not the guide's tracked viewport, and stays fresh only because the guide's resize remeasure now re-renders the page. A resize that changes neither the room nor the band height keeps the old height. The 0.4*H cap hides this today. It matters once the P2 fix makes the inset take effect, so derive both from a tracked viewport or the canvas size."
+              }
+            ],
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "baseCommit": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
+            "submissionId": "beded1ad-e775-445d-9ef9-86d16a541950",
+            "createdAt": "2026-11-08T19:03:06.979Z",
+            "finishedAt": "2026-11-08T19:17:22.384Z",
+            "invalidatedAt": "2026-11-08T19:18:56.033Z",
+            "invalidationReason": "correction assigned"
+          },
+          {
+            "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+            "owner": "reviewer-guide",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+                "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+                "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+              }
+            ],
+            "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+            "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+            "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+            "createdAt": "2026-11-08T19:44:17.938Z",
+            "finishedAt": "2026-11-08T19:55:09.991Z",
+            "invalidatedAt": "2026-11-08T19:56:13.730Z",
+            "invalidationReason": "correction assigned"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 402,
+      "at": "2026-11-08T19:56:23.947Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T256",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 403,
+      "at": "2026-11-08T19:58:14.196Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+          "owner": "reviewer-copy",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T259 meets its acceptance. The six ko values match the recommended wording. They drop the subject or use 내/직접, as UI-62 allows, and read as natural 해요체. grep 당신 on ko.json finds nothing. Only those six ko keys change; en is byte-identical and key order is kept. A scratch paraglide regeneration matches packages/i18n/src/gen byte for byte (884 modules, empty diff -r). No test or SSOT pins the old or new text: the hint reaches the UI through m.* in ReviseControls (web and mobile), and the achievement strings through the static achievement-copy Record (ACH-36). Each string keeps its meaning and adds no claim. achievement_recall_200_body changes only its subject. The superlative was already in both locales, and it rests on a real mechanic: brightness is a read-time function of the last-recall anchor (RECALL-1). 내가 inside a 해요체 sentence reads as the reader's own view, not the app speaking (the app would say 제가). This matches the 내가 쓴 construction T254 already shipped. achievement_first_decoration_body moves from 'because you wanted' to 'as you wanted'. Both readings keep the user's agency, and nothing is overstated. The writing-flow hint renders under the 기억의 내용 field inside the writing-proposal anchor, so a new user sees it at tour step 4 (proposal), not step 3 (draft) as T259's goal says. It reads right there next to the caption 이름과 감정은 짐작이에요. 내 것이 아니면 고쳐 주세요. Its 'your own words, verbatim' claim still holds, because source_text is a verbatim diary passage (ENC-17).",
+          "findings": [],
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+          "createdAt": "2026-11-08T19:55:10.342Z",
+          "finishedAt": "2026-11-08T19:58:14.196Z"
+        }
+      }
+    },
+    {
+      "sequence": 404,
+      "at": "2026-11-08T19:59:14.383Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "taskId": "T258",
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "652b340a9ed044906aca1671720bea1c65ef1230",
+        "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+        "submittedAt": "2026-11-08T19:59:14.383Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T256",
+            "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+            "at": "2026-11-08T19:59:14.347Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:56:24.733Z",
+                "finishedAt": "2026-11-08T19:59:13.467Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T258",
+            "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+            "at": "2026-11-08T19:59:14.347Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:56:24.733Z",
+                "finishedAt": "2026-11-08T19:59:13.467Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:56:24.733Z",
+            "finishedAt": "2026-11-08T19:59:13.467Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 405,
+      "at": "2026-11-08T19:59:56.716Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+          "createdAt": "2026-11-08T19:59:56.716Z"
+        }
+      }
+    },
+    {
+      "sequence": 406,
+      "at": "2026-11-08T19:59:56.750Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 407,
+      "at": "2026-11-08T19:59:56.917Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "미커밋·미추적 변경이 있습니다. 해당 작업을 먼저 정리하세요."
+      }
+    },
+    {
+      "sequence": 408,
+      "at": "2026-11-08T20:00:14.216Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
