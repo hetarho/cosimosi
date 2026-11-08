@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 
 import { reportSequenceSignal, type OnboardingAnchor } from '@cosimosi/onboarding'
+import type { SequenceRect } from '@cosimosi/sequence'
+import { useSequenceAnchorRegistration } from '@cosimosi/sequence/react'
 import { Alert, Button, Dialog, Skeleton } from '@cosimosi/ui'
 import type { WritingFlowStatus } from '@cosimosi/universe'
 import { useWritingFlowController } from '@cosimosi/universe/react/flows'
@@ -11,6 +13,7 @@ import { ReviseControls } from '../../../features/revise-split/index.ts'
 import { LaunchButton } from '../../../features/launch-stars/index.ts'
 import { WriteDiaryFields } from '../../../features/write-diary/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
+import { awaitArrival, measuredBox, type MeasuredBox } from '../../../shared/lib/measure-arrival.ts'
 import { useErrorToast } from '@cosimosi/errors/react'
 
 function errorMessage(kind: string | null): string | null {
@@ -37,6 +40,52 @@ function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders
       ) : null}
     </div>
   )
+}
+
+// The draft step's anchor. ONB-17 rings the body, the date and 별 쪼개기 together, but the Dialog lays
+// them out apart: the fields in its body, the split action in its footer slot. `SequenceAnchor`
+// measures one element, so this registers through the same seam with a measure that unions the draft
+// column and the split row, each read once its arrival settles. It mounts only with the draft, so
+// its registration is what re-measures a step that began before the sheet arrived.
+function DraftAnchor({
+  split,
+  children,
+}: {
+  split: RefObject<HTMLElement | null>
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  // The registration reads the handle through a ref, so a fresh closure per render churns nothing.
+  const measure = async (): Promise<SequenceRect | null> => {
+    const parts = [ref.current?.firstElementChild, split.current].filter(
+      (node): node is Element => node != null,
+    )
+    await Promise.all(parts.map(awaitArrival))
+    return unionBox(
+      parts
+        .filter((node) => node.isConnected)
+        .map(measuredBox)
+        .filter((box): box is MeasuredBox => box !== null),
+    )
+  }
+
+  useSequenceAnchorRegistration('writing-draft' satisfies OnboardingAnchor, measure)
+
+  return (
+    <div ref={ref} data-sequence-anchor="writing-draft" style={{ display: 'contents' }}>
+      {children}
+    </div>
+  )
+}
+
+function unionBox(boxes: readonly MeasuredBox[]): SequenceRect | null {
+  if (boxes.length === 0) return null
+  const left = Math.min(...boxes.map((box) => box.x))
+  const top = Math.min(...boxes.map((box) => box.y))
+  const right = Math.max(...boxes.map((box) => box.x + box.width))
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height))
+  return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
 // widgets/writing-flow: the "일기 쓰기" affordance + the modal that composes the four features by
@@ -74,6 +123,7 @@ export function WritingFlowSheet() {
     pastDated,
   } = useWritingFlowController({ onError: useErrorToast() })
   const error = errorMessage(errorKind)
+  const splitRow = useRef<HTMLDivElement | null>(null)
   // What an onboarding tour hears: the sheet's real phase changes, never its intentions. Reporting from
   // the promise arms would have advanced a run on a split whose RPC resolved after the sheet was closed
   // — the machine ignores `SPLIT_OK` in `idle`, so the flow would have stayed put while the tour walked
@@ -112,7 +162,7 @@ export function WritingFlowSheet() {
         closeLabel={m.writing_flow_close()}
         footer={
           status === 'writing' ? (
-            <div className="flex justify-end">
+            <div ref={splitRow} className="flex justify-end">
               <Button color="primary" disabled={body.trim().length === 0} onClick={runSplit}>
                 {m.writing_flow_split_action()}
               </Button>
@@ -136,11 +186,10 @@ export function WritingFlowSheet() {
           {error ? <Alert variant="danger">{error}</Alert> : null}
 
           {status === 'writing' ? (
-            // The anchor wraps ONE element rather than the three loose children it used to have,
-            // because `SequenceAnchor` renders `display: contents` and measures its first child — a
-            // fragment would put the ring around the body field alone. The inner column repeats the
-            // panel's own gap, so the rhythm is unchanged (§4).
-            <SequenceAnchor id={'writing-draft' satisfies OnboardingAnchor}>
+            // The anchor wraps ONE element, because the wrapper renders `display: contents` and
+            // measures its first child — a fragment would put the ring around the body field alone.
+            // The inner column repeats the panel's own gap, so the rhythm is unchanged (§4).
+            <DraftAnchor split={splitRow}>
               <div className="flex flex-col gap-5">
                 <WriteDiaryFields />
                 {body.trim().length === 0 ? (
@@ -149,7 +198,7 @@ export function WritingFlowSheet() {
                   </p>
                 ) : null}
               </div>
-            </SequenceAnchor>
+            </DraftAnchor>
           ) : null}
 
           {status === 'splitting' ? (
