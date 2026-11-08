@@ -111,7 +111,7 @@
   "mood_color_onboarding_title": "감정마다 하나의 색",
   "mood_color_onboarding_body": "열세 감정이 한 하늘에서 기다려요. 별을 눌러 마음이 알아보는 색을 건네 주세요.",
   "mood_color_onboarding_skip": "나머지는 추천값으로 진행",
-  "universe_first_run_welcome": "아직 비어 있어요. 첫 일기를 적으면, 여기에 별 하나가 태어납니다.",
+  "universe_first_run_welcome": "아직 비어 있어요. 첫 일기를 적으면 여기에 별 하나가 태어나요.",
   "test_harness_title": "테스트 하네스",
   "test_harness_description": "Phase 1 seam과 이후 headless unit을 확인하는 임시 검증 패널입니다.",
   "test_harness_route_badge": "/test",

@@ -159,7 +159,12 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
             </div>
           </div>
         </header>
-        <div className="pointer-events-auto mx-auto flex flex-col items-center gap-3 pb-2">
+        {/* The scene's footer, marked the way the demo marks its own, so the sequence guide keeps its
+            caption above the first-run welcome and the write control instead of landing on them. */}
+        <div
+          data-scene-footer=""
+          className="pointer-events-auto mx-auto flex flex-col items-center gap-3 pb-2"
+        >
           {firstRun ? (
             <p className="max-w-sm text-center text-sm text-text-muted">
               {m.universe_first_run_welcome()}
