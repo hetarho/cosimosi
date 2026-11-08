@@ -105,3 +105,9 @@
     - Recording it in DEMO-30 is recommended.
   - Comparison sheets: `proto-demo/shots/sheet-f7-*.png` and `sheet-f10-desktop.png`.
 - T250's first attempt noted that LOVE (crimson) and STRESS (magenta) read alike after tonemapping on the sky. It has no home yet; this is a palette/finish question for the owner.
+- Copy prototypes (`proto-copy/`, throwaway, after publication):
+  - F9: "여기는 지어낸 우주예요. 내 우주는 오른쪽 위에서 빈 채로 시작해요." keeps both honesty points and reads in 2.8s.
+  - F30: the arrival line works, but on the skip path it covers the time buttons while the diary sheet is still open, so it must wait for the sheet to close.
+  - F31: the finish caption wraps mid-phrase on desktop too; a shorter variant is drafted.
+  - F40: "다시 떠올리지 않은 별은 조금씩 흐려져요. 별을 눌러 회고할 수 있어요." is more precise than the first draft.
+  - Each option is a patch next to `sheet-F9/F30/F31/F40.png`.
