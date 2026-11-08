@@ -20,6 +20,7 @@
 | local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-07T23:54Z | - |
 
 ## inbox
+- 261108 decided T239: preserve required UI duplication ceiling1085; after stopped/released four-file attempt, approve existing client-cache provider/index common awaited invalidator and fresh six-path assignment under unchanged product contracts/deadline; native placement audit75127f8f, expanded checks and submitted-code review required
 - 261108 decided T239 T240: explicit until10:00 local continuation adopts independently audited actual profile-cache and private-name RPC/log failures; preserve existing contracts, old inconclusive evidence and exact touches, cap workers20minutes, require separate native reviews and one new final gate/source publication
 - 261108 decided -: user extends self-improve-local until2026-11-08T01:00Z/10:00KST; currentmain36dad042 is clean and prior14units complete. Root may adopt bounded existing-contract fixes after controlled evidence, reuse local8h history with explicit new IDs, reserve independent reviews/final gate/CI, and publish source once this round under existing cfg. See reports/261108-local10.
 - 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no repair task/code/rerun from that campaign, preserve criteria/raw evidence and require separate mutation-lifetime calibration
@@ -157,4 +158,3 @@
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
 - 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
-- 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
