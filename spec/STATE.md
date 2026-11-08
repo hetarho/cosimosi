@@ -167,6 +167,7 @@
 | T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
+| T260 | Landing scene tests pin what they claim and stay fast | ARCH MKT VIS | T258 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -177,6 +178,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 lane landing-scene (T256 T258) reviewed 4dc258d3 and integrated bc281117; T259 reviewed 1701a333 and integrated 2e1d2e54; create-task F34 → T260
 - 261108 T256 T258 integrated
 - 261108 T259 integrated
 - 261109 local13 lane tutorial-copy (T254 T255) independently reviewed 82167b51 and integrated d39274d0; create-task F27 → T259, F28 parked
