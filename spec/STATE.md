@@ -17,9 +17,10 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T16:13Z | - |
+| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T17:40Z | - |
 
 ## inbox
+- 261109 decided -: direct self-improve-local six-hour invocation starts local13 at 2026-11-08T17:39Z until 23:39Z (Nov9 08:39 KST) as continuous cycles. Focus: how well the landing page and tutorial convey the product through 3D UX/UI. Root adopts only fixes under existing SSOT/UI rules; new product rules are parked as option packets for the owner, see reports/261109-local13
 - 261109 decided T241 T249: finalnine pnpmcheck PASSESd2cba8c0/254.882s,25/25scope complete; F33actualgreen6/6, owned24workspaces/DBvolumecleaned anduserPGpreserved; singleconfiguredsourcepush/exactCI+autodeploy/awakeend remainpending
 - 261109 decided T241 T249: nine total improvements/eight resumed now independently reviewed/integrated,25/25explicit scope complete; exact15source matches, new finalgate/main CI+configuredautodeploy/resourcecloseout pending; corrected4activehourdeadline17:35:57Z
 - 261109 decided OBS-7 ERR-6 T249: sole actual SDK/RPC proof confirms generated mood/type values in causes/logs,2failures/4controls with19hardcontrols and9RPC/8vendor counts; adopt only fixed extractor messages/twofiles preserving ordinaryerrors/cache/wire/normalization, require precommitconditional DBgate/independentreview/NEWfullgate; T222excluded
@@ -155,6 +156,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 start: six-hour self-improve-local on landing/tutorial 3D UX, local12 row closed after its deadline passed with no live process
 - 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
 - 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
 - 261108 T249 integrated
