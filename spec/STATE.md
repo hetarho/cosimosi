@@ -14,7 +14,15 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
+## active
+| tag | host | mode | since | at | doing |
+|---|---|---|---|---|---|
+| local11 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T12:55Z | 2026-11-08T12:55Z | - |
+
 ## inbox
+- 261108 decided ARCH-46 T241: actual unchanged Docker fmt shell falsely succeeds on real syntax-error fixture → adopt bounded two-file failure propagation under local11 invocation (alt: retain weaker Docker gate); preserve all checks and require hermetic real-shell negatives, independent review and final gate
+- 261108 parked ACCT-7: F24 stored Local alias is a source-only consistency lead; explicit read-fallback policy needs owner interpretation before any experiment or repair, no task/adoption
+- 261108 decided -: direct self-improve-local four-hour invocation starts local11 at2026-11-08T12:55Z until16:55Z; root coordinates bounded proposals/adoption, isolated workers, independent reviews and current-main integration under unchanged cfg plan/push; existing blocked/pending/owner-gated scope remains excluded, see reports/261108-local11
 - 261108 parked ERR-6 OBS-7: F22 LaunchStars confirmed-input Name refusal path is source-supported but unexecuted; preserve bounded future proof packet with mandatory zone read separated from zero transaction/provider effects, no task/adoption this round
 - 261108 decided T239 T240: both exact submissions independently approved and locally integrated by00:27:34Z; nine source files match reviews, guard1085 unchanged/actual1083; close implementation scope and run one new final integrated gate before single source publication
 - 261108 decided T239: preserve required UI duplication ceiling1085; after stopped/released four-file attempt, approve existing client-cache provider/index common awaited invalidator and fresh six-path assignment under unchanged product contracts/deadline; native placement audit75127f8f, expanded checks and submitted-code review required
@@ -123,6 +131,7 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T241 | Docker formatting rejects failed formatter execution | ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -130,9 +139,11 @@
 | local8h | 2 | 16 | 16 | 0 | 0 | 0 | 0 | 2026-11-08T00:37:30.187Z | [history](work/local8h.json) |
 
 ## next
-- local10 complete: T239/T240 add two improvements (local8h scope16/16), verified/source CI/backend pipeline all pass atf8512f9c. Follow reports/261108-local10 for evidence and separately approved F22 confirmation; existing owner-gated backlog stays unchanged.
+- local11: implement-task T241 only, isolated claim and independent review before current-main integration. Four-hour deadline2026-11-08T16:55Z; report261108-local11, prior scope16/16 unchanged, F24 owner-gated.
 
 ## log
+- 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
+- 261108 self-improve-local local11 start: four-hour bounded delegation, cleanmain8459fa5b, independent backend/tooling scouts; no new task/code approval
 - 261108 local10 closed: T239 T240 complete, final gate d7d4c4ac/source f8512f9c CI+backend allpass, own resources cleaned and evidence archived; final metadata-only publication
 - 261108 local10 final integrated pnpm check passed atd7d4c4ac; source unchanged,16/16scope complete, native snapshot log-limit repair and publication pending
 - 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
