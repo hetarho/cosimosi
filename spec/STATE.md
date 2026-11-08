@@ -72,6 +72,8 @@
 - 261103 decided T203 T207: R4 refuses a byte-identical `pages/me/model/tabs.ts` in both apps, so the `/me` tab list gets ONE owner instead → `ME_TABS` in `packages/auth` (moves to `packages/account` with T207), both pages import it (alt: keep identical copies | differ the files to evade R4) ← one tab list is the point of the finding, and R4 forbids the copy
 - 261103 parked T198: both stacks' production `.env` need `DATABASE_URL=…?default_query_exec_mode=cache_describe` (session pooler 5432, DEPLOY.md §3) — an operator change on the VPS outside the repository
 - 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
+- 261109 decided AI-9 OBS-7 T247: separately frozen original schema-name and unknown-finish causes reach ordinary RPC logs, each1failure/3controls; adopt combined two-file category-only repair with unchanged typed/cache/wire behavior, mandatory DB-backed task gate/independent review; T222 remains excluded
+- 261109 decided ONB-10 T246: original actual-hook step0→1 preserves oldrectA after geometryB, one feature failure/eight controls; adopt only existing per-step remeasurement after T245, preserve pending-rect/replay/pending host policies and require independent review
 
 ## ssot
 | id | rev | tasked | pending | [?] |
@@ -140,6 +142,8 @@
 | T243 | Fence token reads that settle after session access closes | ARCH AUTH | - | todo |
 | T244 | Keep confirmed-launch validation refusals content-free | ARCH ENC ERR OBS | - | todo |
 | T245 | Give each fresh sequence run its full dwell time | ONB ARCH | - | todo |
+| T246 | Remeasure the current anchor when a sequence step changes | ONB ARCH | T245 | todo |
+| T247 | Keep DeepSeek malformed-output error causes content-free | AI OBS ERR ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -151,6 +155,8 @@
 
 ## log
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
+- 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
+- 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes
@@ -158,9 +164,6 @@
 - 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
 - 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
-- 261108 self-improve-local local11 start: four-hour bounded delegation, cleanmain8459fa5b, independent backend/tooling scouts; no new task/code approval
-- 261108 local10 closed: T239 T240 complete, final gate d7d4c4ac/source f8512f9c CI+backend allpass, own resources cleaned and evidence archived; final metadata-only publication
-- 261108 local10 final integrated pnpm check passed atd7d4c4ac; source unchanged,16/16scope complete, native snapshot log-limit repair and publication pending
 - 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
 - 261108 T239 integrated
 - 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
