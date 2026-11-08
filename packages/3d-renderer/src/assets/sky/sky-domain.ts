@@ -108,6 +108,18 @@ export function skyDrift(coord: unknown, seconds: unknown, velocity: SkyAnchor) 
   return asVec3Node(coord).add(vec3(velocity[0], velocity[1], velocity[2]).mul(t))
 }
 
+/**
+ * The steady turn an effect gives the frame its territories are read in: `skySpin` about `axis` at
+ * `rate` radians per second of the sky's own clock (the `time` uniform). An effect that spins its
+ * frame publishes one, read by its shader and its registry row alike, so a host that turns the
+ * sphere can turn with the frame and hold a territory still on screen.
+ */
+export interface SkyFrameSpin {
+  readonly axis: SkyAnchor
+  /** Radians per sky second. */
+  readonly rate: number
+}
+
 /** Turn a direction about a fixed axis over time — the endless way to move a frame that will be
  *  normalized. Rotation preserves length, so the spun coordinate is as alive at hour three as at
  *  second one, and — being a motion of the sphere's own surface — it introduces no seam. Rodrigues'

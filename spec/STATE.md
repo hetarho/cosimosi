@@ -160,7 +160,6 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T250 | Landing walkthrough sky faces the feeling its step names | MKT PROD MOOD VIS UI ARCH | - | todo |
 | T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
 | T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
@@ -172,12 +171,13 @@
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 25 | 25 | 0 | 0 | 0 | 0 | 2026-11-08T17:28:20.221Z | [history](work/local8h.json) |
+| local8h | 2 | 33 | 26 | 7 | 3 | 2 | 0 | 2026-11-08T19:26:53.140Z | [history](work/local8h.json) |
 
 ## next
-- local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
+- inspect work board for remaining tasks
 
 ## log
+- 261108 T250 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
 - 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
 - 261109 local13 T250 attempt 716026c4 released after its decision request; contract amended to track the effect spin, source ff88f8ab carried to the re-claim
@@ -197,4 +197,3 @@
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
-- 261108 T249 integrated
