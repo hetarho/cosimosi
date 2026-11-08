@@ -765,6 +765,40 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 	}
 }
 
+func TestReviseSplitInvalidPreviousKeepsContentOutOfRefusal(t *testing.T) {
+	for _, invalidField := range []string{"source", "mood", "neuron_type"} {
+		t.Run(invalidField, func(t *testing.T) {
+			fixture := newEncodingFixture(t)
+			previous := validSplit()
+			previous.Memories[0].Name = "PRIVATE_PREVIOUS_NAME"
+			previous.Memories[0].SourceText = "PRIVATE_PREVIOUS_PASSAGE"
+			switch invalidField {
+			case "source":
+				previous.Memories[0].SourceText = ""
+			case "mood":
+				previous.Memories[0].Mood = Mood("PRIVATE_INVALID_MOOD")
+			case "neuron_type":
+				previous.Memories[0].Neurons[0].Type = NeuronType("PRIVATE_INVALID_TYPE")
+			}
+			_, err := fixture.encoding.ReviseSplit(context.Background(), testScope(t), "PRIVATE_REQUEST_BODY", previous, "PRIVATE_REQUEST_INSTRUCTION")
+			if !errors.Is(err, ErrEncodeInputRequired) {
+				t.Fatalf("error = %v, want canonical input refusal", err)
+			}
+			if fixture.extractor.splitCalls != 0 || len(fixture.extractor.instructions) != 0 {
+				t.Fatal("invalid previous split reached the extractor")
+			}
+			for _, content := range []string{"PRIVATE_PREVIOUS_NAME", "PRIVATE_PREVIOUS_PASSAGE", "PRIVATE_INVALID_MOOD", "PRIVATE_INVALID_TYPE", "PRIVATE_REQUEST_BODY", "PRIVATE_REQUEST_INSTRUCTION"} {
+				if strings.Contains(err.Error(), content) {
+					t.Errorf("refusal contains private input %q", content)
+				}
+			}
+			if err != ErrEncodeInputRequired {
+				t.Errorf("error = %v, want the existing content-free sentinel", err)
+			}
+		})
+	}
+}
+
 func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	t.Parallel()
 	fixture := newEncodingFixture(t)

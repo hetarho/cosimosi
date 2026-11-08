@@ -1,15 +1,25 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 
 	memoryv1 "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1"
+	memoryv1connect "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1/memoryv1connect"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
+	"github.com/cosimosi/api/internal/platform/observability"
 	"github.com/cosimosi/api/internal/platform/rpctest"
 )
 
@@ -217,5 +227,125 @@ func TestGroupHandlersMapUseCaseRefusals(t *testing.T) {
 	server := newGroupServer(t, &stubGroups{err: memory.ErrRecallMemoryNotFound})
 	for _, handler := range memoryHandlers(server) {
 		rpctest.RequireCode(t, handler.Call(rpctest.UserContext()), connect.CodeNotFound)
+	}
+}
+
+// revisionBoundaryDeps refuses any assist that ReviseSplit should never use.
+type revisionBoundaryDeps struct {
+	revisions  atomic.Int64
+	unexpected atomic.Int64
+}
+
+func (d *revisionBoundaryDeps) Split(context.Context, string, time.Time, []memory.ExistingNeuron) (memory.ExtractResult, error) {
+	d.unexpected.Add(1)
+	return memory.ExtractResult{}, errors.New("unexpected split")
+}
+func (d *revisionBoundaryDeps) ReviseSplit(_ context.Context, _ string, previous memory.ExtractResult, _ string) (memory.ExtractResult, error) {
+	d.revisions.Add(1)
+	return previous, nil
+}
+func (d *revisionBoundaryDeps) Embed(context.Context, []string) ([][]float32, error) {
+	d.unexpected.Add(1)
+	return nil, errors.New("unexpected embedding")
+}
+func (d *revisionBoundaryDeps) ListNeuronCandidatesInBody(context.Context, platform.UserScope, string, int32) ([]memory.ExistingNeuron, error) {
+	d.unexpected.Add(1)
+	return nil, errors.New("unexpected candidate read")
+}
+func (d *revisionBoundaryDeps) ListNearestNeuronCandidates(context.Context, platform.UserScope, []float32, float64, int32) ([]memory.ExistingNeuron, error) {
+	d.unexpected.Add(1)
+	return nil, errors.New("unexpected nearest read")
+}
+
+type revisionLiveAccount struct{ reads *atomic.Int64 }
+
+func (s revisionLiveAccount) AccountStatus(context.Context, string) (platform.AccountStatus, error) {
+	s.reads.Add(1)
+	return platform.AccountStatus{}, nil
+}
+
+func TestReviseSplitRefusalsKeepPrivateNameOutOfWireAndLog(t *testing.T) {
+	const privateName = "PRIVATE_MEMORY_NAME_261108"
+	const body = "Morning market run for groceries. Lunch with Mina, catching up."
+	for _, kind := range []string{"invalid_previous", "empty_body", "valid_previous"} {
+		t.Run(kind, func(t *testing.T) {
+			var logs bytes.Buffer
+			reporter := observability.NewInMemoryReporter()
+			deps := &revisionBoundaryDeps{}
+			encoding, err := memory.NewEncodingService(memory.EncodingDeps{Extractor: deps, Embedder: deps, Candidates: deps, Logger: log.New(&logs, "", 0)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			unrelated := &stubGroups{}
+			service, err := NewServer(Services{Encoding: encoding, Launches: unrelated, Releases: unrelated, Reads: unrelated, Paid: unusedPaid{}, Exports: unusedExport{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var auth, admission atomic.Int64
+			handler := platform.NewHandler(log.New(&logs, "", 0),
+				platform.WithAuthVerifier(platform.AuthTokenVerifierFunc(func(context.Context, string) (platform.UserIdentity, error) {
+					auth.Add(1)
+					return platform.UserIdentity{UserID: "synthetic-revision-user"}, nil
+				})),
+				platform.WithAccountStatusReader(revisionLiveAccount{reads: &admission}),
+				platform.WithObservabilityReporter(reporter),
+				platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
+					return memoryv1connect.NewMemoryServiceHandler(service, opts...)
+				}),
+			)
+			server := httptest.NewServer(handler)
+			httpClient := server.Client()
+			httpClient.Timeout = 2 * time.Second
+			t.Cleanup(func() { server.CloseClientConnections(); server.Close(); httpClient.CloseIdleConnections() })
+			previous := &memoryv1.SplitDiaryResponse{Memories: []*memoryv1.ProposedMemory{
+				{Name: privateName, Mood: "JOY", SourceText: "Morning market run for groceries.", Neurons: []*memoryv1.ProposedNeuron{{Name: "grocery shopping", Type: "semantic"}}},
+				{Name: "Second synthetic memory", Mood: "CALM", SourceText: "Lunch with Mina, catching up.", Neurons: []*memoryv1.ProposedNeuron{{Name: "catching up", Type: "semantic"}}},
+			}}
+			requestBody := body
+			if kind == "invalid_previous" {
+				previous.Memories[0].SourceText = ""
+			}
+			if kind == "empty_body" {
+				requestBody = ""
+			}
+			requestID := "revision-boundary-" + kind
+			request := connect.NewRequest(&memoryv1.ReviseSplitRequest{Body: requestBody, Previous: previous, Instruction: "merge these synthetic scenes"})
+			request.Header().Set("Authorization", "Bearer synthetic-token")
+			request.Header().Set("X-Request-Id", requestID)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			response, callErr := memoryv1connect.NewMemoryServiceClient(httpClient, server.URL).ReviseSplit(ctx, request)
+			if auth.Load() != 1 || admission.Load() != 1 || deps.unexpected.Load() != 0 || len(unrelated.userIDs) != 0 {
+				t.Fatalf("boundary calls: auth=%d admission=%d unexpected=%d unrelated=%d", auth.Load(), admission.Load(), deps.unexpected.Load(), len(unrelated.userIDs))
+			}
+			if len(reporter.Events()) != 0 {
+				t.Fatal("ordinary revision reported an unexpected event")
+			}
+			if kind == "valid_previous" {
+				if callErr != nil {
+					t.Fatal(callErr)
+				}
+				if deps.revisions.Load() != 1 || len(response.Msg.GetMemories()) != 2 || response.Msg.GetMemories()[0].GetName() != privateName || response.Header().Get("X-Request-Id") != requestID {
+					t.Fatal("valid revision changed its result, request id or extractor calls")
+				}
+			} else {
+				if callErr == nil || connect.CodeOf(callErr) != connect.CodeInvalidArgument || deps.revisions.Load() != 0 {
+					t.Fatalf("refusal = %v, extractor calls=%d", callErr, deps.revisions.Load())
+				}
+				info, ok := apperr.Info(callErr)
+				if !ok || info.GetReason() != reasonEncodeInputRequired || info.GetDomain() != "memory" || info.GetRequestId() != requestID || len(info.GetMetadata()) != 0 || info.GetDebugDetail() != "" {
+					t.Fatalf("refusal detail = %v", info)
+				}
+				if strings.Contains(callErr.Error(), privateName) {
+					t.Error("refusal echoed the private previous memory Name")
+				}
+			}
+			if !strings.Contains(logs.String(), memoryv1connect.MemoryServiceReviseSplitProcedure) || !strings.Contains(logs.String(), requestID) {
+				t.Fatal("actual platform log lacks method or request id")
+			}
+			if strings.Contains(logs.String(), privateName) {
+				t.Error("platform log contains the private previous memory Name")
+			}
+		})
 	}
 }

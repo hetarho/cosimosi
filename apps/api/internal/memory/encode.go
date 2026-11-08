@@ -133,7 +133,7 @@ func (s *EncodingService) ReviseSplit(ctx context.Context, scope platform.UserSc
 	// The prior result arrives from the client; a hand-crafted request must not
 	// smuggle an invalid shape past the domain just because the LLM never saw it.
 	if err := validateSplitStructure(previous); err != nil {
-		return ExtractResult{}, fmt.Errorf("%w: previous result: %v", ErrEncodeInputRequired, err)
+		return ExtractResult{}, ErrEncodeInputRequired
 	}
 	result, err := s.extractor.ReviseSplit(ctx, body, previous, instruction)
 	if err != nil {
