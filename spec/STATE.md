@@ -141,17 +141,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T248 | Honor disabled state in retained native Select options | UI ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 23 | 23 | 0 | 0 | 0 | 0 | 2026-11-08T16:04:09.878Z | [history](work/local8h.json) |
+| local8h | 2 | 24 | 24 | 0 | 0 | 0 | 0 | 2026-11-08T16:29:06.027Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T248 integrated
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
 - 261109 local12 six reviewed integrations complete23/23; repairedRPC8/8 verified; F32 originaldisabled1failure/9controls confirmed, task conversion next; hourlywip4d11bb67 preserved
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
