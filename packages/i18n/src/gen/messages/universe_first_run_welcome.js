@@ -10,7 +10,7 @@ const en_universe_first_run_welcome = /** @type {(inputs: Universe_First_Run_Wel
 };
 
 const ko_universe_first_run_welcome = /** @type {(inputs: Universe_First_Run_WelcomeInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`아직 비어 있어요. 첫 일기를 적으면, 여기에 별 하나가 태어납니다.`)
+	return /** @type {LocalizedString} */ (`아직 비어 있어요. 첫 일기를 적으면 여기에 별 하나가 태어나요.`)
 };
 
 /**

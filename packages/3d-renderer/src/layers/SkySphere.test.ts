@@ -12,6 +12,7 @@ import { emotionAnchors } from '../assets/sky/sky-emotion.ts'
 import {
   advanceSkyFacing,
   createSkyMaterial,
+  frameSkyFacing,
   normalizeSkyWeights,
   skyFacingAt,
   skyFacingQuaternion,
@@ -235,12 +236,59 @@ describe('sky facing under a spinning frame', () => {
   })
 
   it('without the compensation, the same territory drifts off the view direction', () => {
-    // What the static facing alone showed: LOVE's slice of the walkthrough sky ~56° off centre half
-    // a minute in. Pinned so the test above cannot pass by the spin being too slow to matter.
+    // The static facing alone leaves slice 1 of a six-slice sky more than 30° off centre at 31 s of
+    // Grainient's spin, so the test above holds only because the spin is composed in.
     const facing = skyFacingQuaternion(6, 1)
     if (facing === null) throw new Error('no facing')
     const shown = where(emotionAnchors(6)[1], GRAINIENT_SPIN, 31).applyQuaternion(facing)
     expect(shown.angleTo(VIEW)).toBeGreaterThan((30 * Math.PI) / 180)
+  })
+
+  it('does no work in a frame while nothing is faced or held', () => {
+    // Every input past the facing itself is counted: the spin a goal would compose, and the
+    // reduced-motion flag and responsiveness a step would read. None may be touched.
+    const reads = { spin: 0, step: 0 }
+    const orientation = new THREE.Quaternion()
+    const scratch = new THREE.Quaternion()
+    const plan = {
+      facing: null,
+      get spin() {
+        reads.spin++
+        return GRAINIENT_SPIN
+      },
+      get lambda() {
+        reads.step++
+        return 4
+      },
+      get instant() {
+        reads.step++
+        return false
+      },
+      scratch,
+    }
+    expect(frameSkyFacing(orientation, false, plan, 31, 1 / 60)).toBe(false)
+    expect(orientation.equals(new THREE.Quaternion())).toBe(true)
+    expect(scratch.equals(new THREE.Quaternion())).toBe(true)
+    expect(reads).toEqual({ spin: 0, step: 0 })
+  })
+
+  it('holds a faced slice through a frame and lets it go once the facing is dropped', () => {
+    const facing = skyFacingQuaternion(6, 1)
+    if (facing === null) throw new Error('no facing')
+    const plan = {
+      facing,
+      spin: GRAINIENT_SPIN,
+      lambda: 4,
+      instant: true,
+      scratch: new THREE.Quaternion(),
+    }
+    const orientation = new THREE.Quaternion()
+    expect(frameSkyFacing(orientation, false, plan, 31, 1 / 60)).toBe(true)
+    const shown = where(emotionAnchors(6)[1], GRAINIENT_SPIN, 31).applyQuaternion(orientation)
+    expect(shown.angleTo(VIEW)).toBeLessThan(1e-5)
+
+    expect(frameSkyFacing(orientation, true, { ...plan, facing: null }, 32, 1 / 60)).toBe(false)
+    expect(orientation.equals(new THREE.Quaternion())).toBe(true)
   })
 
   it('is the static facing when the effect does not spin', () => {
@@ -264,8 +312,8 @@ describe('published frame spins', () => {
   })
 
   it("restate each effect's clock and turn as radians per sky second", () => {
-    // The values the shaders spun by before the constants were published: clock 0.25 at 0.15 rad
-    // for the two marbles, clock 0.08 at 0.1 rad for the water, all about [0.25, 1, 0.2].
+    // Each constant is the effect's own clock speed times its turn per clock second: 0.25 × 0.15 for
+    // the two marbles, 0.08 × 0.1 for the water, all about [0.25, 1, 0.2].
     expect(GRAINIENT_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.25 * 0.15 })
     expect(GRAINSTORM_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.25 * 0.15 })
     expect(LIQUID_ETHER_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.08 * 0.1 })

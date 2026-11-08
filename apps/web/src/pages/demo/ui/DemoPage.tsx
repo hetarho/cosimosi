@@ -8,6 +8,7 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 import { DEFAULT_SKY_EFFECT, DEFAULT_STAR_SHAPE } from '@cosimosi/3d-renderer'
 
 import { shallowEqual, useActorRef, useSelector } from '@cosimosi/state-machine/react'
+import { SHEET_BREAKPOINT } from '@cosimosi/ui'
 import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useSurfaceLayout } from '../../../shared/lib/use-surface-layout.ts'
@@ -16,6 +17,7 @@ import type { DemoSignal } from '../model/anchors.ts'
 import { DEMO_SCRIPT } from '../model/script.ts'
 import { useDecorationSkyPreview } from '../model/use-decoration-sky-preview.ts'
 import { decorationTourMachine, type DecorationTourStage } from '../model/decoration-tour.ts'
+import { guideCaptionRoom } from '../model/framing-insets.ts'
 import {
   demoRunMachine,
   demoRunPhase,
@@ -166,7 +168,11 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     finishSkyPreview,
   )
   const writingState = demo.state.writing
-  const { maskHole, guideAnchorRect } = useDemoGuide({
+  const {
+    maskHole,
+    guideAnchorRect,
+    remeasure: remeasureGuide,
+  } = useDemoGuide({
     beat: phaseKey,
     surface,
     decorationStage,
@@ -426,6 +432,61 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
 
   const displayTime = sweepTime ?? scene.universeTime
 
+  // The beat's line, whether or not a scene moment is holding it back right now.
+  const beatCaption =
+    phaseKey === 'recall' && recallApplied
+      ? m.demo_beat_recall_finish
+      : phaseKey === 'ornament_taster' && decorateOpen
+        ? decorationStage === 'sky'
+          ? m.demo_beat_ornament_sky
+          : decorationStage === 'sky-preview'
+            ? m.demo_beat_ornament_sky_preview
+            : decorationStage === 'shape'
+              ? m.demo_beat_ornament_shape
+              : m.demo_beat_ornament_finish
+        : (run.step?.caption ?? null)
+  const shownCaption = sceneRevealing ? null : beatCaption
+  const captionText = shownCaption?.() ?? null
+
+  // The window size the caption room and the framing inset are read against, tracked so a resize or
+  // a rotation re-derives both.
+  const [viewport, setViewport] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }))
+  useEffect(() => {
+    const read = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', read)
+    return () => window.removeEventListener('resize', read)
+  }, [])
+
+  // The guide places its own line; the scene frames the universe clear of it. The band is read from
+  // the guide's caption band as rendered, and the last reading holds while a scene moment hides the
+  // line, so the frame stays put while the scene is speaking.
+  const [captionBandHeight, setCaptionBandHeight] = useState(0)
+  useEffect(() => {
+    if (!captionText) return
+    let observer: ResizeObserver | null = null
+    const frame = requestAnimationFrame(() => {
+      const band = document.querySelector<HTMLElement>('[data-sequence-caption-band]')
+      if (!band) return
+      const read = () => setCaptionBandHeight(band.offsetHeight)
+      read()
+      if (typeof ResizeObserver === 'undefined') return
+      observer = new ResizeObserver(read)
+      observer.observe(band)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+    }
+  }, [captionText])
+  const captionRoom = guideCaptionRoom({
+    captionShowing: run.active && beatCaption !== null,
+    narrow: viewport.width < SHEET_BREAKPOINT.px,
+    bottomSurface: surfaceLayout.bottom !== null,
+  })
+
   return (
     <main
       className="relative h-dvh w-full overflow-hidden bg-bg text-text"
@@ -445,7 +506,10 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         displayTime={displayTime}
         cameraFree={phase.kind === 'freePlay'}
         rightInset={surfaceLayout.right}
-        bottomInset={surfaceLayout.bottom ? window.innerHeight - surfaceLayout.bottom.y : 0}
+        bottomInset={surfaceLayout.bottom ? viewport.height - surfaceLayout.bottom.y : 0}
+        viewport={viewport}
+        captionRoom={captionRoom}
+        captionBandHeight={captionBandHeight}
         onSelectMemory={onSelectMemory}
         recallFocusId={sceneRevealing ? (beforeRecall?.id ?? null) : null}
         recallPulsing={sceneRevealing && recallApplied && !!beforeRecall}
@@ -541,13 +605,13 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         focused={phaseKey === 'ornament_taster'}
         clearRegion={
           decorateOpen && surfaceLayout.bottom
-            ? { x: 0, y: 0, width: window.innerWidth, height: Math.max(0, surfaceLayout.bottom.y) }
+            ? { x: 0, y: 0, width: viewport.width, height: Math.max(0, surfaceLayout.bottom.y) }
             : decorateOpen && surfaceLayout.right
               ? {
                   x: 0,
                   y: 0,
-                  width: window.innerWidth - surfaceLayout.right,
-                  height: window.innerHeight,
+                  width: viewport.width - surfaceLayout.right,
+                  height: viewport.height,
                 }
               : undefined
         }
@@ -567,25 +631,11 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         // While the scene is revealing it is SPEAKING — a launch bursting, a sweep dimming the field
         // — so the next beat's line and ring hold back and arrive together with the covering's
         // return. The skip stays; it must never blink out.
-        caption={
-          sceneRevealing
-            ? null
-            : phaseKey === 'recall' && recallApplied
-              ? m.demo_beat_recall_finish
-              : phaseKey === 'ornament_taster' && decorateOpen
-                ? decorationStage === 'sky'
-                  ? m.demo_beat_ornament_sky
-                  : decorationStage === 'sky-preview'
-                    ? m.demo_beat_ornament_sky_preview
-                    : decorationStage === 'shape'
-                      ? m.demo_beat_ornament_shape
-                      : m.demo_beat_ornament_finish
-                : (run.step?.caption ?? null)
-        }
+        caption={shownCaption}
         anchorRect={sceneRevealing ? null : guideAnchorRect}
         progress={run.progress}
         onSkip={run.skip}
-        onRemeasure={run.remeasure}
+        onRemeasure={remeasureGuide}
       />
     </main>
   )

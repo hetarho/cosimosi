@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T19:26:53.140Z",
-  "sourceCommit": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
+  "snapshotAt": "2026-11-08T21:36:18.900Z",
+  "sourceCommit": "cc0420705d9c23ebe21a3ec9bb857edfe08cd8d1",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -13,15 +13,15 @@
       "maxPending": 8
     },
     "verified": {
-      "commit": "d2cba8c0e29f9d8c2fca012de774660f908810bc",
+      "commit": "cc0420705d9c23ebe21a3ec9bb857edfe08cd8d1",
       "checks": [
         {
-          "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261108-local12/final-nine-pnpm-check.raw.log 2>&1",
-          "startedAt": "2026-11-08T17:24:06.832Z",
-          "finishedAt": "2026-11-08T17:28:18.081Z"
+          "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261109-local13/final-cc042070-pnpm-check.raw.log 2>&1",
+          "startedAt": "2026-11-08T21:33:03.054Z",
+          "finishedAt": "2026-11-08T21:36:18.068Z"
         }
       ],
-      "at": "2026-11-08T17:28:18.216Z",
+      "at": "2026-11-08T21:36:18.136Z",
       "excluded": ["T222"]
     },
     "push": null,
@@ -59,67 +59,27 @@
       "T254",
       "T255",
       "T256",
-      "T257"
+      "T257",
+      "T258",
+      "T259",
+      "T260",
+      "T261",
+      "T262",
+      "T263",
+      "T264",
+      "T265"
     ]
   },
   "summary": {
-    "total": 33,
-    "completed": 26,
-    "remaining": 7,
-    "running": 3,
-    "review": 2,
+    "total": 41,
+    "completed": 41,
+    "remaining": 0,
+    "running": 0,
+    "review": 0,
     "blocked": 0,
-    "unassigned": 2
+    "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T251",
-      "title": "Demo recall result rings its way out",
-      "dep": [],
-      "lane": "demo-guide",
-      "status": "doing"
-    },
-    {
-      "id": "T252",
-      "title": "Phone demo framing keeps the eyeline caption off the universe",
-      "dep": ["T251"],
-      "lane": "demo-guide",
-      "status": "doing"
-    },
-    {
-      "id": "T253",
-      "title": "Sequence captions break Korean at word boundaries",
-      "dep": ["T252"],
-      "lane": "demo-guide",
-      "status": "doing"
-    },
-    {
-      "id": "T254",
-      "title": "Onboarding tour copy speaks the product register and states recall truthfully",
-      "dep": [],
-      "lane": "tutorial-copy",
-      "status": "ready"
-    },
-    {
-      "id": "T255",
-      "title": "Demo recall prompt carries no cost wording",
-      "dep": ["T254"],
-      "lane": "tutorial-copy",
-      "status": "ready"
-    },
-    {
-      "id": "T256",
-      "title": "Walkthrough stars stay inside the stage on narrow phones",
-      "dep": ["T250"],
-      "status": "todo"
-    },
-    {
-      "id": "T257",
-      "title": "A guide caption appears once, already in its measured place",
-      "dep": ["T253"],
-      "status": "todo"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -1812,14 +1772,36 @@
       "lane": "demo-guide",
       "owner": "guideworker",
       "contributors": ["guideworker"],
-      "status": "doing",
-      "reason": "T251 (way-out ring plus page remeasure token) and T253 (UI-6 caption recipe, iOS hangul-word) are correct and well tested. T252 has a P2: the renderer caps the top inset at 0.4 of the viewport height, but the eyeline band always ends below that, so the shipped frame never starts below the band. The 390x844 overview stays clear only because the small fixture cluster leaves slack, and the result and comments describe a frame the code does not produce. Phone landscape is a limit to record: at 844x390 the guide picks edge, not eyeline.",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-08T18:07:09.499Z",
       "startCommit": "8a22355ead70b838a64bbaa366f594d7c5c82979",
-      "submittedBase": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
-      "submissionId": "beded1ad-e775-445d-9ef9-86d16a541950",
-      "submittedAt": "2026-11-08T19:01:29.590Z",
+      "verifiedCommit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+      "submittedBase": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+      "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+      "submittedAt": "2026-11-08T20:06:13.036Z",
+      "integratedCommit": "344242ade5c29075e6649255b076b9f2cd0849ab",
+      "integratedAt": "2026-11-08T20:21:38.999Z",
       "risk": null,
+      "review": {
+        "id": "610e450a-c84f-4eb3-bd45-22491fff70fe",
+        "owner": "reviewer-guide",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Review 7917c936's P2 is resolved. Landscape gets the base insets, and with base insets the overview, every reveal and the recall focus frame exactly as on base: at 667x375 and 740x360 the sweep shows legible bodies in the 96-247 / 96-232 frame. Portrait is unchanged from round 2. The orientation predicate is sound at a square and across rotation. The only render-time window read left is the mount-time lazy initializer. The real page always passes a tracked viewport, so NO_VIEWPORT cannot disable the portrait clearance there. One P3: 'landscape keeps the base framing exactly' overstates one degenerate case.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "T252 result outcome/limits ('landscape keeps the base framing exactly'); packages/3d-renderer/src/layers/scene-framing.ts:61",
+            "message": "Landscape insets are identical to base. The frame is identical too, except where the base fit was itself inverted: a bottom surface taller than about 0.95*H - 224px, with the bottom clamp below the top inset. There the round-2 guard places the frame differently. Measured at 667x375 in the decoration beat: the compact panel's top is at ~206, so the insets are top 96 and bottom 297 (yMin 0.584 > yMax 0.488). Base centres the frame at ~87px with its inverted floor; the guard centres it at ~69px. The focused memory renders as specks under the caption band (64-146) in both (review-guide/shots/base-667-decorate-shape.png vs r3-667-decorate-shape.png). The same applies to tall bottom sheets on short portrait screens, where the frame sits under the sheet either way. This is the never-inverts property the coordinator approved, and the case is already broken on base (F16/F17), so no code change is asked. Narrow the result's claim instead: the frame is identical for every non-degenerate inset, and where base inverted the frame the guard pins it just above the bottom inset."
+          }
+        ],
+        "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+        "baseCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+        "createdAt": "2026-11-08T20:06:49.568Z",
+        "finishedAt": "2026-11-08T20:15:41.481Z"
+      },
       "reviewHistory": [
         {
           "id": "ad59c7c9-988d-45c6-bef7-86d36940fe13",
@@ -1851,6 +1833,32 @@
           "finishedAt": "2026-11-08T19:17:22.384Z",
           "invalidatedAt": "2026-11-08T19:18:56.033Z",
           "invalidationReason": "correction assigned"
+        },
+        {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+              "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+            },
+            {
+              "priority": "P3",
+              "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+              "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+            }
+          ],
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z",
+          "finishedAt": "2026-11-08T19:55:09.991Z",
+          "invalidatedAt": "2026-11-08T19:56:13.730Z",
+          "invalidationReason": "correction assigned"
         }
       ],
       "steps": [
@@ -1880,13 +1888,13 @@
         },
         {
           "taskId": "T253",
-          "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
-          "at": "2026-11-08T19:01:29.562Z",
+          "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+          "at": "2026-11-08T20:06:13.021Z",
           "verification": [
             {
               "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-              "startedAt": "2026-11-08T19:00:16.220Z",
-              "finishedAt": "2026-11-08T19:01:28.619Z"
+              "startedAt": "2026-11-08T20:04:41.384Z",
+              "finishedAt": "2026-11-08T20:06:12.399Z"
             }
           ]
         }
@@ -1894,8 +1902,15 @@
       "verification": [
         {
           "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-          "startedAt": "2026-11-08T19:00:16.220Z",
-          "finishedAt": "2026-11-08T19:01:28.619Z"
+          "startedAt": "2026-11-08T20:04:41.384Z",
+          "finishedAt": "2026-11-08T20:06:12.399Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:19:26.399Z",
+          "finishedAt": "2026-11-08T20:21:38.649Z"
         }
       ]
     },
@@ -1915,6 +1930,8 @@
       "submittedBase": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
       "submissionId": "e03f136e-f576-487d-a339-8bb8aff6e0cd",
       "submittedAt": "2026-11-08T19:04:04.380Z",
+      "integratedCommit": "b38bd1504aa76ec25e154a6b5c1f275d40d21b7c",
+      "integratedAt": "2026-11-08T19:29:47.645Z",
       "risk": null,
       "review": {
         "id": "b8200053-77bd-4668-a8e2-03183615459e",
@@ -1970,6 +1987,13 @@
           "startedAt": "2026-11-08T19:02:34.611Z",
           "finishedAt": "2026-11-08T19:04:03.296Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:26:53.296Z",
+          "finishedAt": "2026-11-08T19:29:47.145Z"
+        }
       ]
     },
     {
@@ -1980,7 +2004,7 @@
       "lane": "tutorial-copy",
       "owner": "copyworker",
       "contributors": ["copyworker"],
-      "status": "ready",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T19:01:57.743Z",
       "startCommit": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
@@ -1988,7 +2012,33 @@
       "submittedBase": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
       "submissionId": "6f7271c6-5913-4972-aced-9498388c8ed2",
       "submittedAt": "2026-11-08T19:26:26.627Z",
+      "integratedCommit": "d39274d0ff1819ea136caf588cda02833d78110c",
+      "integratedAt": "2026-11-08T19:41:21.171Z",
       "risk": null,
+      "review": {
+        "id": "82167b51-2009-4781-b068-2e9d287a56cc",
+        "owner": "reviewer-copy",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T254 and T255 meet their acceptance. The four ko tour captions use the recommended UI-62 해요체 wording, and the revisit caption drops the stardust cost in both locales (ONB r4 step 8). Only those five values change, plus the new demo_recall_rewrite_prompt key. A scratch regeneration is byte-identical to the committed gen output. DemoRecallSheet renders the demo-owned key, and recall_rewrite_prompt and the web and mobile product recall flows are untouched. The new test covers all three diary sets in both locales, in the walk and result states. The cost pattern matches the product prompt in both locales and misses the demo prompt, and the sheet's assertions fail if the product prompt is put back. Both reported deviations are acceptable. The test file is required by T255's acceptance and sits beside the component (ARCH-48). The corrected header comment is accurate: RecallFlowSheet renders SpendCostDisplay for restoreMemoryTextSpend, and 회고하기 is free (RECALL-1). The two P3 findings are optional and do not block approval.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "packages/i18n/messages/en.json:411, packages/i18n/messages/ko.json:411 (twinkle_cost_diary_label); packages/twinkle/src/pending-spend.ts:41; spec/ssot/DIARY.md:75; spec/ssot/PROD.md:107",
+            "message": "Outside T254/T255 and pre-existing. This is the only catalogue string left that says a recall costs stardust: en \"Stardust to recall this whole diary\", ko \"이 일기를 모두 회상하는 별가루\". It contradicts DIARY-21: RecallDiaryStars runs without an economy check or debit, and SpendGate is never called for free Recall or RecallDiaryStars. The only path to it is spendCostLabel(SpendKind.DIARY_RECALL), and no web or mobile caller builds a DIARY_RECALL pending spend, so users never see it today. It is dead copy that would mislead if anyone wired it up. Two SSOT lines still describe a priced whole-diary recall: DIARY.md:75 (a Twinkle badge beside the whole-diary recall) and PROD.md:107 (\"summed recall cost\"). The shipped code already follows DIARY-21, and RecallDiaryStarsAction tests assert that no badge is shown. Hand the SSOT lines to the planner (update-ssot), then use a cleanup task to drop the label and the DIARY_RECALL branch, or restate them."
+          },
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/demo/ui/DemoRecallSheet.test.tsx:34-38 (sheetText), T255",
+            "message": "Optional. sheetText() scans the whole dialog, including fixture prose: the ObscuredText words and the prefilled read-only rewrite. If a later demo diary fixture uses an everyday word the pattern matches (en free/pay/paid/charge/price, ko 무료/비용/가격), this test fails with a DEMO-8 message even though the sheet shows no cost. To avoid that, scan only the sheet's own copy and leave out the fixture-text nodes, or keep the coupling as a deliberate choice."
+          }
+        ],
+        "commit": "d3f20418b7a0a3e1c8c7de773f909df17c883f2c",
+        "baseCommit": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
+        "submissionId": "6f7271c6-5913-4972-aced-9498388c8ed2",
+        "createdAt": "2026-11-08T19:27:18.337Z",
+        "finishedAt": "2026-11-08T19:37:05.741Z"
+      },
       "steps": [
         {
           "taskId": "T254",
@@ -2020,6 +2070,615 @@
           "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
           "startedAt": "2026-11-08T19:22:39.286Z",
           "finishedAt": "2026-11-08T19:26:25.820Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:37:54.158Z",
+          "finishedAt": "2026-11-08T19:41:20.755Z"
+        }
+      ]
+    },
+    {
+      "id": "35cf742e-541e-468a-800b-14b2634d1211",
+      "group": "local8h",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "lane": "landing-scene",
+      "owner": "skyworker",
+      "contributors": ["skyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T19:34:56.878Z",
+      "startCommit": "e129ed86b3e2e617be262fd7044a327071054816",
+      "verifiedCommit": "652b340a9ed044906aca1671720bea1c65ef1230",
+      "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+      "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+      "submittedAt": "2026-11-08T19:59:14.383Z",
+      "integratedCommit": "bc281117748c489b50375c4dbcb16b31669cddd7",
+      "integratedAt": "2026-11-08T20:09:25.713Z",
+      "risk": null,
+      "review": {
+        "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+        "owner": "reviewer-sky",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Both tasks in the landing-scene lane meet their acceptance. T256: three outer slots move inward and their poster percentages follow. Projection uses a 55° vertical FOV, aspect 0.95, and a body radius of starSizeMax 2.4 × group scale 1.6 = 3.84 on the unit-circumradius facet body. Under the test's criterion every slot clears by at least 2.84 world units. Under the exact frustum side-plane criterion every slot clears by at least 2.15. With the old slots, slots 3 and 7 fail by about 3.1 and slot 4 by 0.15, so the test fails on the old staging. The explicit camera [0,0,90] equals the renderer's non-exported DEFAULT_CANVAS_CAMERA_POSITION, and only this scene passes it, so nothing else changes. On my final-commit run at 360x640 every star is whole: press 6 is CALM-led (45% weighted) and press 11 is LOVE-led (83%). The worker's 1440 shot still reads as a spread group, and T250's facing is untouched. T258: frameSkyFacing returns before any spin, step or quaternion work while nothing is faced or held. Otherwise it is the T250 frame step unchanged: a dropped facing snaps to identity in one frame and clears held. The plan is memoized on stable inputs and no frame allocates. The required `skyFacing: number | undefined` prop makes an omitted forward a TS error (confirmed in an isolated check; the worker reports TS2741 on the real file). The comments now state current facts. Ran: SkySphere.test 22/22, landing 5 files 60/60, apps/web tsc -b clean. Only optional findings remain.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:219 (T256)",
+            "message": "The projection test checks `|x| + r <= halfWidth` against the frustum's half-extent at the star centre's depth. That under-counts the body against the slanted side plane. Exact containment is `|x| + r / cos(theta) <= halfWidth`, where theta is the horizontal half-angle, about 24° at aspect 0.95, so the radius is short by about 9% (about 0.35 units). Today's slots pass the exact form with at least 2.15 units to spare, so nothing is cut now, but a future slot could pass this test and still clip slightly. Optional: divide the radius by the cosine of the half-angle (and the vertical half-angle for y)."
+          },
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21-22 (T256)",
+            "message": "The mock's `importOriginal` loads all of @cosimosi/3d-renderer (three/webgpu and every TSL sky/star module) into this jsdom file, just to read the active skin's FOV. In my runs the file went from 4.7–5.1 s (transform about 0.6 s) to 7.9–11.8 s (transform 4.6–6.7 s). The package has only a root export, so a cheaper read would need a subpath export, which is a trade-off. Recorded for awareness."
+          },
+          {
+            "priority": "P3",
+            "where": "packages/3d-renderer/src/layers/SkySphere.test.ts:247 (T258)",
+            "message": "'does no work in a frame while nothing is faced or held' would also pass without the new early return. T250's path already short-circuited `staticFacing && skyFacingAt(...)`, so spin reads stay 0 and the quaternion and scratch stay at identity either way. The early return itself is exact by reading (SkySphere.tsx:211), and the test meets the acceptance wording ('without computing a spin'). Optional: count reads of `lambda` and `instant` as well, so the test also pins that no step is computed."
+          },
+          {
+            "priority": "P3",
+            "where": "packages/3d-renderer/src/layers/SkySphere.tsx:50 (T258)",
+            "message": "The `facing` prop doc still says the slice turns 'to face the camera's view direction (−Z)… sits straight ahead'. The corrected VIEW_DIRECTION comment now qualifies this: −Z is the frame centre only for a camera looking down −Z. Optional: align the prop doc, for example 'turns that slice onto −Z, the frame centre for a camera looking down −Z'."
+          }
+        ],
+        "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+        "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+        "createdAt": "2026-11-08T19:59:56.716Z",
+        "finishedAt": "2026-11-08T20:06:42.362Z"
+      },
+      "steps": [
+        {
+          "taskId": "T256",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "at": "2026-11-08T19:59:14.347Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:56:24.733Z",
+              "finishedAt": "2026-11-08T19:59:13.467Z"
+            }
+          ]
+        },
+        {
+          "taskId": "T258",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "at": "2026-11-08T19:59:14.347Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:56:24.733Z",
+              "finishedAt": "2026-11-08T19:59:13.467Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:56:24.733Z",
+          "finishedAt": "2026-11-08T19:59:13.467Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:06:52.421Z",
+          "finishedAt": "2026-11-08T20:09:25.345Z"
+        }
+      ]
+    },
+    {
+      "id": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "group": "local8h",
+      "taskId": "T259",
+      "tasks": ["T259"],
+      "lane": null,
+      "owner": "copyworker",
+      "contributors": ["copyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T19:44:16.658Z",
+      "startCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+      "verifiedCommit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+      "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+      "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+      "submittedAt": "2026-11-08T19:53:58.913Z",
+      "integratedCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+      "integratedAt": "2026-11-08T20:02:58.189Z",
+      "risk": null,
+      "review": {
+        "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+        "owner": "reviewer-copy",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T259 meets its acceptance. The six ko values match the recommended wording. They drop the subject or use 내/직접, as UI-62 allows, and read as natural 해요체. grep 당신 on ko.json finds nothing. Only those six ko keys change; en is byte-identical and key order is kept. A scratch paraglide regeneration matches packages/i18n/src/gen byte for byte (884 modules, empty diff -r). No test or SSOT pins the old or new text: the hint reaches the UI through m.* in ReviseControls (web and mobile), and the achievement strings through the static achievement-copy Record (ACH-36). Each string keeps its meaning and adds no claim. achievement_recall_200_body changes only its subject. The superlative was already in both locales, and it rests on a real mechanic: brightness is a read-time function of the last-recall anchor (RECALL-1). 내가 inside a 해요체 sentence reads as the reader's own view, not the app speaking (the app would say 제가). This matches the 내가 쓴 construction T254 already shipped. achievement_first_decoration_body moves from 'because you wanted' to 'as you wanted'. Both readings keep the user's agency, and nothing is overstated. The writing-flow hint renders under the 기억의 내용 field inside the writing-proposal anchor, so a new user sees it at tour step 4 (proposal), not step 3 (draft) as T259's goal says. It reads right there next to the caption 이름과 감정은 짐작이에요. 내 것이 아니면 고쳐 주세요. Its 'your own words, verbatim' claim still holds, because source_text is a verbatim diary passage (ENC-17).",
+        "findings": [],
+        "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+        "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+        "createdAt": "2026-11-08T19:55:10.342Z",
+        "finishedAt": "2026-11-08T19:58:14.196Z"
+      },
+      "steps": [
+        {
+          "taskId": "T259",
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "at": "2026-11-08T19:53:58.897Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T19:51:10.265Z",
+              "finishedAt": "2026-11-08T19:53:58.408Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T19:51:10.265Z",
+          "finishedAt": "2026-11-08T19:53:58.408Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:00:15.781Z",
+          "finishedAt": "2026-11-08T20:02:57.410Z"
+        }
+      ]
+    },
+    {
+      "id": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "group": "local8h",
+      "taskId": "T260",
+      "tasks": ["T260"],
+      "lane": null,
+      "owner": "skyworker",
+      "contributors": ["skyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T20:11:04.615Z",
+      "startCommit": "2182baad00bc347a0ef29a957fba621b527f307d",
+      "verifiedCommit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+      "submittedBase": "e2b1b3fff78f5e4ad768f14b5e2ea081f32a204b",
+      "submissionId": "0435e9a5-f84f-43d0-b301-f79e43e7eecd",
+      "submittedAt": "2026-11-08T20:26:54.297Z",
+      "integratedCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+      "integratedAt": "2026-11-08T20:31:21.299Z",
+      "risk": null,
+      "review": {
+        "id": "d7a14ec2-d5cc-4c10-90c8-b4e52c8df1d2",
+        "owner": "reviewer-sky",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T260 meets its acceptance, and the only production change is the SkySphere `facing` JSDoc. Containment math: the side plane x = d·tanθ is at signed distance d·sinθ − |x|·cosθ from the centre, so requiring that distance ≥ r gives exactly |x| + r/cosθ ≤ d·tanθ. The horizontal half-angle atan(tan(fov/2)·aspect) is the correct one for a vertical-FOV camera: 26.31° at 55° and 0.95, so the old approximation under-counted the body by 0.44 units. The grazing case (0.01 clearance) therefore fails under the exact bound, as it should. The slot test still renders the real LandingWalkthroughScene with 8 memories. It reads the positions the scene hands the mocked InstancedNodeLayer, the cameraPosition handed to UniverseCanvas, and the real skin FOV, and takes the group scale from the scene's own scales. The plain CALM fixtures affect neither the slots, the camera nor the radius ceiling, so they cannot hide a slot or camera regression. Restoring the old slots fails the exact check (slots 3 and 7 by about 3.2 units, slot 4 by 0.5). The idle-frame test fails without the early return: I re-ran the no-early-return path with the test's getters and got {spin:0, step:2}, matching the worker. The new doc is accurate, since the slice lies on −Z, which is the frame centre only for a camera looking down −Z. Ran: SkySphere.test 22/22, the scene test 9/9 three times (1.9–2.3 s), landing 5 files 61/61, tsc -b clean for apps/web and packages/3d-renderer. The renderer tsc left a tsbuildinfo, which I deleted, so the workspace is clean.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "packages/3d-renderer/src/layers/SkySphere.tsx:53 (T260)",
+            "message": "The rewritten `facing` JSDoc was not rewrapped. Line 53 runs to about 141 characters ('…holds still on −Z. Absent, the mesh keeps its identity orientation. A facing'), and lines 51–52 also pass the 100-column printWidth the surrounding comments follow. Prettier does not reflow comments. Optional: rewrap the paragraph."
+          }
+        ],
+        "commit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+        "baseCommit": "e2b1b3fff78f5e4ad768f14b5e2ea081f32a204b",
+        "submissionId": "0435e9a5-f84f-43d0-b301-f79e43e7eecd",
+        "createdAt": "2026-11-08T20:27:24.952Z",
+        "finishedAt": "2026-11-08T20:29:30.230Z"
+      },
+      "steps": [
+        {
+          "taskId": "T260",
+          "commit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+          "at": "2026-11-08T20:26:54.284Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T20:25:37.932Z",
+              "finishedAt": "2026-11-08T20:26:53.879Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:25:37.932Z",
+          "finishedAt": "2026-11-08T20:26:53.879Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:29:59.227Z",
+          "finishedAt": "2026-11-08T20:31:20.994Z"
+        }
+      ]
+    },
+    {
+      "id": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "group": "local8h",
+      "taskId": "T257",
+      "tasks": ["T257"],
+      "lane": null,
+      "owner": "guideworker",
+      "contributors": ["guideworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T20:21:54.980Z",
+      "startCommit": "344242ade5c29075e6649255b076b9f2cd0849ab",
+      "verifiedCommit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+      "submittedBase": "192282744cdc110184a6f67e01dc6e8977bcf900",
+      "submissionId": "222556a5-7a1d-4a9e-8f82-e060f7f1e5ec",
+      "submittedAt": "2026-11-08T20:51:36.588Z",
+      "integratedCommit": "8800de38820a621a43adba8b157cbb5db5ee2797",
+      "integratedAt": "2026-11-08T20:57:36.234Z",
+      "risk": null,
+      "review": {
+        "id": "5bed6e14-bfad-4762-a616-261da8296a28",
+        "owner": "reviewer-guide",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Review 32f1051c's P2 is resolved. The polite live region is now a zero-size fixed root that never hides or moves. Chrome's accessibility tree keeps it (generic, live=polite, not ignored) whether the band is shown or hidden, and the caption paragraph is ignored (notVisible) while the band is hidden. A new line is therefore inserted hidden and announced once when its band reveals in place. Pointer-events and z-guide still reach the band. Nothing else depends on the caption's [data-sequence-chrome] box. The SequenceGuide.test.tsx selector move is correct. The onboarding host and mobile are unaffected. CLS stays 0 (3/3 runs, total CLS), and T252's band reading is 82px either way.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "T257 apps/web/src/widgets/sequence-guide/ui/SequenceCaption.tsx:47-58 with use-caption-layout.ts schedule()",
+            "message": "Announcements are once per text change. A room change that keeps the same text hides and re-reveals the band, for example the write dialog mounting while beat 4's caption stays. Chrome then un-ignores the paragraph inside the live root, which can announce the same line a second time. This is far less than the base, which re-revealed on every mutation, scroll or size tick, so nothing is required. To make it strictly once per caption, keep an always-exposed visually hidden copy of the text in the live root and mark the visual band aria-hidden."
+          },
+          {
+            "priority": "P3",
+            "where": "scripts/universe-review/check-tour.mjs:102-103",
+            "message": "The ad-hoc tour checker (not in CI, last used in report 261103-univvis) waits on locator('[aria-live=\"polite\"]').filter({hasText}).waitFor(). Playwright's default state is 'visible', and a zero-size live root never becomes visible, so caption() would time out now. Point it at '[data-sequence-caption-band]' or '[aria-live=\"polite\"] p', or wait with state 'attached'. Its other '[aria-live=\"polite\"] p' locators still work."
+          }
+        ],
+        "commit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+        "baseCommit": "192282744cdc110184a6f67e01dc6e8977bcf900",
+        "submissionId": "222556a5-7a1d-4a9e-8f82-e060f7f1e5ec",
+        "createdAt": "2026-11-08T20:52:22.771Z",
+        "finishedAt": "2026-11-08T20:55:18.199Z"
+      },
+      "reviewHistory": [
+        {
+          "id": "32f1051c-dac1-49f0-a952-fb01d33b756e",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T257's layout logic is sound. The caption is visible only when layout matches the key and position, so it never paints at the fallback. Size, scroll and font ticks re-measure in place. Room changes (a modal or marked panel mounting) hide, then re-measure. The new tests fail on the old hook (4/4) and pass now. The CLS evidence is credible. The 6f12db13 merge adds only main's spec-only e2b1b3ff. One P2: visibility now sits on the aria-live element itself, so the live region leaves the accessibility tree at every caption change.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T257 apps/web/src/widgets/sequence-guide/ui/SequenceCaption.tsx:37-53 (band style), apps/web/src/widgets/sequence-guide/lib/use-caption-layout.ts:43,165-168",
+              "message": "The band carrying visibility is the element with aria-live='polite'. key includes the text, so on every caption change ready turns false in the same commit that inserts the new text. The live region therefore leaves the accessibility tree exactly when its content changes, and it comes back already filled one measure later. A room change does the same with unchanged text. The base kept the live root exposed and hid only the paragraph, so a reveal was a content change inside an exposed live region, the case screen readers announce reliably. A live region that appears together with its content is the case accessibility guidance warns is announced inconsistently across screen readers and browsers. ONB-2 makes the caption the guaranteed channel and ONB-13 makes it a polite live region, yet no test or recorded check covers the announcement. Required: keep the live root exposed and unmoving while the visual band hides. Option 1: a fixed root that never moves and paints nothing, holding aria-live, with the positioned band inside it carrying visibility. Option 2: an always-present visually hidden live copy of the text, with the visual band aria-hidden. Then add a test that the aria-live element is never visibility:hidden while a caption is active and that its text changes in place. If the coordinator prefers to keep this structure, record a screen-reader check instead (VoiceOver+Safari, NVDA+Chrome; one announcement per caption, none while hidden). Coupling: T252's DemoPage measures the band through '[data-sequence-chrome][aria-live]' and reads its offsetHeight for the framing inset (DemoPage.tsx ~471). Whichever element ends up holding aria-live, that selector must still resolve to the visual band, and DemoPage.tsx is outside T257's touches."
+            }
+          ],
+          "commit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+          "baseCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+          "submissionId": "a8ca83c7-7230-4a84-9783-4405f3b85b9a",
+          "createdAt": "2026-11-08T20:37:28.003Z",
+          "finishedAt": "2026-11-08T20:41:50.783Z",
+          "invalidatedAt": "2026-11-08T20:42:50.524Z",
+          "invalidationReason": "correction assigned"
+        }
+      ],
+      "steps": [
+        {
+          "taskId": "T257",
+          "commit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+          "at": "2026-11-08T20:51:36.576Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T20:50:42.774Z",
+              "finishedAt": "2026-11-08T20:51:36.249Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:50:42.774Z",
+          "finishedAt": "2026-11-08T20:51:36.249Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:56:19.223Z",
+          "finishedAt": "2026-11-08T20:57:35.944Z"
+        }
+      ]
+    },
+    {
+      "id": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "group": "local8h",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "lane": "universe-tour",
+      "owner": "skyworker",
+      "contributors": ["skyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T20:55:21.965Z",
+      "startCommit": "ba988256a727a31a93f3aede303107f7ac734192",
+      "verifiedCommit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+      "submittedBase": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+      "submissionId": "0f5e0253-1f2e-4d7b-bfd1-71afe23bcbca",
+      "submittedAt": "2026-11-08T21:09:20.943Z",
+      "integratedCommit": "e7485e080ff932fc0a3c2da1dbaeb18e6f3a3f5c",
+      "integratedAt": "2026-11-08T21:19:05.990Z",
+      "risk": null,
+      "review": {
+        "id": "e57b8322-5eeb-42c1-a00d-0c7e89910773",
+        "owner": "reviewer-sky",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T261 and T262 meet their acceptance. Web follows DemoHud: the right column is held `pt-11` on every width. Below sm the clock goes `left-0 top-11 w-max`; from sm it stays centred at the top. The toggle keeps the top-left corner, and the `universe-clock` anchor stays inside widgets/universe-time. Dropping the transform below sm can only help any fixed descendant, and the consent dialog comes from @cosimosi/ui. I ran the probe on a scratch archive of dfc6f0c5 (vite 1237, Chrome 9382, both stopped, copy deleted, review workspace untouched) at step 1, ko. 360: skip [226,16,344,48], clock [16,60,274,80], balance [296,60,344,114]. 600: the same layout. 768: skip [634,16,752,48], clock [255,24,513,44], toggle [24,24,126,56], balance [551,68,744,100]. 1024: skip [890,16,1008,48], clock [383,24,641,44], balance [807,68,1000,100]. None overlap at any width. The caption also ends 12px above the welcome at 768 and 1024. With the tour skipped, the HUD at 390 and 1440 reads cleanly. The toggle sits top-left with the clock under it on phones, and the balance column starts 44px down at 60 (390) and 68 (1440). Mobile groups toggle and clock in one absolute box-none left column. Its right column pads `spacing[8] + spacing[3]` = 32 + 12 = 44 with no literal number. The mobile skip's missing top safe-area inset is recorded as a limit, and so is mobile's lack of a surface marker. `data-scene-footer` is read only by use-surface-layout's `footer`. SequenceGuide applies that only to bottom-room captions with no surface, so the panels' right and bottom measurements are unchanged, and DemoPage lives on another route. The ko copy is in 해요체, the regenerated module matches it, en is untouched, and no probe file is in any commit. T261 carries a seven-dimension UI-15 ledger. Ran: apps/web vitest for pages/universe, widgets/sequence-guide and shared/lib (4 files, 38/38); tsc -b for apps/web; `tsc -p tsconfig.json --noEmit` for apps/mobile. All clean.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "apps/mobile/src/pages/universe/ui/UniversePage.tsx: styles.topRight (T261)",
+            "message": "This predates the change and is unverified on device. `topRight` is an in-flow View that stretches across the whole top chrome, from its top edge, with no `pointerEvents=\"box-none\"`. It comes after the absolute left column, so it lies above the view toggle and the clock in z-order. React Native gives a touch to the topmost view under it, so the column's empty left area may take presses meant for the toggle. The old layout had the same overlap and this change does not widen it. Since the mobile page was not run on a device, consider `pointerEvents=\"box-none\"` on topRight and a device tap check of the toggle."
+          },
+          {
+            "priority": "P3",
+            "where": "spec/tasks/T261.universe-hud-clears-tour-skip.md: UI-15 ledger dim 3 (T261)",
+            "message": "The ledger says the HUD 'sits lower on phones'. On web the balance column is held `pt-11` on every width: at 1440 it moves from y 24 to 68 with or without a tour, as the outcome and rects show. The no-tour trade-off therefore applies on desktop too, and the ledger note should say so."
+          }
+        ],
+        "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+        "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+        "submissionId": "0f5e0253-1f2e-4d7b-bfd1-71afe23bcbca",
+        "createdAt": "2026-11-08T21:10:06.362Z",
+        "finishedAt": "2026-11-08T21:16:47.409Z"
+      },
+      "steps": [
+        {
+          "taskId": "T261",
+          "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+          "at": "2026-11-08T21:09:20.931Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:07:54.690Z",
+              "finishedAt": "2026-11-08T21:09:20.516Z"
+            }
+          ]
+        },
+        {
+          "taskId": "T262",
+          "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+          "at": "2026-11-08T21:09:20.931Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:07:54.690Z",
+              "finishedAt": "2026-11-08T21:09:20.516Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:07:54.690Z",
+          "finishedAt": "2026-11-08T21:09:20.516Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:17:24.556Z",
+          "finishedAt": "2026-11-08T21:19:05.374Z"
+        }
+      ]
+    },
+    {
+      "id": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "group": "local8h",
+      "taskId": "T264",
+      "tasks": ["T264"],
+      "lane": null,
+      "owner": "copyworker",
+      "contributors": ["copyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T20:55:22.868Z",
+      "startCommit": "ba988256a727a31a93f3aede303107f7ac734192",
+      "verifiedCommit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+      "submittedBase": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+      "submissionId": "924fa833-6a51-4fbe-a8e5-47fa9f6f0925",
+      "submittedAt": "2026-11-08T21:05:56.252Z",
+      "integratedCommit": "98a91639e6926dc8318f1cc8e76686d19fbb8bd3",
+      "integratedAt": "2026-11-08T21:11:23.912Z",
+      "risk": null,
+      "review": {
+        "id": "b4174ae0-fb3a-456d-a0e0-4440df6d703a",
+        "owner": "reviewer-guide",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T264 meets ONB-17. On web, writing-draft now measures the union of the draft column and the footer's split row. Both are read with getBoundingClientRect in viewport space after awaitArrival, so the measure re-runs once the sheet's slide settles, and the registration itself triggers the engine's remeasure. Missing, detached or zero-size parts drop out, and the result is null only when nothing is left. web has exactly one writing-draft registrant, and the old SequenceAnchor wrapper for it is gone. The non-tour flow only registers, as before. The new test fails on the base sheet (ring bottom 440 < split bottom 804) and passes now. The mobile claim holds: the split button sits inside the writing-draft SequenceAnchor View (apps/mobile/.../WritingFlowSheet.tsx:125-136), which measureInWindow measures whole. No feature or entity imports the sequence.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "T264 apps/web/src/widgets/writing-flow/ui/WritingFlowSheet.tsx:45-81",
+            "message": "DraftAnchor restates SequenceAnchor's wrapper: the data-sequence-anchor attribute, the display:contents div, the first-child target, and awaitArrival with an isConnected check. Only its measure differs. ONB-10 words registration as wrapping a child in SequenceAnchor. The intent still holds here, because a widget composition site registers and nothing passes into a feature slice. features/highlight-next-control was outside the touches, and the result already names SequenceAnchor as the shared home. A later follow-up could give SequenceAnchor an optional extra-element prop, for example refs to union, and drop DraftAnchor, so the anchor wrapper has one implementation."
+          }
+        ],
+        "commit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+        "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+        "submissionId": "924fa833-6a51-4fbe-a8e5-47fa9f6f0925",
+        "createdAt": "2026-11-08T21:06:35.921Z",
+        "finishedAt": "2026-11-08T21:08:41.780Z"
+      },
+      "steps": [
+        {
+          "taskId": "T264",
+          "commit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+          "at": "2026-11-08T21:05:56.237Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:04:58.492Z",
+              "finishedAt": "2026-11-08T21:05:55.881Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:04:58.492Z",
+          "finishedAt": "2026-11-08T21:05:55.881Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:10:08.209Z",
+          "finishedAt": "2026-11-08T21:11:23.643Z"
+        }
+      ]
+    },
+    {
+      "id": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "group": "local8h",
+      "taskId": "T265",
+      "tasks": ["T265"],
+      "lane": null,
+      "owner": "copyworker",
+      "contributors": ["copyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T21:12:48.245Z",
+      "startCommit": "f8c5be083288631b44f4798a5e6b6873fc46f948",
+      "verifiedCommit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+      "submittedBase": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+      "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
+      "submittedAt": "2026-11-08T21:22:26.244Z",
+      "integratedCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+      "integratedAt": "2026-11-08T21:26:37.002Z",
+      "risk": null,
+      "review": {
+        "id": "d7a8d49d-1158-4408-99dd-f0526b6dfee8",
+        "owner": "reviewer-guide",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "caption() now waits on scope.locator('[data-sequence-caption-band]').filter({ hasText: text }).waitFor(). That band is the element T257 made non-empty and visibility-toggled. It measured 82px tall in the T257b CDP probe, against the 0x0 live root. Playwright's default visible wait therefore holds through the hidden phase and resolves once the band reveals with the new text. The new SequenceGuide test renders the real guide and uses the script's literal strings: '[data-sequence-caption-band]' (exactly one band holds the text and becomes visible), '[aria-live=\"polite\"] p' (the caption line inside that band) and '[data-sequence-chrome]' (the live root). Across the whole script, the structure change touches only the caption locator. The '[aria-live=\"polite\"] p' locators (lines 111, 307, 357) still match the caption line. The closest('[data-sequence-chrome]') skip (line 123) still applies, because the skip button carries its own marker and the caption holds no controls. The other markers (data-sequence-anchor, data-cosimosi-surface, the data-demo-* attributes, obscured-run) are still rendered.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "scripts/universe-review/check-tour.mjs:111,307,357",
+            "message": "This is optional and predates T265. The three '[aria-live=\"polite\"] p' locators are not scoped to the caption. A polite toast whose children include a <p> would make Playwright's strict waitFor() and boundingBox() resolve two elements. '[data-sequence-caption-band] p' would pin them to the guide's line."
+          }
+        ],
+        "commit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+        "baseCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+        "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
+        "createdAt": "2026-11-08T21:23:00.652Z",
+        "finishedAt": "2026-11-08T21:24:49.520Z"
+      },
+      "steps": [
+        {
+          "taskId": "T265",
+          "commit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+          "at": "2026-11-08T21:22:26.231Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:20:56.278Z",
+              "finishedAt": "2026-11-08T21:22:25.883Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:20:56.278Z",
+          "finishedAt": "2026-11-08T21:22:25.883Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:25:15.821Z",
+          "finishedAt": "2026-11-08T21:26:36.549Z"
+        }
+      ]
+    },
+    {
+      "id": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "group": "local8h",
+      "taskId": "T263",
+      "tasks": ["T263"],
+      "lane": null,
+      "owner": "skyworker",
+      "contributors": ["skyworker"],
+      "status": "integrated",
+      "reason": null,
+      "createdAt": "2026-11-08T21:20:07.157Z",
+      "startCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+      "verifiedCommit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+      "submittedBase": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+      "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+      "submittedAt": "2026-11-08T21:27:21.006Z",
+      "integratedCommit": "c99262cf676494b67b810988d089c6963e3faa50",
+      "integratedAt": "2026-11-08T21:31:47.704Z",
+      "risk": null,
+      "review": {
+        "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+        "owner": "reviewer-sky",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T263 meets its acceptance. One `captionHeld = advancePending || sweeping` now drives both the existing dwell pause and the shown caption, so the two cannot disagree.\n\nThe hold cannot outlive the advance. `pending` clears on the overlay's `take()` as soon as its machine is idle, and both universe pages always mount the overlay. `sampledTime` clears through `sweep.end()` when the sweep finishes or on unmount mid-sweep. Under reduced motion the sweep never begins and `onDone` fires at once. An empty interval never announces and releases at once. A failed launch announces nothing and reports no `launch-succeeded`. So every path that held the dwell before releases the caption with it, and nothing new can stick.\n\nThere is no early flash. The write flow calls `announceAdvance` before `LAUNCH_OK`, and the report the host turns into step 6 arrives one commit later. That is the same effect flush that calls `sweep.begin()`, so step 6 renders already held.\n\nThe ONB-20 channel is untouched (`takeOnboardingReport` and `onboardingReportAction` are unchanged), so a held `launch-succeeded` still advances on the step that awaits it. The demo does not use `useUniverseScreen` (only the web and mobile UniversePage do), so it is unaffected. Mobile `pointerEvents=\"box-none\"` on `topRight` is correct: the column's empty area passes touches through while its children stay hittable. It is recorded as device-unverified.\n\nThe new tests import `tourCaptionHeld` and `shownTourCaption`, which the base lacks, so they fail there. The probe shots show no caption at t02 while the clock rolls (2026-11-07), then the caption at t03 with the clock on 11-09 and the new star in place.\n\nRan: `packages/universe` `use-universe-screen.test.ts` 8/8, `apps/web` `tsc -b` clean, `apps/mobile` `tsc --noEmit` clean.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/universe/ui/UniversePage.tsx:201, apps/mobile/src/pages/universe/ui/UniversePage.tsx:161 (T263)",
+            "message": "Nothing guards the pages' wiring. The new tests pin the pure functions, but `SequenceGuide` still accepts `tour.step?.caption`. A page that went back to passing it would compile and pass every test, and it would show the caption during the advance again. Optional: return the run without a raw caption accessor for pages, or add a hook-level test that renders `useUniverseScreen` with a pending announcement and expects `tourCaption` to be null."
+          }
+        ],
+        "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+        "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+        "createdAt": "2026-11-08T21:27:49.331Z",
+        "finishedAt": "2026-11-08T21:30:05.675Z"
+      },
+      "steps": [
+        {
+          "taskId": "T263",
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "at": "2026-11-08T21:27:20.995Z",
+          "verification": [
+            {
+              "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+              "startedAt": "2026-11-08T21:25:57.215Z",
+              "finishedAt": "2026-11-08T21:27:20.654Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:25:57.215Z",
+          "finishedAt": "2026-11-08T21:27:20.654Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T21:30:31.916Z",
+          "finishedAt": "2026-11-08T21:31:47.127Z"
         }
       ]
     }
@@ -9501,6 +10160,2731 @@
       "status": "integrating",
       "changes": {
         "status": "integrating"
+      }
+    },
+    {
+      "sequence": 379,
+      "at": "2026-11-08T19:27:18.337Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": ["T254", "T255"],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "82167b51-2009-4781-b068-2e9d287a56cc",
+          "owner": "reviewer-copy",
+          "status": "reviewing",
+          "commit": "d3f20418b7a0a3e1c8c7de773f909df17c883f2c",
+          "baseCommit": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
+          "submissionId": "6f7271c6-5913-4972-aced-9498388c8ed2",
+          "createdAt": "2026-11-08T19:27:18.337Z"
+        }
+      }
+    },
+    {
+      "sequence": 380,
+      "at": "2026-11-08T19:29:47.494Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "7b0d3578-e977-4e00-b9ed-851a2cfd5f7e",
+      "taskId": "T250",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:26:53.296Z",
+            "finishedAt": "2026-11-08T19:29:47.145Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 381,
+      "at": "2026-11-08T19:29:47.645Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "7b0d3578-e977-4e00-b9ed-851a2cfd5f7e",
+      "taskId": "T250",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "b38bd1504aa76ec25e154a6b5c1f275d40d21b7c",
+        "integratedAt": "2026-11-08T19:29:47.645Z"
+      }
+    },
+    {
+      "sequence": 382,
+      "at": "2026-11-08T19:34:42.172Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258"
+        ]
+      }
+    },
+    {
+      "sequence": 383,
+      "at": "2026-11-08T19:34:56.878Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T256",
+      "tasks": ["T256", "T258"],
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "35cf742e-541e-468a-800b-14b2634d1211",
+        "group": "local8h",
+        "taskId": "T256",
+        "tasks": ["T256", "T258"],
+        "lane": "landing-scene",
+        "owner": "skyworker",
+        "contributors": ["skyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T19:34:56.878Z",
+        "startCommit": "e129ed86b3e2e617be262fd7044a327071054816"
+      }
+    },
+    {
+      "sequence": 384,
+      "at": "2026-11-08T19:34:58.882Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T256",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 385,
+      "at": "2026-11-08T19:37:05.741Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": ["T254", "T255"],
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "82167b51-2009-4781-b068-2e9d287a56cc",
+          "owner": "reviewer-copy",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T254 and T255 meet their acceptance. The four ko tour captions use the recommended UI-62 해요체 wording, and the revisit caption drops the stardust cost in both locales (ONB r4 step 8). Only those five values change, plus the new demo_recall_rewrite_prompt key. A scratch regeneration is byte-identical to the committed gen output. DemoRecallSheet renders the demo-owned key, and recall_rewrite_prompt and the web and mobile product recall flows are untouched. The new test covers all three diary sets in both locales, in the walk and result states. The cost pattern matches the product prompt in both locales and misses the demo prompt, and the sheet's assertions fail if the product prompt is put back. Both reported deviations are acceptable. The test file is required by T255's acceptance and sits beside the component (ARCH-48). The corrected header comment is accurate: RecallFlowSheet renders SpendCostDisplay for restoreMemoryTextSpend, and 회고하기 is free (RECALL-1). The two P3 findings are optional and do not block approval.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "packages/i18n/messages/en.json:411, packages/i18n/messages/ko.json:411 (twinkle_cost_diary_label); packages/twinkle/src/pending-spend.ts:41; spec/ssot/DIARY.md:75; spec/ssot/PROD.md:107",
+              "message": "Outside T254/T255 and pre-existing. This is the only catalogue string left that says a recall costs stardust: en \"Stardust to recall this whole diary\", ko \"이 일기를 모두 회상하는 별가루\". It contradicts DIARY-21: RecallDiaryStars runs without an economy check or debit, and SpendGate is never called for free Recall or RecallDiaryStars. The only path to it is spendCostLabel(SpendKind.DIARY_RECALL), and no web or mobile caller builds a DIARY_RECALL pending spend, so users never see it today. It is dead copy that would mislead if anyone wired it up. Two SSOT lines still describe a priced whole-diary recall: DIARY.md:75 (a Twinkle badge beside the whole-diary recall) and PROD.md:107 (\"summed recall cost\"). The shipped code already follows DIARY-21, and RecallDiaryStarsAction tests assert that no badge is shown. Hand the SSOT lines to the planner (update-ssot), then use a cleanup task to drop the label and the DIARY_RECALL branch, or restate them."
+            },
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/demo/ui/DemoRecallSheet.test.tsx:34-38 (sheetText), T255",
+              "message": "Optional. sheetText() scans the whole dialog, including fixture prose: the ObscuredText words and the prefilled read-only rewrite. If a later demo diary fixture uses an everyday word the pattern matches (en free/pay/paid/charge/price, ko 무료/비용/가격), this test fails with a DEMO-8 message even though the sheet shows no cost. To avoid that, scan only the sheet's own copy and leave out the fixture-text nodes, or keep the coupling as a deliberate choice."
+            }
+          ],
+          "commit": "d3f20418b7a0a3e1c8c7de773f909df17c883f2c",
+          "baseCommit": "32b8974bff15bb6c89ebd160a3558abaa2a9deaf",
+          "submissionId": "6f7271c6-5913-4972-aced-9498388c8ed2",
+          "createdAt": "2026-11-08T19:27:18.337Z",
+          "finishedAt": "2026-11-08T19:37:05.741Z"
+        }
+      }
+    },
+    {
+      "sequence": 386,
+      "at": "2026-11-08T19:37:38.006Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 387,
+      "at": "2026-11-08T19:37:38.648Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "verifying",
+      "status": "blocked",
+      "changes": {
+        "status": "blocked",
+        "reason": "T252: 태스크 result에 limits 기록이 필요합니다."
+      }
+    },
+    {
+      "sequence": 388,
+      "at": "2026-11-08T19:37:49.772Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": ["T254", "T255"],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 389,
+      "at": "2026-11-08T19:40:07.814Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "blocked",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 390,
+      "at": "2026-11-08T19:41:20.970Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": ["T254", "T255"],
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:37:54.158Z",
+            "finishedAt": "2026-11-08T19:41:20.755Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 391,
+      "at": "2026-11-08T19:41:21.171Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ff4743b7-93f5-47b3-aafb-ccb3a642225f",
+      "taskId": "T255",
+      "tasks": ["T254", "T255"],
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "d39274d0ff1819ea136caf588cda02833d78110c",
+        "integratedAt": "2026-11-08T19:41:21.171Z"
+      }
+    },
+    {
+      "sequence": 392,
+      "at": "2026-11-08T19:43:15.433Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submittedBase": "d39274d0ff1819ea136caf588cda02833d78110c",
+        "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+        "submittedAt": "2026-11-08T19:43:15.433Z",
+        "steps": [
+          {
+            "taskId": "T251",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T252",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T253",
+            "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+            "at": "2026-11-08T19:43:15.405Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:40:09.067Z",
+                "finishedAt": "2026-11-08T19:43:14.630Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:40:09.067Z",
+            "finishedAt": "2026-11-08T19:43:14.630Z"
+          }
+        ],
+        "verifiedCommit": "529fbe9a9767454da03d0024e9feb35aeb2731ed"
+      }
+    },
+    {
+      "sequence": 393,
+      "at": "2026-11-08T19:43:51.193Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259"
+        ]
+      }
+    },
+    {
+      "sequence": 394,
+      "at": "2026-11-08T19:44:16.658Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+        "group": "local8h",
+        "taskId": "T259",
+        "tasks": ["T259"],
+        "lane": null,
+        "owner": "copyworker",
+        "contributors": ["copyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T19:44:16.658Z",
+        "startCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33"
+      }
+    },
+    {
+      "sequence": 395,
+      "at": "2026-11-08T19:44:17.938Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z"
+        }
+      }
+    },
+    {
+      "sequence": 396,
+      "at": "2026-11-08T19:44:20.858Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 397,
+      "at": "2026-11-08T19:51:09.840Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 398,
+      "at": "2026-11-08T19:53:58.913Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+        "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+        "submittedAt": "2026-11-08T19:53:58.913Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T259",
+            "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+            "at": "2026-11-08T19:53:58.897Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:51:10.265Z",
+                "finishedAt": "2026-11-08T19:53:58.408Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:51:10.265Z",
+            "finishedAt": "2026-11-08T19:53:58.408Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 399,
+      "at": "2026-11-08T19:55:09.991Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "reviewing",
+      "status": "changes_requested",
+      "changes": {
+        "status": "changes_requested",
+        "reason": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+        "review": {
+          "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+              "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+            },
+            {
+              "priority": "P3",
+              "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+              "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+            }
+          ],
+          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+          "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+          "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+          "createdAt": "2026-11-08T19:44:17.938Z",
+          "finishedAt": "2026-11-08T19:55:09.991Z"
+        }
+      }
+    },
+    {
+      "sequence": 400,
+      "at": "2026-11-08T19:55:10.342Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+          "owner": "reviewer-copy",
+          "status": "reviewing",
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+          "createdAt": "2026-11-08T19:55:10.342Z"
+        }
+      }
+    },
+    {
+      "sequence": 401,
+      "at": "2026-11-08T19:56:13.730Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "changes_requested",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "verifiedCommit": null,
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "ad59c7c9-988d-45c6-bef7-86d36940fe13",
+            "owner": "reviewer-guide",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "T251 (way-out ring plus page remeasure token) and T253 (UI-6 caption recipe, iOS hangul-word) are correct and well tested. T252 has a P2: the renderer caps the top inset at 0.4 of the viewport height, but the eyeline band always ends below that, so the shipped frame never starts below the band. The 390x844 overview stays clear only because the small fixture cluster leaves slack, and the result and comments describe a frame the code does not produce. Phone landscape is a limit to record: at 844x390 the guide picks edge, not eyeline.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:37-50, apps/web/src/pages/demo/ui/DemoUniverseScene.tsx:94-111 vs packages/3d-renderer/src/layers/scene-framing.ts:56",
+                "message": "fitSceneBounds computes yMax = 1 - 2*min(insets.top, height*0.4)/height, so it caps any top inset at 0.4*H. The eyeline band's lower edge is always at least CAPTION_EYELINE (0.42)*H + band/2, so every inset framingTopInset raises becomes exactly 0.4*H, inside the band. The measured band height then never changes the shipped frame; only its >0 gate matters. Reproduced at 390x844 beat 5: live band 313-395, computed inset 408, effective frame top 337.6, which is 58px inside the band. The cluster centre sits at ~527 = (337.6+716)/2, matching the cap, not (408+716)/2 = 562 (review-guide/shots/r-390-beat5-outline.png; the worker's t252-after shots show the same). Beats 4/5/7 pass only because the overview's minDistance keeps the small fixture cluster inside the region. Nothing guards a draw whose bounds fill it, for example a high gist lift on beat 7, and scene sets are random per load. Several things describe a frame the code does not produce: the framingTopInset doc ('the frame starts one gap below the band's lower edge'), the test 'starts a narrow eyeline frame one gap below the caption band', the result outcome, and the UI-18 ledger ('~295px-tall region'; the actual region is ~378px). Required: make the composed frame honour the inset. SceneFraming's only consumer is the demo (UniverseFraming -> DemoUniverseScene), so lifting the top cap for this case needs coordinator scope approval for scene-framing.ts. Add a test that composes framingTopInset with fitSceneBounds at 390x844 and asserts that the fitted bounds' projected top is at or below band bottom + CAPTION_SURFACE_GAP_PX. If the cap stays instead, correct the comments, test name, result and ledger to the effective behaviour (top = 0.4*H once a band is measured), and drop the band measurement that cannot affect the output."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 result limits (phone landscape)",
+                "message": "Record this as a limit, not a T252 defect, because no rule exists for it. (1) 844x390: the width is at least SHEET_BREAKPOINT.px (48rem = 768px), so the guide's default room is edge. guideCaptionRoom correctly returns 'edge' and T252 leaves the frame alone, as designed. The scout's overlap is the edge band pushed to mid-screen by clearCaptionObstacles: the time row and the CTA row block the top, and the write control or ring blocks the bottom (scout-fallback D-land844: caption [0,164,844,82] at beat 4, [0,216,844,82] at beat 5). That is an ONB-12 edge-room matter, not the eyeline predicate. (2) Landscape under 768px wide, reproduced at 667x375 beat 4: the predicate correctly returns eyeline, yet the whole cluster sits under the caption (review-guide/shots/r-667-beat4-caption-outline.png). Three causes: the guide's obstacle clearing moved the band from the eyeline (116-198) to 164-246, which the page does not mirror; the 0.4*H cap puts the frame at 150-247; and even an honoured inset (211) leaves only ~36px above the 128px bottom inset. This is not a regression: the base frame (96-247) is covered the same way. Fixing it needs an owner rule for short viewports (compare the parked F16/F17). The current limit names only the give-way to edge, not obstacle displacement or landscape."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 apps/web/src/pages/demo/ui/DemoUniverseScene.tsx:96-111, apps/web/src/pages/demo/ui/DemoPage.tsx:474",
+                "message": "viewportHeight comes from window.innerHeight inside a useMemo whose deps track neither viewport size. narrow reads window.innerWidth during render, not the guide's tracked viewport, and stays fresh only because the guide's resize remeasure now re-renders the page. A resize that changes neither the room nor the band height keeps the old height. The 0.4*H cap hides this today. It matters once the P2 fix makes the inset take effect, so derive both from a tracked viewport or the canvas size."
+              }
+            ],
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "baseCommit": "522ba6e71418738a4932f6a6e89ec9f0c09c707e",
+            "submissionId": "beded1ad-e775-445d-9ef9-86d16a541950",
+            "createdAt": "2026-11-08T19:03:06.979Z",
+            "finishedAt": "2026-11-08T19:17:22.384Z",
+            "invalidatedAt": "2026-11-08T19:18:56.033Z",
+            "invalidationReason": "correction assigned"
+          },
+          {
+            "id": "7917c936-a089-4489-9ff9-bdda1c9b7d88",
+            "owner": "reviewer-guide",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T252 apps/web/src/pages/demo/model/framing-insets.ts:42-50 with packages/3d-renderer/src/layers/scene-framing.ts:59-61 (a6bfd654); T252 result limits",
+                "message": "This is a regression on phone landscape under 768px wide. With the 0.4*H cap gone, the eyeline inset is honoured even where little room is left below the band. At 667x375 the inset is ceil(157.5+41+12) = 211 against a bottom edge of 375-128 = 247, so the overview is fitted into a ~36px strip. At 740x360 a 3-line band hits the MIN_HALF_SPAN guard (~18px). The inset also holds while a scene moment hides the caption (captionShowing stays true during sceneRevealing). So the moments the tutorial pauses to show, the beat-5 month sweep and the beat-7 gist rise, now render the cluster as ~5px specks. Measured: review-guide/shots/r2-667-beat5-sweep.png on 529fbe9a against base-667-beat5-sweep.png on 8a22355e, where the 96-247 frame shows ~20px bodies with their neuron lines; r2-667-beat4-outline.png shows two specks under the band at 164-246. While the caption shows, the cluster is under it on both, so the T252 limit 'The base frame (96-247) was covered the same way' covers only that state and hides the change. No rule says what the overview frame does when the room below the eyeline band is too thin (F16/F17 are parked), so this needs a coordinator decision, not a worker guess. Option (1): avoid the regression with a stated fallback, for example keep the existing inset when the region below band + gap would be thinner than a named share of the height, or drop the held inset during reveals. Either way the threshold or trade-off must be named by the coordinator or owner. Option (2): accept it under F16/F17 and state it accurately in T252's limits, with the acceptance recorded: under 768px landscape, reveal moments now show the cluster as specks where the base showed it legibly. Portrait (390x844) and wide layouts (edge, inset 96) are unaffected."
+              },
+              {
+                "priority": "P3",
+                "where": "T252 apps/web/src/pages/demo/ui/DemoPage.tsx:509,608,613-614",
+                "message": "The new viewport state is right. It is read once in a lazy initializer (the app is a client-only SPA), its resize listener is removed on cleanup, and narrow and the top inset now follow it. Three older render-time reads remain beside it: bottomInset's window.innerHeight and the mask region's innerWidth/innerHeight. Reading viewport.height/width there would give the top and bottom insets one height source. This is optional, because the viewport state re-renders the page on resize anyway."
+              }
+            ],
+            "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
+            "baseCommit": "e59c9a37048313b1925a1941e42b3fb0238f0e33",
+            "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
+            "createdAt": "2026-11-08T19:44:17.938Z",
+            "finishedAt": "2026-11-08T19:55:09.991Z",
+            "invalidatedAt": "2026-11-08T19:56:13.730Z",
+            "invalidationReason": "correction assigned"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 402,
+      "at": "2026-11-08T19:56:23.947Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T256",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 403,
+      "at": "2026-11-08T19:58:14.196Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "1701a333-58f2-46f4-9e81-f978315778a4",
+          "owner": "reviewer-copy",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T259 meets its acceptance. The six ko values match the recommended wording. They drop the subject or use 내/직접, as UI-62 allows, and read as natural 해요체. grep 당신 on ko.json finds nothing. Only those six ko keys change; en is byte-identical and key order is kept. A scratch paraglide regeneration matches packages/i18n/src/gen byte for byte (884 modules, empty diff -r). No test or SSOT pins the old or new text: the hint reaches the UI through m.* in ReviseControls (web and mobile), and the achievement strings through the static achievement-copy Record (ACH-36). Each string keeps its meaning and adds no claim. achievement_recall_200_body changes only its subject. The superlative was already in both locales, and it rests on a real mechanic: brightness is a read-time function of the last-recall anchor (RECALL-1). 내가 inside a 해요체 sentence reads as the reader's own view, not the app speaking (the app would say 제가). This matches the 내가 쓴 construction T254 already shipped. achievement_first_decoration_body moves from 'because you wanted' to 'as you wanted'. Both readings keep the user's agency, and nothing is overstated. The writing-flow hint renders under the 기억의 내용 field inside the writing-proposal anchor, so a new user sees it at tour step 4 (proposal), not step 3 (draft) as T259's goal says. It reads right there next to the caption 이름과 감정은 짐작이에요. 내 것이 아니면 고쳐 주세요. Its 'your own words, verbatim' claim still holds, because source_text is a verbatim diary passage (ENC-17).",
+          "findings": [],
+          "commit": "bb6c3f565feabc25ae4053b69af1049d4316f714",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
+          "createdAt": "2026-11-08T19:55:10.342Z",
+          "finishedAt": "2026-11-08T19:58:14.196Z"
+        }
+      }
+    },
+    {
+      "sequence": 404,
+      "at": "2026-11-08T19:59:14.383Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "taskId": "T258",
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "652b340a9ed044906aca1671720bea1c65ef1230",
+        "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
+        "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+        "submittedAt": "2026-11-08T19:59:14.383Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T256",
+            "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+            "at": "2026-11-08T19:59:14.347Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:56:24.733Z",
+                "finishedAt": "2026-11-08T19:59:13.467Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T258",
+            "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+            "at": "2026-11-08T19:59:14.347Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:56:24.733Z",
+                "finishedAt": "2026-11-08T19:59:13.467Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T19:56:24.733Z",
+            "finishedAt": "2026-11-08T19:59:13.467Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 405,
+      "at": "2026-11-08T19:59:56.716Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+          "createdAt": "2026-11-08T19:59:56.716Z"
+        }
+      }
+    },
+    {
+      "sequence": 406,
+      "at": "2026-11-08T19:59:56.750Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 407,
+      "at": "2026-11-08T19:59:56.917Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "미커밋·미추적 변경이 있습니다. 해당 작업을 먼저 정리하세요."
+      }
+    },
+    {
+      "sequence": 408,
+      "at": "2026-11-08T20:00:14.216Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 409,
+      "at": "2026-11-08T20:02:58.014Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:00:15.781Z",
+            "finishedAt": "2026-11-08T20:02:57.410Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 410,
+      "at": "2026-11-08T20:02:58.189Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "integratedAt": "2026-11-08T20:02:58.189Z"
+      }
+    },
+    {
+      "sequence": 411,
+      "at": "2026-11-08T20:04:40.806Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 412,
+      "at": "2026-11-08T20:06:13.036Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submittedBase": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+        "submittedAt": "2026-11-08T20:06:13.036Z",
+        "steps": [
+          {
+            "taskId": "T251",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T252",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T253",
+            "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+            "at": "2026-11-08T20:06:13.021Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T20:04:41.384Z",
+                "finishedAt": "2026-11-08T20:06:12.399Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:04:41.384Z",
+            "finishedAt": "2026-11-08T20:06:12.399Z"
+          }
+        ],
+        "verifiedCommit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34"
+      }
+    },
+    {
+      "sequence": 413,
+      "at": "2026-11-08T20:06:42.362Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Both tasks in the landing-scene lane meet their acceptance. T256: three outer slots move inward and their poster percentages follow. Projection uses a 55° vertical FOV, aspect 0.95, and a body radius of starSizeMax 2.4 × group scale 1.6 = 3.84 on the unit-circumradius facet body. Under the test's criterion every slot clears by at least 2.84 world units. Under the exact frustum side-plane criterion every slot clears by at least 2.15. With the old slots, slots 3 and 7 fail by about 3.1 and slot 4 by 0.15, so the test fails on the old staging. The explicit camera [0,0,90] equals the renderer's non-exported DEFAULT_CANVAS_CAMERA_POSITION, and only this scene passes it, so nothing else changes. On my final-commit run at 360x640 every star is whole: press 6 is CALM-led (45% weighted) and press 11 is LOVE-led (83%). The worker's 1440 shot still reads as a spread group, and T250's facing is untouched. T258: frameSkyFacing returns before any spin, step or quaternion work while nothing is faced or held. Otherwise it is the T250 frame step unchanged: a dropped facing snaps to identity in one frame and clears held. The plan is memoized on stable inputs and no frame allocates. The required `skyFacing: number | undefined` prop makes an omitted forward a TS error (confirmed in an isolated check; the worker reports TS2741 on the real file). The comments now state current facts. Ran: SkySphere.test 22/22, landing 5 files 60/60, apps/web tsc -b clean. Only optional findings remain.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:219 (T256)",
+              "message": "The projection test checks `|x| + r <= halfWidth` against the frustum's half-extent at the star centre's depth. That under-counts the body against the slanted side plane. Exact containment is `|x| + r / cos(theta) <= halfWidth`, where theta is the horizontal half-angle, about 24° at aspect 0.95, so the radius is short by about 9% (about 0.35 units). Today's slots pass the exact form with at least 2.15 units to spare, so nothing is cut now, but a future slot could pass this test and still clip slightly. Optional: divide the radius by the cosine of the half-angle (and the vertical half-angle for y)."
+            },
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21-22 (T256)",
+              "message": "The mock's `importOriginal` loads all of @cosimosi/3d-renderer (three/webgpu and every TSL sky/star module) into this jsdom file, just to read the active skin's FOV. In my runs the file went from 4.7–5.1 s (transform about 0.6 s) to 7.9–11.8 s (transform 4.6–6.7 s). The package has only a root export, so a cheaper read would need a subpath export, which is a trade-off. Recorded for awareness."
+            },
+            {
+              "priority": "P3",
+              "where": "packages/3d-renderer/src/layers/SkySphere.test.ts:247 (T258)",
+              "message": "'does no work in a frame while nothing is faced or held' would also pass without the new early return. T250's path already short-circuited `staticFacing && skyFacingAt(...)`, so spin reads stay 0 and the quaternion and scratch stay at identity either way. The early return itself is exact by reading (SkySphere.tsx:211), and the test meets the acceptance wording ('without computing a spin'). Optional: count reads of `lambda` and `instant` as well, so the test also pins that no step is computed."
+            },
+            {
+              "priority": "P3",
+              "where": "packages/3d-renderer/src/layers/SkySphere.tsx:50 (T258)",
+              "message": "The `facing` prop doc still says the slice turns 'to face the camera's view direction (−Z)… sits straight ahead'. The corrected VIEW_DIRECTION comment now qualifies this: −Z is the frame centre only for a camera looking down −Z. Optional: align the prop doc, for example 'turns that slice onto −Z, the frame centre for a camera looking down −Z'."
+            }
+          ],
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+          "createdAt": "2026-11-08T19:59:56.716Z",
+          "finishedAt": "2026-11-08T20:06:42.362Z"
+        }
+      }
+    },
+    {
+      "sequence": 414,
+      "at": "2026-11-08T20:06:49.568Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "610e450a-c84f-4eb3-bd45-22491fff70fe",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+          "baseCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+          "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+          "createdAt": "2026-11-08T20:06:49.568Z"
+        }
+      }
+    },
+    {
+      "sequence": 415,
+      "at": "2026-11-08T20:06:49.595Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 416,
+      "at": "2026-11-08T20:09:25.595Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:06:52.421Z",
+            "finishedAt": "2026-11-08T20:09:25.345Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 417,
+      "at": "2026-11-08T20:09:25.713Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": ["T256", "T258"],
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "bc281117748c489b50375c4dbcb16b31669cddd7",
+        "integratedAt": "2026-11-08T20:09:25.713Z"
+      }
+    },
+    {
+      "sequence": 418,
+      "at": "2026-11-08T20:11:04.298Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259",
+          "T260"
+        ]
+      }
+    },
+    {
+      "sequence": 419,
+      "at": "2026-11-08T20:11:04.615Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+        "group": "local8h",
+        "taskId": "T260",
+        "tasks": ["T260"],
+        "lane": null,
+        "owner": "skyworker",
+        "contributors": ["skyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T20:11:04.615Z",
+        "startCommit": "2182baad00bc347a0ef29a957fba621b527f307d"
+      }
+    },
+    {
+      "sequence": 420,
+      "at": "2026-11-08T20:11:05.730Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 421,
+      "at": "2026-11-08T20:15:41.482Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "610e450a-c84f-4eb3-bd45-22491fff70fe",
+          "owner": "reviewer-guide",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Review 7917c936's P2 is resolved. Landscape gets the base insets, and with base insets the overview, every reveal and the recall focus frame exactly as on base: at 667x375 and 740x360 the sweep shows legible bodies in the 96-247 / 96-232 frame. Portrait is unchanged from round 2. The orientation predicate is sound at a square and across rotation. The only render-time window read left is the mount-time lazy initializer. The real page always passes a tracked viewport, so NO_VIEWPORT cannot disable the portrait clearance there. One P3: 'landscape keeps the base framing exactly' overstates one degenerate case.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "T252 result outcome/limits ('landscape keeps the base framing exactly'); packages/3d-renderer/src/layers/scene-framing.ts:61",
+              "message": "Landscape insets are identical to base. The frame is identical too, except where the base fit was itself inverted: a bottom surface taller than about 0.95*H - 224px, with the bottom clamp below the top inset. There the round-2 guard places the frame differently. Measured at 667x375 in the decoration beat: the compact panel's top is at ~206, so the insets are top 96 and bottom 297 (yMin 0.584 > yMax 0.488). Base centres the frame at ~87px with its inverted floor; the guard centres it at ~69px. The focused memory renders as specks under the caption band (64-146) in both (review-guide/shots/base-667-decorate-shape.png vs r3-667-decorate-shape.png). The same applies to tall bottom sheets on short portrait screens, where the frame sits under the sheet either way. This is the never-inverts property the coordinator approved, and the case is already broken on base (F16/F17), so no code change is asked. Narrow the result's claim instead: the frame is identical for every non-degenerate inset, and where base inverted the frame the guard pins it just above the bottom inset."
+            }
+          ],
+          "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+          "baseCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+          "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+          "createdAt": "2026-11-08T20:06:49.568Z",
+          "finishedAt": "2026-11-08T20:15:41.481Z"
+        }
+      }
+    },
+    {
+      "sequence": 422,
+      "at": "2026-11-08T20:16:12.061Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 423,
+      "at": "2026-11-08T20:16:15.503Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "통합 후보의 spec 검증에 실패했습니다."
+      }
+    },
+    {
+      "sequence": 424,
+      "at": "2026-11-08T20:19:22.567Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 425,
+      "at": "2026-11-08T20:21:38.861Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:19:26.399Z",
+            "finishedAt": "2026-11-08T20:21:38.649Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 426,
+      "at": "2026-11-08T20:21:38.999Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": ["T251", "T252", "T253"],
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "344242ade5c29075e6649255b076b9f2cd0849ab",
+        "integratedAt": "2026-11-08T20:21:38.999Z"
+      }
+    },
+    {
+      "sequence": 427,
+      "at": "2026-11-08T20:21:54.980Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "f5439b06-b2b8-43e9-b672-e16054290360",
+        "group": "local8h",
+        "taskId": "T257",
+        "tasks": ["T257"],
+        "lane": null,
+        "owner": "guideworker",
+        "contributors": ["guideworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T20:21:54.980Z",
+        "startCommit": "344242ade5c29075e6649255b076b9f2cd0849ab"
+      }
+    },
+    {
+      "sequence": 428,
+      "at": "2026-11-08T20:21:55.847Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 429,
+      "at": "2026-11-08T20:25:37.600Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 430,
+      "at": "2026-11-08T20:26:54.297Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+        "submittedBase": "e2b1b3fff78f5e4ad768f14b5e2ea081f32a204b",
+        "submissionId": "0435e9a5-f84f-43d0-b301-f79e43e7eecd",
+        "submittedAt": "2026-11-08T20:26:54.297Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T260",
+            "commit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+            "at": "2026-11-08T20:26:54.284Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T20:25:37.932Z",
+                "finishedAt": "2026-11-08T20:26:53.879Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:25:37.932Z",
+            "finishedAt": "2026-11-08T20:26:53.879Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 431,
+      "at": "2026-11-08T20:27:24.952Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "d7a14ec2-d5cc-4c10-90c8-b4e52c8df1d2",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+          "baseCommit": "e2b1b3fff78f5e4ad768f14b5e2ea081f32a204b",
+          "submissionId": "0435e9a5-f84f-43d0-b301-f79e43e7eecd",
+          "createdAt": "2026-11-08T20:27:24.952Z"
+        }
+      }
+    },
+    {
+      "sequence": 432,
+      "at": "2026-11-08T20:29:30.230Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "d7a14ec2-d5cc-4c10-90c8-b4e52c8df1d2",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T260 meets its acceptance, and the only production change is the SkySphere `facing` JSDoc. Containment math: the side plane x = d·tanθ is at signed distance d·sinθ − |x|·cosθ from the centre, so requiring that distance ≥ r gives exactly |x| + r/cosθ ≤ d·tanθ. The horizontal half-angle atan(tan(fov/2)·aspect) is the correct one for a vertical-FOV camera: 26.31° at 55° and 0.95, so the old approximation under-counted the body by 0.44 units. The grazing case (0.01 clearance) therefore fails under the exact bound, as it should. The slot test still renders the real LandingWalkthroughScene with 8 memories. It reads the positions the scene hands the mocked InstancedNodeLayer, the cameraPosition handed to UniverseCanvas, and the real skin FOV, and takes the group scale from the scene's own scales. The plain CALM fixtures affect neither the slots, the camera nor the radius ceiling, so they cannot hide a slot or camera regression. Restoring the old slots fails the exact check (slots 3 and 7 by about 3.2 units, slot 4 by 0.5). The idle-frame test fails without the early return: I re-ran the no-early-return path with the test's getters and got {spin:0, step:2}, matching the worker. The new doc is accurate, since the slice lies on −Z, which is the frame centre only for a camera looking down −Z. Ran: SkySphere.test 22/22, the scene test 9/9 three times (1.9–2.3 s), landing 5 files 61/61, tsc -b clean for apps/web and packages/3d-renderer. The renderer tsc left a tsbuildinfo, which I deleted, so the workspace is clean.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "packages/3d-renderer/src/layers/SkySphere.tsx:53 (T260)",
+              "message": "The rewritten `facing` JSDoc was not rewrapped. Line 53 runs to about 141 characters ('…holds still on −Z. Absent, the mesh keeps its identity orientation. A facing'), and lines 51–52 also pass the 100-column printWidth the surrounding comments follow. Prettier does not reflow comments. Optional: rewrap the paragraph."
+            }
+          ],
+          "commit": "29e1edf8b66d09541749a11b54316a0a7ae6a6a8",
+          "baseCommit": "e2b1b3fff78f5e4ad768f14b5e2ea081f32a204b",
+          "submissionId": "0435e9a5-f84f-43d0-b301-f79e43e7eecd",
+          "createdAt": "2026-11-08T20:27:24.952Z",
+          "finishedAt": "2026-11-08T20:29:30.230Z"
+        }
+      }
+    },
+    {
+      "sequence": 433,
+      "at": "2026-11-08T20:29:57.840Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 434,
+      "at": "2026-11-08T20:31:21.207Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:29:59.227Z",
+            "finishedAt": "2026-11-08T20:31:20.994Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 435,
+      "at": "2026-11-08T20:31:21.299Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "21dacc4e-aeae-44ef-a4e6-f324b5d5494b",
+      "taskId": "T260",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+        "integratedAt": "2026-11-08T20:31:21.299Z"
+      }
+    },
+    {
+      "sequence": 436,
+      "at": "2026-11-08T20:35:43.077Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 437,
+      "at": "2026-11-08T20:36:40.752Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+        "submittedBase": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+        "submissionId": "a8ca83c7-7230-4a84-9783-4405f3b85b9a",
+        "submittedAt": "2026-11-08T20:36:40.752Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T257",
+            "commit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+            "at": "2026-11-08T20:36:40.739Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T20:35:43.369Z",
+                "finishedAt": "2026-11-08T20:36:40.390Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:35:43.369Z",
+            "finishedAt": "2026-11-08T20:36:40.390Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 438,
+      "at": "2026-11-08T20:37:28.003Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "32f1051c-dac1-49f0-a952-fb01d33b756e",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+          "baseCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+          "submissionId": "a8ca83c7-7230-4a84-9783-4405f3b85b9a",
+          "createdAt": "2026-11-08T20:37:28.003Z"
+        }
+      }
+    },
+    {
+      "sequence": 439,
+      "at": "2026-11-08T20:41:50.783Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "reviewing",
+      "status": "changes_requested",
+      "changes": {
+        "status": "changes_requested",
+        "reason": "T257's layout logic is sound. The caption is visible only when layout matches the key and position, so it never paints at the fallback. Size, scroll and font ticks re-measure in place. Room changes (a modal or marked panel mounting) hide, then re-measure. The new tests fail on the old hook (4/4) and pass now. The CLS evidence is credible. The 6f12db13 merge adds only main's spec-only e2b1b3ff. One P2: visibility now sits on the aria-live element itself, so the live region leaves the accessibility tree at every caption change.",
+        "review": {
+          "id": "32f1051c-dac1-49f0-a952-fb01d33b756e",
+          "owner": "reviewer-guide",
+          "status": "changes_requested",
+          "verdict": "changes_requested",
+          "summary": "T257's layout logic is sound. The caption is visible only when layout matches the key and position, so it never paints at the fallback. Size, scroll and font ticks re-measure in place. Room changes (a modal or marked panel mounting) hide, then re-measure. The new tests fail on the old hook (4/4) and pass now. The CLS evidence is credible. The 6f12db13 merge adds only main's spec-only e2b1b3ff. One P2: visibility now sits on the aria-live element itself, so the live region leaves the accessibility tree at every caption change.",
+          "findings": [
+            {
+              "priority": "P2",
+              "where": "T257 apps/web/src/widgets/sequence-guide/ui/SequenceCaption.tsx:37-53 (band style), apps/web/src/widgets/sequence-guide/lib/use-caption-layout.ts:43,165-168",
+              "message": "The band carrying visibility is the element with aria-live='polite'. key includes the text, so on every caption change ready turns false in the same commit that inserts the new text. The live region therefore leaves the accessibility tree exactly when its content changes, and it comes back already filled one measure later. A room change does the same with unchanged text. The base kept the live root exposed and hid only the paragraph, so a reveal was a content change inside an exposed live region, the case screen readers announce reliably. A live region that appears together with its content is the case accessibility guidance warns is announced inconsistently across screen readers and browsers. ONB-2 makes the caption the guaranteed channel and ONB-13 makes it a polite live region, yet no test or recorded check covers the announcement. Required: keep the live root exposed and unmoving while the visual band hides. Option 1: a fixed root that never moves and paints nothing, holding aria-live, with the positioned band inside it carrying visibility. Option 2: an always-present visually hidden live copy of the text, with the visual band aria-hidden. Then add a test that the aria-live element is never visibility:hidden while a caption is active and that its text changes in place. If the coordinator prefers to keep this structure, record a screen-reader check instead (VoiceOver+Safari, NVDA+Chrome; one announcement per caption, none while hidden). Coupling: T252's DemoPage measures the band through '[data-sequence-chrome][aria-live]' and reads its offsetHeight for the framing inset (DemoPage.tsx ~471). Whichever element ends up holding aria-live, that selector must still resolve to the visual band, and DemoPage.tsx is outside T257's touches."
+            }
+          ],
+          "commit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+          "baseCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+          "submissionId": "a8ca83c7-7230-4a84-9783-4405f3b85b9a",
+          "createdAt": "2026-11-08T20:37:28.003Z",
+          "finishedAt": "2026-11-08T20:41:50.783Z"
+        }
+      }
+    },
+    {
+      "sequence": 440,
+      "at": "2026-11-08T20:42:50.524Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "changes_requested",
+      "status": "doing",
+      "changes": {
+        "status": "doing",
+        "verifiedCommit": null,
+        "review": null,
+        "reviewHistory": [
+          {
+            "id": "32f1051c-dac1-49f0-a952-fb01d33b756e",
+            "owner": "reviewer-guide",
+            "status": "changes_requested",
+            "verdict": "changes_requested",
+            "summary": "T257's layout logic is sound. The caption is visible only when layout matches the key and position, so it never paints at the fallback. Size, scroll and font ticks re-measure in place. Room changes (a modal or marked panel mounting) hide, then re-measure. The new tests fail on the old hook (4/4) and pass now. The CLS evidence is credible. The 6f12db13 merge adds only main's spec-only e2b1b3ff. One P2: visibility now sits on the aria-live element itself, so the live region leaves the accessibility tree at every caption change.",
+            "findings": [
+              {
+                "priority": "P2",
+                "where": "T257 apps/web/src/widgets/sequence-guide/ui/SequenceCaption.tsx:37-53 (band style), apps/web/src/widgets/sequence-guide/lib/use-caption-layout.ts:43,165-168",
+                "message": "The band carrying visibility is the element with aria-live='polite'. key includes the text, so on every caption change ready turns false in the same commit that inserts the new text. The live region therefore leaves the accessibility tree exactly when its content changes, and it comes back already filled one measure later. A room change does the same with unchanged text. The base kept the live root exposed and hid only the paragraph, so a reveal was a content change inside an exposed live region, the case screen readers announce reliably. A live region that appears together with its content is the case accessibility guidance warns is announced inconsistently across screen readers and browsers. ONB-2 makes the caption the guaranteed channel and ONB-13 makes it a polite live region, yet no test or recorded check covers the announcement. Required: keep the live root exposed and unmoving while the visual band hides. Option 1: a fixed root that never moves and paints nothing, holding aria-live, with the positioned band inside it carrying visibility. Option 2: an always-present visually hidden live copy of the text, with the visual band aria-hidden. Then add a test that the aria-live element is never visibility:hidden while a caption is active and that its text changes in place. If the coordinator prefers to keep this structure, record a screen-reader check instead (VoiceOver+Safari, NVDA+Chrome; one announcement per caption, none while hidden). Coupling: T252's DemoPage measures the band through '[data-sequence-chrome][aria-live]' and reads its offsetHeight for the framing inset (DemoPage.tsx ~471). Whichever element ends up holding aria-live, that selector must still resolve to the visual band, and DemoPage.tsx is outside T257's touches."
+              }
+            ],
+            "commit": "93bc6dc3cd445ab98d0375054164da4f88fd86c8",
+            "baseCommit": "092e5d7607ba69a36a6839f0f72841e4341287fe",
+            "submissionId": "a8ca83c7-7230-4a84-9783-4405f3b85b9a",
+            "createdAt": "2026-11-08T20:37:28.003Z",
+            "finishedAt": "2026-11-08T20:41:50.783Z",
+            "invalidatedAt": "2026-11-08T20:42:50.524Z",
+            "invalidationReason": "correction assigned"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 441,
+      "at": "2026-11-08T20:50:42.508Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 442,
+      "at": "2026-11-08T20:51:36.588Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submittedBase": "192282744cdc110184a6f67e01dc6e8977bcf900",
+        "submissionId": "222556a5-7a1d-4a9e-8f82-e060f7f1e5ec",
+        "submittedAt": "2026-11-08T20:51:36.588Z",
+        "steps": [
+          {
+            "taskId": "T257",
+            "commit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+            "at": "2026-11-08T20:51:36.576Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T20:50:42.774Z",
+                "finishedAt": "2026-11-08T20:51:36.249Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:50:42.774Z",
+            "finishedAt": "2026-11-08T20:51:36.249Z"
+          }
+        ],
+        "verifiedCommit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684"
+      }
+    },
+    {
+      "sequence": 443,
+      "at": "2026-11-08T20:52:22.771Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "5bed6e14-bfad-4762-a616-261da8296a28",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+          "baseCommit": "192282744cdc110184a6f67e01dc6e8977bcf900",
+          "submissionId": "222556a5-7a1d-4a9e-8f82-e060f7f1e5ec",
+          "createdAt": "2026-11-08T20:52:22.771Z"
+        }
+      }
+    },
+    {
+      "sequence": 444,
+      "at": "2026-11-08T20:55:13.874Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259",
+          "T260",
+          "T261",
+          "T262",
+          "T264"
+        ]
+      }
+    },
+    {
+      "sequence": 445,
+      "at": "2026-11-08T20:55:18.199Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "5bed6e14-bfad-4762-a616-261da8296a28",
+          "owner": "reviewer-guide",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Review 32f1051c's P2 is resolved. The polite live region is now a zero-size fixed root that never hides or moves. Chrome's accessibility tree keeps it (generic, live=polite, not ignored) whether the band is shown or hidden, and the caption paragraph is ignored (notVisible) while the band is hidden. A new line is therefore inserted hidden and announced once when its band reveals in place. Pointer-events and z-guide still reach the band. Nothing else depends on the caption's [data-sequence-chrome] box. The SequenceGuide.test.tsx selector move is correct. The onboarding host and mobile are unaffected. CLS stays 0 (3/3 runs, total CLS), and T252's band reading is 82px either way.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "T257 apps/web/src/widgets/sequence-guide/ui/SequenceCaption.tsx:47-58 with use-caption-layout.ts schedule()",
+              "message": "Announcements are once per text change. A room change that keeps the same text hides and re-reveals the band, for example the write dialog mounting while beat 4's caption stays. Chrome then un-ignores the paragraph inside the live root, which can announce the same line a second time. This is far less than the base, which re-revealed on every mutation, scroll or size tick, so nothing is required. To make it strictly once per caption, keep an always-exposed visually hidden copy of the text in the live root and mark the visual band aria-hidden."
+            },
+            {
+              "priority": "P3",
+              "where": "scripts/universe-review/check-tour.mjs:102-103",
+              "message": "The ad-hoc tour checker (not in CI, last used in report 261103-univvis) waits on locator('[aria-live=\"polite\"]').filter({hasText}).waitFor(). Playwright's default state is 'visible', and a zero-size live root never becomes visible, so caption() would time out now. Point it at '[data-sequence-caption-band]' or '[aria-live=\"polite\"] p', or wait with state 'attached'. Its other '[aria-live=\"polite\"] p' locators still work."
+            }
+          ],
+          "commit": "0efcb5d9a3c887ce2170cc05c716802a02ff6684",
+          "baseCommit": "192282744cdc110184a6f67e01dc6e8977bcf900",
+          "submissionId": "222556a5-7a1d-4a9e-8f82-e060f7f1e5ec",
+          "createdAt": "2026-11-08T20:52:22.771Z",
+          "finishedAt": "2026-11-08T20:55:18.199Z"
+        }
+      }
+    },
+    {
+      "sequence": 446,
+      "at": "2026-11-08T20:55:21.965Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T261",
+      "tasks": ["T261", "T262"],
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+        "group": "local8h",
+        "taskId": "T261",
+        "tasks": ["T261", "T262"],
+        "lane": "universe-tour",
+        "owner": "skyworker",
+        "contributors": ["skyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T20:55:21.965Z",
+        "startCommit": "ba988256a727a31a93f3aede303107f7ac734192"
+      }
+    },
+    {
+      "sequence": 447,
+      "at": "2026-11-08T20:55:22.639Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T261",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 448,
+      "at": "2026-11-08T20:55:22.868Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+        "group": "local8h",
+        "taskId": "T264",
+        "tasks": ["T264"],
+        "lane": null,
+        "owner": "copyworker",
+        "contributors": ["copyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T20:55:22.868Z",
+        "startCommit": "ba988256a727a31a93f3aede303107f7ac734192"
+      }
+    },
+    {
+      "sequence": 449,
+      "at": "2026-11-08T20:55:23.419Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 450,
+      "at": "2026-11-08T20:56:18.017Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 451,
+      "at": "2026-11-08T20:57:36.135Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:56:19.223Z",
+            "finishedAt": "2026-11-08T20:57:35.944Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 452,
+      "at": "2026-11-08T20:57:36.234Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f5439b06-b2b8-43e9-b672-e16054290360",
+      "taskId": "T257",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "8800de38820a621a43adba8b157cbb5db5ee2797",
+        "integratedAt": "2026-11-08T20:57:36.234Z"
+      }
+    },
+    {
+      "sequence": 453,
+      "at": "2026-11-08T21:04:58.191Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 454,
+      "at": "2026-11-08T21:05:56.252Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+        "submittedBase": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+        "submissionId": "924fa833-6a51-4fbe-a8e5-47fa9f6f0925",
+        "submittedAt": "2026-11-08T21:05:56.252Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T264",
+            "commit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+            "at": "2026-11-08T21:05:56.237Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:04:58.492Z",
+                "finishedAt": "2026-11-08T21:05:55.881Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:04:58.492Z",
+            "finishedAt": "2026-11-08T21:05:55.881Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 455,
+      "at": "2026-11-08T21:06:35.921Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "b4174ae0-fb3a-456d-a0e0-4440df6d703a",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+          "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+          "submissionId": "924fa833-6a51-4fbe-a8e5-47fa9f6f0925",
+          "createdAt": "2026-11-08T21:06:35.921Z"
+        }
+      }
+    },
+    {
+      "sequence": 456,
+      "at": "2026-11-08T21:07:54.302Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T261",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 457,
+      "at": "2026-11-08T21:08:41.780Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "b4174ae0-fb3a-456d-a0e0-4440df6d703a",
+          "owner": "reviewer-guide",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T264 meets ONB-17. On web, writing-draft now measures the union of the draft column and the footer's split row. Both are read with getBoundingClientRect in viewport space after awaitArrival, so the measure re-runs once the sheet's slide settles, and the registration itself triggers the engine's remeasure. Missing, detached or zero-size parts drop out, and the result is null only when nothing is left. web has exactly one writing-draft registrant, and the old SequenceAnchor wrapper for it is gone. The non-tour flow only registers, as before. The new test fails on the base sheet (ring bottom 440 < split bottom 804) and passes now. The mobile claim holds: the split button sits inside the writing-draft SequenceAnchor View (apps/mobile/.../WritingFlowSheet.tsx:125-136), which measureInWindow measures whole. No feature or entity imports the sequence.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "T264 apps/web/src/widgets/writing-flow/ui/WritingFlowSheet.tsx:45-81",
+              "message": "DraftAnchor restates SequenceAnchor's wrapper: the data-sequence-anchor attribute, the display:contents div, the first-child target, and awaitArrival with an isConnected check. Only its measure differs. ONB-10 words registration as wrapping a child in SequenceAnchor. The intent still holds here, because a widget composition site registers and nothing passes into a feature slice. features/highlight-next-control was outside the touches, and the result already names SequenceAnchor as the shared home. A later follow-up could give SequenceAnchor an optional extra-element prop, for example refs to union, and drop DraftAnchor, so the anchor wrapper has one implementation."
+            }
+          ],
+          "commit": "a7c97bbd1f6ee18ad8c25c33189c3186e80fc628",
+          "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+          "submissionId": "924fa833-6a51-4fbe-a8e5-47fa9f6f0925",
+          "createdAt": "2026-11-08T21:06:35.921Z",
+          "finishedAt": "2026-11-08T21:08:41.780Z"
+        }
+      }
+    },
+    {
+      "sequence": 458,
+      "at": "2026-11-08T21:09:09.833Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 459,
+      "at": "2026-11-08T21:09:10.044Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "reason": "미커밋·미추적 변경이 있습니다. 해당 작업을 먼저 정리하세요."
+      }
+    },
+    {
+      "sequence": 460,
+      "at": "2026-11-08T21:09:20.943Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "taskId": "T262",
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+        "submittedBase": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+        "submissionId": "0f5e0253-1f2e-4d7b-bfd1-71afe23bcbca",
+        "submittedAt": "2026-11-08T21:09:20.943Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T261",
+            "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+            "at": "2026-11-08T21:09:20.931Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:07:54.690Z",
+                "finishedAt": "2026-11-08T21:09:20.516Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T262",
+            "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+            "at": "2026-11-08T21:09:20.931Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:07:54.690Z",
+                "finishedAt": "2026-11-08T21:09:20.516Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:07:54.690Z",
+            "finishedAt": "2026-11-08T21:09:20.516Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 461,
+      "at": "2026-11-08T21:10:06.362Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "e57b8322-5eeb-42c1-a00d-0c7e89910773",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+          "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+          "submissionId": "0f5e0253-1f2e-4d7b-bfd1-71afe23bcbca",
+          "createdAt": "2026-11-08T21:10:06.362Z"
+        }
+      }
+    },
+    {
+      "sequence": 462,
+      "at": "2026-11-08T21:10:06.394Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 463,
+      "at": "2026-11-08T21:10:06.521Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "integrating",
+      "status": "approved",
+      "changes": {
+        "status": "approved"
+      }
+    },
+    {
+      "sequence": 464,
+      "at": "2026-11-08T21:10:06.868Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 465,
+      "at": "2026-11-08T21:11:23.813Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:10:08.209Z",
+            "finishedAt": "2026-11-08T21:11:23.643Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 466,
+      "at": "2026-11-08T21:11:23.912Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "fcb2fdf5-1854-42e6-8900-22f70085c913",
+      "taskId": "T264",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "98a91639e6926dc8318f1cc8e76686d19fbb8bd3",
+        "integratedAt": "2026-11-08T21:11:23.912Z"
+      }
+    },
+    {
+      "sequence": 467,
+      "at": "2026-11-08T21:12:41.803Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259",
+          "T260",
+          "T261",
+          "T262",
+          "T264",
+          "T265"
+        ]
+      }
+    },
+    {
+      "sequence": 468,
+      "at": "2026-11-08T21:12:48.245Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+        "group": "local8h",
+        "taskId": "T265",
+        "tasks": ["T265"],
+        "lane": null,
+        "owner": "copyworker",
+        "contributors": ["copyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T21:12:48.245Z",
+        "startCommit": "f8c5be083288631b44f4798a5e6b6873fc46f948"
+      }
+    },
+    {
+      "sequence": 469,
+      "at": "2026-11-08T21:12:48.826Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 470,
+      "at": "2026-11-08T21:16:47.409Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "e57b8322-5eeb-42c1-a00d-0c7e89910773",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T261 and T262 meet their acceptance. Web follows DemoHud: the right column is held `pt-11` on every width. Below sm the clock goes `left-0 top-11 w-max`; from sm it stays centred at the top. The toggle keeps the top-left corner, and the `universe-clock` anchor stays inside widgets/universe-time. Dropping the transform below sm can only help any fixed descendant, and the consent dialog comes from @cosimosi/ui. I ran the probe on a scratch archive of dfc6f0c5 (vite 1237, Chrome 9382, both stopped, copy deleted, review workspace untouched) at step 1, ko. 360: skip [226,16,344,48], clock [16,60,274,80], balance [296,60,344,114]. 600: the same layout. 768: skip [634,16,752,48], clock [255,24,513,44], toggle [24,24,126,56], balance [551,68,744,100]. 1024: skip [890,16,1008,48], clock [383,24,641,44], balance [807,68,1000,100]. None overlap at any width. The caption also ends 12px above the welcome at 768 and 1024. With the tour skipped, the HUD at 390 and 1440 reads cleanly. The toggle sits top-left with the clock under it on phones, and the balance column starts 44px down at 60 (390) and 68 (1440). Mobile groups toggle and clock in one absolute box-none left column. Its right column pads `spacing[8] + spacing[3]` = 32 + 12 = 44 with no literal number. The mobile skip's missing top safe-area inset is recorded as a limit, and so is mobile's lack of a surface marker. `data-scene-footer` is read only by use-surface-layout's `footer`. SequenceGuide applies that only to bottom-room captions with no surface, so the panels' right and bottom measurements are unchanged, and DemoPage lives on another route. The ko copy is in 해요체, the regenerated module matches it, en is untouched, and no probe file is in any commit. T261 carries a seven-dimension UI-15 ledger. Ran: apps/web vitest for pages/universe, widgets/sequence-guide and shared/lib (4 files, 38/38); tsc -b for apps/web; `tsc -p tsconfig.json --noEmit` for apps/mobile. All clean.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "apps/mobile/src/pages/universe/ui/UniversePage.tsx: styles.topRight (T261)",
+              "message": "This predates the change and is unverified on device. `topRight` is an in-flow View that stretches across the whole top chrome, from its top edge, with no `pointerEvents=\"box-none\"`. It comes after the absolute left column, so it lies above the view toggle and the clock in z-order. React Native gives a touch to the topmost view under it, so the column's empty left area may take presses meant for the toggle. The old layout had the same overlap and this change does not widen it. Since the mobile page was not run on a device, consider `pointerEvents=\"box-none\"` on topRight and a device tap check of the toggle."
+            },
+            {
+              "priority": "P3",
+              "where": "spec/tasks/T261.universe-hud-clears-tour-skip.md: UI-15 ledger dim 3 (T261)",
+              "message": "The ledger says the HUD 'sits lower on phones'. On web the balance column is held `pt-11` on every width: at 1440 it moves from y 24 to 68 with or without a tour, as the outcome and rects show. The no-tour trade-off therefore applies on desktop too, and the ledger note should say so."
+            }
+          ],
+          "commit": "dfc6f0c50fc89ae37a8fd20236c2fe9c9cc5bd5e",
+          "baseCommit": "3ed043023adbc6afe8a6716d42b5b22d9e12050f",
+          "submissionId": "0f5e0253-1f2e-4d7b-bfd1-71afe23bcbca",
+          "createdAt": "2026-11-08T21:10:06.362Z",
+          "finishedAt": "2026-11-08T21:16:47.409Z"
+        }
+      }
+    },
+    {
+      "sequence": 471,
+      "at": "2026-11-08T21:17:23.156Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 472,
+      "at": "2026-11-08T21:19:05.828Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:17:24.556Z",
+            "finishedAt": "2026-11-08T21:19:05.374Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 473,
+      "at": "2026-11-08T21:19:05.990Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "f95a1f21-9e2a-4f04-97d1-c7d5826f315a",
+      "taskId": "T262",
+      "tasks": ["T261", "T262"],
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "e7485e080ff932fc0a3c2da1dbaeb18e6f3a3f5c",
+        "integratedAt": "2026-11-08T21:19:05.990Z"
+      }
+    },
+    {
+      "sequence": 474,
+      "at": "2026-11-08T21:20:06.939Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "taskScope": [
+          "T225",
+          "T226",
+          "T227",
+          "T228",
+          "T229",
+          "T230",
+          "T231",
+          "T232",
+          "T233",
+          "T234",
+          "T235",
+          "T236",
+          "T237",
+          "T238",
+          "T239",
+          "T240",
+          "T241",
+          "T242",
+          "T243",
+          "T244",
+          "T245",
+          "T246",
+          "T247",
+          "T248",
+          "T249",
+          "T250",
+          "T251",
+          "T252",
+          "T253",
+          "T254",
+          "T255",
+          "T256",
+          "T257",
+          "T258",
+          "T259",
+          "T260",
+          "T261",
+          "T262",
+          "T263",
+          "T264",
+          "T265"
+        ]
+      }
+    },
+    {
+      "sequence": 475,
+      "at": "2026-11-08T21:20:07.158Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": null,
+      "status": "preparing",
+      "changes": {
+        "id": "ef555226-2498-473c-bf70-2d5141763d3d",
+        "group": "local8h",
+        "taskId": "T263",
+        "tasks": ["T263"],
+        "lane": null,
+        "owner": "skyworker",
+        "contributors": ["skyworker"],
+        "status": "preparing",
+        "createdAt": "2026-11-08T21:20:07.157Z",
+        "startCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3"
+      }
+    },
+    {
+      "sequence": 476,
+      "at": "2026-11-08T21:20:07.786Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "preparing",
+      "status": "doing",
+      "changes": {
+        "status": "doing"
+      }
+    },
+    {
+      "sequence": 477,
+      "at": "2026-11-08T21:20:56.017Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 478,
+      "at": "2026-11-08T21:22:26.244Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+        "submittedBase": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+        "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
+        "submittedAt": "2026-11-08T21:22:26.244Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T265",
+            "commit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+            "at": "2026-11-08T21:22:26.231Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:20:56.278Z",
+                "finishedAt": "2026-11-08T21:22:25.883Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:20:56.278Z",
+            "finishedAt": "2026-11-08T21:22:25.883Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 479,
+      "at": "2026-11-08T21:23:00.652Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "d7a8d49d-1158-4408-99dd-f0526b6dfee8",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+          "baseCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+          "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
+          "createdAt": "2026-11-08T21:23:00.652Z"
+        }
+      }
+    },
+    {
+      "sequence": 480,
+      "at": "2026-11-08T21:24:49.520Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "d7a8d49d-1158-4408-99dd-f0526b6dfee8",
+          "owner": "reviewer-guide",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "caption() now waits on scope.locator('[data-sequence-caption-band]').filter({ hasText: text }).waitFor(). That band is the element T257 made non-empty and visibility-toggled. It measured 82px tall in the T257b CDP probe, against the 0x0 live root. Playwright's default visible wait therefore holds through the hidden phase and resolves once the band reveals with the new text. The new SequenceGuide test renders the real guide and uses the script's literal strings: '[data-sequence-caption-band]' (exactly one band holds the text and becomes visible), '[aria-live=\"polite\"] p' (the caption line inside that band) and '[data-sequence-chrome]' (the live root). Across the whole script, the structure change touches only the caption locator. The '[aria-live=\"polite\"] p' locators (lines 111, 307, 357) still match the caption line. The closest('[data-sequence-chrome]') skip (line 123) still applies, because the skip button carries its own marker and the caption holds no controls. The other markers (data-sequence-anchor, data-cosimosi-surface, the data-demo-* attributes, obscured-run) are still rendered.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "scripts/universe-review/check-tour.mjs:111,307,357",
+              "message": "This is optional and predates T265. The three '[aria-live=\"polite\"] p' locators are not scoped to the caption. A polite toast whose children include a <p> would make Playwright's strict waitFor() and boundingBox() resolve two elements. '[data-sequence-caption-band] p' would pin them to the guide's line."
+            }
+          ],
+          "commit": "d2822ad5dca0c1f89df0ba40b5e46c15496131c6",
+          "baseCommit": "50d4afcf54d46d453e043cae7eb8949ea61ae5b3",
+          "submissionId": "9de46dbe-f714-4b6f-9ae9-bce1d4febd35",
+          "createdAt": "2026-11-08T21:23:00.652Z",
+          "finishedAt": "2026-11-08T21:24:49.520Z"
+        }
+      }
+    },
+    {
+      "sequence": 481,
+      "at": "2026-11-08T21:25:14.344Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 482,
+      "at": "2026-11-08T21:25:56.852Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 483,
+      "at": "2026-11-08T21:26:36.906Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:25:15.821Z",
+            "finishedAt": "2026-11-08T21:26:36.549Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 484,
+      "at": "2026-11-08T21:26:37.002Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c29fd5fa-2a1b-452e-8766-a80a30725257",
+      "taskId": "T265",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "integratedAt": "2026-11-08T21:26:37.002Z"
+      }
+    },
+    {
+      "sequence": 485,
+      "at": "2026-11-08T21:27:21.006Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+        "submittedBase": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+        "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+        "submittedAt": "2026-11-08T21:27:21.006Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T263",
+            "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+            "at": "2026-11-08T21:27:20.995Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T21:25:57.215Z",
+                "finishedAt": "2026-11-08T21:27:20.654Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:25:57.215Z",
+            "finishedAt": "2026-11-08T21:27:20.654Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 486,
+      "at": "2026-11-08T21:27:49.331Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+          "owner": "reviewer-sky",
+          "status": "reviewing",
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+          "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+          "createdAt": "2026-11-08T21:27:49.331Z"
+        }
+      }
+    },
+    {
+      "sequence": 487,
+      "at": "2026-11-08T21:30:05.675Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "fef1376c-0fe6-4538-bb16-666cc4f3c525",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T263 meets its acceptance. One `captionHeld = advancePending || sweeping` now drives both the existing dwell pause and the shown caption, so the two cannot disagree.\n\nThe hold cannot outlive the advance. `pending` clears on the overlay's `take()` as soon as its machine is idle, and both universe pages always mount the overlay. `sampledTime` clears through `sweep.end()` when the sweep finishes or on unmount mid-sweep. Under reduced motion the sweep never begins and `onDone` fires at once. An empty interval never announces and releases at once. A failed launch announces nothing and reports no `launch-succeeded`. So every path that held the dwell before releases the caption with it, and nothing new can stick.\n\nThere is no early flash. The write flow calls `announceAdvance` before `LAUNCH_OK`, and the report the host turns into step 6 arrives one commit later. That is the same effect flush that calls `sweep.begin()`, so step 6 renders already held.\n\nThe ONB-20 channel is untouched (`takeOnboardingReport` and `onboardingReportAction` are unchanged), so a held `launch-succeeded` still advances on the step that awaits it. The demo does not use `useUniverseScreen` (only the web and mobile UniversePage do), so it is unaffected. Mobile `pointerEvents=\"box-none\"` on `topRight` is correct: the column's empty area passes touches through while its children stay hittable. It is recorded as device-unverified.\n\nThe new tests import `tourCaptionHeld` and `shownTourCaption`, which the base lacks, so they fail there. The probe shots show no caption at t02 while the clock rolls (2026-11-07), then the caption at t03 with the clock on 11-09 and the new star in place.\n\nRan: `packages/universe` `use-universe-screen.test.ts` 8/8, `apps/web` `tsc -b` clean, `apps/mobile` `tsc --noEmit` clean.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/universe/ui/UniversePage.tsx:201, apps/mobile/src/pages/universe/ui/UniversePage.tsx:161 (T263)",
+              "message": "Nothing guards the pages' wiring. The new tests pin the pure functions, but `SequenceGuide` still accepts `tour.step?.caption`. A page that went back to passing it would compile and pass every test, and it would show the caption during the advance again. Optional: return the run without a raw caption accessor for pages, or add a hook-level test that renders `useUniverseScreen` with a pending announcement and expects `tourCaption` to be null."
+            }
+          ],
+          "commit": "cac973afec8a7f9a0d51c831b3bd5cac567be553",
+          "baseCommit": "ccea38322c8e46dc4b950b7a4d00108c13e879dd",
+          "submissionId": "3f24470b-98df-4c2a-a410-b439b2baf84a",
+          "createdAt": "2026-11-08T21:27:49.331Z",
+          "finishedAt": "2026-11-08T21:30:05.675Z"
+        }
+      }
+    },
+    {
+      "sequence": 488,
+      "at": "2026-11-08T21:30:30.546Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 489,
+      "at": "2026-11-08T21:31:47.525Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T21:30:31.916Z",
+            "finishedAt": "2026-11-08T21:31:47.127Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 490,
+      "at": "2026-11-08T21:31:47.704Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "ef555226-2498-473c-bf70-2d5141763d3d",
+      "taskId": "T263",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "c99262cf676494b67b810988d089c6963e3faa50",
+        "integratedAt": "2026-11-08T21:31:47.704Z"
+      }
+    },
+    {
+      "sequence": 491,
+      "at": "2026-11-08T21:36:18.142Z",
+      "type": "group",
+      "group": "local8h",
+      "previousStatus": "active",
+      "status": "active",
+      "changes": {
+        "verified": {
+          "commit": "cc0420705d9c23ebe21a3ec9bb857edfe08cd8d1",
+          "checks": [
+            {
+              "command": "pnpm check > /Users/ihaelam/project/cosimosi/.git/haeram/v1/artifacts/261109-local13/final-cc042070-pnpm-check.raw.log 2>&1",
+              "startedAt": "2026-11-08T21:33:03.054Z",
+              "finishedAt": "2026-11-08T21:36:18.068Z"
+            }
+          ],
+          "at": "2026-11-08T21:36:18.136Z",
+          "excluded": ["T222"]
+        }
       }
     }
   ]

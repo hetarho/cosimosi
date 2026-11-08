@@ -59,7 +59,7 @@ async function mountGuide(overrides: Partial<SequenceGuideProps> = {}) {
   const { container } = mount(
     createElement(SequenceGuide, { ...baseProps(), ...overrides }) as never,
   )
-  const band = () => container.querySelector('[aria-live="polite"]') as HTMLElement
+  const band = () => container.querySelector('[data-sequence-caption-band]') as HTMLElement
   // The surface read is deferred to a frame, so the first paint may still be the no-surface answer.
   await act(async () => {
     await new Promise((resolve) => requestAnimationFrame(resolve))
@@ -178,6 +178,31 @@ describe('SequenceGuide (web)', () => {
       document.body.append(footer)
     })
     await waitFor(() => expect(band().style.bottom).toBe('90px'))
+  })
+
+  it('breaks Korean between words and balances the caption lines (UI-6)', () => {
+    const { container } = mount(createElement(SequenceGuide, baseProps()) as never)
+    const line = container.querySelector('[aria-live="polite"] p')
+    expect(line?.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(['break-keep', 'wrap-break-word', 'text-balance']),
+    )
+  })
+
+  it('matches the locators the manual tour review script reads the caption through', async () => {
+    // scripts/universe-review/check-tour.mjs waits for the band that holds the line (the live region
+    // root has no box, so a visibility wait on it never resolves), reads the line as
+    // `[aria-live="polite"] p`, and skips anything inside `[data-sequence-chrome]`.
+    const text = 'Write one line about today.'
+    const band = await mountGuide({ caption: () => text })
+    const holding = [...document.querySelectorAll('[data-sequence-caption-band]')].filter((node) =>
+      node.textContent?.includes(text),
+    )
+    expect(holding).toEqual([band()])
+    await waitFor(() => expect(band().style.visibility).toBe('visible'))
+    const line = document.querySelector('[aria-live="polite"] p')
+    expect(line?.textContent).toBe(text)
+    expect(band().contains(line)).toBe(true)
+    expect(band().closest('[aria-live="polite"]')?.matches('[data-sequence-chrome]')).toBe(true)
   })
 
   it('resolves the caption through the accessor at render time, so a locale change re-reads it', () => {

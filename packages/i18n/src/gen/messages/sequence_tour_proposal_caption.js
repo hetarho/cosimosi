@@ -10,7 +10,7 @@ const en_sequence_tour_proposal_caption = /** @type {(inputs: Sequence_Tour_Prop
 };
 
 const ko_sequence_tour_proposal_caption = /** @type {(inputs: Sequence_Tour_Proposal_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`이름과 감정은 짐작이에요. 당신의 것이 아니면 고쳐주세요.`)
+	return /** @type {LocalizedString} */ (`이름과 감정은 짐작이에요. 내 것이 아니면 고쳐 주세요.`)
 };
 
 /**

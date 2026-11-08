@@ -10,7 +10,7 @@ const en_achievement_axis_decoration = /** @type {(inputs: Achievement_Axis_Deco
 };
 
 const ko_achievement_axis_decoration = /** @type {(inputs: Achievement_Axis_DecorationInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`당신이 꾸민 우주`)
+	return /** @type {LocalizedString} */ (`직접 꾸민 우주`)
 };
 
 /**

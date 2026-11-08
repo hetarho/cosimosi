@@ -31,7 +31,11 @@ export function SequenceCaption({
       pointerEvents="none"
       style={[styles.band, bandPosition(position)]}
     >
-      <Text style={styles.caption}>{caption()}</Text>
+      {/* Korean breaks between words where the platform offers it: iOS only; Android's line
+          breaker has no word-keeping mode exposed to React Native. */}
+      <Text lineBreakStrategyIOS="hangul-word" style={styles.caption}>
+        {caption()}
+      </Text>
     </View>
   )
 }

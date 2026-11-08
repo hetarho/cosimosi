@@ -10,7 +10,7 @@ const en_sequence_tour_welcome_caption = /** @type {(inputs: Sequence_Tour_Welco
 };
 
 const ko_sequence_tour_welcome_caption = /** @type {(inputs: Sequence_Tour_Welcome_CaptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`여기가 당신의 우주예요. 별은 당신이 쓴 기록에서 태어납니다.`)
+	return /** @type {LocalizedString} */ (`여기가 내 우주예요. 별은 내가 쓴 기록에서 태어나요.`)
 };
 
 /**

@@ -60,6 +60,7 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
   const {
     navigationActorRef,
     tour,
+    tourCaption,
     firstRun,
     handleRecallRequested,
     handleOpenDiary,
@@ -84,11 +85,10 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
         </QueryErrorResetBoundary>
       </div>
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4 sm:p-6">
-        {/* The clock is centred on the SCREEN and taken OUT of flow, because the universe's time is
-            the one reading that belongs to the place rather than to a corner of it ([T6]) — and
-            because it must not push the reading beside it down. Everything else in the header is
-            right-aligned flow, so the balance sits flush with the top on every width, from a phone to
-            a desktop, with no breakpoint deciding which of the two gets the top line. */}
+        {/* The clock is taken OUT of flow, because the universe's time is the one reading that
+            belongs to the place rather than to a corner of it ([T6]) — and because it must not push
+            the reading beside it down. Everything else in the header is right-aligned flow, held
+            clear of the top band the sequence chrome's always-visible skip owns on every width. */}
         <header className="relative flex flex-col items-end gap-3">
           {/* How the universe is being held, in the corner the eye starts from and out of the
               right-aligned flow — it belongs to the SPACE, like the clock beside it, rather than to
@@ -98,15 +98,19 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
           </div>
           {/* HUD top ([T6]) with the acceleration host riding along; the acceleration renders nothing
               (the scene says time passing), and the consent modal is fixed, so neither cares that its
-              host is a centred, zero-height box. */}
+              host is a zero-height box. From `sm` up it is centred on the SCREEN; on a phone it keeps
+              left under the view toggle, because the skip owns the top edge's right half there and a
+              centred reading would run under it. */}
           {/* `w-max`: an absolute box offset by `left-1/2` is only offered the remaining half of the
               header to lay out in, which wrapped the pill's own line on a phone. */}
-          <div className="absolute left-1/2 top-0 w-max -translate-x-1/2">
+          <div className="absolute left-0 top-11 w-max sm:left-1/2 sm:top-0 sm:-translate-x-1/2">
             <UniverseTimeOverlay />
           </div>
           {/* The persistent Twinkle balance + charge host ([G2][G3]), and beneath it the ways out of
-              the canvas. */}
-          <div className="flex flex-col items-end gap-3">
+              the canvas. Held clear of the top edge, which the sequence chrome's always-visible skip
+              owns on every width — a column flush with the top would sit under it while the tour
+              runs. */}
+          <div className="flex flex-col items-end gap-3 pt-11">
             <StardustOverlay onOpenAchievements={onOpenAchievements} />
             {/* A dense toolbar of icon-only controls: the account home, 꾸미기 ([P5], a panel over
                 the canvas rather than a route) and the archive ([D2]) — a quiet column against the
@@ -156,7 +160,12 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
             </div>
           </div>
         </header>
-        <div className="pointer-events-auto mx-auto flex flex-col items-center gap-3 pb-2">
+        {/* The scene's footer, marked the way the demo marks its own, so the sequence guide keeps its
+            caption above the first-run welcome and the write control instead of landing on them. */}
+        <div
+          data-scene-footer=""
+          className="pointer-events-auto mx-auto flex flex-col items-center gap-3 pb-2"
+        >
           {firstRun ? (
             <p className="max-w-sm text-center text-sm text-text-muted">
               {m.universe_first_run_welcome()}
@@ -189,7 +198,7 @@ export function UniversePage({ onOpenDiary, onOpenMe, onOpenAchievements }: Univ
           `completed`, `skipped` and `abandoned` all leave exactly nothing behind ([O4]). */}
       <SequenceGuide
         active={tour.active}
-        caption={tour.step?.caption ?? null}
+        caption={tourCaption}
         anchorRect={tour.anchorRect}
         progress={tour.progress}
         onSkip={tour.skip}

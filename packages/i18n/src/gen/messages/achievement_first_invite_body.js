@@ -10,7 +10,7 @@ const en_achievement_first_invite_body = /** @type {(inputs: Achievement_First_I
 };
 
 const ko_achievement_first_invite_body = /** @type {(inputs: Achievement_First_Invite_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`친구가 당신의 초대로 자기 우주를 시작했어요.`)
+	return /** @type {LocalizedString} */ (`친구가 내 초대로 자기 우주를 시작했어요.`)
 };
 
 /**

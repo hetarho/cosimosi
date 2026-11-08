@@ -10,7 +10,7 @@ const en_achievement_first_decoration_body = /** @type {(inputs: Achievement_Fir
 };
 
 const ko_achievement_first_decoration_body = /** @type {(inputs: Achievement_First_Decoration_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`당신이 원해서 하늘이 달라졌어요.`)
+	return /** @type {LocalizedString} */ (`원하는 대로 하늘이 달라졌어요.`)
 };
 
 /**

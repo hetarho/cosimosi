@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { OnboardingSignalReport } from '@cosimosi/onboarding'
 
-import { onboardingReportAction, takeOnboardingReport } from './use-universe-screen.ts'
+import {
+  onboardingReportAction,
+  shownTourCaption,
+  takeOnboardingReport,
+  tourCaptionHeld,
+} from './use-universe-screen.ts'
 
 const report = (signal: string) => ({ signal, nonce: 1 }) as unknown as OnboardingSignalReport
 
@@ -45,5 +50,26 @@ describe('onboardingReportAction', () => {
 
   it('does nothing without a report', () => {
     expect(onboardingReportAction(null, true, 'launched')).toBe('none')
+  })
+})
+
+describe('the tour caption around a time advance', () => {
+  const caption = () => '쓴 기록이 이제 이 우주에 있어요.'
+  const shown = (advancePending: boolean, sweeping: boolean) =>
+    shownTourCaption(caption, tourCaptionHeld(advancePending, sweeping))
+
+  it('is held while the advance is pending and while its sweep runs, and shown once it lands', () => {
+    // A launch that moves the clock: announced, then swept, then settled with the star in place.
+    expect(shown(true, false)).toBeNull()
+    expect(shown(true, true)).toBeNull()
+    expect(shown(false, true)).toBeNull()
+    expect(shown(false, false)).toBe(caption)
+  })
+
+  it('is shown unchanged when no advance runs, and is none when the step has none', () => {
+    expect(tourCaptionHeld(false, false)).toBe(false)
+    expect(shownTourCaption(caption, false)).toBe(caption)
+    expect(shownTourCaption(undefined, false)).toBeNull()
+    expect(shownTourCaption(null, false)).toBeNull()
   })
 })
