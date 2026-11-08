@@ -803,6 +803,16 @@ func TestPersistEncodedLaunchesASingleSceneSplit(t *testing.T) {
 	}
 }
 
+type countedLaunchZone struct {
+	source UserZone
+	reads  int
+}
+
+func (z *countedLaunchZone) ZoneFor(ctx context.Context, scope platform.UserScope) (*time.Location, error) {
+	z.reads++
+	return z.source.ZoneFor(ctx, scope)
+}
+
 func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 	t.Parallel()
 	// One memory is a legitimate split (a day that held one scene), so the floor a launch refuses
@@ -831,14 +841,27 @@ func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 		"passage longer than diary":      longerThanDiary,
 	}
 	for name, confirmed := range cases {
-		fixture := newFixture(t)
-		_, err := fixture.launch.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmed)
-		if !errors.Is(err, ErrLaunchInvalidMemories) {
-			t.Fatalf("%s: err = %v, want ErrLaunchInvalidMemories", name, err)
-		}
-		if fixture.launches.txCount != 0 {
-			t.Fatalf("%s: invalid input must be rejected before the transaction", name)
-		}
+		t.Run(name, func(t *testing.T) {
+			fixture := newFixture(t)
+			zone := &countedLaunchZone{source: fixture.launch.userZone}
+			fixture.launch.userZone = zone
+			if len(confirmed) > 0 {
+				confirmed[0].Name = "PRIVATE_LAUNCH_MEMORY_NAME"
+			}
+			_, err := fixture.launch.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmed)
+			if !errors.Is(err, ErrLaunchInvalidMemories) {
+				t.Fatalf("err = %v, want ErrLaunchInvalidMemories", err)
+			}
+			if err.Error() != ErrLaunchInvalidMemories.Error() {
+				t.Errorf("confirmed validation refusal contains private detail: %v", err)
+			}
+			if zone.reads != 1 {
+				t.Fatalf("zone reads = %d, want one before validation", zone.reads)
+			}
+			if fixture.launches.txCount != 0 || fixture.linker.calls != 0 || len(fixture.earn.diaryIDs) != 0 || len(fixture.signupSettlement.userIDs) != 0 {
+				t.Fatal("invalid confirmed input must not start a transaction or launch effects")
+			}
+		})
 	}
 }
 

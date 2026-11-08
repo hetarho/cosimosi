@@ -349,3 +349,164 @@ func TestReviseSplitRefusalsKeepPrivateNameOutOfWireAndLog(t *testing.T) {
 		})
 	}
 }
+
+type confirmedLaunchBoundary struct {
+	// Only the past-dated control may enter the transaction. Any other unbound
+	// transaction operation fails rather than fabricating a successful graph write.
+	memory.LaunchTx
+	allowTransaction bool
+	zoneReads        atomic.Int64
+	transactions     atomic.Int64
+	locks            atomic.Int64
+	clockReads       atomic.Int64
+	diaryWrites      atomic.Int64
+	commits          atomic.Int64
+	ids              atomic.Int64
+	unexpected       atomic.Int64
+}
+
+func (d *confirmedLaunchBoundary) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
+	d.zoneReads.Add(1)
+	return time.UTC, nil
+}
+
+func (d *confirmedLaunchBoundary) InLaunchTx(_ context.Context, fn func(memory.LaunchTx) error) error {
+	d.transactions.Add(1)
+	if !d.allowTransaction {
+		return errors.New("unexpected launch transaction")
+	}
+	if err := fn(d); err != nil {
+		return err
+	}
+	d.commits.Add(1)
+	return nil
+}
+
+func (d *confirmedLaunchBoundary) LockGraphMutation(context.Context, platform.UserScope) error {
+	d.locks.Add(1)
+	return nil
+}
+
+func (d *confirmedLaunchBoundary) UniverseClockForUpdate(context.Context, platform.UserScope) (*time.Time, error) {
+	d.clockReads.Add(1)
+	clock := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	return &clock, nil
+}
+
+func (d *confirmedLaunchBoundary) InsertDiary(_ context.Context, _ platform.UserScope, diary memory.Diary) (memory.Diary, error) {
+	d.diaryWrites.Add(1)
+	return diary, nil
+}
+
+func (d *confirmedLaunchBoundary) LinkLaunched(context.Context, platform.UserScope, memory.LaunchTx, []memory.LaunchedMemory, []memory.NeuronMemoryActivation) error {
+	d.unexpected.Add(1)
+	return errors.New("unexpected launch linking")
+}
+
+func (d *confirmedLaunchBoundary) OnAdvance(context.Context, platform.UserScope, memory.ProgressionTx, *time.Time, time.Time) error {
+	d.unexpected.Add(1)
+	return errors.New("unexpected launch progression")
+}
+
+func (d *confirmedLaunchBoundary) OnEngramsLaunched(context.Context, platform.UserScope) {
+	d.unexpected.Add(1)
+}
+
+func TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog(t *testing.T) {
+	const privateName = "PRIVATE_LAUNCH_MEMORY_NAME"
+	const body = "Synthetic diary body for a confirmed launch."
+	for _, testCase := range []struct {
+		name       string
+		body       string
+		sourceText string
+		neuronType string
+		reason     string
+	}{
+		{"blank_source", body, "   ", "semantic", reasonLaunchInvalidMemories},
+		{"missing_semantic", body, body, "spatial", reasonLaunchInvalidMemories},
+		{"overlong_source", body, body + " EXTRA", "semantic", reasonLaunchInvalidMemories},
+		{"empty_body", "", body, "semantic", reasonEncodeInputRequired},
+		{"valid_past_dated", body, body, "semantic", ""},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			reporter := observability.NewInMemoryReporter()
+			deps := &confirmedLaunchBoundary{allowTransaction: testCase.reason == ""}
+			launches, err := memory.NewLaunchService(memory.LaunchDeps{
+				Launches: deps, Linker: deps, Progression: deps, SignupSettlement: deps, UserZone: deps,
+				Now:     func() time.Time { return time.Date(2026, 7, 4, 12, 0, 0, 0, time.UTC) },
+				NewID:   func() string { deps.ids.Add(1); return "synthetic-launch-diary" },
+				NewSeed: func() int64 { deps.unexpected.Add(1); return 73 },
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			unrelated := &stubGroups{}
+			service, err := NewServer(Services{Encoding: unrelated, Launches: launches, Releases: unrelated, Reads: unrelated, Paid: unusedPaid{}, Exports: unusedExport{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var auth, admission atomic.Int64
+			handler := platform.NewHandler(log.New(&logs, "", 0),
+				platform.WithAuthVerifier(platform.AuthTokenVerifierFunc(func(context.Context, string) (platform.UserIdentity, error) {
+					auth.Add(1)
+					return platform.UserIdentity{UserID: "synthetic-launch-user"}, nil
+				})),
+				platform.WithAccountStatusReader(revisionLiveAccount{reads: &admission}),
+				platform.WithObservabilityReporter(reporter),
+				platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
+					return memoryv1connect.NewMemoryServiceHandler(service, opts...)
+				}),
+			)
+			server := httptest.NewServer(handler)
+			httpClient := server.Client()
+			httpClient.Timeout = 2 * time.Second
+			t.Cleanup(func() { server.CloseClientConnections(); server.Close(); httpClient.CloseIdleConnections() })
+			requestID := "launch-boundary-" + testCase.name
+			request := connect.NewRequest(&memoryv1.LaunchStarsRequest{Body: testCase.body, DiaryDate: "2026-07-02", Memories: []*memoryv1.ConfirmedMemory{
+				{Name: privateName, Mood: "JOY", SourceText: testCase.sourceText, Neurons: []*memoryv1.ProposedNeuron{{Name: "synthetic event", Type: testCase.neuronType}}},
+			}})
+			request.Header().Set("Authorization", "Bearer synthetic-token")
+			request.Header().Set("X-Request-Id", requestID)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			response, callErr := memoryv1connect.NewMemoryServiceClient(httpClient, server.URL).LaunchStars(ctx, request)
+			if auth.Load() != 1 || admission.Load() != 1 || deps.unexpected.Load() != 0 || len(unrelated.userIDs) != 0 || len(reporter.Events()) != 0 {
+				t.Fatalf("boundary calls: auth=%d admission=%d unexpected=%d unrelated=%d reporter=%v", auth.Load(), admission.Load(), deps.unexpected.Load(), len(unrelated.userIDs), reporter.Events())
+			}
+			wantZone, wantTx := int64(1), int64(0)
+			if testCase.name == "empty_body" {
+				wantZone = 0
+			}
+			if testCase.reason == "" {
+				wantTx = 1
+				if callErr != nil || response == nil {
+					t.Fatalf("valid past-dated launch: %v", callErr)
+				}
+				if !response.Msg.GetPastDated() || response.Msg.GetDiaryId() != "synthetic-launch-diary" || len(response.Msg.GetMemoryIds()) != 0 || len(response.Msg.GetNewNeuronIds()) != 0 || response.Msg.GetPreviousUniverseTime() != "2026-07-03" || response.Msg.GetUniverseTime() != "2026-07-03" || response.Header().Get("X-Request-Id") != requestID {
+					t.Fatal("past-dated result or request id changed")
+				}
+			} else {
+				if callErr == nil || connect.CodeOf(callErr) != connect.CodeInvalidArgument {
+					t.Fatalf("refusal = %v", callErr)
+				}
+				info, ok := apperr.Info(callErr)
+				if !ok || info.GetReason() != testCase.reason || info.GetDomain() != "memory" || info.GetRequestId() != requestID || len(info.GetMetadata()) != 0 || info.GetDebugDetail() != "" {
+					t.Fatalf("refusal detail = %v", info)
+				}
+				if strings.Contains(callErr.Error(), privateName) {
+					t.Error("refusal echoed the private confirmed memory Name")
+				}
+			}
+			if deps.zoneReads.Load() != wantZone || deps.transactions.Load() != wantTx || deps.locks.Load() != wantTx || deps.clockReads.Load() != wantTx || deps.diaryWrites.Load() != wantTx || deps.commits.Load() != wantTx || deps.ids.Load() != wantTx {
+				t.Fatalf("launch effects: zone=%d tx=%d lock=%d clock=%d diary=%d commit=%d ids=%d; want zone=%d and transaction effects=%d", deps.zoneReads.Load(), deps.transactions.Load(), deps.locks.Load(), deps.clockReads.Load(), deps.diaryWrites.Load(), deps.commits.Load(), deps.ids.Load(), wantZone, wantTx)
+			}
+			if strings.Count(logs.String(), "rpc method=") != 1 || !strings.Contains(logs.String(), memoryv1connect.MemoryServiceLaunchStarsProcedure) || !strings.Contains(logs.String(), requestID) {
+				t.Fatal("actual platform log lacks its single method/request-id line")
+			}
+			if strings.Contains(logs.String(), privateName) {
+				t.Error("platform log contains the private confirmed memory Name")
+			}
+		})
+	}
+}

@@ -58,7 +58,7 @@ func (s *LaunchService) PersistEncoded(ctx context.Context, scope platform.UserS
 			ErrEncodeInputRequired, diaryDate.Format(time.DateOnly))
 	}
 	if err := validateConfirmedSplit(body, confirmed); err != nil {
-		return LaunchResult{}, err
+		return LaunchResult{}, ErrLaunchInvalidMemories
 	}
 
 	var result LaunchResult

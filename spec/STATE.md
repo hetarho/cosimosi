@@ -135,17 +135,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T244 | Keep confirmed-launch validation refusals content-free | ARCH ENC ERR OBS | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 20 | 19 | 1 | 1 | 0 | 0 | 2026-11-08T15:00:03.506Z | [history](work/local8h.json) |
+| local8h | 2 | 20 | 20 | 0 | 0 | 0 | 0 | 2026-11-08T15:08:39.191Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T244 integrated
 - 261108 T243 integrated
 - 261108 T242 integrated
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
@@ -165,4 +165,3 @@
 - 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
 - 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
-- 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned

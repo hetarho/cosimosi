@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T15:00:03.506Z",
-  "sourceCommit": "e7aab7767fa046d36eadcae0cb9b3b6aea9c2f87",
+  "snapshotAt": "2026-11-08T15:08:39.191Z",
+  "sourceCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -53,21 +53,14 @@
   },
   "summary": {
     "total": 20,
-    "completed": 19,
-    "remaining": 1,
-    "running": 1,
+    "completed": 20,
+    "remaining": 0,
+    "running": 0,
     "review": 0,
     "blocked": 0,
     "unassigned": 0
   },
-  "tasks": [
-    {
-      "id": "T244",
-      "title": "Keep confirmed-launch validation refusals content-free",
-      "dep": [],
-      "status": "doing"
-    }
-  ],
+  "tasks": [],
   "attempts": [
     {
       "id": "712ffe4c-43ea-4e9f-85b3-2a9ab9ef5283",
@@ -1371,6 +1364,8 @@
       "submittedBase": "437f6233895310179151568611490673a7d502f5",
       "submissionId": "6b98c33c-e95c-47d6-a30a-958a32f148b4",
       "submittedAt": "2026-11-08T14:50:40.841Z",
+      "integratedCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+      "integratedAt": "2026-11-08T15:00:04.540Z",
       "risk": null,
       "review": {
         "id": "f26a1dd8-73b1-4cde-ae42-a6fd9f987fff",
@@ -1405,6 +1400,13 @@
           "startedAt": "2026-11-08T14:50:39.733Z",
           "finishedAt": "2026-11-08T14:50:40.445Z"
         }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm lint:spec",
+          "startedAt": "2026-11-08T15:00:03.784Z",
+          "finishedAt": "2026-11-08T15:00:04.201Z"
+        }
       ]
     },
     {
@@ -1419,9 +1421,49 @@
       "contributors": [
         "launch-local12"
       ],
-      "status": "doing",
+      "status": "integrated",
+      "reason": null,
       "createdAt": "2026-11-08T14:50:29.713Z",
-      "startCommit": "437f6233895310179151568611490673a7d502f5"
+      "startCommit": "437f6233895310179151568611490673a7d502f5",
+      "verifiedCommit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+      "submittedBase": "b2c4bac1422d39853a70ddf59f02f21834899824",
+      "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
+      "submittedAt": "2026-11-08T15:01:36.865Z",
+      "risk": null,
+      "review": {
+        "id": "2313ae00-2f44-4358-85f6-4dcfced6bebd",
+        "owner": "review-local12",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "T244: The confirmed-split boundary returns the existing content-free sentinel while preserving detailed internal validators, pre-transaction validation order, canonical RPC mapping and launch behavior. Actual service/generated RPC/platform regressions cover three Name-bearing refusals, early empty-body and supported past-dated success controls. The independent fixed-commit focused run passed 40 leaf cases (44 named outcomes) with no skips or failures.",
+        "findings": [],
+        "commit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+        "baseCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+        "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
+        "createdAt": "2026-11-08T15:02:25.607Z",
+        "finishedAt": "2026-11-08T15:05:36.710Z"
+      },
+      "steps": [
+        {
+          "taskId": "T244",
+          "commit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+          "at": "2026-11-08T15:01:36.853Z",
+          "verification": [
+            {
+              "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run 'TestPersistEncodedRejectsInvalidConfirmedSplit|TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog' ./internal/memory ./internal/memory/rpc",
+              "startedAt": "2026-11-08T15:01:34.772Z",
+              "finishedAt": "2026-11-08T15:01:36.431Z"
+            }
+          ]
+        }
+      ],
+      "verification": [
+        {
+          "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run 'TestPersistEncodedRejectsInvalidConfirmedSplit|TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog' ./internal/memory ./internal/memory/rpc",
+          "startedAt": "2026-11-08T15:01:34.772Z",
+          "finishedAt": "2026-11-08T15:01:36.431Z"
+        }
+      ]
     }
   ],
   "history": [
@@ -6521,6 +6563,154 @@
       "group": "local8h",
       "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
       "taskId": "T243",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 258,
+      "at": "2026-11-08T15:00:04.461Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm lint:spec",
+            "startedAt": "2026-11-08T15:00:03.784Z",
+            "finishedAt": "2026-11-08T15:00:04.201Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 259,
+      "at": "2026-11-08T15:00:04.540Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "c4e3b005-048e-49d8-85e8-55dd51dd8808",
+      "taskId": "T243",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "integratedCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+        "integratedAt": "2026-11-08T15:00:04.540Z"
+      }
+    },
+    {
+      "sequence": 260,
+      "at": "2026-11-08T15:01:34.298Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 261,
+      "at": "2026-11-08T15:01:36.865Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "verifiedCommit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+        "submittedBase": "b2c4bac1422d39853a70ddf59f02f21834899824",
+        "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
+        "submittedAt": "2026-11-08T15:01:36.865Z",
+        "risk": null,
+        "steps": [
+          {
+            "taskId": "T244",
+            "commit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+            "at": "2026-11-08T15:01:36.853Z",
+            "verification": [
+              {
+                "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run 'TestPersistEncodedRejectsInvalidConfirmedSplit|TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog' ./internal/memory ./internal/memory/rpc",
+                "startedAt": "2026-11-08T15:01:34.772Z",
+                "finishedAt": "2026-11-08T15:01:36.431Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "env -u DATABASE_URL -u COSIMOSI_TEST_DATABASE_URL -u COSIMOSI_LIVE_LLM_EVAL -u COSIMOSI_ERROR_DETAIL -u SENTRY_ENVIRONMENT GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go -C apps/api test -json -count=1 -timeout=30s -run 'TestPersistEncodedRejectsInvalidConfirmedSplit|TestLaunchStarsRefusalsKeepPrivateNameOutOfWireAndLog' ./internal/memory ./internal/memory/rpc",
+            "startedAt": "2026-11-08T15:01:34.772Z",
+            "finishedAt": "2026-11-08T15:01:36.431Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 262,
+      "at": "2026-11-08T15:02:25.607Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "2313ae00-2f44-4358-85f6-4dcfced6bebd",
+          "owner": "review-local12",
+          "status": "reviewing",
+          "commit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+          "baseCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+          "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
+          "createdAt": "2026-11-08T15:02:25.607Z"
+        }
+      }
+    },
+    {
+      "sequence": 263,
+      "at": "2026-11-08T15:05:36.711Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "2313ae00-2f44-4358-85f6-4dcfced6bebd",
+          "owner": "review-local12",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "T244: The confirmed-split boundary returns the existing content-free sentinel while preserving detailed internal validators, pre-transaction validation order, canonical RPC mapping and launch behavior. Actual service/generated RPC/platform regressions cover three Name-bearing refusals, early empty-body and supported past-dated success controls. The independent fixed-commit focused run passed 40 leaf cases (44 named outcomes) with no skips or failures.",
+          "findings": [],
+          "commit": "9aade51ebf1ad9fbea84f84dd91cd42b3292d295",
+          "baseCommit": "b2c4bac1422d39853a70ddf59f02f21834899824",
+          "submissionId": "c56fad36-e183-4666-aad2-959b0aa18337",
+          "createdAt": "2026-11-08T15:02:25.607Z",
+          "finishedAt": "2026-11-08T15:05:36.710Z"
+        }
+      }
+    },
+    {
+      "sequence": 264,
+      "at": "2026-11-08T15:08:37.650Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "99f88ef9-f138-47e5-9f19-b40bd3b69b39",
+      "taskId": "T244",
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {
