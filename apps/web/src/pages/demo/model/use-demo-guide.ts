@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { measureAnchor, type SequenceRect } from '@cosimosi/sequence'
+import { measureAnchor, useSequenceAnchorRegistry, type SequenceRect } from '@cosimosi/sequence'
 
 import type { DemoSurface } from './demo-surface.machine.ts'
 import type { DecorationTourStage } from './decoration-tour.ts'
@@ -41,6 +41,13 @@ export function useDemoGuide({
   const surfaceKey = surfaceIdentity(surface)
   const target = demoRingTarget({ beat, surface, splitRevealed, decorationStage })
   const targetKey = target === null ? 'engine' : target.kind === 'none' ? 'none' : target.anchor
+  // The override target's own registry entry. The engine re-measures only its step anchor, so a
+  // walk target that mounts (or remounts) after the walk reached it — the recall result's way out
+  // arrives once the confirm lands — is seen here through its handle's identity. A registry change
+  // for any other anchor selects the same handle and re-renders nothing.
+  const targetHandle = useSequenceAnchorRegistry((state) =>
+    targetKey === 'engine' || targetKey === 'none' ? undefined : state.anchors.get(targetKey),
+  )
   useEffect(() => {
     remeasure()
   }, [beat, remeasure, splitRevealed, memoryCount, surfaceKey, targetKey])
@@ -72,7 +79,7 @@ export function useDemoGuide({
     return () => {
       live = false
     }
-  }, [beat, engineRect, splitRevealed, memoryCount, surfaceKey, targetKey, maskKey])
+  }, [beat, engineRect, splitRevealed, memoryCount, surfaceKey, targetKey, targetHandle, maskKey])
   // A hole measured for another beat is no hole for this one.
   const maskHole = hole.key === maskKey && beat !== 'freePlay' ? hole.rect : null
 
@@ -91,12 +98,13 @@ export function useDemoGuide({
     return () => {
       live = false
     }
-  }, [engineRect, targetKey])
+  }, [engineRect, targetKey, targetHandle])
 
+  // An unregistered target has no rect, whatever an earlier handle measured.
   const guideAnchorRect =
     targetKey === 'engine'
       ? engineRect
-      : targetKey === 'none'
+      : targetKey === 'none' || targetHandle === undefined
         ? null
         : measured.key === targetKey
           ? measured.rect
