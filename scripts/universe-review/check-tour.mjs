@@ -99,8 +99,10 @@ try {
       await scope.getByText(`${number} of 10`, { exact: true }).waitFor()
       console.log(`${name}: step ${number}`)
     }
+    // The band, not the live region: the region is a zero-size root that is never visible, and the
+    // band carries the caption's place and visibility.
     const caption = (text) =>
-      scope.locator('[aria-live="polite"]').filter({ hasText: text }).waitFor()
+      scope.locator('[data-sequence-caption-band]').filter({ hasText: text }).waitFor()
     const shot = async (label, delay = 350) => {
       await page.waitForTimeout(delay)
       return page.screenshot({ path: path.join(outputDirectory, `${name}-${label}.png`) })
