@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { uniform } from 'three/tsl'
+import * as THREE from 'three/webgpu'
 
 import { buildEmotionGradientTexture } from '../assets/sky/emotion-gradient.ts'
 import { SKY_EFFECTS } from '../assets/sky/sky-effects.ts'
-import { createSkyMaterial, normalizeSkyWeights, skyWeightsKey } from './SkySphere.tsx'
+import { emotionAnchors } from '../assets/sky/sky-emotion.ts'
+import {
+  advanceSkyFacing,
+  createSkyMaterial,
+  normalizeSkyWeights,
+  skyFacingQuaternion,
+  skyFacingStep,
+  skyWeightsKey,
+} from './SkySphere.tsx'
 
 describe('emotion sky material', () => {
   it('gives every registered backdrop a partial-opacity tuning', () => {
@@ -110,5 +119,87 @@ describe('sky material memo key (R003)', () => {
         { color: '#000', weight: 0 },
       ]),
     ).toEqual([0.5, 0.5])
+  })
+})
+
+describe('sky facing', () => {
+  const VIEW = new THREE.Vector3(0, 0, -1)
+  const facingOf = (count: number, index: number) => {
+    const goal = skyFacingQuaternion(count, index)
+    if (goal === null) throw new Error(`no facing for slice ${index} of ${count}`)
+    return goal
+  }
+
+  it('leaves the orientation at identity when no facing is given', () => {
+    // What the sky does on every surface that never passes `facing`: the universe, the demo,
+    // sign-in and the design benches keep the untouched mesh.
+    const orientation = new THREE.Quaternion()
+    let held = false
+    for (const step of [skyFacingStep(1 / 60, 0.32), 1]) {
+      held = advanceSkyFacing(orientation, null, held, step)
+      expect(held).toBe(false)
+      expect(orientation.equals(new THREE.Quaternion())).toBe(true)
+    }
+  })
+
+  it("turns each slice's anchor onto the view direction", () => {
+    for (const count of [1, 2, 3, 6, 13]) {
+      const anchors = emotionAnchors(count)
+      for (let index = 0; index < count; index++) {
+        const [x, y, z] = anchors[index]
+        const faced = new THREE.Vector3(x, y, z).applyQuaternion(facingOf(count, index))
+        expect(faced.angleTo(VIEW), `${index} of ${count}`).toBeLessThan(1e-6)
+      }
+    }
+  })
+
+  it('faces nothing for an index outside the slices', () => {
+    expect(skyFacingQuaternion(6, -1)).toBeNull()
+    expect(skyFacingQuaternion(6, 6)).toBeNull()
+    expect(skyFacingQuaternion(6, 1.5)).toBeNull()
+    expect(skyFacingQuaternion(0, 0)).toBeNull()
+  })
+
+  it('takes a facing that appears at once, and drops it at once when it goes', () => {
+    const goal = facingOf(6, 0)
+    const orientation = new THREE.Quaternion()
+    let held = advanceSkyFacing(orientation, goal, false, skyFacingStep(1 / 60, 0.32))
+    expect(held).toBe(true)
+    expect(orientation.angleTo(goal)).toBeLessThan(1e-6)
+
+    held = advanceSkyFacing(orientation, null, held, skyFacingStep(1 / 60, 0.32))
+    expect(held).toBe(false)
+    expect(orientation.equals(new THREE.Quaternion())).toBe(true)
+  })
+
+  it('eases between two facings over the given duration', () => {
+    const from = facingOf(6, 0)
+    const to = facingOf(6, 3)
+    const seconds = 0.32
+    const frame = 1 / 60
+    const orientation = from.clone()
+    const arc = from.angleTo(to)
+
+    advanceSkyFacing(orientation, to, true, skyFacingStep(frame, seconds))
+    // One frame moves it, but only part of the way.
+    expect(orientation.angleTo(from)).toBeGreaterThan(0)
+    expect(orientation.angleTo(to)).toBeGreaterThan(arc / 2)
+
+    let elapsed = frame
+    while (elapsed < seconds - 1e-9) {
+      advanceSkyFacing(orientation, to, true, skyFacingStep(frame, seconds))
+      elapsed += frame
+    }
+    // On time, all but a twentieth of the arc is covered.
+    expect(orientation.angleTo(to)).toBeLessThanOrEqual(arc * 0.05 + 1e-6)
+  })
+
+  it('snaps without a duration', () => {
+    expect(skyFacingStep(1 / 60, undefined)).toBe(1)
+    expect(skyFacingStep(1 / 60, 0)).toBe(1)
+    const to = facingOf(6, 3)
+    const orientation = facingOf(6, 0).clone()
+    advanceSkyFacing(orientation, to, true, skyFacingStep(1 / 60, undefined))
+    expect(orientation.angleTo(to)).toBeLessThan(1e-6)
   })
 })

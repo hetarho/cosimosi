@@ -47,6 +47,10 @@ const STAR_SLOTS = [
 // up to seven stars share the frame.
 const STAR_GROUP_SCALE = 1.6
 
+// The sky turning to a new feeling is the whole backdrop crossing the frame, which the motion tokens
+// time as `duration.slow`; the renderer counts seconds.
+const SKY_TURN_SECONDS = Number.parseFloat(tokens.duration.slow) / 1000
+
 /**
  * The walkthrough's universe: the production canvas, the production sky, the production star body
  * fed by the production channel projection — over the authored story's memories. Nothing here
@@ -58,6 +62,8 @@ export interface LandingWalkthroughSceneProps {
   readonly memories: readonly EpisodicMemory[]
   readonly universeTime: string
   readonly skyStops: readonly EmotionSlice[]
+  /** Which of `skyStops` the sky turns to face the fixed camera; the poster has no facing. */
+  readonly skyFacing?: number
 }
 
 // Mounted only without reduced motion (see `LandingWalkthroughScene`), so the body always animates.
@@ -65,6 +71,7 @@ function WalkthroughCanvas({
   memories,
   universeTime,
   skyStops,
+  skyFacing,
   active,
 }: LandingWalkthroughSceneProps & { readonly active: boolean }) {
   const { skin } = useSkin()
@@ -111,7 +118,12 @@ function WalkthroughCanvas({
       clearColor={skin.sky.night}
       active={active}
     >
-      <SkySphere stops={skyStops} effect={skin.sky.effect} />
+      <SkySphere
+        stops={skyStops}
+        effect={skin.sky.effect}
+        facing={skyFacing}
+        facingSeconds={SKY_TURN_SECONDS}
+      />
       {/* Keyed by count: the steps grow the cast 3 → 7, and remounting on that change is simpler
           and safer than trusting an instanced buffer to resize in place. */}
       <InstancedNodeLayer

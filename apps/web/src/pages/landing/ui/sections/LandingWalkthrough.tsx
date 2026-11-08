@@ -369,6 +369,7 @@ function WalkthroughUniverse({ facts }: { facts: WalkthroughSceneFacts }) {
         memories={facts.memories}
         universeTime={facts.universeTime}
         skyStops={facts.skyStops}
+        skyFacing={facts.skyFacing}
       />
       {/* The returned-to memory's reading, crossfaded when it changes — whole, then eroding, then
           back changed. Keyed by the words themselves, which is what actually changed. */}

@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
-// The renderer cannot run in jsdom; the stub stands in for the one fact this page decides — whether
-// a canvas exists and whether its loop is asked to run.
+// The renderer cannot run in jsdom; the stub stands in for the facts this page decides — whether a
+// canvas exists, whether its loop is asked to run, and what the sky is handed.
+const sky = vi.hoisted(() => ({ props: [] as Record<string, unknown>[] }))
 vi.mock('@cosimosi/3d-renderer', () => ({
   DEFAULT_STAR_SHAPE: 'star',
   STAR_INSTANCE_BRIGHTNESS: 'brightness',
@@ -14,10 +15,15 @@ vi.mock('@cosimosi/3d-renderer', () => ({
   STAR_INSTANCE_TINT: 'tint',
   InstancedNodeLayer: () => null,
   PostFX: () => null,
-  SkySphere: () => null,
+  SkySphere: (props: Record<string, unknown>) => {
+    sky.props.push(props)
+    return null
+  },
   SkinProvider: ({ children }: { children: ReactNode }) => children,
-  UniverseCanvas: ({ active }: { active?: boolean }) => (
-    <div data-testid="walkthrough-canvas" data-active={String(active ?? true)} />
+  UniverseCanvas: ({ active, children }: { active?: boolean; children?: ReactNode }) => (
+    <div data-testid="walkthrough-canvas" data-active={String(active ?? true)}>
+      {children}
+    </div>
   ),
   createStarShapeBodySource: () => ({}),
   resolveActiveSkin: () => 'default',
@@ -40,6 +46,7 @@ let intersect: ((isIntersecting: boolean) => void) | null = null
 let visibility: DocumentVisibilityState = 'visible'
 
 beforeEach(() => {
+  sky.props = []
   motion.reduced = false
   visibility = 'visible'
   vi.stubGlobal(
@@ -62,9 +69,14 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function renderScene() {
+function renderScene(skyFacing?: number) {
   return render(
-    <LandingWalkthroughScene memories={[]} universeTime="2026-01-01T00:00:00Z" skyStops={[]} />,
+    <LandingWalkthroughScene
+      memories={[]}
+      universeTime="2026-01-01T00:00:00Z"
+      skyStops={[]}
+      skyFacing={skyFacing}
+    />,
   )
 }
 
@@ -105,6 +117,23 @@ describe('LandingWalkthroughScene', () => {
     expect(canvas()?.getAttribute('data-active')).toBe('false')
     setVisibility('visible')
     expect(canvas()?.getAttribute('data-active')).toBe('true')
+  })
+
+  it('hands the sky its facing, turning over the slow motion token', async () => {
+    const { tokens } = await import('@cosimosi/ui')
+    renderScene(2)
+    act(() => intersect?.(true))
+    expect(sky.props.at(-1)).toMatchObject({
+      facing: 2,
+      facingSeconds: Number.parseFloat(tokens.duration.slow) / 1000,
+    })
+  })
+
+  it('leaves the sky unfaced when the step names no feeling', () => {
+    renderScene()
+    act(() => intersect?.(true))
+    expect(sky.props.length).toBeGreaterThan(0)
+    expect(sky.props.at(-1)?.facing).toBeUndefined()
   })
 
   it('shows the poster alone under reduced motion', () => {

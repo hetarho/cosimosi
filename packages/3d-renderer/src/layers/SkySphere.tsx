@@ -9,6 +9,7 @@ import {
   type GradientStop,
 } from '../assets/sky/emotion-gradient.ts'
 import { DEFAULT_SKY_EFFECT, resolveSkyEffect } from '../assets/sky/sky-effects.ts'
+import { emotionAnchors } from '../assets/sky/sky-emotion.ts'
 import { SKY_SPHERE_RADIUS } from '../backdrop-scale.ts'
 import { REDUCED_MOTION_FROZEN_TIME } from './reduced-motion.ts'
 
@@ -44,6 +45,17 @@ export interface SkySphereProps {
    * entirely, and a sphere past the far plane is clipped into a hole straight ahead.
    */
   readonly radius?: number
+  /**
+   * Which slice of `stops` the sky turns to face the camera's view direction (−Z): the whole mesh
+   * rotates so that slice's `emotionAnchors` direction, the centre of its territory, sits straight
+   * ahead. Absent, the mesh keeps its identity orientation. A facing that appears or disappears is
+   * taken at once, since there is no previous facing to turn from; a change between two slices
+   * eases over `facingSeconds`. An index outside `stops` faces nothing.
+   */
+  readonly facing?: number
+  /** How long a turn between two facings takes, in seconds; the host passes its motion token.
+   *  Absent or non-positive, the sky takes the new facing at once, as it does under reduced motion. */
+  readonly facingSeconds?: number
 }
 
 interface SkyMaterialOptions {
@@ -104,6 +116,50 @@ export function skyWeightsKey(weights: readonly number[]): string {
   return weights.map((weight) => weight.toFixed(6)).join(',')
 }
 
+/** The camera's view direction: the rig looks down −Z, so this is the sky point at frame centre. */
+const VIEW_DIRECTION = new THREE.Vector3(0, 0, -1)
+
+/**
+ * The orientation that turns slice `index` of a `count`-slice sky to face the view direction, or
+ * null when the index names no slice. The shortest rotation, so a territory near the horizon arrives
+ * without a roll; the effects still read the local `skyDir`, so the painted sky turns as one body.
+ */
+export function skyFacingQuaternion(count: number, index: number): THREE.Quaternion | null {
+  if (!Number.isInteger(index) || index < 0 || index >= count) return null
+  const [x, y, z] = emotionAnchors(count)[index]
+  return new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(x, y, z), VIEW_DIRECTION)
+}
+
+// The turn eases as an exponential approach, so it can be retargeted mid-turn and does not depend on
+// the frame rate; this rate leaves a twentieth of the arc once the turn's duration has elapsed.
+const FACING_SETTLE = Math.log(20)
+
+/** The fraction of the remaining turn one frame of `delta` seconds covers. */
+export function skyFacingStep(delta: number, seconds: number | undefined): number {
+  if (seconds === undefined || !(seconds > 0)) return 1
+  return 1 - Math.exp((-FACING_SETTLE * Math.max(delta, 0)) / seconds)
+}
+
+/**
+ * One frame of the sky's facing, applied to `orientation` in place. `held` says whether a facing was
+ * already applied; the return value is the same flag for the next frame. With no goal and nothing
+ * held, the orientation is never touched.
+ */
+export function advanceSkyFacing(
+  orientation: THREE.Quaternion,
+  goal: THREE.Quaternion | null,
+  held: boolean,
+  step: number,
+): boolean {
+  if (goal === null) {
+    if (held) orientation.identity()
+    return false
+  }
+  if (held && step < 1) orientation.slerp(goal, step)
+  else orientation.copy(goal)
+  return true
+}
+
 export function SkySphere({
   stops,
   effect = DEFAULT_SKY_EFFECT,
@@ -111,6 +167,8 @@ export function SkySphere({
   opacity,
   radius = SKY_SPHERE_RADIUS,
   rateRef,
+  facing,
+  facingSeconds,
 }: SkySphereProps) {
   // Allocated once and repainted in place: a fresh texture per stops change would orphan a GPU
   // texture AND move the material memo's identity, recompiling the sky's TSL shader on every
@@ -175,5 +233,26 @@ export function SkySphere({
     time.value += delta * (Number.isFinite(rate) && rate > 0 ? rate : 1)
   })
 
-  return <mesh geometry={geometry} material={material} frustumCulled={false} renderOrder={-3} />
+  const mesh = useRef<THREE.Mesh>(null)
+  const facingGoal = useMemo(
+    () => (facing === undefined ? null : skyFacingQuaternion(count, facing)),
+    [count, facing],
+  )
+  const facingHeld = useRef(false)
+  useFrame((_, delta) => {
+    const body = mesh.current
+    if (!body) return
+    const step = reducedMotion ? 1 : skyFacingStep(delta, facingSeconds)
+    facingHeld.current = advanceSkyFacing(body.quaternion, facingGoal, facingHeld.current, step)
+  })
+
+  return (
+    <mesh
+      ref={mesh}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+      renderOrder={-3}
+    />
+  )
 }
