@@ -20,6 +20,7 @@
 | local11 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T12:55Z | 2026-11-08T12:55Z | - |
 
 ## inbox
+- 261108 decided T241: exact submitted code independently approved and integratedd2e40965; root final pnpm check passes13482597, scope17/17complete. Close implementation, publish source once under existing cfg and verify exact source CI; F24 stays owner-gated
 - 261108 decided ARCH-46 T241: actual unchanged Docker fmt shell falsely succeeds on real syntax-error fixture → adopt bounded two-file failure propagation under local11 invocation (alt: retain weaker Docker gate); preserve all checks and require hermetic real-shell negatives, independent review and final gate
 - 261108 parked ACCT-7: F24 stored Local alias is a source-only consistency lead; explicit read-fallback policy needs owner interpretation before any experiment or repair, no task/adoption
 - 261108 decided -: direct self-improve-local four-hour invocation starts local11 at2026-11-08T12:55Z until16:55Z; root coordinates bounded proposals/adoption, isolated workers, independent reviews and current-main integration under unchanged cfg plan/push; existing blocked/pending/owner-gated scope remains excluded, see reports/261108-local11
@@ -138,9 +139,10 @@
 | local8h | 2 | 17 | 17 | 0 | 0 | 0 | 0 | 2026-11-08T13:17:52.124Z | [history](work/local8h.json) |
 
 ## next
-- inspect work board for remaining tasks
+- local11: T241 integrated and final gate passed13482597; publish verified source once and confirm exact-SHA CI. Scope17/17complete, F24 and existing owner-gated backlog preserved; reports/261108-local11.
 
 ## log
+- 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
 - 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
 - 261108 self-improve-local local11 start: four-hour bounded delegation, cleanmain8459fa5b, independent backend/tooling scouts; no new task/code approval
@@ -159,5 +161,3 @@
 - 261108 create-task review/local-reliability-261108 F17 → T238: actual current-error suppression, preserve all existing contracts and T237
 - 261108 create-task VIS r3 and review/local-reliability-261108 F15 → T237: exact-matrix mapper-change failures, preserve committed-cache/zero-clean and all public contracts
 - 261108 update-ssot VIS30: blanket mapper opt-out→accepted T217 explicit-settled exception; matrix inputs→includes changed mapper; active backend T236 contracts/touches unaffected
-- 261108 create-task ARCH r6 and review/local-reliability-261108 F14 → T236: real-PG terminal orphan retry commits marker without active trigger; preserve generic dedup and original window
-- 261108 create-architecture ARCH53: implicit trigger expectation→explicit typed completed-user-trigger recovery; ACCT/AI product rules and all gates unchanged
