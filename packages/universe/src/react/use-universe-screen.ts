@@ -64,6 +64,23 @@ export function takeOnboardingReport(
   return ready
 }
 
+/**
+ * Whether the tour holds its caption: while a time advance is pending or its sweep is running, the
+ * scene has not yet arrived where the step says it has, so the dwell is paused and the caption waits
+ * with it rather than announcing an arrival the visitor cannot see yet (ONB-9, TIME-19).
+ */
+export function tourCaptionHeld(advancePending: boolean, sweeping: boolean): boolean {
+  return advancePending || sweeping
+}
+
+/** The caption the guide shows: the current step's, or none while the tour holds it. */
+export function shownTourCaption<Caption>(
+  caption: Caption | null | undefined,
+  held: boolean,
+): Caption | null {
+  return held ? null : (caption ?? null)
+}
+
 // useUniverseScreen is the universe screen's controller, shared by both apps: the navigation actor the
 // canvas and the star panel share, the onboarding run narrated over the live scene ([O2]), the
 // first-run welcome, and the star panel's hand-offs to recall, the archive and the deletion flows.
@@ -76,10 +93,12 @@ export function useUniverseScreen({ active, onOpenDiary }: UniverseScreenInput) 
   // reported signals.
   const advancePending = useAdvanceAnnouncementStore((state) => state.pending !== null)
   const sweeping = useAdvanceSweepStore((state) => state.sampledTime !== null)
+  const captionHeld = tourCaptionHeld(advancePending, sweeping)
   const tour = useSequenceRun(ONBOARDING_SCRIPT, {
     captionDwellMs: VALUES.sequence.captionDwellMs,
-    paused: !active || advancePending || sweeping,
+    paused: !active || captionHeld,
   })
+  const tourCaption = shownTourCaption(tour.step?.caption, captionHeld)
   const { start: startTour, signal: advanceTour, abandon: abandonTour, active: tourRunning } = tour
   const awaitedSignal = tour.step?.advance.on === 'signal' ? tour.step.advance.signal : null
 
@@ -157,6 +176,7 @@ export function useUniverseScreen({ active, onOpenDiary }: UniverseScreenInput) 
   return {
     navigationActorRef,
     tour,
+    tourCaption,
     firstRun,
     handleRecallRequested,
     handleOpenDiary,
