@@ -168,7 +168,11 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
     finishSkyPreview,
   )
   const writingState = demo.state.writing
-  const { maskHole, guideAnchorRect } = useDemoGuide({
+  const {
+    maskHole,
+    guideAnchorRect,
+    remeasure: remeasureGuide,
+  } = useDemoGuide({
     beat: phaseKey,
     surface,
     decorationStage,
@@ -618,7 +622,7 @@ function DemoRun({ onSignUp, onReset }: { onSignUp: () => void; onReset: () => v
         anchorRect={sceneRevealing ? null : guideAnchorRect}
         progress={run.progress}
         onSkip={run.skip}
-        onRemeasure={run.remeasure}
+        onRemeasure={remeasureGuide}
       />
     </main>
   )

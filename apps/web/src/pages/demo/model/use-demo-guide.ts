@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { measureAnchor, useSequenceAnchorRegistry, type SequenceRect } from '@cosimosi/sequence'
 
@@ -52,6 +52,16 @@ export function useDemoGuide({
     remeasure()
   }, [beat, remeasure, splitRevealed, memoryCount, surfaceKey, targetKey])
 
+  // A host remeasure (a resize, the caption reserving room above a modal) moves controls the engine
+  // may not be measuring: while a walk's sheet is up, the step's own anchor can be unmounted, and an
+  // engine rect that stays null carries no signal. The guide calls this instead, so the page's own
+  // measures below hear it too.
+  const [layoutToken, setLayoutToken] = useState(0)
+  const remeasureGuide = useCallback(() => {
+    remeasure()
+    setLayoutToken((token) => token + 1)
+  }, [remeasure])
+
   // The mask's hole: the union box of every control the current beat opens — one lit region cut out
   // of one covering layer. No hole (the sky beat, an unmeasured mount, free play) means no mask — a
   // blackout with nothing lit would say "wait", and no beat here means that.
@@ -79,7 +89,17 @@ export function useDemoGuide({
     return () => {
       live = false
     }
-  }, [beat, engineRect, splitRevealed, memoryCount, surfaceKey, targetKey, targetHandle, maskKey])
+  }, [
+    beat,
+    engineRect,
+    layoutToken,
+    splitRevealed,
+    memoryCount,
+    surfaceKey,
+    targetKey,
+    targetHandle,
+    maskKey,
+  ])
   // A hole measured for another beat is no hole for this one.
   const maskHole = hole.key === maskKey && beat !== 'freePlay' ? hole.rect : null
 
@@ -98,7 +118,7 @@ export function useDemoGuide({
     return () => {
       live = false
     }
-  }, [engineRect, targetKey, targetHandle])
+  }, [engineRect, layoutToken, targetKey, targetHandle])
 
   // An unregistered target has no rect, whatever an earlier handle measured.
   const guideAnchorRect =
@@ -109,7 +129,7 @@ export function useDemoGuide({
         : measured.key === targetKey
           ? measured.rect
           : null
-  return { maskHole, guideAnchorRect }
+  return { maskHole, guideAnchorRect, remeasure: remeasureGuide }
 }
 
 // One string per distinct open surface, so effects can key on it without an object dependency.

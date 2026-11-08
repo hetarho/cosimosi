@@ -92,6 +92,21 @@ describe('useDemoGuide override target', () => {
     expect(result.current.guideAnchorRect).toEqual(RECT_A)
   })
 
+  it('remeasures on the guide’s remeasure while the engine rect stays null', async () => {
+    let rect = RECT_A
+    const remeasure = vi.fn()
+    register(async () => rect)
+    const { result } = renderHook(() => useDemoGuide(recallWayOut({ remeasure })))
+    await waitFor(() => expect(result.current.guideAnchorRect).toEqual(RECT_A))
+
+    rect = RECT_B
+    act(() => result.current.remeasure())
+
+    await waitFor(() => expect(result.current.guideAnchorRect).toEqual(RECT_B))
+    expect(result.current.maskHole).toEqual(RECT_B)
+    expect(remeasure).toHaveBeenCalled()
+  })
+
   it('clears the rect when the target unregisters, ignoring its in-flight measure', async () => {
     const pending = deferred<SequenceRect | null>()
     register(async () => RECT_A)
