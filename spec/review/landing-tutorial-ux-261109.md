@@ -44,12 +44,7 @@
 - F31 [?] P3 `packages/i18n/messages/*.json:853-854` `demo_beat_ornament_*`: the beat-9 captions narrate panel mechanics and the tour itself ("다음 안내를 만나보세요"). They never say that decoration changes only the look, never what time and recall did (DEMO-31, INV-11). ← DEMO-34 governs this owner copy. Options: A "하늘과 별 모양만 바뀌었어요. 밝기와 남은 단어는 그대로예요…" (recommended) | B drop only the meta clause | C keep.
 - F32 [?] P3 `packages/demo/src/pick.ts:23-30`, `apps/web/src/pages/demo/model/use-demo-run.ts:203,227`: after the six prepared diaries, the seventh write re-draws one already in the sky, and launching it does nothing visible. ← DEMO-4 makes a cycled re-draw a silent no-op; UI-9 pulls the other way. Options: A the end of the pool becomes a stated end ("준비한 일기는 여기까지예요…") (recommended) | B mark the cycled draft as already up | C keep.
 - F33 [?] P3 `apps/web/src/app/routes/screens/demo-route.tsx:11-13`: a peek at `/signup` and Back re-enters `/demo` from beat 1 with a new set, replaying the ten-beat tour. ← ONB-3 starts a tour on every entry and DEMO-7 resets on leave. Options: A history re-entry starts in free play, still empty (recommended) | B keep the run across the round trip (conflicts with DEMO-7) | C keep.
-- F34 [o] P3 `apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21,219`, `packages/3d-renderer/src/layers/SkySphere.test.ts:247`, `packages/3d-renderer/src/layers/SkySphere.tsx:50`: the landing-scene lane's approved review left four optional notes:
-  - the projection test under-counts the radius by about 9%
-  - the early-return test passes without the early return
-  - the scene test now loads the whole renderer, taking about 8–12s instead of about 5s
-  - the `facing` prop doc still says −Z is straight ahead for every camera
-  ← Tests must pin the behaviour they name (ARCH-48) and comments must state current facts (ARCH-39); this is debt the run itself added. →T260
+- F34 [o] P3 `apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21,219`, `packages/3d-renderer/src/layers/SkySphere.test.ts:247`, `packages/3d-renderer/src/layers/SkySphere.tsx:50`: the landing-scene lane's approved review left four optional notes. The projection test under-counts the radius by about 9%, and the early-return test passes without the early return. The scene test now loads the whole renderer, taking about 8–12s instead of about 5s. The `facing` prop doc still says −Z is straight ahead for every camera. ← Tests must pin the behaviour they name (ARCH-48) and comments must state current facts (ARCH-39); this is debt the run itself added. →T260
 
 ## notes
 
