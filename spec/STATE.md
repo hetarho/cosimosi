@@ -20,9 +20,10 @@
 | local10 | ihaelam-ui-MacBookPro | autopilot | 2026-11-07T23:54Z | 2026-11-07T23:54Z | - |
 
 ## inbox
+- 261108 decided T239 T240: explicit until10:00 local continuation adopts independently audited actual profile-cache and private-name RPC/log failures; preserve existing contracts, old inconclusive evidence and exact touches, cap workers20minutes, require separate native reviews and one new final gate/source publication
 - 261108 decided -: user extends self-improve-local until2026-11-08T01:00Z/10:00KST; currentmain36dad042 is clean and prior14units complete. Root may adopt bounded existing-contract fixes after controlled evidence, reuse local8h history with explicit new IDs, reserve independent reviews/final gate/CI, and publish source once this round under existing cfg. See reports/261108-local10.
-- 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no Task239/code/rerun, preserve criteria/raw evidence and require separate mutation-lifetime calibration
-- 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no Task239/code/rerun; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
+- 261108 parked ACCT-7 CLIENT-9: profile-day cache lead has an observed designated mismatch but sole five-case run is inconclusive because late-owner control times out; no repair task/code/rerun from that campaign, preserve criteria/raw evidence and require separate mutation-lifetime calibration
+- 261108 parked UI-50 UI-51: pointer-stream ownership lead is not adopted; sole16case run has6pass/10fail including4control cleanup failures with unknown timer ownership, no repair task/code/rerun from that campaign; preserve raw evidence and criteria, require separate instrumentation calibration before any future adoption
 - 261108 parked VIS-18: static worker-error/equal-refetch recovery lead needs a new successful-read event contract across public read/assembly seams while preserving T137 sharing; independent design audit confirms no authorized private repair, no probe or change adopted; see review/local-reliability-261108 F18
 - 261108 decided T238: direct local8h delegation adopts independently audited eight-case current asset-error proof; move only existing error throw before empty-body return, preserve T237 and loading/cancellation/resource/public/reset contracts; no current production or app-boundary/device claim, separate native/final gates required
 - 261108 decided -: direct local8h delegation rejects verification AST-cache optimization after original-only profiling and independent offline analysis; no supported path to unchanged0.5second/10percent threshold, no candidate or retuned repeat; subscription ownership scout yields no new finding
@@ -123,6 +124,8 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
+| T239 | Invalidate profile-dependent reads after a successful full profile write | ARCH | - | todo |
+| T240 | Keep invalid previous-split refusals free of memory content | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
@@ -131,9 +134,10 @@
 | local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:32:24.424Z | [history](work/local8h.json) |
 
 ## next
-- local8h timed run closed; fourteen scoped improvements/gates/source CI are complete. Follow reports/261108-local8h for separately scoped future observations and existing T222 owner gates.
+- implement-task T239 T240; explicit local10 continuation reuses local8h history with two approved additions. Preserve final gate/CI reserve.
 
 ## log
+- 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
 - 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
 - 261108 local8h full pnpm check passed at521c4439; sourceedc2a27e published once with exact CI/check and backend build/rollout success; own DB and14archived worker worktrees cleaned
