@@ -167,6 +167,7 @@
 | T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
 | T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
+| T258 | Sky facing costs nothing where unused and keeps its wiring guarded | VIS MKT ARCH | T256 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -177,6 +178,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 T250 independently reviewed b8200053 and integrated b38bd150; create-task F26 → T258 (lane landing-scene with T256)
 - 261108 T250 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
 - 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked

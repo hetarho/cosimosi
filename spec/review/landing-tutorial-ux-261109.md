@@ -36,6 +36,8 @@
 - F24 [?] P3 `apps/web/src/app/providers/observability-provider.tsx:3-4`: Sentry and PostHog ship in the entry chunk (≤92KB br) although they are used only after first commit. ← An OBS owner decision. Options: A dynamic import with a pre-load queue (recommended) | B keep.
 - F25 [?] P3 `apps/web/src/widgets/empty-sky/ui/EmptySky.tsx:22,87-99`: the poster loads at Low priority behind 14 font slices, after the canvas's first frame in 6/6 runs. MKT-20's "poster first" therefore holds only for reduced-motion and failed-GPU visitors, and for them about 0.6s late. A WebP of the poster is 11.8KB, against 135KB for the PNG. ← The payoff depends on F18, since the poster is stale and near-black, and MKT-24 names the PNG. Options: A regenerate the poster (F18), ship it as WebP with high fetch priority and a preload (recommended) | B fetch priority only | C keep.
 
+- F26 [o] P3 `packages/3d-renderer/src/layers/SkySphere.tsx:264-271`, `apps/web/src/pages/landing/ui/LandingWalkthroughScene.tsx`: T250's approved review left three optional notes. The facing frame callback still runs a no-op on every non-facing sky. The section's `skyFacing` forward has no compile-time guard. One comment and two test comments misdescribe the camera or narrate the first attempt. ← ARCH-39 requires comments to explain current code. The other two keep the new seam cheap and guarded. →T258
+
 ## notes
 
 - Evidence: `.git/haeram/v1/artifacts/261109-local13/scout-landing/` (shots, `facts.json` from production `walkthroughSceneFacts`, `frame-share.txt`) and `scout-tutorial/` (51 beat frames, driver, console). The console showed no errors, only `GoTrueClient` duplicate-instance and `THREE.Clock` deprecation warnings.
