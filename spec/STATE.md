@@ -169,6 +169,7 @@
 | T261 | The universe HUD stays clear of the tour's skip | ONB VIS UI ARCH | - | todo |
 | T262 | The first-run welcome and the tour caption never overlap | ONB UI ARCH | T261 | todo |
 | T263 | The tour's arrival caption waits until the star has arrived | ONB TIME ARCH | T262 | todo |
+| T265 | The manual tour review script waits for the visible caption band | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -179,6 +180,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 T264 reviewed b4174ae0 and integrated 98a91639; create-task F41 → T265 (run debt)
 - 261108 T264 integrated
 - 261108 T257 integrated
 - 261109 create-task review/landing-tutorial-ux-261109 F35 F36 F37 F38 → T261 T262 (lane universe-tour) T263 (not started) T264; F39 F40 parked
