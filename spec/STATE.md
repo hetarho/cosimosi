@@ -125,18 +125,18 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T239 | Invalidate profile-dependent reads after a successful full profile write | ARCH | - | todo |
-| T240 | Keep invalid previous-split refusals free of memory content | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 14 | 14 | 0 | 0 | 0 | 0 | 2026-11-07T21:32:24.424Z | [history](work/local8h.json) |
+| local8h | 2 | 16 | 15 | 1 | 1 | 0 | 0 | 2026-11-08T00:13:01.536Z | [history](work/local8h.json) |
 
 ## next
-- implement-task T239 T240; explicit local10 continuation reuses local8h history with two approved additions. Preserve final gate/CI reserve.
+- inspect work board for remaining tasks
 
 ## log
+- 261108 T240 integrated
 - 261108 create-task review/local-reliability-261108 F20 F21 → T239 T240: bounded observed existing-contract repairs; no new SSOT policy
 - 261108 self-improve-local local10 start: until10:00KST; prepare private-error proof and distinct profile-cache instrumentation calibration, no task/code adoption yet
 - 261108 self-improve-local eight-hour timed run ended: T225..T238 complete, exact source CI passed; final docs-only closeout follows
@@ -156,5 +156,3 @@
 - 261108 create-task review/local-reliability-261108 F7 F8 → T229 T230: existing ratchet metadata and exhausted-balance replay; reject inconclusive offset optimization, preserve raw campaign evidence
 - 261108 create-task ARCH r5 and review/local-reliability-261108 F3 F4: T227 fixes affected selection, T228 follows for independent field resources; coverage preserved
 - 261108 create-architecture ARCH-47: raw pnpm diff selectors→Git-root-aware affected commands; task/batch/CI and conditional checks preserved
-- 261108 TWINK r3..r4 no-op (no code impact): dependency classification preserves every rule and brief inclusion; create-task consumes the delta
-- 261108 update-ssot TWINK: TWINK-4 forgetting input canonical→requires, with weight/price ownership preserved; old rendering review task conversion closed with original audit provenance
