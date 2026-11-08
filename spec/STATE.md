@@ -20,6 +20,7 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
+- 261109 parked DEMO-30 DEMO-24 DEMO-34 DEMO-4 ONB-3 DEMO-7: demo free play needs owner rules — re-framing so early skippers see the gist rise (F29), a one-line arrival caption so picking and repeat recall are discoverable (F30), beat-9 captions that tie decoration to INV-11 (F31), a stated end of the prepared-diary pool (F32), and history re-entry not replaying the tour (F33); see review/landing-tutorial-ux-261109
 - 261109 parked DIARY-21: whole-diary recall is free in code, but DIARY.md:75, PROD.md:107 and the dead `twinkle_cost_diary_label` still say it costs stardust; needs update-ssot then cleanup (review/landing-tutorial-ux-261109 F28)
 - 261109 decided review/landing-tutorial-ux-261109 T257: throttled first-paint scout measured the beat-1 caption painting stale, jumping and blinking on font swap (CLS 0.13) → adopt the reveal-on-commit fix under ONB-12 after the demo-guide lane (alt: leave it | hide until fonts load)
 - 261109 parked review/landing-tutorial-ux-261109 CLIENT-33 CLIENT-35 MKT-20 MKT-24: first-paint options need the owner — lazy renderer chunk for the hero words (F22, ~0.5s earlier), /demo chunk preload hint (F23), deferred observability SDKs (F24), poster priority and WebP once F18 regenerates it (F25)
