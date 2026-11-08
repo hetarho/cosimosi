@@ -14,12 +14,8 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
-
 ## inbox
+- 261109 decided T250 T251 T252 T253 T254 T255 T256 T257 T258 T259 T260 T261 T262 T263 T264 T265 T266 T267: local13 six-hour run integrated 18 independently reviewed tasks for landing, demo and post-signup tour UX; final pnpm check passes 4a1789fd in 190s; 26 owner options parked in review/landing-tutorial-ux-261109 with a decision page linked from reports/261109-local13
 - 261109 decided review/landing-tutorial-ux-261109 T261 T262 T264: a throwaway probe ran the real post-signup tour on a mock transport → adopt the skip/HUD collision (ONB-12/13), the welcome-line overlap and -습니다 (ONB-3/UI-62) and the draft ring missing split (ONB-17); T263 (arrival caption before the star, ONB-9) is planned but left for the next run (alt: start all four and risk an unintegrated lane at the deadline)
 - 261109 parked VIS-46 WRITE-3 ONB-18: on phones the first launched memories sit off-screen under the tour caption (F39, decide with F10/F29), and the revisit caption says a star keeps what you wrote instead of naming fading and recall (F40)
 - 261109 decided T257 ONB-13 ONB-2: review 32f1051c found the reveal-on-commit fix hid the aria-live element itself, so captions would appear inside a freshly exposed live region → keep aria-live on a stable never-hidden container and give visibility to the positioned child band; T257 may also retarget DemoPage's band-height selector (alt: hidden live copy plus aria-hidden band | keep and record screen-reader checks)
@@ -176,6 +172,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local13 complete: T250–T267 integrated, final gate 4a1789fd passes; source published once to main per cfg push
 - 261108 T267 integrated
 - 261109 local13 T266 reviewed 08db5aad and integrated bdbd7329; final gate passes d32d4b83 (pnpm check 191s); create-task F43 → T267 as a last small cycle
 - 261108 T266 integrated
