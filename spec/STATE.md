@@ -20,6 +20,7 @@
 | local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T16:13Z | - |
 
 ## inbox
+- 261109 decided T241 T249: finalnine pnpmcheck PASSESd2cba8c0/254.882s,25/25scope complete; F33actualgreen6/6, owned24workspaces/DBvolumecleaned anduserPGpreserved; singleconfiguredsourcepush/exactCI+autodeploy/awakeend remainpending
 - 261109 decided T241 T249: nine total improvements/eight resumed now independently reviewed/integrated,25/25explicit scope complete; exact15source matches, new finalgate/main CI+configuredautodeploy/resourcecloseout pending; corrected4activehourdeadline17:35:57Z
 - 261109 decided OBS-7 ERR-6 T249: sole actual SDK/RPC proof confirms generated mood/type values in causes/logs,2failures/4controls with19hardcontrols and9RPC/8vendor counts; adopt only fixed extractor messages/twofiles preserving ordinaryerrors/cache/wire/normalization, require precommitconditional DBgate/independentreview/NEWfullgate; T222excluded
 - 261109 decided T241 T242 T243 T244 T245 T246 T247 T248: eight improvements across corrected four-active-hour request, seven resumed units independently reviewed/integrated and24/24approvedscope complete; final combined gate/main source CI/resource closeout remain pending through17:35:57Z
@@ -154,6 +155,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
 - 261109 local12 T249review5d94a93f approved64independenttests/vetbuild and integratedc92d1441;25/25scope done, exact15source audit passes; NEWfinalgate/publication/CI next
 - 261108 T249 integrated
 - 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
@@ -169,4 +171,3 @@
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
 - 261108 T248 integrated
 - 261108 T247 integrated
-- 261108 T246 integrated
