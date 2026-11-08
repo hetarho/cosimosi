@@ -97,7 +97,10 @@ fs.appendFileSync(path.join(process.env.COSIMOSI_AFFECTED_RECORDS, name.replaceA
     'spec/ssot/ARCH.md',
     'spec/mystery.md',
     'spec/values.yaml',
+    'scripts/go-check.mjs',
+    'scripts/go-check-extra.mjs',
     'scripts/lint-public-copy.mjs',
+    'scripts/subprocess-results.test.mjs',
     'apps/api/main.go',
     'apps/api/db/migrations/001.sql',
     'proto/fixture.proto',
@@ -258,6 +261,57 @@ for (const linked of [false, true]) {
     assert.equal(result.report.reason, 'shared-or-unknown-input')
     assert.ok(result.report.fallbackPaths.includes('packages/ab/package.json'))
   })
+
+  for (const mode of ['typecheck', 'test']) {
+    for (const withSubprocessTest of [false, true]) {
+      test(`${kind}: Go gate selection: ${mode}, ${withSubprocessTest ? 'with subprocess test' : 'wrapper only'}`, (t) => {
+        const workspace = fixture(linked)
+        const paths = [
+          'scripts/go-check.mjs',
+          ...(withSubprocessTest ? ['scripts/subprocess-results.test.mjs'] : []),
+        ]
+        for (const path of paths) put(workspace.root, path, 'changed\n')
+        const result = invoke(workspace, [mode, '--base', workspace.base])
+        t.diagnostic(JSON.stringify({ paths, report: result.report, records: result.records }))
+        assertExecutions(result, workspace, [], mode)
+        assert.equal(result.report.reason, 'known-non-workspace-only')
+        assert.deepEqual(result.report.fallbackPaths, [])
+        assert.deepEqual(
+          result.report.outsideWorkspace,
+          paths.map((path) => ({ path, kind: 'guards' })),
+        )
+      })
+    }
+
+    test(`${kind}: Go gate combinations retain ${mode} coverage`, (t) => {
+      const workspace = fixture(linked)
+      put(workspace.root, 'scripts/go-check.mjs', 'changed\n')
+      for (const [path, expected] of [
+        [`packages/a/src/${portableFile}`, closure],
+        ['scripts/lib.mjs', all],
+        ['proto/fixture.proto', all],
+        ['apps/api/db/migrations/001.sql', all],
+        ['scripts/go-check-extra.mjs', all],
+      ]) {
+        const source = readFileSync(join(workspace.root, path), 'utf8')
+        put(workspace.root, path, `${source}\n`)
+        const result = invoke(workspace, [mode, '--base', workspace.base])
+        t.diagnostic(JSON.stringify({ path, report: result.report, records: result.records }))
+        assertExecutions(result, workspace, expected, mode)
+        assert.equal(
+          result.report.reason,
+          expected === closure ? 'changed-projects' : 'shared-or-unknown-input',
+        )
+        assert.ok(
+          result.report.outsideWorkspace.some(
+            (entry) => entry.path === 'scripts/go-check.mjs' && entry.kind === 'guards',
+          ),
+        )
+        if (expected !== closure) assert.ok(result.report.fallbackPaths.includes(path))
+        git(workspace.root, 'restore', path)
+      }
+    })
+  }
 }
 
 test('shared generator/proto/config inputs and unknown ownership retain all project checks', () => {

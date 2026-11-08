@@ -135,19 +135,19 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T242 | Classify the known Go gate without unrelated TypeScript checks | ARCH | - | todo |
 | T243 | Fence token reads that settle after session access closes | ARCH AUTH | - | todo |
 | T244 | Keep confirmed-launch validation refusals content-free | ARCH ENC ERR OBS | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 17 | 17 | 0 | 0 | 0 | 0 | 2026-11-08T13:17:52.124Z | [history](work/local8h.json) |
+| local8h | 2 | 20 | 18 | 2 | 1 | 1 | 0 | 2026-11-08T14:55:14.000Z | [history](work/local8h.json) |
 
 ## next
-- local12 active until2026-11-08T17:35:57Z: continuously discover/approve/implement/review bounded improvements; a completed item starts the next cycle. Preserve17completed prior units and owner-gated backlog; reports/261108-local12.
+- inspect work board for remaining tasks
 
 ## log
+- 261108 T242 integrated
 - 261108 create-task review/local-reliability-261108 F25 F22 → T243 T244: actual bounded proofs confirm existing-contract failures; independent source reviews/final gates remain
 - 261108 create-task review/local-reliability-261108 F27 → T242: observed known-Go fallback cost, exact two-file classification under existing ARCH47; full-duration cycles continue
 - 261108 local12 resumes four-hour continuous improvement after user correction; compensate inactive gap, deadline17:35:57Z, scout backend privacy and frontend lifetimes

@@ -111,6 +111,7 @@ const GUARD_FILES = new Set([
   'scripts/check-persistence-isolation.test.mjs',
   'scripts/check-spec-hygiene.mjs',
   'scripts/check-test-reachability.mjs',
+  'scripts/go-check.mjs',
   'scripts/lint-comment-history.mjs',
   'scripts/lint-fsd-layout.mjs',
   'scripts/lint-fsd-layout.test.mjs',
