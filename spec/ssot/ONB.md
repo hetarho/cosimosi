@@ -1,5 +1,5 @@
 # ONB onboarding
-> r3 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
+> r4 | the one guided-step engine the demo and the post-signup tour share, and the tour itself: a script that points at real controls and waits, run once after signup and on replay, and never able to act for the user
 
 ## decisions
 - ONB-1 [o] the demo and onboarding run on one sequence engine (`@cosimosi/sequence`) and differ only in the injected script and data: the demo's fixtures (→=DEMO-4) or the user's real first diary
@@ -113,13 +113,13 @@
   | 5 | `confirm` | `writing-confirm` | `launch-succeeded` | send them up |
   | 6 | `arrival` | none | dwell | the record lives here now |
   | 7 | `clock` | `universe-clock` | dwell | that date is the universe's time; looking at it does not move it |
-  | 8 | `revisit` | none | dwell | a star keeps what you wrote; remembering it again is its own act and costs Twinkle |
+  | 8 | `revisit` | none | dwell | a star keeps what you wrote; remembering it again is its own act |
   | 9 | `closing` | none | dwell | the tour can be walked again at any time |
   - every caption must hold both for an empty first universe and for a replay over a full one, so no caption quotes a value: no name, count, date or balance
   - a failed split or launch produces no tour-owned error: the caption holds, with no retry and no timeout
   - a past-dated first diary needs no branch: steps 6 and 7 hold whether or not a memory was created, and its notice is the writing flow's →=WRITE
   - step 1 has no anchor, so nothing must be measured before the tour begins
-- ONB-19 [o] the tour names recall at step 8 and never performs it ← a recall costs Twinkle and needs sync consent, and a first minute is the wrong place to spend either →~RECALL-9
+- ONB-19 [o] the tour names recall at step 8 and never performs it ← a recall needs sync consent and reconstructs the memory it touches, and a first minute is the wrong place for either →~RECALL-1 →~RECALL-9
   - this is the one legitimate difference from the demo, which does walk a recall (→~DEMO-22), and it is a missing union member, never a conditional step
 - ONB-20 [o] the writing flow reports what it did through `reportSequenceSignal(signal): void` into a one-slot channel (`useOnboardingSignalStore`), and only the run host turns a report into an `ADVANCE` ← one id in and nothing out, so a reporting site cannot learn whether a tour runs, read a step, or branch on either
   - the three reports come from one effect on the writing-flow machine's real phase transitions (`idle → writing`, `splitting → reviewing`, `launching → done`), never from the request's promise arms: a split resolving after the sheet closed leaves the machine in `idle` and must advance nothing
@@ -158,6 +158,7 @@
 - the engine and the tour speak anchors and captions, never rendering vocabulary →=UL
 
 ## chg
+- r4 261109 ONB-18✎ step 8 meaning "its own act and costs Twinkle"→"its own act" (회고하기 is free since RECALL@3); ONB-19✎ rationale "a recall costs Twinkle"→"a recall needs sync consent and reconstructs the memory"
 - r3 261103 ONB-6✎ both hosts read sequence dwell→host supplies reading time; ONB-9✎ shared dwell→onboarding default retained, demo pace independent
 - r2 261103 ONB-15✎ "auth → onboarding reset edge"→"imports neither auth nor account"; ONB-22✎ signup handoff `packages/auth`→`packages/account`
 - r1 261102 initial

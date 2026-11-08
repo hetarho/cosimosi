@@ -20,6 +20,11 @@
 | local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T17:40Z | - |
 
 ## inbox
+- 261109 decided ONB-18 ONB-19 RECALL-1 T254: the tour's step 8 told new users recalling costs stardust, but 회고하기 is free since RECALL@3 → ONB r4 drops the cost from step 8 and the ONB-19 rationale, following the owner's newer RECALL decision (alt: keep the stale caption | restate a cost for paid restoration only)
+- 261109 decided review/landing-tutorial-ux-261109 T250 T251 T252 T253 T254 T255: local13 adopts six gaps against existing MKT-17, DEMO-27, ONB-12, UI-6, UI-62 and DEMO-8 rules, each with screenshot evidence, independent review and a UI-15 round where the look changes; root verified the raw frames
+- 261109 parked review/landing-tutorial-ux-261109 MKT-17 MKT-18 MKT-20 UI-40: landing concept-delivery options need the owner — hero paragraph (F2), walkthrough framing line (F3), sentence tie (F4), invisible "form from the sentence" claim (F5), hero focal point (F6); each finding lists options with a recommendation
+- 261109 parked review/landing-tutorial-ux-261109 DEMO-21 DEMO-26 VIS: tutorial options need the owner — gist bodies already rise at beat 5 so beat 7 shows nothing new (F7), the closing honesty caption vanishes after 2.8s (F9), the desktop overview is too far for four memories (F10)
+- 261109 parked DEMO: commit dab1cd87 appears to implement DEMO r2–r5 without tasks; confirm before DEMO tasked moves from 1 to 5
 - 261109 decided T241 T249: corrected4activehours fulfilled; total9fixes/eightresumed independentlyreviewed/integrated,25/25scope verifiedd2cba8c0; source9c58d1b4 publishedonce, CI42505396917/check12 andautomaticdeploy42505397032/build9+rollout9 allsuccess;24ownedworkspaces/DBvolumeclosed, oldownedawakealreadygone/newerunownedawakepreserved
 - 261109 decided -: direct self-improve-local six-hour invocation starts local13 at 2026-11-08T17:39Z until 23:39Z (Nov9 08:39 KST) as continuous cycles. Focus: how well the landing page and tutorial convey the product through 3D UX/UI. Root adopts only fixes under existing SSOT/UI rules; new product rules are parked as option packets for the owner, see reports/261109-local13
 - 261109 decided T241 T249: finalnine pnpmcheck PASSESd2cba8c0/254.882s,25/25scope complete; F33actualgreen6/6, owned24workspaces/DBvolumecleaned anduserPGpreserved; singleconfiguredsourcepush/exactCI+autodeploy/awakeend remainpending
@@ -109,7 +114,7 @@
 | ACH    | 2   | 2      | -       | 0   |
 | MKT | 1 | 1 | - | 0 |
 | DEMO | 5 | 1 | DEMO-14✎ DEMO-22✎ DEMO-25✎ DEMO-26✎ DEMO-27✎ DEMO-29✎ DEMO-31✎ | 0 |
-| ONB | 3 | 2 | ONB-6✎ ONB-9✎ | 1 |
+| ONB | 4 | 4 | - | 1 |
 | VIS | 3 | 3 | - | 0 |
 | ACCT | 4 | 4 | - | 1 |
 | AUTH | 3 | 3 | - | 0 |
@@ -123,6 +128,7 @@
 ## review
 | id | st |
 | ------------------------------------- | ---------------- |
+| landing-tutorial-ux-261109 | converted@261109 |
 | local-reliability-261108 | converted@261108 |
 | post-refactor-261102                  | converted@261103 |
 | all-261102                            | converted@261102 |
@@ -147,6 +153,12 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
+| T250 | Landing walkthrough sky faces the feeling its step names | MKT PROD MOOD VIS UI ARCH | - | todo |
+| T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
+| T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
+| T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
+| T254 | Onboarding tour copy speaks the product register and states recall truthfully | ONB UI RECALL MKT ARCH | - | todo |
+| T255 | Demo recall prompt carries no cost wording | DEMO ONB MKT ARCH | T254 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
@@ -157,6 +169,7 @@
 - local8h approved scope is25/25verified; T222 remains blocked; await the next authorized scope
 
 ## log
+- 261109 create-task review/landing-tutorial-ux-261109 F1 F8 F11 F12 F13 F14 → T250–T255 and ONB r4; lanes demo-guide (T251–T253) and tutorial-copy (T254–T255)
 - 261109 local12 complete: ninefixes/25scope, finald2/source9c58/CI42505396917+deploy42505397032 pass; corrected4activehours fulfilled, ownedresourcesclosed/unrelatedpreserved; finalmetadataonly
 - 261109 local13 start: six-hour self-improve-local on landing/tutorial 3D UX, local12 row closed after its deadline passed with no live process
 - 261109 local12 NEWfinalninegate passesd2cba8c0 in254.882s/snapshotd7e7cce2; F33green6/6 andownedDB/workspacecleanup verified, sourcepublication+CI next
