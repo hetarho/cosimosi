@@ -100,7 +100,11 @@ export function useSequenceRun<Anchor extends string, Signal extends string>(
     options.captionDwellMs,
     advance,
   )
-  const anchorRect = useAnchorRect(active ? step?.anchor : undefined, measureToken)
+  const anchorRect = useAnchorRect(
+    active ? step?.anchor : undefined,
+    snapshot.stepIndex,
+    measureToken,
+  )
 
   return useMemo(
     () => ({
@@ -136,7 +140,11 @@ function useDwellAdvance(
   }, [advance, captionDwellMs, enabled, runId, stepIndex])
 }
 
-function useAnchorRect(anchorId: string | undefined, measureToken: number): SequenceRect | null {
+function useAnchorRect(
+  anchorId: string | undefined,
+  stepIndex: number,
+  measureToken: number,
+): SequenceRect | null {
   const [rect, setRect] = useState<SequenceRect | null>(null)
   const anchors = useSequenceAnchorRegistry((state) => state.anchors)
 
@@ -154,7 +162,7 @@ function useAnchorRect(anchorId: string | undefined, measureToken: number): Sequ
     }
     // `anchors` is a dependency so a control that mounts AFTER its step began still gets highlighted
     // — a registry change is the only signal the engine gets that the tree moved.
-  }, [anchorId, anchors, measureToken])
+  }, [anchorId, anchors, measureToken, stepIndex])
 
   return rect
 }
