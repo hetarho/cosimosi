@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T15:26Z | T245 |
+| local12 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T14:13Z | 2026-11-08T15:35Z | - |
 
 ## inbox
 - 261109 decided ONB-5 ONB-8 ONB-9 T245: original actual-hook proof confirms old timer advancing a fresh same-index run after100ms; adopt existing full-dwell repair only, preserve pending ONB/DEMO/same-ID policies and require independent review; F28 owner-gated, F29/F30 preparation only
@@ -148,6 +148,7 @@
 - inspect work board for remaining tasks
 
 ## log
+- 261109 local12 T245 independent38test approval; native candidate blocked only by coordinator active.doing metadata, preserve candidate and clear doing before fresh integration; F30 original1failure/8controls confirmed
 - 261109 local12 conditional T244 DB-backed Go gate passes14.114s at45c8e8f1; seven reviewed sources exact, nine owned completed workspaces cleaned; T245 implementation/F29-F30 preparation continue
 - 261109 create-task review/local-reliability-261108 F26 → T245: actual original hook1failure/5controls, narrow fresh-run timer ownership; continuous cycles continue
 - 261109 local12 batch: T242 T243 T244 independently reviewed/integrated; F26 corrected original proof confirmsonefresh-run timerfailure/fivecontrols, further cycles continue
@@ -167,4 +168,3 @@
 - 261108 local10 T239 T240 independently reviewed/integrated; final source scope frozen at nine reviewed files before root batch gate
 - 261108 T239 integrated
 - 261108 T240 independently approved/integrated; T239 old attempt stopped/released before bounded six-path contract amendment, ratchet unchanged
-- 261108 T240 integrated
