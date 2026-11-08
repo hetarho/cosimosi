@@ -20,7 +20,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { moodColor, type EmotionSlice } from '@cosimosi/emotion'
 import { ObservedErrorBoundary } from '@cosimosi/observability/react'
-import { starChannels } from '@cosimosi/universe/scene'
+import { UNIVERSE_CAMERA_RIG, starChannels } from '@cosimosi/universe/scene'
 import { tokens, useReducedMotion } from '@cosimosi/ui'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
@@ -47,9 +47,9 @@ const STAR_SLOTS = [
 // up to seven stars share the frame.
 const STAR_GROUP_SCALE = 1.6
 
-// The sky turning to a new feeling is the whole backdrop crossing the frame, which the motion tokens
-// time as `duration.slow`; the renderer counts seconds.
-const SKY_TURN_SECONDS = Number.parseFloat(tokens.duration.slow) / 1000
+// The sky turning to a new feeling is the view coming round to one chosen thing, which is what the
+// universe camera's focus glide does; the turn takes that glide's pace rather than a 2D UI token.
+const SKY_TURN_LAMBDA = UNIVERSE_CAMERA_RIG.glideLambda.focusing
 
 /**
  * The walkthrough's universe: the production canvas, the production sky, the production star body
@@ -122,7 +122,7 @@ function WalkthroughCanvas({
         stops={skyStops}
         effect={skin.sky.effect}
         facing={skyFacing}
-        facingSeconds={SKY_TURN_SECONDS}
+        facingLambda={SKY_TURN_LAMBDA}
       />
       {/* Keyed by count: the steps grow the cast 3 → 7, and remounting on that change is simpler
           and safer than trusting an instanced buffer to resize in place. */}

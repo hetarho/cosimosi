@@ -3,12 +3,17 @@ import { uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
 import { buildEmotionGradientTexture } from '../assets/sky/emotion-gradient.ts'
-import { SKY_EFFECTS } from '../assets/sky/sky-effects.ts'
+import { GRAINIENT_SPIN } from '../assets/sky/grainient-sky.ts'
+import { GRAINSTORM_SPIN } from '../assets/sky/grainstorm-sky.ts'
+import { LIQUID_ETHER_SPIN } from '../assets/sky/liquid-ether-sky.ts'
+import type { SkyFrameSpin } from '../assets/sky/sky-domain.ts'
+import { SKY_EFFECTS, resolveSkyEffect, type SkyEffect } from '../assets/sky/sky-effects.ts'
 import { emotionAnchors } from '../assets/sky/sky-emotion.ts'
 import {
   advanceSkyFacing,
   createSkyMaterial,
   normalizeSkyWeights,
+  skyFacingAt,
   skyFacingQuaternion,
   skyFacingStep,
   skyWeightsKey,
@@ -135,7 +140,7 @@ describe('sky facing', () => {
     // sign-in and the design benches keep the untouched mesh.
     const orientation = new THREE.Quaternion()
     let held = false
-    for (const step of [skyFacingStep(1 / 60, 0.32), 1]) {
+    for (const step of [skyFacingStep(1 / 60, 4), 1]) {
       held = advanceSkyFacing(orientation, null, held, step)
       expect(held).toBe(false)
       expect(orientation.equals(new THREE.Quaternion())).toBe(true)
@@ -163,43 +168,107 @@ describe('sky facing', () => {
   it('takes a facing that appears at once, and drops it at once when it goes', () => {
     const goal = facingOf(6, 0)
     const orientation = new THREE.Quaternion()
-    let held = advanceSkyFacing(orientation, goal, false, skyFacingStep(1 / 60, 0.32))
+    let held = advanceSkyFacing(orientation, goal, false, skyFacingStep(1 / 60, 4))
     expect(held).toBe(true)
     expect(orientation.angleTo(goal)).toBeLessThan(1e-6)
 
-    held = advanceSkyFacing(orientation, null, held, skyFacingStep(1 / 60, 0.32))
+    held = advanceSkyFacing(orientation, null, held, skyFacingStep(1 / 60, 4))
     expect(held).toBe(false)
     expect(orientation.equals(new THREE.Quaternion())).toBe(true)
   })
 
-  it('eases between two facings over the given duration', () => {
+  it('eases between two facings as an exponential approach at the given responsiveness', () => {
     const from = facingOf(6, 0)
     const to = facingOf(6, 3)
-    const seconds = 0.32
+    const lambda = 4
     const frame = 1 / 60
     const orientation = from.clone()
     const arc = from.angleTo(to)
 
-    advanceSkyFacing(orientation, to, true, skyFacingStep(frame, seconds))
+    advanceSkyFacing(orientation, to, true, skyFacingStep(frame, lambda))
     // One frame moves it, but only part of the way.
     expect(orientation.angleTo(from)).toBeGreaterThan(0)
     expect(orientation.angleTo(to)).toBeGreaterThan(arc / 2)
 
-    let elapsed = frame
-    while (elapsed < seconds - 1e-9) {
-      advanceSkyFacing(orientation, to, true, skyFacingStep(frame, seconds))
-      elapsed += frame
-    }
-    // On time, all but a twentieth of the arc is covered.
-    expect(orientation.angleTo(to)).toBeLessThanOrEqual(arc * 0.05 + 1e-6)
+    // After one second, what is left of the arc is e^(-lambda), the camera rig's damp.
+    for (let i = 1; i < 60; i++)
+      advanceSkyFacing(orientation, to, true, skyFacingStep(frame, lambda))
+    expect(orientation.angleTo(to)).toBeCloseTo(arc * Math.exp(-lambda), 4)
   })
 
-  it('snaps without a duration', () => {
+  it('snaps without a responsiveness', () => {
     expect(skyFacingStep(1 / 60, undefined)).toBe(1)
     expect(skyFacingStep(1 / 60, 0)).toBe(1)
     const to = facingOf(6, 3)
     const orientation = facingOf(6, 0).clone()
     advanceSkyFacing(orientation, to, true, skyFacingStep(1 / 60, undefined))
     expect(orientation.angleTo(to)).toBeLessThan(1e-6)
+  })
+})
+
+describe('sky facing under a spinning frame', () => {
+  const VIEW = new THREE.Vector3(0, 0, -1)
+
+  // The shader's own turn (`skySpin`, Rodrigues) applied in JS: the field reads a surface direction
+  // `d` at `spun(d)`, so the surface point showing field-space anchor `a` is the inverse turn of `a`.
+  const where = (anchor: readonly number[], spin: SkyFrameSpin, seconds: number) => {
+    const axis = new THREE.Vector3(...spin.axis).normalize()
+    return new THREE.Vector3(anchor[0], anchor[1], anchor[2]).applyAxisAngle(
+      axis,
+      -spin.rate * seconds,
+    )
+  }
+
+  it("keeps the faced territory on the view direction while the effect's frame turns", () => {
+    for (const count of [3, 6]) {
+      const anchors = emotionAnchors(count)
+      for (let index = 0; index < count; index++) {
+        const facing = skyFacingQuaternion(count, index)
+        if (facing === null) throw new Error('no facing')
+        for (const seconds of [0, 12, 31, 90, 600]) {
+          const now = skyFacingAt(facing, GRAINIENT_SPIN, seconds, new THREE.Quaternion())
+          const shown = where(anchors[index], GRAINIENT_SPIN, seconds).applyQuaternion(now)
+          expect(shown.angleTo(VIEW), `${index}/${count} at ${seconds}s`).toBeLessThan(1e-5)
+        }
+      }
+    }
+  })
+
+  it('without the compensation, the same territory drifts off the view direction', () => {
+    // What the static facing alone showed: LOVE's slice of the walkthrough sky ~56° off centre half
+    // a minute in. Pinned so the test above cannot pass by the spin being too slow to matter.
+    const facing = skyFacingQuaternion(6, 1)
+    if (facing === null) throw new Error('no facing')
+    const shown = where(emotionAnchors(6)[1], GRAINIENT_SPIN, 31).applyQuaternion(facing)
+    expect(shown.angleTo(VIEW)).toBeGreaterThan((30 * Math.PI) / 180)
+  })
+
+  it('is the static facing when the effect does not spin', () => {
+    const facing = skyFacingQuaternion(6, 2)
+    if (facing === null) throw new Error('no facing')
+    const now = skyFacingAt(facing, undefined, 42, new THREE.Quaternion())
+    expect(now.angleTo(facing)).toBeLessThan(1e-9)
+  })
+})
+
+describe('published frame spins', () => {
+  it('belong to exactly the effects whose shader spins its frame, as the same constant', () => {
+    const spins = new Map<string, SkyFrameSpin | undefined>(
+      SKY_EFFECTS.map((effect: SkyEffect) => [effect.key, effect.spin]),
+    )
+    expect(spins.get('grainient')).toBe(GRAINIENT_SPIN)
+    expect(spins.get('grainstorm')).toBe(GRAINSTORM_SPIN)
+    expect(spins.get('liquid-ether')).toBe(LIQUID_ETHER_SPIN)
+    const others = [...spins].filter(([, spin]) => spin !== undefined).map(([key]) => key)
+    expect(others.sort()).toEqual(['grainient', 'grainstorm', 'liquid-ether'])
+  })
+
+  it("restate each effect's clock and turn as radians per sky second", () => {
+    // The values the shaders spun by before the constants were published: clock 0.25 at 0.15 rad
+    // for the two marbles, clock 0.08 at 0.1 rad for the water, all about [0.25, 1, 0.2].
+    expect(GRAINIENT_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.25 * 0.15 })
+    expect(GRAINSTORM_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.25 * 0.15 })
+    expect(LIQUID_ETHER_SPIN).toEqual({ axis: [0.25, 1, 0.2], rate: 0.08 * 0.1 })
+    expect((resolveSkyEffect('grainient') as SkyEffect).spin).toBe(GRAINIENT_SPIN)
   })
 })

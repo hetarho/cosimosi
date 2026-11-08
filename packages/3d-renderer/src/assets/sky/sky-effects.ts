@@ -1,15 +1,16 @@
 import { VALUES } from '@cosimosi/config'
 
+import type { SkyFrameSpin } from './sky-domain.ts'
 import type { SkyNodeBuilder } from './sky-node.ts'
 
 import { evilEyeSkyNode } from './evil-eye-sky.ts'
 import { ferrofluidSkyNode } from './ferrofluid-sky.ts'
 import { floatingLinesSkyNode } from './floating-lines-sky.ts'
-import { grainientSkyNode } from './grainient-sky.ts'
-import { grainstormSkyNode } from './grainstorm-sky.ts'
+import { GRAINIENT_SPIN, grainientSkyNode } from './grainient-sky.ts'
+import { GRAINSTORM_SPIN, grainstormSkyNode } from './grainstorm-sky.ts'
 import { iridescenceSkyNode } from './iridescence-sky.ts'
 import { lightfallSkyNode } from './lightfall-sky.ts'
-import { liquidEtherSkyNode } from './liquid-ether-sky.ts'
+import { LIQUID_ETHER_SPIN, liquidEtherSkyNode } from './liquid-ether-sky.ts'
 import { pixelBlastSkyNode } from './pixel-blast-sky.ts'
 import { plasmaWaveSkyNode } from './plasma-wave-sky.ts'
 import { prismaticBurstSkyNode } from './prismatic-burst-sky.ts'
@@ -46,6 +47,9 @@ export interface SkyEffect {
   readonly opacity: number
   /** The ceiling this recipe holds itself under, so light added on top of it stays coloured. */
   readonly headroom: number
+  /** The turn the recipe gives the frame its territories are read in, the very constant its shader
+   *  spins by; absent when the territories hold still on the sphere. */
+  readonly spin?: SkyFrameSpin
 }
 
 export const SKY_EFFECTS = [
@@ -56,6 +60,7 @@ export const SKY_EFFECTS = [
     build: grainientSkyNode,
     opacity: VALUES.rendering.emotionSkyOpacity.grainient,
     headroom: VALUES.rendering.emotionSkyHeadroom.grainient,
+    spin: GRAINIENT_SPIN,
   },
   {
     key: 'grainstorm',
@@ -64,6 +69,7 @@ export const SKY_EFFECTS = [
     build: grainstormSkyNode,
     opacity: VALUES.rendering.emotionSkyOpacity.grainstorm,
     headroom: VALUES.rendering.emotionSkyHeadroom.grainstorm,
+    spin: GRAINSTORM_SPIN,
   },
   {
     key: 'iridescence',
@@ -88,6 +94,7 @@ export const SKY_EFFECTS = [
     build: liquidEtherSkyNode,
     opacity: VALUES.rendering.emotionSkyOpacity.liquid_ether,
     headroom: VALUES.rendering.emotionSkyHeadroom.liquid_ether,
+    spin: LIQUID_ETHER_SPIN,
   },
   {
     key: 'prismatic-burst',

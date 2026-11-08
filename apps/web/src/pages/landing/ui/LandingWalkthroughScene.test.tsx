@@ -119,13 +119,13 @@ describe('LandingWalkthroughScene', () => {
     expect(canvas()?.getAttribute('data-active')).toBe('true')
   })
 
-  it('hands the sky its facing, turning over the slow motion token', async () => {
-    const { tokens } = await import('@cosimosi/ui')
+  it("hands the sky its facing, turning at the universe camera's focus pace", async () => {
+    const { UNIVERSE_CAMERA_RIG } = await import('@cosimosi/universe/scene')
     renderScene(2)
     act(() => intersect?.(true))
     expect(sky.props.at(-1)).toMatchObject({
       facing: 2,
-      facingSeconds: Number.parseFloat(tokens.duration.slow) / 1000,
+      facingLambda: UNIVERSE_CAMERA_RIG.glideLambda.focusing,
     })
   })
 

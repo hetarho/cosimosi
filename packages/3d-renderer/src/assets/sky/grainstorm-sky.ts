@@ -1,7 +1,7 @@
 import { float, normalize, sin, smoothstep, vec3 } from 'three/tsl'
 
 import { gnoise } from '../../shader-art/noise'
-import { skyCloud, skyDir, skySpin } from './sky-domain.ts'
+import { skyCloud, skyDir, skySpin, type SkyFrameSpin } from './sky-domain.ts'
 import { emotionField } from './sky-emotion.ts'
 import { skyFinish, skyVoid } from './sky-finish.ts'
 import { filmGrain, skySeconds, type SkyNodeArgs } from './sky-node.ts'
@@ -36,11 +36,17 @@ const SHARPNESS = 2.4
 const PRINT_FLOOR = 0.24
 const PRINT_FULL = 0.9
 
+/** How fast Grainstorm's own clock runs against the sky's seconds. */
+const CLOCK = 0.25
+
+/** The turn that carries the printed marble, 0.15 radians per second of its clock. */
+export const GRAINSTORM_SPIN: SkyFrameSpin = { axis: [0.25, 1, 0.2], rate: 0.15 * CLOCK }
+
 export function grainstormSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
-  const t = skySeconds(time, 0.25)
+  const t = skySeconds(time, CLOCK)
   // Rotation, not translation, because this frame feeds a normalize below — skyDrift's contract:
   // a translating frame eventually normalizes every fragment to the drift axis and the print dies.
-  const p = skySpin(skyDir(), t, [0.25, 1, 0.2], 0.15).mul(1.8)
+  const p = skySpin(skyDir(), skySeconds(time), GRAINSTORM_SPIN.axis, GRAINSTORM_SPIN.rate).mul(1.8)
 
   const swirl = gnoise(p)
   const warped = vec3(
