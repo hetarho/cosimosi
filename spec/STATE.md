@@ -14,13 +14,8 @@
 - brief: domain  # task brief scope: domain = whole cited domains, cited = cited decisions only
 - always: ARCH-3 ARCH-4 ARCH-7 ARCH-8 ARCH-21 ARCH-23 ARCH-28 ARCH-32 ARCH-36 ARCH-38 ARCH-39 ARCH-47 ARCH-48 INV  # global rules every task brief includes: decision IDs or domains, - = none
 
-## active
-| tag | host | mode | since | at | doing |
-|---|---|---|---|---|---|
-| local11 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T12:55Z | 2026-11-08T12:55Z | - |
-
 ## inbox
-- 261108 decided T241: exact submitted code independently approved and integratedd2e40965; root final pnpm check passes13482597, scope17/17complete. Close implementation, publish source once under existing cfg and verify exact source CI; F24 stays owner-gated
+- 261108 decided T241: independently reviewed/integratedd2e40965, final pnpm check passes13482597, configured source634e862d and exact CI42484422140 allpass; local11scope17/17complete and owned resources cleaned, F24 stays owner-gated
 - 261108 decided ARCH-46 T241: actual unchanged Docker fmt shell falsely succeeds on real syntax-error fixture → adopt bounded two-file failure propagation under local11 invocation (alt: retain weaker Docker gate); preserve all checks and require hermetic real-shell negatives, independent review and final gate
 - 261108 parked ACCT-7: F24 stored Local alias is a source-only consistency lead; explicit read-fallback policy needs owner interpretation before any experiment or repair, no task/adoption
 - 261108 decided -: direct self-improve-local four-hour invocation starts local11 at2026-11-08T12:55Z until16:55Z; root coordinates bounded proposals/adoption, isolated workers, independent reviews and current-main integration under unchanged cfg plan/push; existing blocked/pending/owner-gated scope remains excluded, see reports/261108-local11
@@ -139,9 +134,10 @@
 | local8h | 2 | 17 | 17 | 0 | 0 | 0 | 0 | 2026-11-08T13:17:52.124Z | [history](work/local8h.json) |
 
 ## next
-- local11: T241 integrated and final gate passed13482597; publish verified source once and confirm exact-SHA CI. Scope17/17complete, F24 and existing owner-gated backlog preserved; reports/261108-local11.
+- local11 complete: T241 fixes Docker formatter fail-open; scope17/17, final gate13482597 and source634e862d CI pass. Evidence reports/261108-local11; F24 timezone interpretation and existing owner-gated backlog remain parked.
 
 ## log
+- 261108 local11 closed: T241 complete, final gate13482597/source634e862d/CI42484422140 pass, own resources cleaned; progress-only closeout
 - 261108 local11 T241 reviewed/integrated; full pnpm check passes13482597, owned resources cleaned, final configured source publication/CI pending
 - 261108 T241 integrated
 - 261108 create-task review/local-reliability-261108 F23 → T241: exact-shell formatter failure reproduced; bounded two-path repair, independent review/final gate required
