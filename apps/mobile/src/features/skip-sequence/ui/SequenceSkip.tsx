@@ -4,6 +4,7 @@ import type { SequenceProgress } from '@cosimosi/sequence'
 import { Button, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
+import { useScreenInsets } from '../../../shared/native/index.ts'
 
 // features/skip-sequence ui (RN fork, [O4]): the one interactive element the chrome owns, rendered
 // whenever a run is active and on every step — a guarantee the engine expresses as a transition table
@@ -16,8 +17,17 @@ export function SequenceSkip({
   progress: SequenceProgress
   onSkip: () => void
 }) {
+  // The guide's overlay spans the whole screen, status bar included, so the bar clears the live
+  // device insets itself: on a notched phone a fixed offset would put it under the status bar.
+  const insets = useScreenInsets()
   return (
-    <View style={styles.bar}>
+    <View
+      testID="sequence-skip"
+      style={[
+        styles.bar,
+        { top: insets.top + tokens.spacing[4], right: insets.right + tokens.spacing[4] },
+      ]}
+    >
       <Text style={styles.progress}>
         {m.sequence_progress({ current: progress.current, total: progress.total })}
       </Text>
@@ -31,8 +41,6 @@ export function SequenceSkip({
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    top: tokens.spacing[4],
-    right: tokens.spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacing[3],

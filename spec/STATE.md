@@ -166,17 +166,17 @@
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
-| T266 | The mobile tour skip clears the status bar | ONB ARCH | - | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 41 | 41 | 0 | 0 | 0 | 0 | 2026-11-08T21:36:18.900Z | [history](work/local8h.json) |
+| local8h | 2 | 42 | 42 | 0 | 0 | 0 | 0 | 2026-11-08T21:45:16.500Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T266 integrated
 - 261109 local13 final gate passes cc042070 (pnpm check 197s) with T250–T265 integrated; create-task F42 → T266 as the last cycle before publication
 - 261108 T263 integrated
 - 261108 T265 integrated
@@ -196,5 +196,3 @@
 - 261108 T254 T255 integrated
 - 261109 local13 T250 independently reviewed b8200053 and integrated b38bd150; create-task F26 → T258 (lane landing-scene with T256)
 - 261108 T250 integrated
-- 261109 create-task review/landing-tutorial-ux-261109 F21 → T257 (after T253); F22–F25 parked
-- 261109 create-task review/landing-tutorial-ux-261109 F19 → T256 (after T250); F15–F18 and F20 parked
