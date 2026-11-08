@@ -4,31 +4,60 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
+import { VALUES } from '@cosimosi/config'
+import { starChannels } from '@cosimosi/universe/scene'
+
+import { walkthroughContent } from '../config/walkthrough-content.ts'
+import { walkthroughSceneFacts } from '../model/walkthrough.ts'
+
 // The renderer cannot run in jsdom; the stub stands in for the facts this page decides — whether a
-// canvas exists, whether its loop is asked to run, and what the sky is handed.
-const sky = vi.hoisted(() => ({ props: [] as Record<string, unknown>[] }))
-vi.mock('@cosimosi/3d-renderer', () => ({
-  DEFAULT_STAR_SHAPE: 'star',
-  STAR_INSTANCE_BRIGHTNESS: 'brightness',
-  STAR_INSTANCE_SEED: 'seed',
-  STAR_INSTANCE_SCALE: 'scale',
-  STAR_INSTANCE_TINT: 'tint',
-  InstancedNodeLayer: () => null,
-  PostFX: () => null,
-  SkySphere: (props: Record<string, unknown>) => {
-    sky.props.push(props)
-    return null
-  },
-  SkinProvider: ({ children }: { children: ReactNode }) => children,
-  UniverseCanvas: ({ active, children }: { active?: boolean; children?: ReactNode }) => (
-    <div data-testid="walkthrough-canvas" data-active={String(active ?? true)}>
-      {children}
-    </div>
-  ),
-  createStarShapeBodySource: () => ({}),
-  resolveActiveSkin: () => 'default',
-  useSkin: () => ({ skin: { camera: { fov: 50 }, sky: { night: 0, effect: 'none' }, bloom: {} } }),
+// canvas exists, whether its loop is asked to run, what the sky is handed, and where the camera and
+// the stars stand. The skin is the real active one, so the camera's field of view is the shipped one.
+const sky = vi.hoisted(() => ({
+  props: [] as Record<string, unknown>[],
+  canvas: [] as Record<string, unknown>[],
+  layer: [] as Record<string, unknown>[],
 }))
+vi.mock('@cosimosi/3d-renderer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cosimosi/3d-renderer')>()
+  const { VALUES } = await import('@cosimosi/config')
+  const skin = actual.UNIVERSE_SKINS[actual.resolveActiveSkin(VALUES.rendering.activeSkin)]
+  return {
+    DEFAULT_STAR_SHAPE: 'star',
+    STAR_INSTANCE_BRIGHTNESS: 'brightness',
+    STAR_INSTANCE_SEED: 'seed',
+    STAR_INSTANCE_SCALE: 'scale',
+    STAR_INSTANCE_TINT: 'tint',
+    InstancedNodeLayer: (props: Record<string, unknown>) => {
+      sky.layer.push(props)
+      return null
+    },
+    PostFX: () => null,
+    SkySphere: (props: Record<string, unknown>) => {
+      sky.props.push(props)
+      return null
+    },
+    SkinProvider: ({ children }: { children: ReactNode }) => children,
+    UniverseCanvas: ({
+      active,
+      children,
+      ...props
+    }: {
+      active?: boolean
+      children?: ReactNode
+    } & Record<string, unknown>) => {
+      sky.canvas.push(props)
+      return (
+        <div data-testid="walkthrough-canvas" data-active={String(active ?? true)}>
+          {children}
+        </div>
+      )
+    },
+    createStarShapeBodySource: () => ({}),
+    resolveActiveSkin: () => 'default',
+    useSkin: () => ({ skin }),
+  }
+})
 
 vi.mock('@cosimosi/observability/react', () => ({
   ObservedErrorBoundary: ({ children }: { children: ReactNode }) => children,
@@ -47,6 +76,8 @@ let visibility: DocumentVisibilityState = 'visible'
 
 beforeEach(() => {
   sky.props = []
+  sky.canvas = []
+  sky.layer = []
   motion.reduced = false
   visibility = 'visible'
   vi.stubGlobal(
@@ -141,5 +172,64 @@ describe('LandingWalkthroughScene', () => {
     renderScene()
     act(() => intersect?.(true))
     expect(canvas()).toBeNull()
+  })
+})
+
+describe('the staged slots', () => {
+  // The narrowest stage the page lays out: a 360px-wide phone gives the stage about 0.98.
+  const NARROWEST_ASPECT = 0.95
+
+  // The whole story at its last step, plus one more memory, so every one of the eight slots is used.
+  function renderEverySlot() {
+    const facts = walkthroughSceneFacts(walkthroughContent('ko'), { step: 'mirror', acted: true })
+    const memories = [...facts.memories, { ...facts.memories[0], id: 'landing-walk-extra' }]
+    const view = render(
+      <LandingWalkthroughScene
+        memories={memories}
+        universeTime={facts.universeTime}
+        skyStops={facts.skyStops}
+        skyFacing={facts.skyFacing}
+      />,
+    )
+    act(() => intersect?.(true))
+    return { view, memories, universeTime: facts.universeTime }
+  }
+
+  it('keep every star, at its largest rendered body, inside a phone-width frame', () => {
+    const { memories, universeTime } = renderEverySlot()
+    const camera = sky.canvas.at(-1) as { fov: number; cameraPosition: readonly number[] }
+    const layer = sky.layer.at(-1) as {
+      positions: { current: Float32Array }
+      channels: { scales: Float32Array }
+    }
+    expect(memories).toHaveLength(8)
+
+    const halfTan = Math.tan(((camera.fov / 2) * Math.PI) / 180)
+    // Bodies are authored at unit radius and scaled by the star's size channel times the scene's
+    // group scale, so the largest body is the size ceiling at that same scale.
+    const groupScale = layer.channels.scales[0] / starChannels(memories[0], universeTime).size
+    const radius = VALUES.rendering.starSizeMax * groupScale
+    const [cameraX, cameraY, cameraZ] = camera.cameraPosition
+    expect([cameraX, cameraY]).toEqual([0, 0])
+
+    for (let index = 0; index < memories.length; index++) {
+      const [x, y, z] = layer.positions.current.slice(index * 3, index * 3 + 3)
+      const halfHeight = (cameraZ - z) * halfTan
+      const halfWidth = halfHeight * NARROWEST_ASPECT
+      expect(Math.abs(x) + radius, `slot ${index} width`).toBeLessThanOrEqual(halfWidth)
+      expect(Math.abs(y) + radius, `slot ${index} height`).toBeLessThanOrEqual(halfHeight)
+    }
+  })
+
+  it('put each poster dot on the same side of the frame as its star', () => {
+    const { view } = renderEverySlot()
+    const layer = sky.layer.at(-1) as { positions: { current: Float32Array } }
+    const dots = [...view.container.querySelectorAll<HTMLElement>('.rounded-full')]
+    expect(dots).toHaveLength(8)
+    dots.forEach((dot, index) => {
+      const [x, y] = layer.positions.current.slice(index * 3, index * 3 + 2)
+      expect(Math.sign(Number.parseFloat(dot.style.left) - 50), `dot ${index}`).toBe(Math.sign(x))
+      expect(Math.sign(50 - Number.parseFloat(dot.style.top)), `dot ${index}`).toBe(Math.sign(y))
+    })
   })
 })

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotAt": "2026-11-08T20:00:15.501Z",
-  "sourceCommit": "7ab1461acb508b1fad05f3cf646321d3e53f991a",
+  "snapshotAt": "2026-11-08T20:06:52.175Z",
+  "sourceCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
   "group": {
     "id": "local8h",
     "branch": "main",
@@ -68,10 +68,10 @@
   },
   "summary": {
     "total": 35,
-    "completed": 29,
-    "remaining": 6,
-    "running": 3,
-    "review": 2,
+    "completed": 31,
+    "remaining": 4,
+    "running": 0,
+    "review": 3,
     "blocked": 0,
     "unassigned": 1
   },
@@ -81,7 +81,7 @@
       "title": "Demo recall result rings its way out",
       "dep": [],
       "lane": "demo-guide",
-      "status": "doing"
+      "status": "reviewing"
     },
     {
       "id": "T252",
@@ -90,7 +90,7 @@
         "T251"
       ],
       "lane": "demo-guide",
-      "status": "doing"
+      "status": "reviewing"
     },
     {
       "id": "T253",
@@ -99,15 +99,6 @@
         "T252"
       ],
       "lane": "demo-guide",
-      "status": "doing"
-    },
-    {
-      "id": "T256",
-      "title": "Walkthrough stars stay inside the stage on narrow phones",
-      "dep": [
-        "T250"
-      ],
-      "lane": "landing-scene",
       "status": "reviewing"
     },
     {
@@ -117,15 +108,6 @@
         "T253"
       ],
       "status": "todo"
-    },
-    {
-      "id": "T258",
-      "title": "Sky facing costs nothing where unused and keeps its wiring guarded",
-      "dep": [
-        "T256"
-      ],
-      "lane": "landing-scene",
-      "status": "reviewing"
     }
   ],
   "attempts": [
@@ -1944,14 +1926,24 @@
       "contributors": [
         "guideworker"
       ],
-      "status": "doing",
-      "reason": "Review ad59c7c9's P2 is resolved. The guard is correct: it never inverts, the halfY floor holds, ordinary results and x are unchanged, and the 390x844 frame top is now the inset (408 under band 313-395). Resize tracking and the relative-path test import are acceptable. One new P2: because the inset is now honoured, the overview on phone landscape under 768px wide is fitted into a ~36px strip, so the beat-5 sweep and beat-7 rise play as specks where the base showed legible bodies. The T252 limit says the base was covered the same way, which is true only while the caption shows.",
+      "status": "reviewing",
+      "reason": null,
       "createdAt": "2026-11-08T18:07:09.499Z",
       "startCommit": "8a22355ead70b838a64bbaa366f594d7c5c82979",
-      "submittedBase": "d39274d0ff1819ea136caf588cda02833d78110c",
-      "submissionId": "8ee6f449-60b1-4a30-9413-5a919c938fc6",
-      "submittedAt": "2026-11-08T19:43:15.433Z",
+      "verifiedCommit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+      "submittedBase": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+      "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+      "submittedAt": "2026-11-08T20:06:13.036Z",
       "risk": null,
+      "review": {
+        "id": "610e450a-c84f-4eb3-bd45-22491fff70fe",
+        "owner": "reviewer-guide",
+        "status": "reviewing",
+        "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+        "baseCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+        "createdAt": "2026-11-08T20:06:49.568Z"
+      },
       "reviewHistory": [
         {
           "id": "ad59c7c9-988d-45c6-bef7-86d36940fe13",
@@ -2038,13 +2030,13 @@
         },
         {
           "taskId": "T253",
-          "commit": "529fbe9a9767454da03d0024e9feb35aeb2731ed",
-          "at": "2026-11-08T19:43:15.405Z",
+          "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+          "at": "2026-11-08T20:06:13.021Z",
           "verification": [
             {
               "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-              "startedAt": "2026-11-08T19:40:09.067Z",
-              "finishedAt": "2026-11-08T19:43:14.630Z"
+              "startedAt": "2026-11-08T20:04:41.384Z",
+              "finishedAt": "2026-11-08T20:06:12.399Z"
             }
           ]
         }
@@ -2052,8 +2044,8 @@
       "verification": [
         {
           "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
-          "startedAt": "2026-11-08T19:40:09.067Z",
-          "finishedAt": "2026-11-08T19:43:14.630Z"
+          "startedAt": "2026-11-08T20:04:41.384Z",
+          "finishedAt": "2026-11-08T20:06:12.399Z"
         }
       ]
     },
@@ -2245,7 +2237,7 @@
       "contributors": [
         "skyworker"
       ],
-      "status": "reviewing",
+      "status": "integrated",
       "reason": null,
       "createdAt": "2026-11-08T19:34:56.878Z",
       "startCommit": "e129ed86b3e2e617be262fd7044a327071054816",
@@ -2257,11 +2249,36 @@
       "review": {
         "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
         "owner": "reviewer-sky",
-        "status": "reviewing",
+        "status": "approved",
+        "verdict": "approved",
+        "summary": "Both tasks in the landing-scene lane meet their acceptance. T256: three outer slots move inward and their poster percentages follow. Projection uses a 55° vertical FOV, aspect 0.95, and a body radius of starSizeMax 2.4 × group scale 1.6 = 3.84 on the unit-circumradius facet body. Under the test's criterion every slot clears by at least 2.84 world units. Under the exact frustum side-plane criterion every slot clears by at least 2.15. With the old slots, slots 3 and 7 fail by about 3.1 and slot 4 by 0.15, so the test fails on the old staging. The explicit camera [0,0,90] equals the renderer's non-exported DEFAULT_CANVAS_CAMERA_POSITION, and only this scene passes it, so nothing else changes. On my final-commit run at 360x640 every star is whole: press 6 is CALM-led (45% weighted) and press 11 is LOVE-led (83%). The worker's 1440 shot still reads as a spread group, and T250's facing is untouched. T258: frameSkyFacing returns before any spin, step or quaternion work while nothing is faced or held. Otherwise it is the T250 frame step unchanged: a dropped facing snaps to identity in one frame and clears held. The plan is memoized on stable inputs and no frame allocates. The required `skyFacing: number | undefined` prop makes an omitted forward a TS error (confirmed in an isolated check; the worker reports TS2741 on the real file). The comments now state current facts. Ran: SkySphere.test 22/22, landing 5 files 60/60, apps/web tsc -b clean. Only optional findings remain.",
+        "findings": [
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:219 (T256)",
+            "message": "The projection test checks `|x| + r <= halfWidth` against the frustum's half-extent at the star centre's depth. That under-counts the body against the slanted side plane. Exact containment is `|x| + r / cos(theta) <= halfWidth`, where theta is the horizontal half-angle, about 24° at aspect 0.95, so the radius is short by about 9% (about 0.35 units). Today's slots pass the exact form with at least 2.15 units to spare, so nothing is cut now, but a future slot could pass this test and still clip slightly. Optional: divide the radius by the cosine of the half-angle (and the vertical half-angle for y)."
+          },
+          {
+            "priority": "P3",
+            "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21-22 (T256)",
+            "message": "The mock's `importOriginal` loads all of @cosimosi/3d-renderer (three/webgpu and every TSL sky/star module) into this jsdom file, just to read the active skin's FOV. In my runs the file went from 4.7–5.1 s (transform about 0.6 s) to 7.9–11.8 s (transform 4.6–6.7 s). The package has only a root export, so a cheaper read would need a subpath export, which is a trade-off. Recorded for awareness."
+          },
+          {
+            "priority": "P3",
+            "where": "packages/3d-renderer/src/layers/SkySphere.test.ts:247 (T258)",
+            "message": "'does no work in a frame while nothing is faced or held' would also pass without the new early return. T250's path already short-circuited `staticFacing && skyFacingAt(...)`, so spin reads stay 0 and the quaternion and scratch stay at identity either way. The early return itself is exact by reading (SkySphere.tsx:211), and the test meets the acceptance wording ('without computing a spin'). Optional: count reads of `lambda` and `instant` as well, so the test also pins that no step is computed."
+          },
+          {
+            "priority": "P3",
+            "where": "packages/3d-renderer/src/layers/SkySphere.tsx:50 (T258)",
+            "message": "The `facing` prop doc still says the slice turns 'to face the camera's view direction (−Z)… sits straight ahead'. The corrected VIEW_DIRECTION comment now qualifies this: −Z is the frame centre only for a camera looking down −Z. Optional: align the prop doc, for example 'turns that slice onto −Z, the frame centre for a camera looking down −Z'."
+          }
+        ],
         "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
         "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
         "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
-        "createdAt": "2026-11-08T19:59:56.716Z"
+        "createdAt": "2026-11-08T19:59:56.716Z",
+        "finishedAt": "2026-11-08T20:06:42.362Z"
       },
       "steps": [
         {
@@ -2317,6 +2334,8 @@
       "submittedBase": "722dfd2d79d1256d1eb920555b585453b85b5065",
       "submissionId": "deef75b1-6508-4393-87d3-7eff8a82a871",
       "submittedAt": "2026-11-08T19:53:58.913Z",
+      "integratedCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+      "integratedAt": "2026-11-08T20:02:58.189Z",
       "risk": null,
       "review": {
         "id": "1701a333-58f2-46f4-9e81-f978315778a4",
@@ -2350,6 +2369,13 @@
           "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
           "startedAt": "2026-11-08T19:51:10.265Z",
           "finishedAt": "2026-11-08T19:53:58.408Z"
+        }
+      ],
+      "integrationVerification": [
+        {
+          "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+          "startedAt": "2026-11-08T20:00:15.781Z",
+          "finishedAt": "2026-11-08T20:02:57.410Z"
         }
       ]
     }
@@ -10934,6 +10960,222 @@
       "group": "local8h",
       "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
       "taskId": "T259",
+      "previousStatus": "approved",
+      "status": "integrating",
+      "changes": {
+        "status": "integrating"
+      }
+    },
+    {
+      "sequence": 409,
+      "at": "2026-11-08T20:02:58.014Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "integrating",
+      "changes": {
+        "integrationVerification": [
+          {
+            "command": "pnpm install --frozen-lockfile --offline --silent && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:00:15.781Z",
+            "finishedAt": "2026-11-08T20:02:57.410Z"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 410,
+      "at": "2026-11-08T20:02:58.189Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "015d1797-f16f-4f5a-88f9-46dd8a3d5d45",
+      "taskId": "T259",
+      "previousStatus": "integrating",
+      "status": "integrated",
+      "changes": {
+        "status": "integrated",
+        "reason": null,
+        "integratedCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "integratedAt": "2026-11-08T20:02:58.189Z"
+      }
+    },
+    {
+      "sequence": 411,
+      "at": "2026-11-08T20:04:40.806Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "doing",
+      "status": "verifying",
+      "changes": {
+        "status": "verifying"
+      }
+    },
+    {
+      "sequence": 412,
+      "at": "2026-11-08T20:06:13.036Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "verifying",
+      "status": "ready",
+      "changes": {
+        "status": "ready",
+        "reason": null,
+        "submittedBase": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+        "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+        "submittedAt": "2026-11-08T20:06:13.036Z",
+        "steps": [
+          {
+            "taskId": "T251",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T252",
+            "commit": "da8127e8232a680fd31dc9b2d419f2198d1e8bcf",
+            "at": "2026-11-08T19:01:29.562Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T19:00:16.220Z",
+                "finishedAt": "2026-11-08T19:01:28.619Z"
+              }
+            ]
+          },
+          {
+            "taskId": "T253",
+            "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+            "at": "2026-11-08T20:06:13.021Z",
+            "verification": [
+              {
+                "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+                "startedAt": "2026-11-08T20:04:41.384Z",
+                "finishedAt": "2026-11-08T20:06:12.399Z"
+              }
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "command": "pnpm lint && pnpm typecheck:affected && pnpm test:affected",
+            "startedAt": "2026-11-08T20:04:41.384Z",
+            "finishedAt": "2026-11-08T20:06:12.399Z"
+          }
+        ],
+        "verifiedCommit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34"
+      }
+    },
+    {
+      "sequence": 413,
+      "at": "2026-11-08T20:06:42.362Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
+      "previousStatus": "reviewing",
+      "status": "approved",
+      "changes": {
+        "status": "approved",
+        "review": {
+          "id": "4dc258d3-8196-48ae-bd14-1961a207ac47",
+          "owner": "reviewer-sky",
+          "status": "approved",
+          "verdict": "approved",
+          "summary": "Both tasks in the landing-scene lane meet their acceptance. T256: three outer slots move inward and their poster percentages follow. Projection uses a 55° vertical FOV, aspect 0.95, and a body radius of starSizeMax 2.4 × group scale 1.6 = 3.84 on the unit-circumradius facet body. Under the test's criterion every slot clears by at least 2.84 world units. Under the exact frustum side-plane criterion every slot clears by at least 2.15. With the old slots, slots 3 and 7 fail by about 3.1 and slot 4 by 0.15, so the test fails on the old staging. The explicit camera [0,0,90] equals the renderer's non-exported DEFAULT_CANVAS_CAMERA_POSITION, and only this scene passes it, so nothing else changes. On my final-commit run at 360x640 every star is whole: press 6 is CALM-led (45% weighted) and press 11 is LOVE-led (83%). The worker's 1440 shot still reads as a spread group, and T250's facing is untouched. T258: frameSkyFacing returns before any spin, step or quaternion work while nothing is faced or held. Otherwise it is the T250 frame step unchanged: a dropped facing snaps to identity in one frame and clears held. The plan is memoized on stable inputs and no frame allocates. The required `skyFacing: number | undefined` prop makes an omitted forward a TS error (confirmed in an isolated check; the worker reports TS2741 on the real file). The comments now state current facts. Ran: SkySphere.test 22/22, landing 5 files 60/60, apps/web tsc -b clean. Only optional findings remain.",
+          "findings": [
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:219 (T256)",
+              "message": "The projection test checks `|x| + r <= halfWidth` against the frustum's half-extent at the star centre's depth. That under-counts the body against the slanted side plane. Exact containment is `|x| + r / cos(theta) <= halfWidth`, where theta is the horizontal half-angle, about 24° at aspect 0.95, so the radius is short by about 9% (about 0.35 units). Today's slots pass the exact form with at least 2.15 units to spare, so nothing is cut now, but a future slot could pass this test and still clip slightly. Optional: divide the radius by the cosine of the half-angle (and the vertical half-angle for y)."
+            },
+            {
+              "priority": "P3",
+              "where": "apps/web/src/pages/landing/ui/LandingWalkthroughScene.test.tsx:21-22 (T256)",
+              "message": "The mock's `importOriginal` loads all of @cosimosi/3d-renderer (three/webgpu and every TSL sky/star module) into this jsdom file, just to read the active skin's FOV. In my runs the file went from 4.7–5.1 s (transform about 0.6 s) to 7.9–11.8 s (transform 4.6–6.7 s). The package has only a root export, so a cheaper read would need a subpath export, which is a trade-off. Recorded for awareness."
+            },
+            {
+              "priority": "P3",
+              "where": "packages/3d-renderer/src/layers/SkySphere.test.ts:247 (T258)",
+              "message": "'does no work in a frame while nothing is faced or held' would also pass without the new early return. T250's path already short-circuited `staticFacing && skyFacingAt(...)`, so spin reads stay 0 and the quaternion and scratch stay at identity either way. The early return itself is exact by reading (SkySphere.tsx:211), and the test meets the acceptance wording ('without computing a spin'). Optional: count reads of `lambda` and `instant` as well, so the test also pins that no step is computed."
+            },
+            {
+              "priority": "P3",
+              "where": "packages/3d-renderer/src/layers/SkySphere.tsx:50 (T258)",
+              "message": "The `facing` prop doc still says the slice turns 'to face the camera's view direction (−Z)… sits straight ahead'. The corrected VIEW_DIRECTION comment now qualifies this: −Z is the frame centre only for a camera looking down −Z. Optional: align the prop doc, for example 'turns that slice onto −Z, the frame centre for a camera looking down −Z'."
+            }
+          ],
+          "commit": "652b340a9ed044906aca1671720bea1c65ef1230",
+          "baseCommit": "722dfd2d79d1256d1eb920555b585453b85b5065",
+          "submissionId": "c8c741fa-c452-4785-ac34-7a4078d48376",
+          "createdAt": "2026-11-08T19:59:56.716Z",
+          "finishedAt": "2026-11-08T20:06:42.362Z"
+        }
+      }
+    },
+    {
+      "sequence": 414,
+      "at": "2026-11-08T20:06:49.568Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "acfe6ba2-d4c3-4140-8d1e-46fc61509124",
+      "taskId": "T253",
+      "tasks": [
+        "T251",
+        "T252",
+        "T253"
+      ],
+      "previousStatus": "ready",
+      "status": "reviewing",
+      "changes": {
+        "status": "reviewing",
+        "review": {
+          "id": "610e450a-c84f-4eb3-bd45-22491fff70fe",
+          "owner": "reviewer-guide",
+          "status": "reviewing",
+          "commit": "0ec8abcea46f3b98d9f2b722ae0c1385e0b62c34",
+          "baseCommit": "2e1d2e5481119671dde7dc89f69d93ce5ad57e9c",
+          "submissionId": "3b9dced3-f327-49ba-897a-3500345dc581",
+          "createdAt": "2026-11-08T20:06:49.568Z"
+        }
+      }
+    },
+    {
+      "sequence": 415,
+      "at": "2026-11-08T20:06:49.595Z",
+      "type": "attempt",
+      "group": "local8h",
+      "attemptId": "35cf742e-541e-468a-800b-14b2634d1211",
+      "taskId": "T258",
+      "tasks": [
+        "T256",
+        "T258"
+      ],
       "previousStatus": "approved",
       "status": "integrating",
       "changes": {

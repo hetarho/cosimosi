@@ -166,19 +166,18 @@
 | T251 | Demo recall result rings its way out | DEMO ONB ARCH | - | todo |
 | T252 | Phone demo framing keeps the eyeline caption off the universe | ONB DEMO UI ARCH | T251 | todo |
 | T253 | Sequence captions break Korean at word boundaries | UI ONB ARCH | T252 | todo |
-| T256 | Walkthrough stars stay inside the stage on narrow phones | MKT UI ARCH | T250 | todo |
 | T257 | A guide caption appears once, already in its measured place | ONB UI ARCH | T253 | todo |
-| T258 | Sky facing costs nothing where unused and keeps its wiring guarded | VIS MKT ARCH | T256 | todo |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 35 | 29 | 6 | 3 | 2 | 0 | 2026-11-08T20:00:15.501Z | [history](work/local8h.json) |
+| local8h | 2 | 35 | 31 | 4 | 0 | 3 | 0 | 2026-11-08T20:06:52.175Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T256 T258 integrated
 - 261108 T259 integrated
 - 261109 local13 lane tutorial-copy (T254 T255) independently reviewed 82167b51 and integrated d39274d0; create-task F27 → T259, F28 parked
 - 261108 T254 T255 integrated
@@ -198,4 +197,3 @@
 - 261109 create-task review/local-reliability-261108 F32 → T248: actual native1failure/9controls, two existing files and preserved host calibration; final full-duration gates remain
 - 261109 local12 six reviewed integrations complete23/23; repairedRPC8/8 verified; F32 originaldisabled1failure/9controls confirmed, task conversion next; hourlywip4d11bb67 preserved
 - 261109 create-task review/local-reliability-261108 F29 F31 → T247: two actual original1failure/3control proofs, category-only DeepSeek causes; recreate exact unassigned T246 planning after safe report-projection alignment
-- 261109 create-task review/local-reliability-261108 F30 → T246: actual original1failure/8controls, serial existing step-change anchor ownership; F29 compile-only inconclusive retained, F31 preparation only
