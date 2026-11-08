@@ -1,9 +1,11 @@
-import { StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet } from 'react-native'
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context'
 import { fireEvent, render } from '@testing-library/react-native'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
+import { CAPTION_EDGE_INSET_PX } from '@cosimosi/sequence'
 
+import { CAPTION_BAND_HEIGHT } from './SequenceCaption.tsx'
 import { SequenceGuide, type SequenceGuideProps } from './SequenceGuide.tsx'
 
 const NOTCHED = { top: 59, right: 0, bottom: 34, left: 0 }
@@ -97,5 +99,51 @@ describe('SequenceGuide (mobile)', () => {
     const flatTop = band(bare).top
     expect(typeof flatTop).toBe('number')
     expect(band(notched).top).toBe(NOTCHED.top + (flatTop as number))
+  })
+
+  it('lifts a bottom-band caption above the home indicator', () => {
+    const notched = render(
+      <SafeAreaInsetsContext.Provider value={NOTCHED}>
+        <SequenceGuide
+          active
+          caption={() => 'Write one line about today.'}
+          anchorRect={null}
+          progress={{ current: 1, total: 9 }}
+          onSkip={jest.fn()}
+          onRemeasure={jest.fn()}
+        />
+      </SafeAreaInsetsContext.Provider>,
+    )
+    const bare = mount({ anchorRect: null })
+    const band = (view: ReturnType<typeof render>) =>
+      StyleSheet.flatten(view.getByText('Write one line about today.').parent?.parent?.props.style)
+    const flatBottom = band(bare).bottom
+    expect(typeof flatBottom).toBe('number')
+    expect(band(notched).bottom).toBe(NOTCHED.bottom + (flatBottom as number))
+  })
+
+  it('moves the caption to the top when the highlight crosses the lifted bottom band', () => {
+    // Clear of the band on a bare screen, but inside it once the band rises by the home indicator.
+    const bareBandTop =
+      Dimensions.get('window').height - (CAPTION_BAND_HEIGHT + CAPTION_EDGE_INSET_PX)
+    const anchorRect = { x: 40, y: bareBandTop - 48 - 10, width: 200, height: 48 }
+    const notched = render(
+      <SafeAreaInsetsContext.Provider value={NOTCHED}>
+        <SequenceGuide
+          active
+          caption={() => 'Write one line about today.'}
+          anchorRect={anchorRect}
+          progress={{ current: 1, total: 9 }}
+          onSkip={jest.fn()}
+          onRemeasure={jest.fn()}
+        />
+      </SafeAreaInsetsContext.Provider>,
+    )
+    const bare = mount({ anchorRect })
+    const band = (view: ReturnType<typeof render>) =>
+      StyleSheet.flatten(view.getByText('Write one line about today.').parent?.parent?.props.style)
+    expect(band(bare).bottom).toBeDefined()
+    expect(band(notched).top).toBeDefined()
+    expect(band(notched).bottom).toBeUndefined()
   })
 })

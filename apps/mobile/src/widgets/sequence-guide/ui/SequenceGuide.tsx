@@ -49,16 +49,23 @@ export function SequenceGuide({
 
   // The edge slot: a native screen's surfaces are not marked panels this fork can measure, so the
   // line takes the free edge and gets off the highlighted control when that control owns the bottom.
+  // The bottom band sits in the viewport above the home indicator, so the check that sends the line
+  // to the top asks about the band where it will actually be drawn.
   const placed = resolveCaptionPosition({
     slot: { kind: 'edge' },
     anchorRect,
-    viewport,
+    viewport: { ...viewport, height: viewport.height - insets.bottom },
     bandHeight: CAPTION_BAND_HEIGHT,
   })
-  // The top room is measured from the overlay's own top, which on a notched phone is under the status
-  // bar; it clears the same inset the skip does, so a top-band caption stays below the skip.
+  // Both rooms are measured from the overlay's own edges, which on a notched phone sit under the
+  // status bar and the home indicator. A top-band caption clears the same inset the skip does, so it
+  // stays below the skip; a bottom-band caption clears the home indicator.
   const position =
-    placed.from === 'top' ? { ...placed, insetPx: placed.insetPx + insets.top } : placed
+    placed.from === 'top'
+      ? { ...placed, insetPx: placed.insetPx + insets.top }
+      : placed.from === 'bottom'
+        ? { ...placed, insetPx: placed.insetPx + insets.bottom }
+        : placed
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

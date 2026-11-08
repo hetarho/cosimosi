@@ -108,7 +108,7 @@ try {
       return page.screenshot({ path: path.join(outputDirectory, `${name}-${label}.png`) })
     }
     const clearCaption = async (label) => {
-      const paragraph = scope.locator('[aria-live="polite"] p')
+      const paragraph = scope.locator('[data-sequence-caption-band] p')
       await paragraph.waitFor({ state: 'visible' })
       await page.waitForTimeout(300)
       const result = await paragraph.evaluate((node) => {
@@ -304,7 +304,7 @@ try {
     await press('time-month-action')
     await step(8)
     await caption('Your memories colour')
-    await scope.locator('[aria-live="polite"] p').waitFor({ state: 'visible' })
+    await scope.locator('[data-sequence-caption-band] p').waitFor({ state: 'visible' })
     const colourStarted = Date.now()
     await clearCaption('sky')
     await shot('gist-overview')
@@ -354,7 +354,7 @@ try {
     const done = button('decorate-close-action')
     if (!(await done.isEnabled())) throw new Error(`${name}: selection did not enable return`)
     await shot('decoration-selected')
-    const captionBox = await scope.locator('[aria-live="polite"] p').boundingBox()
+    const captionBox = await scope.locator('[data-sequence-caption-band] p').boundingBox()
     const panelBox = await scope.locator('[data-cosimosi-surface]').boundingBox()
     if (!captionBox || !panelBox || intersects(captionBox, panelBox))
       throw new Error(`${name}: caption overlaps the decoration panel`)
