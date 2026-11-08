@@ -25,6 +25,7 @@ export {
 } from './http-policy.ts'
 export {
   clearOwnedClientCache,
+  invalidateProfileDependentQueries,
   resolveClientCacheQueryClient,
   resolveClientCacheTransport,
   type ResolveClientCacheQueryClientOptions,

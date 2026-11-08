@@ -9,6 +9,13 @@ import {
   AccountService,
   AuthProviderKind,
   createGetUniverseQueryKey,
+  createGetBalanceQueryOptions,
+  createQuoteSpendQueryOptions,
+  createGetLedgerInfiniteQueryOptions,
+  createSyncStatusQueryOptions,
+  createGetDiaryCalendarInfiniteQueryOptions,
+  TwinkleService,
+  SpendKind,
   ExportFormat,
   MemoryService,
   StoreService,
@@ -668,6 +675,188 @@ describe('mobile me screen', () => {
     await waitFor(() => expect(screen.getByText(m.me_nickname_label())).toBeTruthy())
     return view
   }
+
+  it('refreshes warm profile-dependent caches through the actual Me profile and ledger tabs', async () => {
+    let profile = {
+      nickname: 'Test user',
+      timezone: 'UTC',
+      locale: 'en',
+      email: 'test@example.test',
+      createdAt: '2026-07-26T00:00:00Z',
+    }
+    const writes: Array<{ nickname: string; timezone: string; locale: string }> = []
+    let ledgerReads = 0
+    let profileReads = 0
+    const transport = createRouterTransport(({ service }) => {
+      service(AccountService, {
+        getProfile: () => {
+          profileReads++
+          return { profile }
+        },
+        updateProfile: (request) => {
+          const write = {
+            nickname: request.nickname,
+            timezone: request.timezone,
+            locale: request.locale,
+          }
+          writes.push(write)
+          profile = { ...profile, ...write }
+          return { profile }
+        },
+        getMoodColors: () => ({ colors: [] }),
+        listAuthProviders: () => ({
+          providers: [{ kind: AuthProviderKind.GOOGLE, linkedAt: '2026-07-26T00:00:00Z' }],
+        }),
+        getInviteLink: () => ({
+          token: 'profile-cache-invite',
+          expiresAt: '2030-01-01T00:00:00Z',
+        }),
+      })
+      service(StoreService, {
+        getCatalog: () => ({ ornaments: [] }),
+        getSelection: () => ({ selections: [] }),
+      })
+      service(MemoryService, {
+        getUniverse: () => emptyUniverse,
+        syncStatus: () => ({ today: '2026-07-14', needsSync: false }),
+        getDiaryCalendar: () => ({ days: [], nextPageToken: '' }),
+      })
+      service(TwinkleService, {
+        getBalance: () => ({ small: 0n, general: 7n, total: 7n }),
+        quoteSpend: () => ({ cost: 7n, covered: true, shortfall: 0n }),
+        getLedger: () => {
+          ledgerReads++
+          return {
+            entries: [
+              {
+                id: 'entry',
+                amount: 7n,
+                occurredOn: profile.timezone === 'UTC' ? '2026-07-14' : '2026-07-15',
+                occurredAt: '2026-07-14T18:00:00Z',
+              },
+            ],
+            nextPageToken: '',
+          }
+        },
+      })
+    })
+    const otherTransport = createRouterTransport(({ service }) => {
+      service(TwinkleService, { getLedger: () => ({ entries: [], nextPageToken: '' }) })
+    })
+    const original = Intl.DateTimeFormat.prototype.resolvedOptions
+    const zone = jest
+      .spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions')
+      .mockImplementation(function (this: Intl.DateTimeFormat) {
+        return { ...original.call(this), timeZone: 'Asia/Seoul' }
+      })
+    const fakes = createMobileShellFakes({ userId: 'profile-cache-user', transport })
+    setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(transport), emptyUniverse)
+    const view = await openMe(fakes)
+    const invalidated = new Set<string>()
+    const unsubscribe = fakes.queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'invalidate')
+        invalidated.add(event.query.queryHash)
+    })
+    try {
+      const balance = createGetBalanceQueryOptions(transport)
+      const quoteA = createQuoteSpendQueryOptions({ kind: SpendKind.RECALL }, transport)
+      const quoteB = createQuoteSpendQueryOptions({ kind: SpendKind.GIST_VIEW }, transport)
+      const ledgerA = createGetLedgerInfiniteQueryOptions(transport, VALUES.twinkle.ledgerPageSize)
+      const ledgerB = createGetLedgerInfiniteQueryOptions(
+        transport,
+        VALUES.twinkle.ledgerPageSize + 1,
+      )
+      const sync = createSyncStatusQueryOptions(transport)
+      const calendar = createGetDiaryCalendarInfiniteQueryOptions(transport, {
+        from: '2026-07-01',
+        to: '2026-07-31',
+      })
+      const otherLedger = createGetLedgerInfiniteQueryOptions(
+        otherTransport,
+        VALUES.twinkle.ledgerPageSize,
+      )
+      await act(async () => {
+        await Promise.all([
+          fakes.queryClient.fetchQuery(balance),
+          fakes.queryClient.fetchQuery(quoteA),
+          fakes.queryClient.fetchQuery(quoteB),
+          fakes.queryClient.fetchInfiniteQuery(ledgerA),
+          fakes.queryClient.fetchInfiniteQuery(ledgerB),
+          fakes.queryClient.fetchQuery(sync),
+          fakes.queryClient.fetchInfiniteQuery(calendar),
+          fakes.queryClient.fetchInfiniteQuery(otherLedger),
+        ])
+      })
+      const affected = [balance, quoteA, quoteB, ledgerA, ledgerB, sync].map((options) => {
+        const query = fakes.queryClient
+          .getQueryCache()
+          .find({ queryKey: options.queryKey, exact: true })!
+        expect(query.state.isInvalidated).toBe(false)
+        return query.queryHash
+      })
+      const unrelated = [
+        createGetUniverseQueryKey(transport),
+        calendar.queryKey,
+        otherLedger.queryKey,
+      ].map(
+        (queryKey) => fakes.queryClient.getQueryCache().find({ queryKey, exact: true })!.queryHash,
+      )
+      fireEvent.press(screen.getByText(m.me_tab_stardust()))
+      await waitFor(() => expect(screen.getByText('2026-07-14')).toBeTruthy())
+      expect(ledgerReads).toBe(2)
+      fireEvent.press(screen.getAllByText(m.me_tab_profile()).at(-1) as never)
+      await waitFor(() => expect(screen.getByText(m.me_nickname_label())).toBeTruthy())
+      const beforeProfileReads = profileReads
+      invalidated.clear()
+      fireEvent.press(screen.getByText(m.me_timezone_match_device()))
+      await waitFor(() => expect(profileReads).toBeGreaterThan(beforeProfileReads))
+      expect(writes).toEqual([{ nickname: 'Test user', timezone: 'Asia/Seoul', locale: 'en' }])
+      expect(affected.map((hash) => invalidated.has(hash))).toEqual([
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+      ])
+      expect(unrelated.map((hash) => invalidated.has(hash))).toEqual([false, false, false])
+      fireEvent.press(screen.getByText(m.me_tab_stardust()))
+      await waitFor(() => expect(screen.getByText('2026-07-15')).toBeTruthy())
+      expect(ledgerReads).toBe(3)
+      fireEvent.press(screen.getAllByText(m.me_tab_profile()).at(-1) as never)
+      await waitFor(() => expect(screen.getByText(m.me_nickname_label())).toBeTruthy())
+      invalidated.clear()
+      await act(async () => {
+        await Promise.all([
+          fakes.queryClient.fetchQuery(balance),
+          fakes.queryClient.fetchQuery(quoteA),
+          fakes.queryClient.fetchQuery(quoteB),
+          fakes.queryClient.fetchInfiniteQuery(ledgerA),
+          fakes.queryClient.fetchInfiniteQuery(ledgerB),
+          fakes.queryClient.fetchQuery(sync),
+        ])
+      })
+      expect(
+        affected.every((hash) => !fakes.queryClient.getQueryCache().get(hash)!.state.isInvalidated),
+      ).toBe(true)
+      invalidated.clear()
+      const beforeNicknameReads = profileReads
+      fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
+      fireEvent.press(screen.getByText(m.me_nickname_save()))
+      await waitFor(() => expect(profileReads).toBeGreaterThan(beforeNicknameReads))
+      expect(writes).toEqual([
+        { nickname: 'Test user', timezone: 'Asia/Seoul', locale: 'en' },
+        { nickname: 'Nova', timezone: 'Asia/Seoul', locale: 'en' },
+      ])
+      expect(affected.every((hash) => invalidated.has(hash))).toBe(true)
+      expect(unrelated.some((hash) => invalidated.has(hash))).toBe(false)
+    } finally {
+      unsubscribe()
+      view.unmount()
+      fakes.dispose()
+      zone.mockRestore()
+    }
+  })
 
   it('opens Me with six local-state tabs and no decoration controls', async () => {
     const fakes = createMobileShellFakes({
