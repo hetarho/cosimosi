@@ -101,3 +101,48 @@ func TestRevisePromptRestatesTheRulesAndThePriorSplit(t *testing.T) {
 		}
 	}
 }
+
+func TestParseExtractResultContentFreeRefusals(t *testing.T) {
+	const marker = "PRIVATE_GENERATED_ENUM_MARKER"
+	const valid = `{"memories":[{"name":"First","mood":"JOY","source_text":"First passage.","neurons":[{"name":"place","type":"spatial"}]},{"name":"Second","mood":"CALM","source_text":"Second passage.","neurons":[{"name":"topic","type":"semantic"}]}]}`
+	for _, tc := range []struct{ name, raw, want string }{
+		{"unsupported mood", strings.Replace(valid, `"mood":"CALM"`, `"mood":"`+marker+`"`, 1), "extractor response mood is not supported"},
+		{"unsupported neuron type", strings.Replace(valid, `"type":"semantic"`, `"type":"`+marker+`"`, 1), "extractor response neuron type is not supported"},
+		{"blank memory name before mood", strings.Replace(strings.Replace(valid, `"name":"Second"`, `"name":" "`, 1), `"mood":"CALM"`, `"mood":"`+marker+`"`, 1), "extractor response memory requires name"},
+		{"blank source before mood", strings.Replace(strings.Replace(valid, `"source_text":"Second passage."`, `"source_text":" "`, 1), `"mood":"CALM"`, `"mood":"`+marker+`"`, 1), "extractor response memory requires source_text"},
+		{"blank neuron name before type", strings.Replace(strings.Replace(valid, `"name":"topic"`, `"name":" "`, 1), `"type":"semantic"`, `"type":"`+marker+`"`, 1), "extractor response neuron requires name and type"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := parseExtractResult([]byte(tc.raw))
+			if err == nil {
+				t.Fatal("invalid generated result was accepted")
+			}
+			if got := fmt.Sprintf("%T", err); got != "*errors.errorString" {
+				t.Errorf("error type = %s, want ordinary consumer error", got)
+			}
+			if err.Error() != tc.want {
+				t.Errorf("error = %q, want %q", err.Error(), tc.want)
+			}
+			if strings.Contains(err.Error(), marker) {
+				t.Error("error includes rejected generated content")
+			}
+			if result.Memories != nil {
+				t.Errorf("refusal returned a partial result: %#v", result)
+			}
+		})
+	}
+}
+
+func TestParseExtractResultPreservesNormalizedEnums(t *testing.T) {
+	result, err := parseExtractResult([]byte(`{"memories":[{"name":" Title ","mood":" joy ","source_text":" Passage. ","neurons":[{"name":" Topic ","type":" SEMANTIC "}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Memories) != 1 {
+		t.Fatalf("memories = %d, want 1", len(result.Memories))
+	}
+	item := result.Memories[0]
+	if item.Name != "Title" || item.Mood != memory.MoodJoy || item.SourceText != "Passage." || len(item.Neurons) != 1 || item.Neurons[0].Name != "Topic" || item.Neurons[0].Type != memory.NeuronTypeSemantic {
+		t.Errorf("normalized result = %#v", item)
+	}
+}

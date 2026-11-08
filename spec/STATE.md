@@ -142,18 +142,18 @@
 ## tasks
 | id | title | ssot | dep | st |
 | ---- | ---------------------------------------------------- | -------- | ------------------- | --------------------- |
-| T249 | Keep generated enum values out of extractor refusals | ARCH | - | todo |
 | T222 | LLM calls go through one OpenRouter adapter behind an evidence gate | AI ADMIN ERR | T221 | blocked@261103 |
 
 ## work
 | id | workers | total | done | remaining | running | review | blocked | updated | history |
 |---|---|---|---|---|---|---|---|---|---|
-| local8h | 2 | 24 | 24 | 0 | 0 | 0 | 0 | 2026-11-08T16:48:56.106Z | [history](work/local8h.json) |
+| local8h | 2 | 25 | 25 | 0 | 0 | 0 | 0 | 2026-11-08T17:18:09.461Z | [history](work/local8h.json) |
 
 ## next
 - inspect work board for remaining tasks
 
 ## log
+- 261108 T249 integrated
 - 261109 create-task review/local-reliability-261108 F33 → T249: actual original2privacyfailures/4controls; isolatedtwofile existing-contract repair, precommitconditional/independent/newfinalgates required
 - 261109 local12 combined pnpmcheck passes53a29365 in231.082s; native verified/snapshotfe14a216 valid,137guards/mobile116/37Go packages; new source-only F33 observation preparation does not alter frozen source or count as adoption
 - 261109 local12 final candidate616b6397: T248review274598b5 approved/UI89typecheck and integrated;24/24scope complete, exact13-source audit passes, finalgate/publication pending
