@@ -17,7 +17,7 @@
 ## active
 | tag | host | mode | since | at | doing |
 |---|---|---|---|---|---|
-| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T17:40Z | - |
+| local13 | ihaelam-ui-MacBookPro | autopilot | 2026-11-08T17:40Z | 2026-11-08T18:42Z | - |
 
 ## inbox
 - 261109 decided T250: static sky facing drifts because grainient spins its own frame → widen T250 to publish each effect's existing spin and track it, keeping effect visuals unchanged; prototype shows LOVE leading 57%→70% desktop (alt: accept drift and follow up | compensate only at facing changes)
