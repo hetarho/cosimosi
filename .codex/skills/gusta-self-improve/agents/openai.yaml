@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gusta Self Improve"
+  short_description: "전용 워크트리에서 제안을 승인·구현하고 공동 후보를 검증·통합"
+  default_prompt: "Use $gusta-self-improve to approve bounded proposals in a dedicated worktree and session branch, then submit independently reviewed changes to the shared integration candidate."

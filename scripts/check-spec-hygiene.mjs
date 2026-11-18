@@ -3,12 +3,12 @@
 //
 //   A  Workflow-skill links resolve. Anchor fragments and {{placeholders}} are skipped; only the file part of a
 //      relative link is checked.
-//   B  spec/ holds only the haeram-spec-creator layout (spec/FORMAT.md owns it). A second documentation system
+//   B  spec/ holds only the gusta spec layout (spec/FORMAT.md owns it). A second documentation system
 //      next to ssot/ — a revived plan/, policy/ or tech/ tree, a loose top-level doc — is a second source of truth,
 //      so anything outside the layout fails. `--probe` runs B's self-check alone and proves it bites.
 //
 // The FORMAT invariants inside the layout (IDs, revs, skeletons, references) are checked by
-// `npx haeram-spec-creator lint`, not here.
+// `npx @haeram/gusta lint`, not here.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -62,8 +62,8 @@ const skillFiles = (absDir) => {
   if (existsSync(absDir)) walk(absDir)
   return out
 }
-// Skills installed by haeram-spec-creator are owned by that package (its `check` verifies them), not by this repo.
-const VENDOR_LOCK = join(repoRoot, '.haeram-spec-creator-lock.json')
+// Skills installed by gusta are owned by that package (its `check` verifies them), not by this repo.
+const VENDOR_LOCK = join(repoRoot, '.gusta-lock.json')
 const vendored = new Set(
   existsSync(VENDOR_LOCK) ? Object.keys(JSON.parse(readFileSync(VENDOR_LOCK, 'utf8')).files) : [],
 )
