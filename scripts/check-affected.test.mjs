@@ -141,7 +141,7 @@ fs.appendFileSync(path.join(process.env.COSIMOSI_AFFECTED_RECORDS, name.replaceA
 function invoke(workspace, args, extraEnv = {}, preload) {
   for (const file of readdirSync(workspace.records)) rmSync(join(workspace.records, file))
   const env = { ...process.env, COSIMOSI_AFFECTED_RECORDS: workspace.records, ...extraEnv }
-  if (!Object.hasOwn(extraEnv, 'HAERAM_DIFF_BASE')) delete env.HAERAM_DIFF_BASE
+  if (!Object.hasOwn(extraEnv, 'GUSTA_DIFF_BASE')) delete env.GUSTA_DIFF_BASE
   const result = spawnSync(
     process.execPath,
     [
@@ -227,7 +227,7 @@ for (const linked of [false, true]) {
     assert.equal(defaults.status, 0, defaults.stderr)
     assert.equal(defaults.report.base, current)
     assert.equal(defaults.report.reason, 'no-tracked-changes')
-    const fromEnv = invoke(workspace, ['test', '--list'], { HAERAM_DIFF_BASE: workspace.base })
+    const fromEnv = invoke(workspace, ['test', '--list'], { GUSTA_DIFF_BASE: workspace.base })
     assert.equal(fromEnv.status, 0, fromEnv.stderr)
     assert.deepEqual(
       fromEnv.report.projects.map((project) => project.name),
@@ -235,7 +235,7 @@ for (const linked of [false, true]) {
     )
     assert.deepEqual(fromEnv.records, [])
     const explicit = invoke(workspace, ['typecheck', '--base', workspace.base, '--list'], {
-      HAERAM_DIFF_BASE: 'invalid-env-ref',
+      GUSTA_DIFF_BASE: 'invalid-env-ref',
     })
     assert.equal(explicit.status, 0, explicit.stderr)
     assert.equal(explicit.report.base, workspace.base)

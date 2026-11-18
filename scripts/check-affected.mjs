@@ -26,7 +26,7 @@ function options(args) {
   return {
     mode,
     list: list || mode === 'list',
-    base: base ?? (process.env.HAERAM_DIFF_BASE || 'HEAD'),
+    base: base ?? (process.env.GUSTA_DIFF_BASE || 'HEAD'),
   }
 }
 

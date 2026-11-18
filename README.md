@@ -6,7 +6,7 @@
 
 ## 문서 (source of truth)
 
-이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. 스펙은 [haeram-spec-creator](https://github.com/hetarho/haeram-spec-creator) 구조를 따르고, _지금 유효한 규칙_ 은 전부 `spec/ssot/`에 도메인별 결정으로 있다. 읽는 순서: **PROD → INV → UL → ARCH → 필요한 도메인**.
+이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. 스펙은 [GUSTA](https://github.com/hetarho/gusta) 구조를 따르고, _지금 유효한 규칙_ 은 전부 `spec/ssot/`에 도메인별 결정으로 있다. 읽는 순서: **PROD → INV → UL → ARCH → 필요한 도메인**.
 
 | 문서                             | 내용                                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ pnpm check
 ```
 
 For task checks, run `pnpm typecheck:affected` and `pnpm test:affected`. They select tracked
-changes since `HAERAM_DIFF_BASE` (default `HEAD`) and every dependent workspace package. Override
+changes since `GUSTA_DIFF_BASE` (default `HEAD`) and every dependent workspace package. Override
 that base with `--base <commit-or-ref>`; add `--list` to print the JSON selection without running
 package checks, for example `pnpm typecheck:affected --base HEAD~1 --list`.
 
