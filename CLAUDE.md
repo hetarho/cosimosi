@@ -28,3 +28,16 @@
 - UL에 아직 없는 **새 도메인 개념** — 이때는 정정이 아니라, 코드보다 UL에 먼저 등재해야 한다고 알린다(UL-9).
 
 용어의 *왜*와 신경과학 근거는 [spec/ssot/SCI.md](spec/ssot/SCI.md), 제품 정의는 [spec/ssot/PROD.md](spec/ssot/PROD.md)가 소유한다 — UL은 이름만 정한다.
+
+<!-- prettier-ignore-start -->
+<!-- gusta:begin managed by gusta: do not edit inside this block (gusta-update rewrites it with "gusta agent-block"); write project rules outside it -->
+## GUSTA
+
+This project is built spec-first with GUSTA. `spec/` is the source of truth and code follows it.
+
+- Implement only on a child branch; `gusta-start`, `gusta-self-improve` and `gusta-self-improve-remote` require a dedicated worktree. Plan with `gusta-plan`.
+- Do not change behavior covered by a `spec/ssot/` decision without updating the spec first.
+- Branch, push, deploy and version behavior comes from `spec/SETTINGS.md` (the `gusta-preference` skill); never assume branch names.
+
+<!-- gusta:end -->
+<!-- prettier-ignore-end -->

@@ -23,6 +23,10 @@ pnpm-lock.yaml
 apps/mobile/ios/Podfile.lock
 .gusta-lock.json
 
+# gusta agent-block owns AGENTS.md whole (CLAUDE.md wraps its block in prettier-ignore); reformatting
+# the managed block makes `gusta agent-block --check` report it stale.
+AGENTS.md
+
 # spec/ docs follow spec/FORMAT.md, and the gusta CLI rewrites STATE.md itself.
 spec/**/*.md
 
