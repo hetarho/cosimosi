@@ -25,7 +25,13 @@ section(
 
 // ---- B) spec/ layout (defined first; the probe dispatches off it) ----
 // `values.yaml` is not a FORMAT doc: it is the build-time config source `pnpm gen:values` reads.
-const LAYOUT_FILES = new Set(['STATE.md', 'FORMAT.md', 'NARRATIVE.md', 'values.yaml'])
+const LAYOUT_FILES = new Set([
+  'STATE.md',
+  'SETTINGS.md',
+  'FORMAT.md',
+  'NARRATIVE.md',
+  'values.yaml',
+])
 const LAYOUT_DIRS = new Set(['ssot', 'tasks', 'review', 'ideation', 'reports', 'work'])
 
 function layoutProblems(entries) {
