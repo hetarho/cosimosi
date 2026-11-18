@@ -326,7 +326,7 @@
   - batch, before code push or final completion: `pnpm check`
   - CI, after code push: the `CI` workflow (`.github/workflows/ci.yml`) job `check` on every push and pull request to `main` and `develop`: `pnpm install --frozen-lockfile`, then `pnpm check`, with Node from `.node-version` and Go 1.26 from `setup-go`
   - affected checks select every workspace package changed since the task start and every package depending on one; `scripts/check-affected.mjs` resolves the actual root through Git and expands explicit package-name selectors through pnpm, including linked worktrees
-  - the base is an explicit `--base` commit/ref, else `HAERAM_DIFF_BASE`, else `HEAD`; the tracked Git diff includes committed, modified and staged files, not untracked ones; rename/deletion handling retains both affected owners
+  - the base is an explicit `--base` commit/ref, else `GUSTA_DIFF_BASE`, else `HEAD`; the tracked Git diff includes committed, modified and staged files, not untracked ones; rename/deletion handling retains both affected owners
   - shared workspace inputs or uncertain ownership conservatively select all child workspace projects; known non-workspace documentation, backend and guard-only changes report an intentional empty TypeScript selection, which never substitutes for their conditional Go, generation or guard obligations; discovery/inventory/selection failures are errors
   - Go is outside the pnpm workspace; the final full gate and every conditional check below remain required
   - a change under `apps/api/` or `proto/` adds `pnpm check:api` to the task tier (gofmt, vet, the Go suite against the local compose Postgres, build)
